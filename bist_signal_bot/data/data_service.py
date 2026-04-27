@@ -13,7 +13,7 @@ from bist_signal_bot.data.symbol_universe import SymbolUniverse
 from bist_signal_bot.data.symbol_utils import ensure_valid_internal_symbol
 from bist_signal_bot.storage.local_store import LocalMarketDataStore
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("bist_signal_bot.data_service")
 
 class MarketDataService:
     """
@@ -59,6 +59,7 @@ class MarketDataService:
         mdf.quality_report = report
 
         if self.fail_on_quality_error and (report.has_critical() or report.has_errors()):
+            logger.error(f"Data quality checks failed for {symbol}")
             raise DataQualityError(f"Data quality checks failed for {symbol}. Critical: {report.has_critical()}, Errors: {report.error_count()}")
 
         return mdf
@@ -73,16 +74,14 @@ class MarketDataService:
         # Check local storage if preferred and refresh not requested
         if self.store and self.prefer_local and not refresh:
             if self.store.exists(symbol, self.provider.vendor, timeframe):
-                logger.debug(f"Reading {symbol} from local store.")
+                logger.info(f"Reading {symbol} from local store.")
                 try:
                     mdf = self.store.read_ohlcv(symbol, self.provider.vendor, timeframe)
-                    # We might want to check if the date range in local store satisfies 'period',
-                    # but for this phase we assume local data is sufficient if it exists.
                     return self._apply_quality_check(mdf, symbol)
                 except Exception as e:
-                    logger.warning(f"Failed to read local data for {symbol}, falling back to provider: {e}")
+                    logger.warning(f"Failed to read local data for {symbol}, falling back to provider: {e}", exc_info=True)
 
-        logger.debug(f"Fetching {symbol} from provider.")
+        logger.info(f"Fetching {symbol} from provider ({self.provider.vendor.value}).")
         mdf = self.provider.fetch_one(
             symbol=symbol,
             timeframe=timeframe,
@@ -94,7 +93,7 @@ class MarketDataService:
         mdf = self._apply_quality_check(mdf, symbol)
 
         if self.store and save:
-            logger.debug(f"Saving {symbol} to local store.")
+            logger.info(f"Saving {symbol} to local store.")
             self.store.write_ohlcv(mdf)
 
         return mdf
@@ -112,6 +111,7 @@ class MarketDataService:
                     try:
                         mdf = self.store.read_ohlcv(sym, self.provider.vendor, timeframe)
                         results[sym] = self._apply_quality_check(mdf, sym)
+                        logger.debug(f"Read {sym} from local store.")
                         continue
                     except Exception as e:
                         logger.warning(f"Failed to read local data for {sym}, will fetch: {e}")
@@ -119,6 +119,7 @@ class MarketDataService:
             symbols_to_fetch.append(sym)
 
         if symbols_to_fetch:
+            logger.info(f"Fetching {len(symbols_to_fetch)} symbols from provider.")
             req = DataFetchRequest(
                 symbols=symbols_to_fetch,
                 timeframe=timeframe,
@@ -134,6 +135,7 @@ class MarketDataService:
 
                 if self.store and save:
                     self.store.write_ohlcv(mdf)
+                    logger.debug(f"Saved {sym} to local store.")
 
         return results
 
@@ -141,7 +143,6 @@ class MarketDataService:
         """Return the current status of the configured data provider and storage."""
         data_dir = None
         if self.store and self.store.settings:
-            # Reconstruct the expected data dir path string roughly
             data_dir = str(self.store.settings.DATA_DIR)
 
         return {

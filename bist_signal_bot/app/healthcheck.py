@@ -6,6 +6,7 @@ from pathlib import Path
 from bist_signal_bot.calendar.session import BistMarketSessionService
 from bist_signal_bot.config.settings import settings
 from bist_signal_bot.core.constants import DEFAULT_MARKET
+from bist_signal_bot.core.context import get_runtime_context
 from bist_signal_bot.data.symbol_universe import DEFAULT_SEED_SYMBOLS, SymbolUniverse
 from bist_signal_bot.storage.paths import (
     CACHE_DIR,
@@ -15,7 +16,6 @@ from bist_signal_bot.storage.paths import (
     get_market_data_index_path,
     get_metadata_dir,
 )
-
 
 def check_local_store_writable(data_dir: Path) -> bool:
     """Tests if the data directory is writable."""
@@ -44,9 +44,10 @@ def run_healthcheck() -> dict:
     metadata_dir = get_metadata_dir(settings)
     index_path = get_market_data_index_path(settings)
 
-
     session_service = BistMarketSessionService.from_settings(settings)
     session_status = session_service.get_status()
+
+    runtime_context = get_runtime_context()
 
     health_status = {
         "app_name": settings.APP_NAME,
@@ -58,6 +59,18 @@ def run_healthcheck() -> dict:
             "data_dir_exists": DATA_DIR.exists(),
             "cache_dir_exists": CACHE_DIR.exists(),
             "reports_dir_exists": REPORTS_DIR.exists(),
+        },
+        "logging_and_audit": {
+            "log_level": settings.LOG_LEVEL,
+            "log_to_file": settings.LOG_TO_FILE,
+            "log_dir": settings.LOG_DIR,
+            "log_file_name": settings.LOG_FILE_NAME,
+            "audit_enabled": settings.ENABLE_AUDIT_LOG,
+            "audit_log_file": settings.AUDIT_LOG_FILE_NAME,
+            "mask_secrets_enabled": settings.MASK_SECRETS_IN_LOGS,
+            "debug_tracebacks": settings.DEBUG_TRACEBACKS,
+            "error_notifications_enabled": settings.ENABLE_ERROR_NOTIFICATIONS,
+            "runtime_run_id_present": bool(runtime_context and runtime_context.run_id)
         },
         "storage": {
             "data_dir_path": str(DATA_DIR),
@@ -111,8 +124,8 @@ def run_healthcheck() -> dict:
             "default_symbol_count": universe.count(active_only=False),
             "active_symbol_count": universe.count(active_only=True),
             "yfinance_compatible_symbol_count": len(universe.list_yfinance_symbols(active_only=True)),
-            "invalid_symbol_count": 0, # Since we validate on add, this is 0 for seed symbols
-            "has_duplicate_symbol_issue": False, # Handled by dict insertion
+            "invalid_symbol_count": 0,
+            "has_duplicate_symbol_issue": False,
             "market": DEFAULT_MARKET
         },
         "notifications": {

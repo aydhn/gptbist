@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from bist_signal_bot.config.settings import Settings
-from bist_signal_bot.core.logging_setup import setup_logger
+from bist_signal_bot.core.logging_setup import get_logger
 from bist_signal_bot.notifications.formatter import NotificationFormatter
 from bist_signal_bot.notifications.models import (
     NotificationLevel,
@@ -12,7 +12,7 @@ from bist_signal_bot.notifications.models import (
 )
 from bist_signal_bot.notifications.rate_limiter import NotificationRateLimiter
 
-logger = setup_logger(__name__)
+logger = get_logger("bist_signal_bot.telegram_notifier")
 
 class TelegramNotifier:
     def __init__(
@@ -59,6 +59,7 @@ class TelegramNotifier:
         return bool(self.enabled and self.bot_token and self.chat_id)
 
     def _send_raw_text(self, text: str) -> TelegramSendResult:
+        # In this phase, we mock the real API call
         return TelegramSendResult(
             success=True,
             message_id="mock_id_123",
@@ -89,13 +90,13 @@ class TelegramNotifier:
 
         for part in parts:
             if self.dry_run:
-                logger.info(f"DRY RUN - Telegram Message: {part[:50]}...")
+                logger.info(f"DRY RUN - Telegram Message (Type: {message.notification_type}): {part[:50]}...")
                 result = TelegramSendResult(success=True, dry_run=True, sent_at=datetime.now(timezone.utc))
             else:
                 try:
                     result = self._send_raw_text(part)
                 except Exception as e:
-                    logger.error(f"TelegramSendError: Failed to send part. {str(e)}")
+                    logger.error(f"TelegramSendError: Failed to send part: {type(e).__name__}")
                     result = TelegramSendResult(success=False, error=str(e), dry_run=False)
 
             if not result.success:
