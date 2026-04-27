@@ -1,0 +1,140 @@
+import html
+from typing import Any
+
+from bist_signal_bot.notifications.models import NotificationMessage
+
+
+class NotificationFormatter:
+    def __init__(self, parse_mode: str = "HTML", timezone_str: str = "Europe/Istanbul"):
+        self.parse_mode = parse_mode.upper()
+        self.timezone_str = timezone_str
+
+    def _escape(self, text: str) -> str:
+        if self.parse_mode == "HTML":
+            return html.escape(str(text))
+        return str(text)
+
+    def format_message(self, message: NotificationMessage) -> str:
+        """Formats a NotificationMessage to a string suitable for Telegram."""
+        lines = []
+
+        # Title
+        title_escaped = self._escape(message.title)
+        lines.append(f"<b>[{message.level.value}] {title_escaped}</b>")
+        lines.append("")
+
+        # Symbol if present
+        if message.symbol:
+            lines.append(f"Sembol: {self._escape(message.symbol)}")
+
+        # Type
+        lines.append(f"Tip: {message.notification_type.value}")
+
+        # Time
+        time_str = message.timestamp.strftime("%Y-%m-%d %H:%M:%S")
+        lines.append(f"Zaman: {time_str} UTC")
+
+        lines.append("")
+        lines.append("Detay:")
+        lines.append(self._escape(message.body))
+
+        if message.metadata:
+            lines.append("")
+            lines.append("Ek:")
+            for k, v in message.metadata.items():
+                lines.append(f"{self._escape(k)}={self._escape(str(v))}")
+
+        return "\n".join(lines)
+
+    def format_healthcheck(self, summary: dict[str, Any]) -> str:
+        """Formats healthcheck dict into a short readable text."""
+        lines = [
+            f"<b>[INFO] Healthcheck Raporu</b>",
+            "",
+            f"App: {self._escape(summary.get('app_name', 'BIST Signal Bot'))}",
+            f"Env: {self._escape(summary.get('environment', 'N/A'))}",
+            f"Python: {self._escape(summary.get('python_version', 'N/A'))}"
+        ]
+
+        features = summary.get("features", {})
+        if features:
+            lines.append("")
+            lines.append("Özellikler:")
+            for k, v in features.items():
+                lines.append(f"- {self._escape(k)}: {self._escape(str(v))}")
+
+        notifications = summary.get("notifications", {})
+        if notifications:
+            lines.append("")
+            lines.append("Bildirimler:")
+            for k, v in notifications.items():
+                lines.append(f"- {self._escape(k)}: {self._escape(str(v))}")
+
+        return "\n".join(lines)
+
+    def format_error(self, error: Exception, context: dict[str, Any] | None = None) -> str:
+        """Formats an error message safely."""
+        error_type = type(error).__name__
+        error_msg = str(error)
+
+        lines = [
+            f"<b>[ERROR] Sistem Hatası</b>",
+            "",
+            f"Tip: {self._escape(error_type)}",
+            f"Mesaj: {self._escape(error_msg)}"
+        ]
+
+        if context:
+            lines.append("")
+            lines.append("Bağlam:")
+            for k, v in context.items():
+                lines.append(f"{self._escape(k)}={self._escape(str(v))}")
+
+        return "\n".join(lines)
+
+    def split_message(self, text: str, max_length: int = 3900) -> list[str]:
+        """Splits text to fit Telegram message limits."""
+        if not text:
+            return []
+
+        if len(text) <= max_length:
+            return [text]
+
+        parts = []
+        current_part = ""
+
+        lines = text.split("\n")
+
+        for line in lines:
+            if len(line) > max_length:
+                if current_part:
+                    parts.append(current_part)
+                    current_part = ""
+
+                for i in range(0, len(line), max_length):
+                    parts.append(line[i:i + max_length])
+                continue
+
+            if len(current_part) + len(line) + 1 <= max_length:
+                if current_part:
+                    current_part += "\n" + line
+                else:
+                    current_part = line
+            else:
+                parts.append(current_part)
+                current_part = line
+
+        if current_part:
+            parts.append(current_part)
+
+        return parts
+
+    @staticmethod
+    def mask_secret(value: str, visible_prefix: int = 4, visible_suffix: int = 4) -> str:
+        """Masks a secret string."""
+        if not value:
+            return ""
+        if len(value) <= visible_prefix + visible_suffix:
+            return "***"
+
+        return f"{value[:visible_prefix]}***{value[-visible_suffix:]}"

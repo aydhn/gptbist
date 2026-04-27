@@ -41,6 +41,19 @@ class Settings(BaseSettings):
     ENABLE_OPTIMIZER: bool = Field(default=False)
     ENABLE_GPU: bool = Field(default=False)
 
+    TELEGRAM_PARSE_MODE: str = Field(default="HTML")
+    TELEGRAM_DISABLE_WEB_PAGE_PREVIEW: bool = Field(default=True)
+    TELEGRAM_MESSAGE_MAX_LENGTH: int = Field(default=3900)
+    TELEGRAM_SEND_TIMEOUT_SECONDS: int = Field(default=15)
+    TELEGRAM_RATE_LIMIT_SECONDS: float = Field(default=1.0)
+    TELEGRAM_ERROR_COOLDOWN_SECONDS: float = Field(default=300.0)
+
+    SEND_STARTUP_NOTIFICATION: bool = Field(default=True)
+    SEND_HEALTHCHECK_NOTIFICATION: bool = Field(default=False)
+    SEND_ERROR_NOTIFICATIONS: bool = Field(default=True)
+    SEND_DATA_QUALITY_WARNINGS: bool = Field(default=True)
+
+
     ENABLE_DATA_QUALITY_CHECK: bool = Field(default=True)
     DATA_QUALITY_MIN_ROWS: int = Field(default=100)
     DATA_QUALITY_MAX_DAILY_RETURN_ABS: float = Field(default=0.35)
