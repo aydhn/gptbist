@@ -93,6 +93,7 @@ class MarketDataFrame(BaseModel):
     data: Any # Cannot use pd.DataFrame directly with Pydantic easily without arbitrary_types_allowed
     fetched_at: datetime
     adjusted: bool = True
+    quality_report: Any | None = None
 
     model_config = {
         "arbitrary_types_allowed": True
@@ -134,6 +135,8 @@ class MarketDataFrame(BaseModel):
     def date_range(self) -> tuple[datetime | None, datetime | None]:
         if self.is_empty():
             return None, None
+        if not isinstance(self.data.index, pd.DatetimeIndex):
+            return None, None
         return self.data.index.min().to_pydatetime(), self.data.index.max().to_pydatetime()
 
 class DataFetchRequest(BaseModel):
@@ -143,6 +146,7 @@ class DataFetchRequest(BaseModel):
     end: datetime | None = None
     period: str | None = None
     adjusted: bool = True
+    quality_report: Any | None = None
 
     @field_validator("symbols")
     def validate_symbols(cls, v):

@@ -62,6 +62,14 @@ def run_healthcheck() -> dict:
             "gpu_enabled": settings.ENABLE_GPU,
             "dry_run": settings.DRY_RUN,
         },
+        "data_quality": {
+            "enabled": settings.ENABLE_DATA_QUALITY_CHECK,
+            "min_rows": settings.DATA_QUALITY_MIN_ROWS,
+            "max_daily_return_abs": settings.DATA_QUALITY_MAX_DAILY_RETURN_ABS,
+            "max_allowed_gap_days": settings.DATA_QUALITY_MAX_ALLOWED_GAP_DAYS,
+            "fail_on_error": settings.DATA_QUALITY_FAIL_ON_ERROR,
+            "checker_instantiable": True,
+        },
         "data_provider": {
             "default_provider": settings.DEFAULT_DATA_PROVIDER,
             "default_timeframe": settings.DEFAULT_TIMEFRAME,

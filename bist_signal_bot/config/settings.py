@@ -40,6 +40,12 @@ class Settings(BaseSettings):
     ENABLE_OPTIMIZER: bool = Field(default=False)
     ENABLE_GPU: bool = Field(default=False)
 
+    ENABLE_DATA_QUALITY_CHECK: bool = Field(default=True)
+    DATA_QUALITY_MIN_ROWS: int = Field(default=100)
+    DATA_QUALITY_MAX_DAILY_RETURN_ABS: float = Field(default=0.35)
+    DATA_QUALITY_MAX_ALLOWED_GAP_DAYS: int = Field(default=10)
+    DATA_QUALITY_FAIL_ON_ERROR: bool = Field(default=False)
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
 settings = Settings()
