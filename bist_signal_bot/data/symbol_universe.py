@@ -1,7 +1,8 @@
-from typing import Iterable, List
-from bist_signal_bot.data.models import SymbolInfo, SymbolGroup
-from bist_signal_bot.data.symbol_utils import normalize_symbol, to_yfinance_symbol
+from collections.abc import Iterable
+
 from bist_signal_bot.core.exceptions import DuplicateSymbolError, SymbolUniverseError
+from bist_signal_bot.data.models import SymbolGroup, SymbolInfo
+from bist_signal_bot.data.symbol_utils import normalize_symbol, to_yfinance_symbol
 
 # Seed list - This is a starter watchlist, not an official index composition claim.
 DEFAULT_SEED_SYMBOLS_STR = [

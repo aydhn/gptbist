@@ -1,7 +1,9 @@
 import pytest
-from bist_signal_bot.data.symbol_universe import SymbolUniverse
-from bist_signal_bot.data.models import SymbolInfo, SymbolGroup
+
 from bist_signal_bot.core.exceptions import DuplicateSymbolError, SymbolUniverseError
+from bist_signal_bot.data.models import SymbolGroup, SymbolInfo
+from bist_signal_bot.data.symbol_universe import SymbolUniverse
+
 
 @pytest.fixture
 def empty_universe():

@@ -1,10 +1,12 @@
 import json
 from datetime import datetime
 from pathlib import Path
+
 from pydantic import BaseModel, Field
 
 from bist_signal_bot.core.exceptions import StorageError
 from bist_signal_bot.storage.paths import ensure_dir
+
 
 class StoredMarketDataMetadata(BaseModel):
     symbol: str
@@ -57,7 +59,7 @@ def load_market_data_index(path: Path) -> MarketDataIndex:
         return MarketDataIndex()
 
     try:
-        with open(path, "r", encoding="utf-8") as f:
+        with open(path, encoding="utf-8") as f:
             data = json.load(f)
             return MarketDataIndex.from_dict(data)
     except json.JSONDecodeError as e:

@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 
+
 class BaseOptimizer(ABC):
     """
     Abstract base class for strategy parameter optimizers.

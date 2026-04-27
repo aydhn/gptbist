@@ -1,15 +1,15 @@
-import pytest
 from datetime import datetime
-from pathlib import Path
-import json
 
-from bist_signal_bot.storage.metadata import (
-    StoredMarketDataMetadata,
-    MarketDataIndex,
-    save_market_data_index,
-    load_market_data_index
-)
+import pytest
+
 from bist_signal_bot.core.exceptions import StorageError
+from bist_signal_bot.storage.metadata import (
+    MarketDataIndex,
+    StoredMarketDataMetadata,
+    load_market_data_index,
+    save_market_data_index,
+)
+
 
 def test_stored_market_data_metadata_creation():
     now = datetime.utcnow()

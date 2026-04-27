@@ -1,6 +1,8 @@
 import pytest
-from bist_signal_bot.data.models import SymbolInfo, AssetType, Market, SymbolGroup
+
 from bist_signal_bot.core.exceptions import InvalidSymbolError
+from bist_signal_bot.data.models import AssetType, Market, SymbolGroup, SymbolInfo
+
 
 def test_symbol_info_normalization():
     info = SymbolInfo(symbol="asels.is")

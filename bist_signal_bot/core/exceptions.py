@@ -45,3 +45,11 @@ class MarketDataStoreError(StorageError):
 class DataQualityError(BistSignalBotError):
     """Raised when data quality checks fail and fail_on_error is configured."""
     pass
+
+class MarketCalendarError(BistSignalBotError):
+    """Raised when there is an error in market calendar calculations."""
+    pass
+
+class MarketSessionError(BistSignalBotError):
+    """Raised when there is an error in market session logic."""
+    pass

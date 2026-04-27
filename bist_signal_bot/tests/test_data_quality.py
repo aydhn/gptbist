@@ -1,11 +1,10 @@
-import pytest
-import pandas as pd
-from datetime import datetime, timedelta
+from datetime import datetime
 
-from bist_signal_bot.data.quality import (
-    DataQualityChecker, DataQualityIssueType, DataQualitySeverity
-)
-from bist_signal_bot.data.models import MarketDataFrame, Timeframe, DataVendor
+import pandas as pd
+
+from bist_signal_bot.data.models import DataVendor, MarketDataFrame, Timeframe
+from bist_signal_bot.data.quality import DataQualityChecker, DataQualityIssueType
+
 
 def make_mdf(df: pd.DataFrame, symbol="ASELS", timeframe=Timeframe.DAILY) -> MarketDataFrame:
     return MarketDataFrame(

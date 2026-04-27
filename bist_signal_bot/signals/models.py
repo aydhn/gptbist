@@ -1,6 +1,7 @@
-from pydantic import BaseModel
-from typing import Optional
 from datetime import datetime
+
+from pydantic import BaseModel
+
 
 class Signal(BaseModel):
     """
@@ -11,5 +12,5 @@ class Signal(BaseModel):
     action: str  # 'BUY', 'SELL', 'HOLD'
     price: float
     strategy_name: str
-    score: Optional[float] = None
-    metadata: Optional[dict] = None
+    score: float | None = None
+    metadata: dict | None = None
