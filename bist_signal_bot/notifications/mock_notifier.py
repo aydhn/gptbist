@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from bist_signal_bot.notifications.formatter import NotificationFormatter
@@ -29,7 +29,7 @@ class MockNotifier:
         return TelegramSendResult(
             success=True,
             message_id=len(self.sent_texts),
-            sent_at=datetime.now(timezone.utc),
+            sent_at=datetime.now(UTC),
             dry_run=True
         )
 

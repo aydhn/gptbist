@@ -49,7 +49,7 @@ class NotificationFormatter:
     def format_healthcheck(self, summary: dict[str, Any]) -> str:
         """Formats healthcheck dict into a short readable text."""
         lines = [
-            f"<b>[INFO] Healthcheck Raporu</b>",
+            "<b>[INFO] Healthcheck Raporu</b>",
             "",
             f"App: {self._escape(summary.get('app_name', 'BIST Signal Bot'))}",
             f"Env: {self._escape(summary.get('environment', 'N/A'))}",
@@ -78,7 +78,7 @@ class NotificationFormatter:
         error_msg = str(error)
 
         lines = [
-            f"<b>[ERROR] Sistem Hatası</b>",
+            "<b>[ERROR] Sistem Hatası</b>",
             "",
             f"Tip: {self._escape(error_type)}",
             f"Mesaj: {self._escape(error_msg)}"

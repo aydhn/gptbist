@@ -1,6 +1,7 @@
 from bist_signal_bot.app.healthcheck import run_healthcheck
 from bist_signal_bot.config.settings import settings
 
+
 def test_healthcheck_includes_notifications_section():
     settings.TELEGRAM_BOT_TOKEN = "secret_token_123"
     settings.TELEGRAM_CHAT_ID = "chat_id_456"

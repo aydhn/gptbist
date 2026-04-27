@@ -1,4 +1,5 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
+
 import pytest
 
 from bist_signal_bot.notifications.formatter import NotificationFormatter
@@ -7,6 +8,7 @@ from bist_signal_bot.notifications.models import (
     NotificationMessage,
     NotificationType,
 )
+
 
 @pytest.fixture
 def formatter():
@@ -18,7 +20,7 @@ def test_formatter_formats_message(formatter):
         body="Test Body",
         level=NotificationLevel.INFO,
         notification_type=NotificationType.SYSTEM,
-        timestamp=datetime(2026, 4, 25, 18, 30, tzinfo=timezone.utc),
+        timestamp=datetime(2026, 4, 25, 18, 30, tzinfo=UTC),
         symbol="ASELS",
         metadata={"key": "value"}
     )

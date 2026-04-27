@@ -1,12 +1,21 @@
 import logging
 import traceback
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from bist_signal_bot.config.settings import Settings
-from bist_signal_bot.core.exceptions import BistSignalBotError, ConfigurationError, DataProviderError, StorageError, DataQualityError, MarketCalendarError, NotificationError
+from bist_signal_bot.core.exceptions import (
+    BistSignalBotError,
+    ConfigurationError,
+    DataProviderError,
+    DataQualityError,
+    MarketCalendarError,
+    NotificationError,
+    StorageError,
+)
 from bist_signal_bot.core.logging_setup import safe_log_dict
 from bist_signal_bot.core.safety import sanitize_mapping
+
 
 class ErrorHandler:
     def __init__(self, settings: Settings, notifier=None, logger: logging.Logger | None = None):
@@ -72,5 +81,5 @@ class ErrorHandler:
             "message": str(error),
             "recoverable": self.is_recoverable(error),
             "context": context or {},
-            "timestamp": datetime.now(timezone.utc).isoformat()
+            "timestamp": datetime.now(UTC).isoformat()
         }

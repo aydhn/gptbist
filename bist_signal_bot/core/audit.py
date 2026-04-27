@@ -1,13 +1,14 @@
 import json
 import logging
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
 from pathlib import Path
 from typing import Any
 
 from bist_signal_bot.config.settings import Settings
 from bist_signal_bot.core.logging_setup import sanitize_for_logging
+
 
 class AuditEventType(str, Enum):
     APP_START = "APP_START"
@@ -30,7 +31,7 @@ class AuditEventType(str, Enum):
 class AuditEvent:
     event_type: AuditEventType
     message: str
-    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
     level: str = "INFO"
     symbol: str | None = None
     run_id: str | None = None

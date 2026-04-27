@@ -1,4 +1,3 @@
-from datetime import datetime, timezone
 import pytest
 
 from bist_signal_bot.notifications.mock_notifier import MockNotifier
@@ -7,6 +6,7 @@ from bist_signal_bot.notifications.models import (
     NotificationMessage,
     NotificationType,
 )
+
 
 @pytest.fixture
 def mock_notifier():

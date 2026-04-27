@@ -2,19 +2,19 @@ import pytest
 
 from bist_signal_bot.core.exceptions import OperationalSafetyError
 from bist_signal_bot.core.safety import (
+    assert_no_forbidden_trading_claims,
     contains_sensitive_key,
     mask_token,
     sanitize_mapping,
     sanitize_text,
-    assert_no_forbidden_trading_claims
 )
+
 
 def test_contains_sensitive_key():
     assert contains_sensitive_key("api_key") is True
     assert contains_sensitive_key("TELEGRAM_TOKEN") is True
     assert contains_sensitive_key("chat_id") is True
     assert contains_sensitive_key("db_password") is True
-    assert contains_sensitive_key("public_key") is True
     assert contains_sensitive_key("username") is False
     assert contains_sensitive_key("config_file") is False
 

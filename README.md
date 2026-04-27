@@ -109,3 +109,11 @@ Bu proje 100 fazlık büyük bir vizyonun **Phase 1 (Faz 1)** çıktısıdır. T
 - **Hata Yönetimi ve Telegram Bildirimleri:** Tüm beklenen ve beklenmeyen hatalar `ErrorHandler` ile merkezileştirildi. Hataların bağlamı (context) hassas verilerden arındırılarak loglanır ve konfigüre edilmişse Telegram'a sadece `ERROR` veya `CRITICAL` seviyesindeki hatalar yollanır.
 - **Operasyonel Güvenlik:** Sinyal dili için `OperationalSafetyError` ("kesin kazanır" gibi yasaklı kelimeler için) oluşturuldu ve loglanmadan/mesaj atılmadan önce API anahtarları, token'lar ve şifrelerin maskelenmesini (`***`) sağlayan `core/safety.py` entegre edildi.
 - **Run ID (Runtime Context):** Uygulama her başladığında kısa bir UUID (Run ID) üretilerek oluşan logların ve audit event'lerin hangi çalışmaya ait olduğu korele edilebilir hale getirildi.
+
+## Phase 9 Çıktıları
+- **Config Sistemi:** Tüm uygulama ayarlarının pydantic-settings üzerinden merkezileştirilmesi (`config/settings.py`).
+- **Çevre Değişkenleri (.env):** `env_loader.py` ile `.env` dosyasının güvenli yüklenmesi ve sağlık kontrolleri için durumunun belirlenmesi eklendi. `.env.example` hazırlandı.
+- **Ortam Profilleri:** `config/profiles.py` ile `development`, `test`, ve `production` ortamlarına özgü farklı varsayılan davranışlar (DRY_RUN, LOG_LEVEL) kodlandı.
+- **Güvenli Secret Yönetimi:** `config/secrets.py` içerisinde "token", "chat_id" vb. barındıran hassas değişkenlerin loglanmadan önce veya string'e çevrilmeden önce maskelenmesini (`secr...1234` vb.) sağlayan fonksiyonlar kurgulandı. `Settings` objesinin repr metodu da bunu kullanacak şekilde güncellendi.
+- **Gelişmiş Validasyon:** `config/validation.py` sayesinde yanlış konfigürasyonlara `ConfigurationError` fırlatılarak hataların "fail-fast" mantığında yakalanması sağlandı. `APP_ENV="production"` olduğunda `DEBUG_TRACEBACKS` açık olmaması gibi ekstra üretim ortamı kontrolleri eklendi.
+- **Ayrıştırılmış Sorumluluk:** Ayarların ML, Backtest, Risk, Telegram vb. kategorilere ayrılarak ilerideki fazlarda sadece kendi ilgi alanındaki ayarları genişletmesine zemin hazırlandı.

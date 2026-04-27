@@ -1,5 +1,5 @@
-import pytest
 from bist_signal_bot.app.healthcheck import run_healthcheck
+
 
 def test_healthcheck_includes_logging_and_audit():
     result = run_healthcheck()

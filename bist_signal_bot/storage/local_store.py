@@ -22,7 +22,6 @@ from bist_signal_bot.storage.paths import (
     get_ohlcv_file_path,
 )
 
-
 logger = logging.getLogger("bist_signal_bot.local_store")
 
 class LocalMarketDataStore:

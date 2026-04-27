@@ -1,9 +1,10 @@
 import json
+
 import pytest
-from pathlib import Path
 
 from bist_signal_bot.config.settings import Settings
 from bist_signal_bot.core.audit import AuditEvent, AuditEventType, AuditLogger
+
 
 def test_audit_event_validation():
     with pytest.raises(ValueError, match="cannot be empty"):
@@ -31,7 +32,7 @@ def test_audit_logger_writes_jsonl(tmp_path):
     audit_file = tmp_path / "audit.log"
     assert audit_file.exists()
 
-    with open(audit_file, "r", encoding="utf-8") as f:
+    with open(audit_file, encoding="utf-8") as f:
         lines = f.readlines()
         assert len(lines) == 1
 
@@ -54,6 +55,6 @@ def test_audit_logger_sanitizes_metadata(tmp_path):
     logger.log_event(event)
 
     audit_file = tmp_path / settings.AUDIT_LOG_FILE_NAME
-    with open(audit_file, "r", encoding="utf-8") as f:
+    with open(audit_file, encoding="utf-8") as f:
         data = json.loads(f.readlines()[0])
         assert data["metadata"]["api_key"] == "secr...6789"
