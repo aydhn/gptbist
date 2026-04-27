@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "bist_signal_bot"
+version = "0.1.0"
+description = "BIST Sinyal Botu - Algoritmik Sinyal Üretim Sistemi"
+readme = "README.md"
+requires-python = ">=3.11"
+
+[tool.pytest.ini_options]
+addopts = "-v --tb=short"
+testpaths = [
+    "bist_signal_bot/tests",
+]
+
+[tool.ruff]
+line-length = 100
+select = ["E", "F", "I", "N", "W", "UP", "B", "A", "C4", "SIM", "RUF"]
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+ignore_missing_imports = true
