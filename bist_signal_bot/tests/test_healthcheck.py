@@ -10,6 +10,7 @@ def test_healthcheck_returns_dict():
     assert "directories" in health_status
     assert "symbol_universe" in health_status
     assert "data_quality" in health_status
+    assert "run_mode" in health_status
 
     universe_info = health_status["symbol_universe"]
     assert "default_symbol_count" in universe_info

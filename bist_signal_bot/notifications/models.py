@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from enum import Enum
 from typing import Any
 
@@ -29,7 +29,7 @@ class NotificationType(str, Enum):
 
 
 def get_default_timestamp() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class NotificationMessage(BaseModel):

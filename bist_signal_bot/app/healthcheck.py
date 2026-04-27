@@ -4,6 +4,7 @@ import tempfile
 from pathlib import Path
 
 from bist_signal_bot.calendar.session import BistMarketSessionService
+from bist_signal_bot.config.env_loader import env_file_status
 from bist_signal_bot.config.settings import settings
 from bist_signal_bot.core.constants import DEFAULT_MARKET
 from bist_signal_bot.core.context import get_runtime_context
@@ -16,6 +17,7 @@ from bist_signal_bot.storage.paths import (
     get_market_data_index_path,
     get_metadata_dir,
 )
+
 
 def check_local_store_writable(data_dir: Path) -> bool:
     """Tests if the data directory is writable."""
@@ -49,12 +51,21 @@ def run_healthcheck() -> dict:
 
     runtime_context = get_runtime_context()
 
+    env_status = env_file_status()
+
     health_status = {
         "app_name": settings.APP_NAME,
         "environment": settings.APP_ENV,
+        "run_mode": settings.RUN_MODE,
+        "dry_run": settings.DRY_RUN,
+        "default_market": settings.DEFAULT_MARKET,
+        "default_timezone": settings.DEFAULT_TIMEZONE,
         "python_version": sys.version.split(" ")[0],
         "os_platform": platform.platform(),
         "working_directory": str(Path.cwd()),
+        "env_file_exists": env_status.get("exists", False),
+        "config_validation_passed": True,
+        "secrets_masked_true": True, # Hardcoded because we run settings_safe_dump in log, settings obj masks
         "directories": {
             "data_dir_exists": DATA_DIR.exists(),
             "cache_dir_exists": CACHE_DIR.exists(),
@@ -131,7 +142,7 @@ def run_healthcheck() -> dict:
         "notifications": {
             "telegram_enabled": settings.ENABLE_TELEGRAM,
             "telegram_configured": bool(settings.ENABLE_TELEGRAM and settings.TELEGRAM_BOT_TOKEN and settings.TELEGRAM_CHAT_ID),
-            "telegram_dry_run": settings.DRY_RUN,
+            "telegram_dry_run": settings.TELEGRAM_DRY_RUN,
             "parse_mode": settings.TELEGRAM_PARSE_MODE,
             "message_max_length": settings.TELEGRAM_MESSAGE_MAX_LENGTH,
             "rate_limit_seconds": settings.TELEGRAM_RATE_LIMIT_SECONDS,

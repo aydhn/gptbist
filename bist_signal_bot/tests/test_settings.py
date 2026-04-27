@@ -8,3 +8,12 @@ def test_settings_defaults():
     assert settings.DEFAULT_MARKET == "BIST"
     assert settings.DRY_RUN is True
     assert settings.ENABLE_TELEGRAM is False
+    assert settings.RUN_MODE == "research"
+    assert settings.APP_ENV == "development"
+
+def test_settings_repr_hides_secrets():
+    settings = Settings(_env_file=None)
+    settings.TELEGRAM_BOT_TOKEN = "123456789:ABCDefghIJKLmnopQRSTuvwxYZ"
+    repr_str = repr(settings)
+    assert "123456789:ABCDefghIJKLmnopQRSTuvwxYZ" not in repr_str
+    assert "1234...wxYZ" in repr_str

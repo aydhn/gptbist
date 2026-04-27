@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from bist_signal_bot.config.settings import Settings
@@ -37,7 +37,7 @@ class TelegramNotifier:
 
     @property
     def dry_run(self) -> bool:
-        return self.settings.DRY_RUN
+        return self.settings.TELEGRAM_DRY_RUN
 
     @property
     def bot_token(self) -> str:
@@ -56,6 +56,9 @@ class TelegramNotifier:
         return self.settings.TELEGRAM_SEND_TIMEOUT_SECONDS
 
     def is_configured(self) -> bool:
+        # In dry run, we don't strictly require tokens for initialization
+        if self.dry_run:
+            return self.enabled
         return bool(self.enabled and self.bot_token and self.chat_id)
 
     def _send_raw_text(self, text: str) -> TelegramSendResult:
@@ -63,7 +66,7 @@ class TelegramNotifier:
         return TelegramSendResult(
             success=True,
             message_id="mock_id_123",
-            sent_at=datetime.now(timezone.utc),
+            sent_at=datetime.now(UTC),
             dry_run=self.dry_run
         )
 
@@ -91,7 +94,7 @@ class TelegramNotifier:
         for part in parts:
             if self.dry_run:
                 logger.info(f"DRY RUN - Telegram Message (Type: {message.notification_type}): {part[:50]}...")
-                result = TelegramSendResult(success=True, dry_run=True, sent_at=datetime.now(timezone.utc))
+                result = TelegramSendResult(success=True, dry_run=True, sent_at=datetime.now(UTC))
             else:
                 try:
                     result = self._send_raw_text(part)
@@ -114,7 +117,7 @@ class TelegramNotifier:
             success=overall_success,
             message_id=last_message_id,
             error=last_error,
-            sent_at=datetime.now(timezone.utc),
+            sent_at=datetime.now(UTC),
             dry_run=self.dry_run
         )
 

@@ -1,10 +1,15 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 
 from bist_signal_bot.config.settings import Settings
-from bist_signal_bot.notifications.models import NotificationLevel, NotificationMessage, NotificationType
+from bist_signal_bot.notifications.models import (
+    NotificationLevel,
+    NotificationMessage,
+    NotificationType,
+)
 from bist_signal_bot.notifications.telegram_notifier import TelegramNotifier
+
 
 @pytest.fixture
 def settings():
@@ -12,9 +17,10 @@ def settings():
         ENABLE_TELEGRAM=True,
         TELEGRAM_BOT_TOKEN="test_token",
         TELEGRAM_CHAT_ID="test_chat_id",
-        DRY_RUN=False,
+        TELEGRAM_DRY_RUN=False, # Changed from DRY_RUN
         TELEGRAM_RATE_LIMIT_SECONDS=0.0,
-        TELEGRAM_ERROR_COOLDOWN_SECONDS=0.0
+        TELEGRAM_ERROR_COOLDOWN_SECONDS=0.0,
+        APP_ENV="test" # Override to test profile default which doesn't check Prod strict
     )
     return s
 
@@ -29,14 +35,14 @@ def test_telegram_notifier_is_configured(notifier, settings):
     assert notifier.is_configured() is False
 
 def test_telegram_notifier_dry_run(settings, monkeypatch):
-    settings.DRY_RUN = True
+    settings.TELEGRAM_DRY_RUN = True
     notifier = TelegramNotifier.from_settings(settings)
 
     sent_texts = []
     def mock_send_raw(self, text):
         sent_texts.append(text)
         from bist_signal_bot.notifications.models import TelegramSendResult
-        return TelegramSendResult(success=True, dry_run=True, sent_at=datetime.now(timezone.utc))
+        return TelegramSendResult(success=True, dry_run=True, sent_at=datetime.now(UTC))
 
     monkeypatch.setattr(TelegramNotifier, "_send_raw_text", mock_send_raw)
 
@@ -57,7 +63,7 @@ def test_telegram_notifier_sends_actual_text_when_not_dry_run(notifier, monkeypa
     def mock_send_raw(self, text):
         from bist_signal_bot.notifications.models import TelegramSendResult
         sent_texts.append(text)
-        return TelegramSendResult(success=True, message_id="123", dry_run=False, sent_at=datetime.now(timezone.utc))
+        return TelegramSendResult(success=True, message_id="123", dry_run=False, sent_at=datetime.now(UTC))
 
     monkeypatch.setattr(TelegramNotifier, "_send_raw_text", mock_send_raw)
 

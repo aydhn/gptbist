@@ -1,14 +1,14 @@
-import pytest
 from unittest.mock import MagicMock
 
 from bist_signal_bot.config.settings import Settings
+from bist_signal_bot.core.error_handler import ErrorHandler
 from bist_signal_bot.core.exceptions import (
     BistSignalBotError,
     ConfigurationError,
+    DataProviderError,
     DataQualityError,
-    DataProviderError
 )
-from bist_signal_bot.core.error_handler import ErrorHandler
+
 
 def test_classify_error():
     handler = ErrorHandler(Settings())

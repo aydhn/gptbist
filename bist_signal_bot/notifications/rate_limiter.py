@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 
 class NotificationRateLimiter:
@@ -10,7 +10,7 @@ class NotificationRateLimiter:
         self._last_error_sent: dict[str, datetime] = {}
 
     def _get_now(self, now: datetime | None) -> datetime:
-        return now if now is not None else datetime.now(timezone.utc)
+        return now if now is not None else datetime.now(UTC)
 
     def can_send(self, key: str | None = None, now: datetime | None = None) -> bool:
         if not key:

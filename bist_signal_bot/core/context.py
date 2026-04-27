@@ -1,9 +1,10 @@
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from bist_signal_bot.config.settings import Settings
+
 
 @dataclass
 class RuntimeContext:
@@ -21,7 +22,7 @@ def create_runtime_context(settings: Settings) -> RuntimeContext:
         run_id=str(uuid.uuid4())[:8],  # Short UUID
         app_name=settings.APP_NAME,
         app_env=settings.APP_ENV,
-        started_at=datetime.now(timezone.utc),
+        started_at=datetime.now(UTC),
         metadata={}
     )
 

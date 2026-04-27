@@ -1,15 +1,16 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from bist_signal_bot.notifications.rate_limiter import NotificationRateLimiter
 
+
 def test_rate_limiter_allows_first_message():
     limiter = NotificationRateLimiter()
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     assert limiter.can_send("test_key", now) is True
 
 def test_rate_limiter_blocks_early_second_message():
     limiter = NotificationRateLimiter(min_interval_seconds=10.0)
-    now = datetime(2026, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+    now = datetime(2026, 1, 1, 12, 0, 0, tzinfo=UTC)
 
     limiter.mark_sent("test_key", now)
 
@@ -19,7 +20,7 @@ def test_rate_limiter_blocks_early_second_message():
 
 def test_rate_limiter_allows_second_message_after_cooldown():
     limiter = NotificationRateLimiter(min_interval_seconds=10.0)
-    now = datetime(2026, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+    now = datetime(2026, 1, 1, 12, 0, 0, tzinfo=UTC)
 
     limiter.mark_sent("test_key", now)
 
@@ -29,7 +30,7 @@ def test_rate_limiter_allows_second_message_after_cooldown():
 
 def test_error_cooldown_blocks_frequent_errors():
     limiter = NotificationRateLimiter(error_cooldown_seconds=300.0)
-    now = datetime(2026, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+    now = datetime(2026, 1, 1, 12, 0, 0, tzinfo=UTC)
 
     assert limiter.can_send_error("ValueError", now) is True
     limiter.mark_error_sent("ValueError", now)

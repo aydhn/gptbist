@@ -1,13 +1,12 @@
-import pytest
-from pathlib import Path
 
 from bist_signal_bot.config.settings import Settings
 from bist_signal_bot.core.logging_setup import (
-    setup_logging,
     get_logger,
     mask_sensitive_value,
-    sanitize_for_logging
+    sanitize_for_logging,
+    setup_logging,
 )
+
 
 def test_mask_sensitive_value():
     assert mask_sensitive_value("123") == "***"

@@ -1,5 +1,6 @@
 from typing import Any
 
+
 class BistSignalBotError(Exception):
     """Base exception class for BIST Signal Bot."""
     def __init__(self, message: str, error_code: str | None = None, context: dict[str, Any] | None = None, recoverable: bool = True):

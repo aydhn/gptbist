@@ -1,24 +1,13 @@
+import json
 import logging
-import os
 from pathlib import Path
 from typing import Any
-import json
-import re
 
+from bist_signal_bot.config.secrets import mask_secret, sanitize_config_dict
 from bist_signal_bot.config.settings import Settings
 
-_SENSITIVE_KEYS_PATTERN = re.compile(
-    r"(token|secret|password|api_?key|chat_?id|authorization|bearer)", re.IGNORECASE
-)
-
-def mask_sensitive_value(value: str, visible_prefix: int = 4, visible_suffix: int = 4) -> str:
-    """Masks a string value, showing only the first and last few characters."""
-    if not value or not isinstance(value, str):
-        return str(value)
-    length = len(value)
-    if length <= visible_prefix + visible_suffix:
-        return "***"
-    return f"{value[:visible_prefix]}...{value[-visible_suffix:]}"
+# For backward compatibility
+mask_sensitive_value = mask_secret
 
 def sanitize_for_logging(data: Any, mask_secrets: bool = True) -> Any:
     """Recursively sanitizes a dictionary or list, masking sensitive values."""
@@ -26,15 +15,7 @@ def sanitize_for_logging(data: Any, mask_secrets: bool = True) -> Any:
         return data
 
     if isinstance(data, dict):
-        sanitized_dict = {}
-        for key, value in data.items():
-            if _SENSITIVE_KEYS_PATTERN.search(str(key)):
-                sanitized_dict[key] = mask_sensitive_value(str(value))
-            elif isinstance(value, (dict, list)):
-                sanitized_dict[key] = sanitize_for_logging(value, mask_secrets)
-            else:
-                sanitized_dict[key] = value
-        return sanitized_dict
+        return sanitize_config_dict(data)
     elif isinstance(data, list):
         return [sanitize_for_logging(item, mask_secrets) for item in data]
     elif isinstance(data, str) and "token" in data.lower():
