@@ -41,3 +41,7 @@ class StorageError(BistSignalBotError):
 class MarketDataStoreError(StorageError):
     """Raised when there is an error specific to the local market data store."""
     pass
+
+class DataQualityError(BistSignalBotError):
+    """Raised when data quality checks fail and fail_on_error is configured."""
+    pass

@@ -81,3 +81,10 @@ Bu proje 100 fazlık büyük bir vizyonun **Phase 1 (Faz 1)** çıktısıdır. T
 - **Metadata Index:** Kaydedilen dosyaların durumu, satır sayısı, başı/sonu ve güncellenme tarihleri `market_data_index.json` dosyasıyla takip edilir.
 - **Cache Entegrasyonu:** `MarketDataService` içerisine store mantığı giydirildi. `get_ohlcv` metodu önce local store'a bakar; mevcutsa doğrudan döner, mevcut değilse veya `refresh=True` geçilmişse provider'dan çeker ve doğrulamadan geçirip local store'a kaydeder.
 - **Güvenlik ve Testler:** HTML scraping (web kazıma) kesinlikle engellendi, ücretsiz API limitleri korundu ve yazılan storage testlerinin internet gerektirmemesi sağlandı.
+
+## Phase 5 Çıktıları
+- **Veri Kalite Kontrol Sistemi:** BIST sinyal botunun kullandığı OHLCV verilerinin güvenilirliğini test etmek ve ML/Backtest öncesi doğrulama yapmak için `DataQualityChecker` eklendi.
+- **Kontroller:** Boş veri, eksik kolonlar, index sıralaması ve duplicate'leri, negatif değerler (fiyat/hacim), OHLC ilişkisi (High >= Low vb.), sürekli sıfır hacim, büyük tarih boşlukları ve ekstrem getiri anormallikleri.
+- **Skorlama:** Her veri kümesine 0-100 arası bir skor verilir. Empty Data gibi durumlar `CRITICAL` seviyededir ve geçerlilik (`passed`) durumu `False` döner.
+- **Storage Ayrımı:** `LocalMarketDataStore` sadece veriyi diskte saklama ile sorumluyken, okuma/yazma sırasındaki kalite denetimleri `MarketDataService` içerisine entegre edilerek sorumluluklar ayrıldı.
+- **Güvenlik ve Performans:** Phase 5 boyunca internet bağlatısı yapılmadı. `MarketDataService` için `fail_on_quality_error` parametresi ile kontrol sıkılığı ayarlanabilir yapıldı.

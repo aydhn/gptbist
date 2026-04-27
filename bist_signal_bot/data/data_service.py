@@ -4,9 +4,10 @@ import logging
 from bist_signal_bot.data.base_provider import BaseMarketDataProvider
 from bist_signal_bot.data.symbol_universe import SymbolUniverse
 from bist_signal_bot.data.models import MarketDataFrame, Timeframe, DataFetchRequest
-from bist_signal_bot.core.exceptions import SymbolUniverseError, InvalidSymbolError
+from bist_signal_bot.core.exceptions import SymbolUniverseError, InvalidSymbolError, DataQualityError
 from bist_signal_bot.data.symbol_utils import ensure_valid_internal_symbol
 from bist_signal_bot.storage.local_store import LocalMarketDataStore
+from bist_signal_bot.data.quality import DataQualityChecker, DataQualityReport
 
 logger = logging.getLogger(__name__)
 
@@ -21,12 +22,19 @@ class MarketDataService:
         provider: BaseMarketDataProvider,
         universe: SymbolUniverse | None = None,
         store: LocalMarketDataStore | None = None,
-        prefer_local: bool = True
+        prefer_local: bool = True,
+        quality_checker: DataQualityChecker | None = None,
+        validate_quality: bool = True,
+        fail_on_quality_error: bool = False
     ):
         self.provider = provider
         self.universe = universe
         self.store = store
         self.prefer_local = prefer_local
+        self.quality_checker = quality_checker or DataQualityChecker()
+        self.validate_quality = validate_quality
+        self.fail_on_quality_error = fail_on_quality_error
+        self.last_quality_reports: dict[str, DataQualityReport] = {}
 
     def _validate_symbol(self, symbol: str) -> None:
         try:
@@ -37,6 +45,22 @@ class MarketDataService:
         if self.universe:
             if not self.universe.contains(symbol):
                 raise SymbolUniverseError(f"Symbol '{symbol}' not found in the configured SymbolUniverse.")
+
+    def _apply_quality_check(self, mdf: MarketDataFrame, symbol: str) -> MarketDataFrame:
+        if not self.validate_quality or not self.quality_checker:
+            return mdf
+
+        report = self.quality_checker.check(mdf)
+        self.last_quality_reports[symbol] = report
+        mdf.quality_report = report
+
+        if self.fail_on_quality_error and (report.has_critical() or report.has_errors()):
+            raise DataQualityError(f"Data quality checks failed for {symbol}. Critical: {report.has_critical()}, Errors: {report.error_count()}")
+
+        return mdf
+
+    def get_last_quality_report(self, symbol: str) -> DataQualityReport | None:
+        return self.last_quality_reports.get(symbol)
 
     def get_ohlcv(self, symbol: str, timeframe: Timeframe = Timeframe.DAILY, period: str = "2y", refresh: bool = False, save: bool = True) -> MarketDataFrame:
         """Fetch historical data for a single symbol, utilizing local storage if available and preferred."""
@@ -50,7 +74,7 @@ class MarketDataService:
                     mdf = self.store.read_ohlcv(symbol, self.provider.vendor, timeframe)
                     # We might want to check if the date range in local store satisfies 'period',
                     # but for this phase we assume local data is sufficient if it exists.
-                    return mdf
+                    return self._apply_quality_check(mdf, symbol)
                 except Exception as e:
                     logger.warning(f"Failed to read local data for {symbol}, falling back to provider: {e}")
 
@@ -62,6 +86,8 @@ class MarketDataService:
         )
 
         mdf.validate_schema()
+
+        mdf = self._apply_quality_check(mdf, symbol)
 
         if self.store and save:
             logger.debug(f"Saving {symbol} to local store.")
@@ -80,7 +106,8 @@ class MarketDataService:
             if self.store and self.prefer_local and not refresh:
                 if self.store.exists(sym, self.provider.vendor, timeframe):
                     try:
-                        results[sym] = self.store.read_ohlcv(sym, self.provider.vendor, timeframe)
+                        mdf = self.store.read_ohlcv(sym, self.provider.vendor, timeframe)
+                        results[sym] = self._apply_quality_check(mdf, sym)
                         continue
                     except Exception as e:
                         logger.warning(f"Failed to read local data for {sym}, will fetch: {e}")
@@ -98,6 +125,7 @@ class MarketDataService:
 
             for sym, mdf in provider_results.items():
                 mdf.validate_schema()
+                mdf = self._apply_quality_check(mdf, sym)
                 results[sym] = mdf
 
                 if self.store and save:
