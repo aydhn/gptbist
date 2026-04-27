@@ -1,5 +1,5 @@
 
-from pydantic import Field
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -9,7 +9,22 @@ class Settings(BaseSettings):
     """
     APP_NAME: str = Field(default="BIST Signal Bot")
     APP_ENV: str = Field(default="development")
+
+    # Logging and Audit
     LOG_LEVEL: str = Field(default="INFO")
+    LOG_TO_FILE: bool = Field(default=True)
+    LOG_DIR: str = Field(default="logs")
+    LOG_FILE_NAME: str = Field(default="bist_signal_bot.log")
+    LOG_MAX_BYTES: int = Field(default=5242880)
+    LOG_BACKUP_COUNT: int = Field(default=5)
+    LOG_FORMAT: str = Field(default="text")
+    ENABLE_AUDIT_LOG: bool = Field(default=True)
+    AUDIT_LOG_FILE_NAME: str = Field(default="audit.log")
+    MASK_SECRETS_IN_LOGS: bool = Field(default=True)
+    ENABLE_ERROR_NOTIFICATIONS: bool = Field(default=True)
+    ERROR_NOTIFICATION_MIN_LEVEL: str = Field(default="ERROR")
+    DEBUG_TRACEBACKS: bool = Field(default=False)
+
 
     DATA_DIR: str = Field(default="data")
     CACHE_DIR: str = Field(default="cache")
@@ -68,6 +83,15 @@ class Settings(BaseSettings):
     BIST_INTRADAY_SIGNAL_ENABLED: bool = Field(default=False)
     BIST_DAILY_SIGNAL_ENABLED: bool = Field(default=True)
     BIST_MANUAL_HOLIDAYS: str = Field(default="")
+
+
+    @model_validator(mode='after')
+    def validate_log_level(self) -> 'Settings':
+        valid_levels = {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}
+        if self.LOG_LEVEL.upper() not in valid_levels:
+            from bist_signal_bot.core.exceptions import ConfigurationError
+            raise ConfigurationError(f"Invalid LOG_LEVEL: {self.LOG_LEVEL}. Must be one of {valid_levels}")
+        return self
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 

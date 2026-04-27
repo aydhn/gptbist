@@ -1,6 +1,13 @@
+from typing import Any
+
 class BistSignalBotError(Exception):
     """Base exception class for BIST Signal Bot."""
-    pass
+    def __init__(self, message: str, error_code: str | None = None, context: dict[str, Any] | None = None, recoverable: bool = True):
+        super().__init__(message)
+        self.message = message
+        self.error_code = error_code
+        self.context = context or {}
+        self.recoverable = recoverable
 
 class ConfigurationError(BistSignalBotError):
     """Raised when there is a configuration issue."""
@@ -52,4 +59,24 @@ class MarketCalendarError(BistSignalBotError):
 
 class MarketSessionError(BistSignalBotError):
     """Raised when there is an error in market session logic."""
+    pass
+
+class NotificationError(BistSignalBotError):
+    """Raised when there is an error in the notification system."""
+    pass
+
+class TelegramConfigurationError(NotificationError):
+    """Raised when there is an error with Telegram configuration."""
+    pass
+
+class TelegramSendError(NotificationError):
+    """Raised when there is an error sending a Telegram message."""
+    pass
+
+class AuditLogError(BistSignalBotError):
+    """Raised when there is an error writing an audit log."""
+    pass
+
+class OperationalSafetyError(BistSignalBotError):
+    """Raised when an operational safety check fails."""
     pass
