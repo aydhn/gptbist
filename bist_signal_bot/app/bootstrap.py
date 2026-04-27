@@ -1,5 +1,5 @@
-from bist_signal_bot.storage.paths import ensure_directories_exist
 from bist_signal_bot.core.logging_setup import setup_logger
+from bist_signal_bot.storage.paths import ensure_directories_exist
 
 logger = setup_logger(__name__)
 

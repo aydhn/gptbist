@@ -1,12 +1,14 @@
-import pytest
-import pandas as pd
-from datetime import datetime, timedelta
+from datetime import datetime
 
+import pandas as pd
+import pytest
+
+from bist_signal_bot.core.exceptions import DataQualityError
 from bist_signal_bot.data.data_service import MarketDataService
 from bist_signal_bot.data.mock_provider import MockMarketDataProvider
-from bist_signal_bot.data.models import Timeframe, MarketDataFrame, DataVendor
+from bist_signal_bot.data.models import MarketDataFrame, Timeframe
 from bist_signal_bot.data.quality import DataQualityChecker
-from bist_signal_bot.core.exceptions import DataQualityError
+
 
 @pytest.fixture
 def clean_provider():

@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 
+
 class BaseNotifier(ABC):
     """
     Abstract base class for notification systems.

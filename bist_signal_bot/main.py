@@ -1,4 +1,5 @@
 import json
+
 from bist_signal_bot.app.bootstrap import initialize_app
 from bist_signal_bot.app.healthcheck import run_healthcheck
 from bist_signal_bot.core.logging_setup import setup_logger

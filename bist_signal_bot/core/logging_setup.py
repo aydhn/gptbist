@@ -1,5 +1,7 @@
 import logging
+
 from bist_signal_bot.config.settings import settings
+
 
 def setup_logger(name: str = __name__) -> logging.Logger:
     """

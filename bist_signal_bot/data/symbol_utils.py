@@ -1,6 +1,8 @@
 import re
-from bist_signal_bot.core.constants import YFINANCE_BIST_SUFFIX, INTERNAL_SYMBOL_PATTERN
+
+from bist_signal_bot.core.constants import INTERNAL_SYMBOL_PATTERN, YFINANCE_BIST_SUFFIX
 from bist_signal_bot.core.exceptions import InvalidSymbolError
+
 
 def normalize_symbol(symbol: str) -> str:
     """

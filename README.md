@@ -88,3 +88,10 @@ Bu proje 100 fazlık büyük bir vizyonun **Phase 1 (Faz 1)** çıktısıdır. T
 - **Skorlama:** Her veri kümesine 0-100 arası bir skor verilir. Empty Data gibi durumlar `CRITICAL` seviyededir ve geçerlilik (`passed`) durumu `False` döner.
 - **Storage Ayrımı:** `LocalMarketDataStore` sadece veriyi diskte saklama ile sorumluyken, okuma/yazma sırasındaki kalite denetimleri `MarketDataService` içerisine entegre edilerek sorumluluklar ayrıldı.
 - **Güvenlik ve Performans:** Phase 5 boyunca internet bağlatısı yapılmadı. `MarketDataService` için `fail_on_quality_error` parametresi ile kontrol sıkılığı ayarlanabilir yapıldı.
+
+## Phase 6 Çıktıları
+- **BIST İşlem Takvimi ve Seans Mantığı:** Sistemin işlem günlerini, seans içi/dışı durumlarını ve sinyal üretme zamanlamasını doğru yorumlayabilmesi için `BistMarketCalendar` ve `BistMarketSessionService` bileşenleri geliştirildi.
+- **Yerel ve Yapılandırılabilir Takvim:** Resmi tatil takvimi için scraping (web kazıma) yapılması yasak olduğundan, takvim yerel ve ".env" üzerinden yönetilebilir bir mimariyle kuruldu. İsteyen kullanıcılar `BIST_MANUAL_HOLIDAYS` parametresine virgülle ayrılmış ISO tarihleri (örn: `2026-01-01,2026-04-23`) vererek kendi tatillerini ekleyebilirler. Hafta sonları (Cumartesi/Pazar) standart olarak kapalı kabul edilir. Bu sistem, resmi tatil listesi iddiası taşımaz ("local configurable exchange calendar").
+- **Seans Durumları (Session Logic):** PRE_MARKET, REGULAR, POST_MARKET, CLOSED, HOLIDAY, WEEKEND gibi seans durumlarını yönetebilecek esneklik sağlandı.
+- **Sinyal Zamanlaması:** Günlük (`daily`) ve seans içi (`intraday`) sinyal üretimi için zamanlama kuralları tanımlandı. Örneğin; günlük sinyal, piyasa kapandıktan sonra (varsayılan: kapanış + 15 dakika) tetiklenecek şekilde kurgulandı.
+- **Backtest Uyumluluğu:** Geliştirilen bu takvim katmanı, ilerideki backtesting ve makine öğrenimi süreçlerinde tarih doğrulama adımları için hazır bir temel sunmaktadır.

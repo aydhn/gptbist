@@ -1,6 +1,7 @@
-from pydantic_settings import BaseSettings, SettingsConfigDict
+
 from pydantic import Field
-from typing import Optional
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
 
 class Settings(BaseSettings):
     """
@@ -45,6 +46,15 @@ class Settings(BaseSettings):
     DATA_QUALITY_MAX_DAILY_RETURN_ABS: float = Field(default=0.35)
     DATA_QUALITY_MAX_ALLOWED_GAP_DAYS: int = Field(default=10)
     DATA_QUALITY_FAIL_ON_ERROR: bool = Field(default=False)
+
+
+    MARKET_TIMEZONE: str = Field(default="Europe/Istanbul")
+    BIST_REGULAR_OPEN: str = Field(default="10:00")
+    BIST_REGULAR_CLOSE: str = Field(default="18:00")
+    BIST_SIGNAL_AFTER_CLOSE_MINUTES: int = Field(default=15)
+    BIST_INTRADAY_SIGNAL_ENABLED: bool = Field(default=False)
+    BIST_DAILY_SIGNAL_ENABLED: bool = Field(default=True)
+    BIST_MANUAL_HOLIDAYS: str = Field(default="")
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 

@@ -1,6 +1,6 @@
-import pytest
-from bist_signal_bot.data.yfinance_provider import YFinanceMarketDataProvider
 from bist_signal_bot.data.models import DataVendor
+from bist_signal_bot.data.yfinance_provider import YFinanceMarketDataProvider
+
 
 def test_yfinance_provider_attributes():
     provider = YFinanceMarketDataProvider()

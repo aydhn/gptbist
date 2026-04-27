@@ -1,8 +1,10 @@
-import pandas as pd
 from datetime import datetime
 from enum import Enum
 from typing import Any
+
+import pandas as pd
 from pydantic import BaseModel, Field
+
 
 class DataQualitySeverity(str, Enum):
     INFO = "INFO"
@@ -329,6 +331,7 @@ class DataQualityChecker:
                 )
 
     def _check_large_date_gaps(self, df: pd.DataFrame, report: DataQualityReport):
+        # TODO: Phase 6 sonrası, market calendar ile entegre edilerek hafta sonları ve tatiller gap hesabından düşülebilir.
         if isinstance(df.index, pd.DatetimeIndex) and len(df) > 1:
             gaps = df.index.to_series().diff()
             large_gaps = gaps[gaps > pd.Timedelta(days=self.max_allowed_gap_days)]

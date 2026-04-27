@@ -1,7 +1,10 @@
 from enum import Enum
+
 from pydantic import BaseModel, Field, field_validator
+
+from bist_signal_bot.core.constants import DEFAULT_CURRENCY, DEFAULT_MARKET
 from bist_signal_bot.data.symbol_utils import ensure_valid_internal_symbol
-from bist_signal_bot.core.constants import DEFAULT_MARKET, DEFAULT_CURRENCY
+
 
 class AssetType(str, Enum):
     EQUITY = "EQUITY"
@@ -44,9 +47,12 @@ class SymbolInfo(BaseModel):
         return ensure_valid_internal_symbol(v)
 
 from datetime import datetime
+from typing import Any
+
 import pandas as pd
-from typing import Optional, Any
+
 from bist_signal_bot.core.exceptions import DataProviderValidationError
+
 
 class Timeframe(str, Enum):
     DAILY = "1d"

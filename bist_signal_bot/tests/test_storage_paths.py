@@ -1,16 +1,18 @@
+
 import pytest
-from pathlib import Path
+
 from bist_signal_bot.config.settings import Settings
+from bist_signal_bot.core.exceptions import InvalidSymbolError
 from bist_signal_bot.storage.paths import (
+    PROJECT_ROOT,
     get_data_dir,
     get_market_data_dir,
+    get_market_data_index_path,
+    get_metadata_dir,
     get_ohlcv_dir,
     get_ohlcv_file_path,
-    get_metadata_dir,
-    get_market_data_index_path,
-    PROJECT_ROOT
 )
-from bist_signal_bot.core.exceptions import InvalidSymbolError
+
 
 def test_get_data_dir():
     s = Settings(DATA_DIR="test_data")

@@ -1,8 +1,8 @@
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Dict, Optional
 
-from bist_signal_bot.data.models import DataVendor, MarketDataFrame, DataFetchRequest, Timeframe
+from bist_signal_bot.data.models import DataFetchRequest, DataVendor, MarketDataFrame, Timeframe
+
 
 class BaseMarketDataProvider(ABC):
     """

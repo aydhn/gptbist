@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 
+
 class BaseMLModel(ABC):
     """
     Abstract base class for Machine Learning models.

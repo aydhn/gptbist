@@ -1,10 +1,11 @@
 import pytest
+
+from bist_signal_bot.core.exceptions import InvalidSymbolError, SymbolUniverseError
 from bist_signal_bot.data.data_service import MarketDataService
 from bist_signal_bot.data.mock_provider import MockMarketDataProvider
+from bist_signal_bot.data.models import SymbolInfo, Timeframe
 from bist_signal_bot.data.symbol_universe import SymbolUniverse
-from bist_signal_bot.data.models import SymbolInfo
-from bist_signal_bot.core.exceptions import SymbolUniverseError, InvalidSymbolError
-from bist_signal_bot.data.models import Timeframe
+
 
 @pytest.fixture
 def data_service_without_universe():

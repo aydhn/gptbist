@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 
+
 class BaseRiskEngine(ABC):
     """
     Abstract base class for risk management engines.

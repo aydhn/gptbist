@@ -1,7 +1,8 @@
-import pytest
 import pandas as pd
+
 from bist_signal_bot.data.mock_provider import MockMarketDataProvider
 from bist_signal_bot.data.models import Timeframe
+
 
 def test_mock_provider_deterministic():
     provider = MockMarketDataProvider(seed=123, rows=100)

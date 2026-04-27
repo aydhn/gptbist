@@ -1,10 +1,12 @@
-import numpy as np
-import pandas as pd
 from datetime import datetime, timedelta
 
+import numpy as np
+import pandas as pd
+
+from bist_signal_bot.core.time_utils import istanbul_now, utc_now
 from bist_signal_bot.data.base_provider import BaseMarketDataProvider
-from bist_signal_bot.data.models import DataVendor, MarketDataFrame, DataFetchRequest, Timeframe
-from bist_signal_bot.core.time_utils import utc_now, istanbul_now
+from bist_signal_bot.data.models import DataFetchRequest, DataVendor, MarketDataFrame, Timeframe
+
 
 class MockMarketDataProvider(BaseMarketDataProvider):
     """

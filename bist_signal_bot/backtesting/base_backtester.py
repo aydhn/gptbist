@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 
+
 class BaseBacktester(ABC):
     """
     Abstract base class for backtesting engines.

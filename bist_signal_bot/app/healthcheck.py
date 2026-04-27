@@ -1,11 +1,21 @@
-import sys
 import platform
+import sys
 import tempfile
 from pathlib import Path
+
+from bist_signal_bot.calendar.session import BistMarketSessionService
 from bist_signal_bot.config.settings import settings
-from bist_signal_bot.storage.paths import DATA_DIR, CACHE_DIR, REPORTS_DIR, get_market_data_dir, get_metadata_dir, get_market_data_index_path
-from bist_signal_bot.data.symbol_universe import SymbolUniverse, DEFAULT_SEED_SYMBOLS
 from bist_signal_bot.core.constants import DEFAULT_MARKET
+from bist_signal_bot.data.symbol_universe import DEFAULT_SEED_SYMBOLS, SymbolUniverse
+from bist_signal_bot.storage.paths import (
+    CACHE_DIR,
+    DATA_DIR,
+    REPORTS_DIR,
+    get_market_data_dir,
+    get_market_data_index_path,
+    get_metadata_dir,
+)
+
 
 def check_local_store_writable(data_dir: Path) -> bool:
     """Tests if the data directory is writable."""
@@ -33,6 +43,10 @@ def run_healthcheck() -> dict:
     market_data_dir = get_market_data_dir(settings)
     metadata_dir = get_metadata_dir(settings)
     index_path = get_market_data_index_path(settings)
+
+
+    session_service = BistMarketSessionService.from_settings(settings)
+    session_status = session_service.get_status()
 
     health_status = {
         "app_name": settings.APP_NAME,
@@ -77,6 +91,21 @@ def run_healthcheck() -> dict:
             "yfinance_available": yfinance_available,
             "scraping_disabled": True,
             "paid_api_required": False
+        },
+
+        "calendar": {
+            "market_timezone": session_status.timezone,
+            "regular_open": settings.BIST_REGULAR_OPEN,
+            "regular_close": settings.BIST_REGULAR_CLOSE,
+            "manual_holiday_count": len(session_service.calendar.manual_holidays),
+            "today_day_type": session_status.day_type.value,
+            "is_today_trading_day": session_status.is_trading_day,
+            "is_market_open_now": session_status.is_market_open,
+            "next_trading_day": str(session_status.next_trading_day) if session_status.next_trading_day else None,
+            "previous_trading_day": str(session_status.previous_trading_day) if session_status.previous_trading_day else None,
+            "daily_signal_enabled": settings.BIST_DAILY_SIGNAL_ENABLED,
+            "intraday_signal_enabled": settings.BIST_INTRADAY_SIGNAL_ENABLED,
+            "signal_after_close_minutes": settings.BIST_SIGNAL_AFTER_CLOSE_MINUTES
         },
         "symbol_universe": {
             "default_symbol_count": universe.count(active_only=False),

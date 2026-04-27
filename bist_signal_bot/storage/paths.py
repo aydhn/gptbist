@@ -1,8 +1,9 @@
 from pathlib import Path
-from bist_signal_bot.config.settings import Settings, settings as default_settings
+
+from bist_signal_bot.config.settings import Settings
+from bist_signal_bot.config.settings import settings as default_settings
 from bist_signal_bot.data.models import DataVendor, Timeframe
 from bist_signal_bot.data.symbol_utils import ensure_valid_internal_symbol
-import os
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 
