@@ -114,6 +114,20 @@ def run_healthcheck() -> dict:
             "invalid_symbol_count": 0, # Since we validate on add, this is 0 for seed symbols
             "has_duplicate_symbol_issue": False, # Handled by dict insertion
             "market": DEFAULT_MARKET
+        },
+        "notifications": {
+            "telegram_enabled": settings.ENABLE_TELEGRAM,
+            "telegram_configured": bool(settings.ENABLE_TELEGRAM and settings.TELEGRAM_BOT_TOKEN and settings.TELEGRAM_CHAT_ID),
+            "telegram_dry_run": settings.DRY_RUN,
+            "parse_mode": settings.TELEGRAM_PARSE_MODE,
+            "message_max_length": settings.TELEGRAM_MESSAGE_MAX_LENGTH,
+            "rate_limit_seconds": settings.TELEGRAM_RATE_LIMIT_SECONDS,
+            "error_cooldown_seconds": settings.TELEGRAM_ERROR_COOLDOWN_SECONDS,
+            "send_startup_notification": settings.SEND_STARTUP_NOTIFICATION,
+            "send_healthcheck_notification": settings.SEND_HEALTHCHECK_NOTIFICATION,
+            "send_error_notifications": settings.SEND_ERROR_NOTIFICATIONS,
+            "bot_token_configured": bool(settings.TELEGRAM_BOT_TOKEN),
+            "chat_id_configured": bool(settings.TELEGRAM_CHAT_ID)
         }
     }
     return health_status
