@@ -25,3 +25,11 @@ class SymbolUniverseError(BistSignalBotError):
 class DuplicateSymbolError(SymbolUniverseError):
     """Raised when attempting to add a duplicate symbol to the universe."""
     pass
+
+class DataProviderTimeoutError(DataProviderError):
+    """Raised when a data provider request times out."""
+    pass
+
+class DataProviderValidationError(DataProviderError):
+    """Raised when fetched data is invalid or missing required columns."""
+    pass

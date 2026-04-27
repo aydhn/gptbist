@@ -20,6 +20,12 @@ class Settings(BaseSettings):
     DEFAULT_TIMEZONE: str = Field(default="Europe/Istanbul")
     DEFAULT_MARKET: str = Field(default="BIST")
 
+    DEFAULT_DATA_PROVIDER: str = Field(default="yfinance")
+    DEFAULT_TIMEFRAME: str = Field(default="1d")
+    DEFAULT_HISTORY_PERIOD: str = Field(default="2y")
+    DATA_PROVIDER_TIMEOUT_SECONDS: int = Field(default=30)
+    DATA_PROVIDER_MAX_RETRIES: int = Field(default=2)
+
     DRY_RUN: bool = Field(default=True)
     ENABLE_TELEGRAM: bool = Field(default=False)
     ENABLE_ML: bool = Field(default=False)
