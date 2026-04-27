@@ -12,6 +12,13 @@ def run_healthcheck() -> dict:
     """
     universe = SymbolUniverse(DEFAULT_SEED_SYMBOLS)
 
+    yfinance_available = False
+    try:
+        import yfinance
+        yfinance_available = True
+    except ImportError:
+        pass
+
     health_status = {
         "app_name": settings.APP_NAME,
         "environment": settings.APP_ENV,
@@ -29,6 +36,14 @@ def run_healthcheck() -> dict:
             "optimizer_enabled": settings.ENABLE_OPTIMIZER,
             "gpu_enabled": settings.ENABLE_GPU,
             "dry_run": settings.DRY_RUN,
+        },
+        "data_provider": {
+            "default_provider": settings.DEFAULT_DATA_PROVIDER,
+            "default_timeframe": settings.DEFAULT_TIMEFRAME,
+            "default_history_period": settings.DEFAULT_HISTORY_PERIOD,
+            "yfinance_available": yfinance_available,
+            "scraping_disabled": True,
+            "paid_api_required": False
         },
         "symbol_universe": {
             "default_symbol_count": universe.count(active_only=False),
