@@ -33,3 +33,11 @@ class DataProviderTimeoutError(DataProviderError):
 class DataProviderValidationError(DataProviderError):
     """Raised when fetched data is invalid or missing required columns."""
     pass
+
+class StorageError(BistSignalBotError):
+    """Raised when there is a general storage error."""
+    pass
+
+class MarketDataStoreError(StorageError):
+    """Raised when there is an error specific to the local market data store."""
+    pass

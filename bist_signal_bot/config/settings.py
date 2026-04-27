@@ -26,6 +26,14 @@ class Settings(BaseSettings):
     DATA_PROVIDER_TIMEOUT_SECONDS: int = Field(default=30)
     DATA_PROVIDER_MAX_RETRIES: int = Field(default=2)
 
+    STORAGE_FORMAT: str = Field(default="csv")
+    PREFER_LOCAL_DATA: bool = Field(default=True)
+    SAVE_FETCHED_DATA: bool = Field(default=True)
+    MARKET_DATA_DIR_NAME: str = Field(default="market_data")
+    OHLCV_DIR_NAME: str = Field(default="ohlcv")
+    METADATA_DIR_NAME: str = Field(default="metadata")
+    MARKET_DATA_INDEX_FILE: str = Field(default="market_data_index.json")
+
     DRY_RUN: bool = Field(default=True)
     ENABLE_TELEGRAM: bool = Field(default=False)
     ENABLE_ML: bool = Field(default=False)

@@ -1,10 +1,21 @@
 import sys
 import platform
+import tempfile
 from pathlib import Path
 from bist_signal_bot.config.settings import settings
-from bist_signal_bot.storage.paths import DATA_DIR, CACHE_DIR, REPORTS_DIR
+from bist_signal_bot.storage.paths import DATA_DIR, CACHE_DIR, REPORTS_DIR, get_market_data_dir, get_metadata_dir, get_market_data_index_path
 from bist_signal_bot.data.symbol_universe import SymbolUniverse, DEFAULT_SEED_SYMBOLS
 from bist_signal_bot.core.constants import DEFAULT_MARKET
+
+def check_local_store_writable(data_dir: Path) -> bool:
+    """Tests if the data directory is writable."""
+    try:
+        data_dir.mkdir(parents=True, exist_ok=True)
+        with tempfile.NamedTemporaryFile(dir=data_dir, delete=True) as tmp:
+            tmp.write(b"test")
+        return True
+    except Exception:
+        return False
 
 def run_healthcheck() -> dict:
     """
@@ -19,6 +30,10 @@ def run_healthcheck() -> dict:
     except ImportError:
         pass
 
+    market_data_dir = get_market_data_dir(settings)
+    metadata_dir = get_metadata_dir(settings)
+    index_path = get_market_data_index_path(settings)
+
     health_status = {
         "app_name": settings.APP_NAME,
         "environment": settings.APP_ENV,
@@ -29,6 +44,16 @@ def run_healthcheck() -> dict:
             "data_dir_exists": DATA_DIR.exists(),
             "cache_dir_exists": CACHE_DIR.exists(),
             "reports_dir_exists": REPORTS_DIR.exists(),
+        },
+        "storage": {
+            "data_dir_path": str(DATA_DIR),
+            "market_data_dir_path": str(market_data_dir),
+            "metadata_dir_path": str(metadata_dir),
+            "storage_format": settings.STORAGE_FORMAT,
+            "prefer_local_data": settings.PREFER_LOCAL_DATA,
+            "save_fetched_data": settings.SAVE_FETCHED_DATA,
+            "market_data_index_exists": index_path.exists(),
+            "local_store_writable": check_local_store_writable(DATA_DIR)
         },
         "features": {
             "telegram_enabled": settings.ENABLE_TELEGRAM,
