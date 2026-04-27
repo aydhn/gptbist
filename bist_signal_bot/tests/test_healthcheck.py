@@ -7,3 +7,12 @@ def test_healthcheck_returns_dict():
     assert "app_name" in health_status
     assert "environment" in health_status
     assert "directories" in health_status
+    assert "symbol_universe" in health_status
+
+    universe_info = health_status["symbol_universe"]
+    assert "default_symbol_count" in universe_info
+    assert "active_symbol_count" in universe_info
+    assert "yfinance_compatible_symbol_count" in universe_info
+    assert "invalid_symbol_count" in universe_info
+    assert "has_duplicate_symbol_issue" in universe_info
+    assert "market" in universe_info
