@@ -138,3 +138,33 @@ class NotificationFormatter:
             return "***"
 
         return f"{value[:visible_prefix]}***{value[-visible_suffix:]}"
+
+    def format_download_summary(self, result: Any) -> str:
+        """Formats a BatchDownloadResult into a Telegram message."""
+        lines = [
+            "<b>BIST Bot Veri İndirme Özeti</b>",
+            "",
+            f"Provider: {self._escape(result.provider)}",
+            f"Timeframe: {self._escape(result.timeframe)}",
+            f"Period: {self._escape(result.period or 'N/A')}",
+            f"İstenen: {result.requested_count}",
+            f"Başarılı: {result.success_count}",
+            f"Başarısız: {result.failed_count}",
+            f"Refresh: {'true' if result.refresh else 'false'}",
+            f"Save: {'true' if result.save else 'false'}"
+        ]
+
+        failed = result.failed_symbols()
+        if failed:
+            lines.append("")
+            lines.append("Başarısız semboller:")
+            for sym in failed:
+                # Find the error message
+                err = "Bilinmeyen hata"
+                for res in result.results:
+                    if res.symbol == sym and res.error:
+                        err = res.error
+                        break
+                lines.append(f"- {self._escape(sym)}: {self._escape(err)}")
+
+        return "\n".join(lines)

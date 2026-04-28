@@ -138,3 +138,15 @@ This bot runs purely from the terminal and doesn't rely on web dashboards, strea
 - `python -m bist_signal_bot diagnose` : Comprehensive diagnostic command running config and healthcheck outputs safely.
 
 *To output most commands as parseable data, append the `--json` flag to the arguments list.*
+
+
+## Phase 11: OHLCV Data Downloader & CLI Integration
+- Implemented `MarketDataDownloader` to download single or multiple symbols cleanly with error handling.
+- Batched operations support `--all` for active universe, and `--group` to target subsets.
+- Refresh `--refresh` parameter bypasses the cache to fetch directly from the provider.
+- Skip saving to the local database via the `--no-save` flag.
+- Integrates seamlessly with existing data quality checks (Score is recorded).
+- Fully deterministic offline testing with the `MockMarketDataProvider`—No HTML scraping, no paid API hooks.
+- Configurable settings via `settings.py` for retry limits, symbol caps, and defaults.
+- Telegram Summary support.
+- Fully wired into the CLI: `python -m bist_signal_bot download-data ASELS`

@@ -218,3 +218,106 @@ def cmd_diagnose(args, app_context: ApplicationContext) -> int:
     }
     print_output(res, as_json=args.json)
     return 0
+
+def cmd_download_data(args, app_context: ApplicationContext) -> int:
+    if not args.symbols and not args.all and not args.group:
+        print(format_error("Lütfen symbol(ler) belirtin, --all veya --group kullanın."))
+        return 1
+
+    if args.symbols and args.all:
+        print(format_error("--all parametresi ile symbol listesi aynı anda kullanılamaz."))
+        return 1
+
+    try:
+        from bist_signal_bot.data.downloader import MarketDataDownloader
+        from bist_signal_bot.data.models import Timeframe
+        from bist_signal_bot.data.symbol_universe import SymbolGroup
+
+        downloader = MarketDataDownloader(
+            data_service=app_context.data_service,
+            universe=app_context.symbol_universe,
+            settings=app_context.settings,
+            audit_logger=app_context.audit_logger,
+            notifier=app_context.notifier
+        )
+
+        timeframe = Timeframe(args.timeframe)
+        period = args.period
+        refresh = args.refresh
+        save = not args.no_save
+
+        continue_on_error = app_context.settings.DOWNLOAD_CONTINUE_ON_ERROR
+        if args.continue_on_error:
+            continue_on_error = True
+        elif args.fail_fast:
+            continue_on_error = False
+
+        if args.all:
+            result = downloader.download_universe(
+                active_only=True,
+                timeframe=timeframe,
+                period=period,
+                refresh=refresh,
+                save=save
+            )
+        elif args.group:
+            try:
+                group = SymbolGroup(args.group)
+            except ValueError:
+                print(format_error(f"Geçersiz grup adı: {args.group}"))
+                return 1
+
+            result = downloader.download_universe(
+                group=group,
+                active_only=True,
+                timeframe=timeframe,
+                period=period,
+                refresh=refresh,
+                save=save
+            )
+        else:
+            if len(args.symbols) == 1:
+                res = downloader.download_symbol(
+                    args.symbols[0],
+                    timeframe=timeframe,
+                    period=period,
+                    refresh=refresh,
+                    save=save
+                )
+                if args.json:
+                    print_output(res.model_dump(), as_json=True)
+                else:
+                    print_output(f"Sembol: {res.symbol}")
+                    print_output(f"Durum: {res.status.value}")
+                    print_output(f"Satır: {res.row_count}")
+                    print_output(f"Cache: {res.from_cache}")
+                    print_output(f"Kaydedildi: {res.saved}")
+                    if res.error:
+                        print_output(f"Hata: {res.error}")
+                return 0 if res.status == "SUCCESS" else 1
+            else:
+                result = downloader.download_symbols(
+                    args.symbols,
+                    timeframe=timeframe,
+                    period=period,
+                    refresh=refresh,
+                    save=save,
+                    continue_on_error=continue_on_error
+                )
+
+        if args.telegram_summary:
+            downloader.send_download_summary(result)
+
+        if args.json:
+            out = result.summary()
+            out["results"] = [r.model_dump() for r in result.results]
+            print_output(out, as_json=True)
+        else:
+            print_output(format_success("Toplu indirme tamamlandı."))
+            print_output(result.summary())
+
+        return 0 if result.failed_count == 0 else 1
+
+    except Exception as e:
+        print(format_error(str(e)))
+        return 1

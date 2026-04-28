@@ -1,6 +1,6 @@
 from enum import Enum
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from bist_signal_bot.core.constants import DEFAULT_CURRENCY, DEFAULT_MARKET
 from bist_signal_bot.data.symbol_utils import ensure_valid_internal_symbol
@@ -48,6 +48,7 @@ class SymbolInfo(BaseModel):
 
 from datetime import datetime
 from typing import Any
+from enum import Enum
 
 import pandas as pd
 
@@ -100,6 +101,7 @@ class MarketDataFrame(BaseModel):
     fetched_at: datetime
     adjusted: bool = True
     quality_report: Any | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
     model_config = {
         "arbitrary_types_allowed": True
@@ -153,9 +155,109 @@ class DataFetchRequest(BaseModel):
     period: str | None = None
     adjusted: bool = True
     quality_report: Any | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
     @field_validator("symbols")
     def validate_symbols(cls, v):
         if not v:
             raise ValueError("symbols list cannot be empty.")
         return [ensure_valid_internal_symbol(s) for s in v]
+
+from enum import Enum
+
+class DownloadStatus(str, Enum):
+    SUCCESS = "SUCCESS"
+    FAILED = "FAILED"
+    SKIPPED = "SKIPPED"
+    PARTIAL = "PARTIAL"
+
+class SymbolDownloadResult(BaseModel):
+    symbol: str
+    status: DownloadStatus
+    row_count: int
+    start: datetime | None = None
+    end: datetime | None = None
+    source: str
+    timeframe: str
+    saved: bool
+    from_cache: bool
+    quality_score: float | None = None
+    quality_passed: bool | None = None
+    error: str | None = None
+    file_path: str | None = None
+    elapsed_seconds: float
+
+    @field_validator("symbol")
+    def validate_symbol(cls, v):
+        from bist_signal_bot.data.symbol_utils import ensure_valid_internal_symbol
+        return ensure_valid_internal_symbol(v)
+
+    @field_validator("elapsed_seconds")
+    def validate_elapsed(cls, v):
+        if v < 0:
+            raise ValueError("elapsed_seconds cannot be negative")
+        return v
+
+    @model_validator(mode='after')
+    def validate_status(self) -> 'SymbolDownloadResult':
+        if self.error and self.status != DownloadStatus.FAILED:
+            self.status = DownloadStatus.FAILED
+        return self
+
+class BatchDownloadResult(BaseModel):
+    requested_count: int
+    success_count: int
+    failed_count: int
+    skipped_count: int
+    partial_count: int
+    results: list[SymbolDownloadResult]
+    started_at: datetime
+    finished_at: datetime
+    elapsed_seconds: float
+    provider: str
+    timeframe: str
+    period: str | None = None
+    refresh: bool
+    save: bool
+
+    @field_validator("elapsed_seconds")
+    def validate_elapsed(cls, v):
+        if v < 0:
+            raise ValueError("elapsed_seconds cannot be negative")
+        return v
+
+    @model_validator(mode='after')
+    def validate_counts(self) -> 'BatchDownloadResult':
+        success = sum(1 for r in self.results if r.status == DownloadStatus.SUCCESS)
+        failed = sum(1 for r in self.results if r.status == DownloadStatus.FAILED)
+        skipped = sum(1 for r in self.results if r.status == DownloadStatus.SKIPPED)
+        partial = sum(1 for r in self.results if r.status == DownloadStatus.PARTIAL)
+
+        # We allow overrides but if they are 0, we can calculate them
+        if self.success_count == 0 and success > 0: self.success_count = success
+        if self.failed_count == 0 and failed > 0: self.failed_count = failed
+        if self.skipped_count == 0 and skipped > 0: self.skipped_count = skipped
+        if self.partial_count == 0 and partial > 0: self.partial_count = partial
+
+        return self
+
+    def success_symbols(self) -> list[str]:
+        return [r.symbol for r in self.results if r.status == DownloadStatus.SUCCESS]
+
+    def failed_symbols(self) -> list[str]:
+        return [r.symbol for r in self.results if r.status == DownloadStatus.FAILED]
+
+    def summary(self) -> dict[str, Any]:
+        return {
+            "requested_count": self.requested_count,
+            "success_count": self.success_count,
+            "failed_count": self.failed_count,
+            "skipped_count": self.skipped_count,
+            "partial_count": self.partial_count,
+            "elapsed_seconds": self.elapsed_seconds,
+            "provider": self.provider,
+            "timeframe": self.timeframe,
+            "period": self.period,
+            "refresh": self.refresh,
+            "save": self.save
+        }

@@ -107,6 +107,8 @@ class LocalMarketDataStore:
         self.index.add_or_update(metadata)
         self._save_index()
 
+        market_data.metadata['saved_to_store'] = True
+        market_data.metadata['storage_path'] = metadata.file_path
         return metadata
 
     def read_ohlcv(self, symbol: str, vendor: DataVendor | str, timeframe: Timeframe | str) -> MarketDataFrame:
@@ -135,7 +137,8 @@ class LocalMarketDataStore:
                 source=DataVendor(v_str.upper()) if hasattr(DataVendor, v_str.upper()) else DataVendor.UNKNOWN, # Robust handling
                 data=df,
                 fetched_at=datetime.utcnow(),
-                adjusted=metadata.adjusted if metadata else True
+                adjusted=metadata.adjusted if metadata else True,
+                metadata={'from_cache': True, 'storage_path': str(file_path)}
             )
             mdf.validate_schema()
             return mdf

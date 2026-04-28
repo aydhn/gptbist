@@ -1,3 +1,7 @@
+
+from bist_signal_bot.data.data_service import MarketDataService
+from bist_signal_bot.data.yfinance_provider import YFinanceMarketDataProvider
+from bist_signal_bot.data.mock_provider import MockMarketDataProvider
 from dataclasses import dataclass
 
 from bist_signal_bot.calendar.session import BistMarketSessionService
@@ -32,6 +36,7 @@ class ApplicationContext:
     symbol_universe: SymbolUniverse
     session_service: BistMarketSessionService
     local_store: LocalMarketDataStore
+    data_service: MarketDataService | None = None
 
 def bootstrap_app() -> ApplicationContext:
     """
@@ -87,6 +92,7 @@ def bootstrap_app() -> ApplicationContext:
         audit_logger=audit_logger,
         error_handler=error_handler,
         notifier=notifier,
+        data_service=MarketDataService(provider=YFinanceMarketDataProvider() if settings.DEFAULT_DATA_PROVIDER == 'yfinance' else MockMarketDataProvider(), universe=SymbolUniverse(DEFAULT_SEED_SYMBOLS), store=local_store) if 'MarketDataService' in globals() else None,
         symbol_universe=universe,
         session_service=session_service,
         local_store=local_store
