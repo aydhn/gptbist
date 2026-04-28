@@ -100,7 +100,8 @@ class YFinanceMarketDataProvider(BaseMarketDataProvider):
             source=self.vendor,
             data=df,
             fetched_at=utc_now(),
-            adjusted=adjusted
+            adjusted=adjusted,
+            metadata={'from_cache': False, 'requested_period': period}
         )
 
     def fetch_ohlcv(self, request: DataFetchRequest) -> dict[str, MarketDataFrame]:

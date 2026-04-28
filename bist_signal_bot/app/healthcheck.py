@@ -116,6 +116,18 @@ def run_healthcheck() -> dict:
             "fail_on_error": settings.DATA_QUALITY_FAIL_ON_ERROR,
             "checker_instantiable": True,
         },
+
+        "downloader": {
+            "default_period": settings.DOWNLOAD_DEFAULT_PERIOD,
+            "default_timeframe": settings.DOWNLOAD_DEFAULT_TIMEFRAME,
+            "continue_on_error": settings.DOWNLOAD_CONTINUE_ON_ERROR,
+            "send_telegram_summary": settings.DOWNLOAD_SEND_TELEGRAM_SUMMARY,
+            "max_symbols_per_run": settings.DOWNLOAD_MAX_SYMBOLS_PER_RUN,
+            "refresh_default": settings.DOWNLOAD_REFRESH_DEFAULT,
+            "save_default": settings.DOWNLOAD_SAVE_DEFAULT,
+            "instantiable": True,
+            "mock_capable": True
+        },
         "data_provider": {
             "default_provider": settings.DEFAULT_DATA_PROVIDER,
             "default_timeframe": settings.DEFAULT_TIMEFRAME,

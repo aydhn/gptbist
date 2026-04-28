@@ -118,6 +118,16 @@ class Settings(BaseSettings):
     MAX_PORTFOLIO_RISK_PCT: float = Field(default=0.02)
     MAX_DAILY_SIGNALS: int = Field(default=10)
 
+
+    # DOWNLOADER
+    DOWNLOAD_DEFAULT_PERIOD: str = Field(default="2y")
+    DOWNLOAD_DEFAULT_TIMEFRAME: str = Field(default="1d")
+    DOWNLOAD_CONTINUE_ON_ERROR: bool = Field(default=True)
+    DOWNLOAD_SEND_TELEGRAM_SUMMARY: bool = Field(default=False)
+    DOWNLOAD_MAX_SYMBOLS_PER_RUN: int = Field(default=500)
+    DOWNLOAD_REFRESH_DEFAULT: bool = Field(default=False)
+    DOWNLOAD_SAVE_DEFAULT: bool = Field(default=True)
+
     @model_validator(mode='after')
     def validate_settings(self) -> 'Settings':
         # Apply profile overrides
@@ -180,6 +190,15 @@ class Settings(BaseSettings):
         if self.ENABLE_TELEGRAM and not self.TELEGRAM_DRY_RUN:
             from bist_signal_bot.config.secrets import validate_telegram_secrets
             validate_telegram_secrets(self)
+
+
+        validation.validate_positive_int(self.DOWNLOAD_MAX_SYMBOLS_PER_RUN, "DOWNLOAD_MAX_SYMBOLS_PER_RUN")
+        if not self.DOWNLOAD_DEFAULT_PERIOD:
+            from bist_signal_bot.core.exceptions import ConfigurationError
+            raise ConfigurationError("DOWNLOAD_DEFAULT_PERIOD cannot be empty")
+        if self.DOWNLOAD_DEFAULT_TIMEFRAME not in {"1m", "5m", "15m", "30m", "1h", "4h", "1d", "1wk", "1mo"}:
+             from bist_signal_bot.core.exceptions import ConfigurationError
+             raise ConfigurationError(f"Unsupported timeframe: {self.DOWNLOAD_DEFAULT_TIMEFRAME}")
 
         validation.enforce_production_safety(self)
 

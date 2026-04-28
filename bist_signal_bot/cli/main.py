@@ -14,7 +14,8 @@ from bist_signal_bot.cli.commands import (
     cmd_mock_data,
     cmd_quality_demo,
     cmd_version,
-    cmd_diagnose
+    cmd_diagnose,
+    cmd_download_data
 )
 from bist_signal_bot.core.logging_setup import get_logger
 
@@ -55,7 +56,8 @@ def run_cli(argv: list[str] | None = None) -> int:
         "mock-data": cmd_mock_data,
         "quality-demo": cmd_quality_demo,
         "version": cmd_version,
-        "diagnose": cmd_diagnose
+        "diagnose": cmd_diagnose,
+        "download-data": cmd_download_data
     }
 
     cmd_func = commands.get(args.command)

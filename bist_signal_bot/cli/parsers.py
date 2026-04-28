@@ -58,6 +58,21 @@ def build_parser() -> argparse.ArgumentParser:
     quality_parser.add_argument("--rows", type=int, default=252, help="Number of rows")
     quality_parser.add_argument("--json", action="store_true", help="Output in JSON format")
 
+
+    # download-data
+    download_parser = subparsers.add_parser("download-data", help="Download OHLCV data for symbols")
+    download_parser.add_argument("symbols", type=str, nargs="*", help="List of symbols to download")
+    download_parser.add_argument("--all", action="store_true", help="Download for all active seed symbols")
+    download_parser.add_argument("--group", type=str, help="Download for a specific symbol group")
+    download_parser.add_argument("--timeframe", type=str, default="1d", help="Timeframe (e.g. 1d, 1h)")
+    download_parser.add_argument("--period", type=str, default="2y", help="Period (e.g. 2y, max)")
+    download_parser.add_argument("--refresh", action="store_true", help="Force refresh from provider (ignore cache)")
+    download_parser.add_argument("--no-save", action="store_true", help="Do not save fetched data to local store")
+    download_parser.add_argument("--continue-on-error", action="store_true", help="Continue downloading on error")
+    download_parser.add_argument("--fail-fast", action="store_true", help="Stop on first error")
+    download_parser.add_argument("--telegram-summary", action="store_true", help="Send a summary to Telegram")
+    download_parser.add_argument("--json", action="store_true", help="Output in JSON format")
+
     # version
     version_parser = subparsers.add_parser("version", help="Show version information")
     version_parser.add_argument("--json", action="store_true", help="Output in JSON format")
