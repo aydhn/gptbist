@@ -26,6 +26,7 @@ class AuditEventType(str, Enum):
     ERROR = "ERROR"
     CONFIG_LOADED = "CONFIG_LOADED"
     SYSTEM = "SYSTEM"
+    CLI_COMMAND = "CLI_COMMAND"
 
 @dataclass
 class AuditEvent:

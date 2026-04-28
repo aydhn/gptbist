@@ -117,3 +117,24 @@ Bu proje 100 fazlık büyük bir vizyonun **Phase 1 (Faz 1)** çıktısıdır. T
 - **Güvenli Secret Yönetimi:** `config/secrets.py` içerisinde "token", "chat_id" vb. barındıran hassas değişkenlerin loglanmadan önce veya string'e çevrilmeden önce maskelenmesini (`secr...1234` vb.) sağlayan fonksiyonlar kurgulandı. `Settings` objesinin repr metodu da bunu kullanacak şekilde güncellendi.
 - **Gelişmiş Validasyon:** `config/validation.py` sayesinde yanlış konfigürasyonlara `ConfigurationError` fırlatılarak hataların "fail-fast" mantığında yakalanması sağlandı. `APP_ENV="production"` olduğunda `DEBUG_TRACEBACKS` açık olmaması gibi ekstra üretim ortamı kontrolleri eklendi.
 - **Ayrıştırılmış Sorumluluk:** Ayarların ML, Backtest, Risk, Telegram vb. kategorilere ayrılarak ilerideki fazlarda sadece kendi ilgi alanındaki ayarları genişletmesine zemin hazırlandı.
+
+
+## Phase 10: CLI Operations Center
+
+This bot runs purely from the terminal and doesn't rely on web dashboards, streamlining operations directly on the command line.
+
+### Available Commands:
+- `python -m bist_signal_bot healthcheck` : Basic bot and environment healthcheck summary.
+- `python -m bist_signal_bot config` : Output the active settings (safely masks tokens).
+- `python -m bist_signal_bot symbols` : List the default BIST seed symbol universe.
+- `python -m bist_signal_bot validate-symbol <symbol>` : Normalize and validate a symbol.
+- `python -m bist_signal_bot provider-status` : Show status and configuration of the active data provider.
+- `python -m bist_signal_bot storage-status` : Display local filesystem paths and writability.
+- `python -m bist_signal_bot calendar-status` : Display current session market times.
+- `python -m bist_signal_bot telegram-test` : Sends a dry-run or actual test message via TelegramNotifier.
+- `python -m bist_signal_bot mock-data <symbol>` : Deterministically generates mock stock data for debugging.
+- `python -m bist_signal_bot quality-demo <symbol>` : Tests the DataQualityChecker directly on mock data.
+- `python -m bist_signal_bot version` : Outputs python and platform system diagnostic version information.
+- `python -m bist_signal_bot diagnose` : Comprehensive diagnostic command running config and healthcheck outputs safely.
+
+*To output most commands as parseable data, append the `--json` flag to the arguments list.*

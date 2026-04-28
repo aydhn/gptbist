@@ -83,6 +83,14 @@ def run_healthcheck() -> dict:
             "error_notifications_enabled": settings.ENABLE_ERROR_NOTIFICATIONS,
             "runtime_run_id_present": bool(runtime_context and runtime_context.run_id)
         },
+
+        "cli": {
+            "default_output": settings.CLI_DEFAULT_OUTPUT,
+            "rich_enabled": settings.CLI_ENABLE_RICH,
+            "verbose_errors": settings.CLI_VERBOSE_ERRORS,
+            "available_commands_count": 12,
+            "default_command": "healthcheck"
+        },
         "storage": {
             "data_dir_path": str(DATA_DIR),
             "market_data_dir_path": str(market_data_dir),
