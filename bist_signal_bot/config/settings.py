@@ -29,6 +29,12 @@ class Settings(BaseSettings):
     MASK_SECRETS_IN_LOGS: bool = Field(default=True)
     DEBUG_TRACEBACKS: bool = Field(default=False)
 
+
+    # CLI
+    CLI_DEFAULT_OUTPUT: str = Field(default="text")
+    CLI_ENABLE_RICH: bool = Field(default=True)
+    CLI_VERBOSE_ERRORS: bool = Field(default=False)
+
     # AUDIT
     ENABLE_AUDIT_LOG: bool = Field(default=True)
     AUDIT_LOG_FILE_NAME: str = Field(default="audit.log")
@@ -127,6 +133,11 @@ class Settings(BaseSettings):
         self.APP_ENV = validation.validate_app_env(self.APP_ENV)
         self.RUN_MODE = validation.validate_run_mode(self.RUN_MODE)
         self.DEFAULT_MARKET = validation.validate_default_market(self.DEFAULT_MARKET)
+
+
+        if self.CLI_DEFAULT_OUTPUT not in {"text", "json"}:
+            from bist_signal_bot.core.exceptions import ConfigurationError
+            raise ConfigurationError(f"Invalid CLI_DEFAULT_OUTPUT: {self.CLI_DEFAULT_OUTPUT}")
 
         valid_levels = {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}
         if self.LOG_LEVEL.upper() not in valid_levels:

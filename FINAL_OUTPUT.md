@@ -50,3 +50,15 @@ python -m pytest bist_signal_bot/tests/
 * HTML scraping / Selenium barındırılmayan, ücretsiz teknoloji ve arayüzler tabanına oturtulmuş yapı kurulmuştur. Gerçek Telegram mesaj gönderimi veya API istekleri bu fazda simüle/mock edilmiştir (Interface ile ayrılmıştır).
 
 Proje **Phase 2'ye hazır.**
+
+### Phase 10: Temel CLI Komutları ve Operasyon Merkezi
+
+Sistem dashboard/web paneli kullanmayacağı için, uygulamanın yönetim süreçleri tam teşekküllü bir CLI ile entegre edilmiştir. Terminal üzerinden sistem sağlık kontrolü, token güvenliği sağlayan ayar çıktısı, mock data üretimi, kalite kontrol denemeleri, telegram dry-run bildirimleri gibi 12 adet komut eklendi.
+
+* **Modüler CLI Yapısı**: `argparse` tabanlı parsing (`parsers.py`), komut işletimi (`commands.py`), formatlama (`formatting.py`) ve giriş mantığı (`main.py`) ayrıştırıldı.
+* **Test Edilebilir Context**: `bootstrap_app()` ile `ApplicationContext` oluşturularak komutların config, notifier, universe ve db modellerine kontrollü erişimi sağlandı.
+* **Güvenli Komutlar**: `diagnose`, `healthcheck`, `config` gibi çıktılar secret verilerini sızdırmayacak şekilde config bazlı `MASK_SECRETS_IN_LOGS` standartlarına uyarlandı.
+* JSON ve metin formatlı çıktılar tamamen desteklendi.
+* **Audit Trail Entegrasyonu**: Her çalıştırılan CLI komutu detaylı (fakat maskelenmiş) parametreler eşliğinde Event sistemine `CLI_COMMAND` tipinde kaydedilmektedir.
+
+Phase 11'e (gerçek zamanlı backtest/signal execution komutlarına) tam hazırdır.
