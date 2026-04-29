@@ -9,6 +9,8 @@ from bist_signal_bot.config.settings import settings
 from bist_signal_bot.core.constants import DEFAULT_MARKET
 from bist_signal_bot.core.context import get_runtime_context
 from bist_signal_bot.data.symbol_universe import DEFAULT_SEED_SYMBOLS, SymbolUniverse
+from bist_signal_bot.data.universe_updater import UniverseUpdater
+from bist_signal_bot.data.universe_store import UniverseStore
 from bist_signal_bot.storage.paths import (
     CACHE_DIR,
     DATA_DIR,
@@ -33,7 +35,19 @@ def run_healthcheck() -> dict:
     """
     Runs a system health check and returns the status as a dictionary.
     """
-    universe = SymbolUniverse(DEFAULT_SEED_SYMBOLS)
+    store = UniverseStore(settings)
+    updater = UniverseUpdater(store, settings)
+
+    if store.exists():
+        universe = store.load_universe()
+        validation_report = updater.validate_universe(universe)
+        validation_passed = validation_report.passed
+        issue_count = len(validation_report.issues)
+    else:
+        universe = SymbolUniverse(DEFAULT_SEED_SYMBOLS)
+        validation_passed = True
+        issue_count = 0
+
 
     yfinance_available = False
     try:
@@ -152,12 +166,19 @@ def run_healthcheck() -> dict:
             "signal_after_close_minutes": settings.BIST_SIGNAL_AFTER_CLOSE_MINUTES
         },
         "symbol_universe": {
-            "default_symbol_count": universe.count(active_only=False),
+            "universe_dir": str(store.get_universe_dir()),
+            "universe_file_path": str(store.get_universe_file_path()),
+            "universe_file_exists": store.exists(),
+            "auto_initialize_universe": settings.AUTO_INITIALIZE_UNIVERSE,
+            "auto_snapshot_universe": settings.AUTO_SNAPSHOT_UNIVERSE,
+            "watchlists_dir": str(store.get_watchlists_dir()),
+            "snapshots_dir": str(store.get_snapshots_dir()),
+            "default_seed_count": len(DEFAULT_SEED_SYMBOLS),
+            "local_universe_symbol_count": universe.count(active_only=False),
             "active_symbol_count": universe.count(active_only=True),
-            "yfinance_compatible_symbol_count": len(universe.list_yfinance_symbols(active_only=True)),
-            "invalid_symbol_count": 0,
-            "has_duplicate_symbol_issue": False,
-            "market": DEFAULT_MARKET
+            "inactive_symbol_count": universe.count(active_only=False) - universe.count(active_only=True),
+            "validation_passed": validation_passed,
+            "issue_count": issue_count
         },
         "notifications": {
             "telegram_enabled": settings.ENABLE_TELEGRAM,

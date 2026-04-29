@@ -321,3 +321,198 @@ def cmd_download_data(args, app_context: ApplicationContext) -> int:
     except Exception as e:
         print(format_error(str(e)))
         return 1
+
+def cmd_universe(args, app_context) -> int:
+    from bist_signal_bot.data.universe_store import UniverseStore
+    from bist_signal_bot.data.universe_updater import UniverseUpdater
+    from bist_signal_bot.data.models import UniverseFileFormat, SymbolGroup
+    from pathlib import Path
+
+    store = UniverseStore(app_context.settings)
+    updater = UniverseUpdater(store, app_context.settings, app_context.audit_logger, app_context.notifier)
+
+    if args.universe_command == "init":
+        res = store.initialize_default_universe(overwrite=args.overwrite)
+        if args.json:
+            print_output(res.summary(), as_json=True)
+        else:
+            if res.success:
+                print(format_success(res.message))
+            else:
+                print(format_error(res.message))
+        return 0 if res.success else 1
+
+    elif args.universe_command == "list":
+        if not store.exists():
+            print(format_error("Universe file not found. Run 'universe init' first."))
+            return 1
+
+        universe = store.load_universe()
+        if args.group:
+            try:
+                group = SymbolGroup(args.group)
+                infos = universe.filter_by_group(group, active_only=args.active_only)
+                symbols = [i.symbol for i in infos]
+            except ValueError:
+                print(format_error(f"Geçersiz grup adı: {args.group}"))
+                return 1
+        else:
+            symbols = universe.list_symbols(active_only=args.active_only)
+
+        if args.yfinance:
+            from bist_signal_bot.data.symbol_utils import to_yfinance_symbol
+            symbols = [to_yfinance_symbol(s) for s in symbols]
+
+        res = {"count": len(symbols), "symbols": symbols}
+        if args.json:
+            print_output(res, as_json=True)
+        else:
+            for s in symbols:
+                print(s)
+            print(f"\nTotal: {len(symbols)}")
+        return 0
+
+    elif args.universe_command == "validate":
+        if not store.exists():
+            print(format_error("Universe file not found. Run 'universe init' first."))
+            return 1
+        universe = store.load_universe()
+        report = updater.validate_universe(universe)
+        if args.json:
+            print_output(report.summary(), as_json=True)
+        else:
+            if report.passed:
+                print(format_success("Universe validation passed."))
+            else:
+                print(format_error("Universe validation failed."))
+            for issue in report.issues:
+                msg = f"[{issue.severity}] "
+                if issue.symbol:
+                    msg += f"{issue.symbol}: "
+                msg += issue.message
+                print(msg)
+            print(f"\nTotal: {report.total_symbols}, Active: {report.active_symbols}, Issues: {len(report.issues)}")
+        return 0 if report.passed else 1
+
+    elif args.universe_command == "add":
+        res = updater.add_symbol(args.symbol, args.name, args.groups, args.notes)
+        if args.json:
+            print_output(res.summary(), as_json=True)
+        else:
+            if res.success:
+                print(format_success(res.message))
+            else:
+                print(format_error(res.message))
+        return 0 if res.success else 1
+
+    elif args.universe_command == "remove":
+        res = updater.remove_symbol(args.symbol)
+        if args.json:
+            print_output(res.summary(), as_json=True)
+        else:
+            if res.success:
+                print(format_success(res.message))
+            else:
+                print(format_error(res.message))
+        return 0 if res.success else 1
+
+    elif args.universe_command == "deactivate":
+        res = updater.deactivate_symbol(args.symbol)
+        if args.json:
+            print_output(res.summary(), as_json=True)
+        else:
+            if res.success:
+                print(format_success(res.message))
+            else:
+                print(format_error(res.message))
+        return 0 if res.success else 1
+
+    elif args.universe_command == "activate":
+        res = updater.activate_symbol(args.symbol)
+        if args.json:
+            print_output(res.summary(), as_json=True)
+        else:
+            if res.success:
+                print(format_success(res.message))
+            else:
+                print(format_error(res.message))
+        return 0 if res.success else 1
+
+    elif args.universe_command == "import":
+        path = Path(args.path)
+        res = updater.import_from_file(path, merge=args.merge, deactivate_missing=args.deactivate_missing)
+        if args.json:
+            print_output(res.summary(), as_json=True)
+        else:
+            if res.success:
+                print(format_success(res.message))
+            else:
+                print(format_error(res.message))
+        return 0 if res.success else 1
+
+    elif args.universe_command == "export":
+        fmt = UniverseFileFormat(args.format)
+        out_path = Path(args.output) if args.output else None
+        res = updater.export_to_file(fmt, out_path)
+        if args.json:
+            print_output(res.summary(), as_json=True)
+        else:
+            if res.success:
+                print(format_success(res.message))
+            else:
+                print(format_error(res.message))
+        return 0 if res.success else 1
+
+    elif args.universe_command == "snapshot":
+        res = updater.create_snapshot()
+        if args.json:
+            print_output(res.summary(), as_json=True)
+        else:
+            if res.success:
+                print(format_success(res.message))
+            else:
+                print(format_error(res.message))
+        return 0 if res.success else 1
+
+    elif args.universe_command == "watchlist":
+        if args.watchlist_command == "list":
+            lists = store.list_watchlists()
+            res = {"watchlists": lists}
+            if args.json:
+                print_output(res, as_json=True)
+            else:
+                for wl in lists:
+                    print(wl)
+            return 0
+        elif args.watchlist_command == "show":
+            syms = store.load_watchlist(args.name)
+            res = {"watchlist": args.name, "symbols": syms}
+            if args.json:
+                print_output(res, as_json=True)
+            else:
+                for s in syms:
+                    print(s)
+            return 0
+        elif args.watchlist_command == "add":
+            res = updater.add_to_watchlist(args.name, args.symbols)
+            if args.json:
+                print_output(res.summary(), as_json=True)
+            else:
+                if res.success:
+                    print(format_success(res.message))
+                else:
+                    print(format_error(res.message))
+            return 0 if res.success else 1
+        elif args.watchlist_command == "remove":
+            res = updater.remove_from_watchlist(args.name, args.symbols)
+            if args.json:
+                print_output(res.summary(), as_json=True)
+            else:
+                if res.success:
+                    print(format_success(res.message))
+                else:
+                    print(format_error(res.message))
+            return 0 if res.success else 1
+    else:
+        print(format_error("Missing universe sub-command"))
+        return 1

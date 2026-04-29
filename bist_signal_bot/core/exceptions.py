@@ -81,3 +81,15 @@ class AuditLogError(BistSignalBotError):
 class OperationalSafetyError(BistSignalBotError):
     """Raised when an operational safety check fails."""
     pass
+
+class UniverseStoreError(BistSignalBotError):
+    """Raised when there is an error interacting with the Universe Store."""
+    pass
+
+class UniverseImportError(BistSignalBotError):
+    """Raised when there is an error importing a universe file."""
+    pass
+
+class UniverseValidationError(BistSignalBotError):
+    """Raised when a symbol universe is invalid."""
+    pass

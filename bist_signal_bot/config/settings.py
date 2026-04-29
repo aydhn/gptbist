@@ -5,7 +5,6 @@ from bist_signal_bot.config import validation
 from bist_signal_bot.config.profiles import get_profile
 from bist_signal_bot.config.secrets import settings_safe_dump
 
-
 class Settings(BaseSettings):
     """
     Application settings loaded from environment variables or .env file.
@@ -118,6 +117,16 @@ class Settings(BaseSettings):
     MAX_PORTFOLIO_RISK_PCT: float = Field(default=0.02)
     MAX_DAILY_SIGNALS: int = Field(default=10)
 
+    # UNIVERSE
+    UNIVERSE_DIR_NAME: str = Field(default="universe")
+    UNIVERSE_FILE_NAME: str = Field(default="bist_universe.json")
+    WATCHLISTS_DIR_NAME: str = Field(default="watchlists")
+    UNIVERSE_SNAPSHOTS_DIR_NAME: str = Field(default="snapshots")
+    AUTO_INITIALIZE_UNIVERSE: bool = Field(default=True)
+    AUTO_SNAPSHOT_UNIVERSE: bool = Field(default=True)
+    UNIVERSE_SEND_TELEGRAM_SUMMARY: bool = Field(default=False)
+    UNIVERSE_IMPORT_MERGE_DEFAULT: bool = Field(default=True)
+    UNIVERSE_IMPORT_DEACTIVATE_MISSING_DEFAULT: bool = Field(default=False)
 
     # DOWNLOADER
     DOWNLOAD_DEFAULT_PERIOD: str = Field(default="2y")
@@ -133,17 +142,12 @@ class Settings(BaseSettings):
         # Apply profile overrides
         profile = get_profile(self.APP_ENV)
         for key, value in profile.safe_defaults.items():
-            # If the user hasn't explicitly overridden it via env vars, we might want to enforce safe defaults.
-            # However, pydantic-settings loads env vars before this validator.
-            # For this phase, we ensure that if it's test/production, certain rules apply.
-            # We don't overwrite user env vars unless it's a hard safety rule handled later.
             pass
 
         # Validations
         self.APP_ENV = validation.validate_app_env(self.APP_ENV)
         self.RUN_MODE = validation.validate_run_mode(self.RUN_MODE)
         self.DEFAULT_MARKET = validation.validate_default_market(self.DEFAULT_MARKET)
-
 
         if self.CLI_DEFAULT_OUTPUT not in {"text", "json"}:
             from bist_signal_bot.core.exceptions import ConfigurationError
@@ -191,6 +195,12 @@ class Settings(BaseSettings):
             from bist_signal_bot.config.secrets import validate_telegram_secrets
             validate_telegram_secrets(self)
 
+        if not self.UNIVERSE_DIR_NAME:
+            from bist_signal_bot.core.exceptions import ConfigurationError
+            raise ConfigurationError("UNIVERSE_DIR_NAME cannot be empty")
+        if not self.UNIVERSE_FILE_NAME:
+            from bist_signal_bot.core.exceptions import ConfigurationError
+            raise ConfigurationError("UNIVERSE_FILE_NAME cannot be empty")
 
         validation.validate_positive_int(self.DOWNLOAD_MAX_SYMBOLS_PER_RUN, "DOWNLOAD_MAX_SYMBOLS_PER_RUN")
         if not self.DOWNLOAD_DEFAULT_PERIOD:
@@ -211,6 +221,4 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
-# Do not instantiate global settings here so that we can load env_file manually in bootstrap before loading settings
-# Actually, pydantic-settings automatically checks .env if it's there.
 settings = Settings()

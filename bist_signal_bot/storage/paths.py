@@ -61,3 +61,23 @@ def get_market_data_index_path(settings: Settings | None = None) -> Path:
     s = settings or default_settings
     meta_dir = get_metadata_dir(settings)
     return meta_dir / s.MARKET_DATA_INDEX_FILE
+
+def get_universe_dir(settings: Settings | None = None) -> Path:
+    s = settings or default_settings
+    data_dir = get_data_dir(s)
+    return ensure_dir(data_dir / s.UNIVERSE_DIR_NAME)
+
+def get_universe_file_path(settings: Settings | None = None) -> Path:
+    s = settings or default_settings
+    universe_dir = get_universe_dir(s)
+    return universe_dir / s.UNIVERSE_FILE_NAME
+
+def get_watchlists_dir(settings: Settings | None = None) -> Path:
+    s = settings or default_settings
+    universe_dir = get_universe_dir(s)
+    return ensure_dir(universe_dir / s.WATCHLISTS_DIR_NAME)
+
+def get_universe_snapshots_dir(settings: Settings | None = None) -> Path:
+    s = settings or default_settings
+    universe_dir = get_universe_dir(s)
+    return ensure_dir(universe_dir / s.UNIVERSE_SNAPSHOTS_DIR_NAME)
