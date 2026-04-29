@@ -46,7 +46,7 @@ class SymbolInfo(BaseModel):
             raise ValueError("Symbol cannot be empty.")
         return ensure_valid_internal_symbol(v)
 
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 from enum import Enum
 
@@ -261,3 +261,86 @@ class BatchDownloadResult(BaseModel):
             "refresh": self.refresh,
             "save": self.save
         }
+
+class UniverseFileFormat(str, Enum):
+    JSON = "json"
+    CSV = "csv"
+
+class UniverseUpdateAction(str, Enum):
+    ADD = "ADD"
+    REMOVE = "REMOVE"
+    ACTIVATE = "ACTIVATE"
+    DEACTIVATE = "DEACTIVATE"
+    IMPORT = "IMPORT"
+    EXPORT = "EXPORT"
+    SNAPSHOT = "SNAPSHOT"
+    VALIDATE = "VALIDATE"
+    WATCHLIST_ADD = "WATCHLIST_ADD"
+    WATCHLIST_REMOVE = "WATCHLIST_REMOVE"
+
+class UniverseValidationIssueType(str, Enum):
+    INVALID_SYMBOL = "INVALID_SYMBOL"
+    DUPLICATE_SYMBOL = "DUPLICATE_SYMBOL"
+    MISSING_REQUIRED_FIELD = "MISSING_REQUIRED_FIELD"
+    INVALID_GROUP = "INVALID_GROUP"
+    INVALID_MARKET = "INVALID_MARKET"
+    INVALID_ASSET_TYPE = "INVALID_ASSET_TYPE"
+    EMPTY_UNIVERSE = "EMPTY_UNIVERSE"
+    UNKNOWN = "UNKNOWN"
+
+class UniverseValidationIssue(BaseModel):
+    issue_type: UniverseValidationIssueType
+    severity: str
+    symbol: str | None = None
+    message: str
+    row_number: int | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+class UniverseValidationReport(BaseModel):
+    total_symbols: int
+    active_symbols: int
+    inactive_symbols: int
+    duplicate_count: int
+    invalid_count: int
+    issues: list[UniverseValidationIssue] = Field(default_factory=list)
+    passed: bool
+    generated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+    def summary(self) -> dict[str, Any]:
+        return {
+            "total_symbols": self.total_symbols,
+            "active_symbols": self.active_symbols,
+            "inactive_symbols": self.inactive_symbols,
+            "duplicate_count": self.duplicate_count,
+            "invalid_count": self.invalid_count,
+            "passed": self.passed,
+            "generated_at": self.generated_at.isoformat(),
+            "issues": [i.model_dump() for i in self.issues]
+        }
+
+class UniverseUpdateResult(BaseModel):
+    action: UniverseUpdateAction
+    success: bool
+    symbols_affected: list[str] = Field(default_factory=list)
+    message: str
+    validation_report: UniverseValidationReport | None = None
+    file_path: str | None = None
+    snapshot_path: str | None = None
+    error: str | None = None
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+    def summary(self) -> dict[str, Any]:
+        res = {
+            "action": self.action.value,
+            "success": self.success,
+            "symbols_affected": self.symbols_affected,
+            "message": self.message,
+            "file_path": self.file_path,
+            "snapshot_path": self.snapshot_path,
+            "error": self.error,
+            "timestamp": self.timestamp.isoformat()
+        }
+        if self.validation_report:
+            res["validation_passed"] = self.validation_report.passed
+            res["issue_count"] = len(self.validation_report.issues)
+        return res

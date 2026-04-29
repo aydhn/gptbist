@@ -30,6 +30,17 @@ class AuditEventType(str, Enum):
     CONFIG_LOADED = "CONFIG_LOADED"
     SYSTEM = "SYSTEM"
     CLI_COMMAND = "CLI_COMMAND"
+    UNIVERSE_INIT = "UNIVERSE_INIT"
+    UNIVERSE_VALIDATE = "UNIVERSE_VALIDATE"
+    UNIVERSE_ADD_SYMBOL = "UNIVERSE_ADD_SYMBOL"
+    UNIVERSE_REMOVE_SYMBOL = "UNIVERSE_REMOVE_SYMBOL"
+    UNIVERSE_ACTIVATE_SYMBOL = "UNIVERSE_ACTIVATE_SYMBOL"
+    UNIVERSE_DEACTIVATE_SYMBOL = "UNIVERSE_DEACTIVATE_SYMBOL"
+    UNIVERSE_IMPORT = "UNIVERSE_IMPORT"
+    UNIVERSE_EXPORT = "UNIVERSE_EXPORT"
+    UNIVERSE_SNAPSHOT = "UNIVERSE_SNAPSHOT"
+    WATCHLIST_UPDATE = "WATCHLIST_UPDATE"
+
 
 @dataclass
 class AuditEvent:
@@ -138,4 +149,22 @@ class AuditLogger:
             level="ERROR",
             run_id=run_id,
             metadata={"error_type": type(error).__name__, "context": context or {}}
+        ))
+
+    def log_universe_update(self, event_type: AuditEventType, message: str, action: str, symbols_affected: list[str], file_path: str | None = None, validation_passed: bool | None = None, issue_count: int | None = None, run_id: str | None = None) -> None:
+        metadata = {
+            "action": action,
+            "symbols_affected": symbols_affected,
+            "file_path": file_path,
+        }
+        if validation_passed is not None:
+            metadata["validation_passed"] = validation_passed
+        if issue_count is not None:
+            metadata["issue_count"] = issue_count
+
+        self.log_event(AuditEvent(
+            event_type=event_type,
+            message=message,
+            run_id=run_id,
+            metadata=metadata
         ))

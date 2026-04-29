@@ -81,6 +81,92 @@ def build_parser() -> argparse.ArgumentParser:
     diagnose_parser = subparsers.add_parser("diagnose", help="Show detailed diagnostic output")
     diagnose_parser.add_argument("--json", action="store_true", help="Output in JSON format")
 
+
+    # universe
+    universe_parser = subparsers.add_parser("universe", help="Manage symbol universe")
+    universe_subparsers = universe_parser.add_subparsers(dest="universe_command", help="Universe commands")
+
+    # universe init
+    init_parser = universe_subparsers.add_parser("init", help="Initialize default universe")
+    init_parser.add_argument("--overwrite", action="store_true", help="Overwrite existing universe")
+    init_parser.add_argument("--json", action="store_true", help="Output in JSON format")
+
+    # universe list
+    list_parser = universe_subparsers.add_parser("list", help="List universe symbols")
+    list_parser.add_argument("--active-only", action="store_true", help="List only active symbols")
+    list_parser.add_argument("--group", type=str, help="Filter by symbol group")
+    list_parser.add_argument("--yfinance", action="store_true", help="List in yfinance format")
+    list_parser.add_argument("--json", action="store_true", help="Output in JSON format")
+
+    # universe validate
+    validate_parser = universe_subparsers.add_parser("validate", help="Validate universe file")
+    validate_parser.add_argument("--json", action="store_true", help="Output in JSON format")
+
+    # universe add
+    add_parser = universe_subparsers.add_parser("add", help="Add a symbol to the universe")
+    add_parser.add_argument("symbol", type=str, help="Symbol to add")
+    add_parser.add_argument("--name", type=str, help="Company/Asset name")
+    add_parser.add_argument("--groups", type=str, nargs="*", help="Symbol groups")
+    add_parser.add_argument("--notes", type=str, help="Notes")
+    add_parser.add_argument("--json", action="store_true", help="Output in JSON format")
+
+    # universe remove
+    remove_parser = universe_subparsers.add_parser("remove", help="Remove a symbol from the universe")
+    remove_parser.add_argument("symbol", type=str, help="Symbol to remove")
+    remove_parser.add_argument("--json", action="store_true", help="Output in JSON format")
+
+    # universe deactivate
+    deactivate_parser = universe_subparsers.add_parser("deactivate", help="Deactivate a symbol in the universe")
+    deactivate_parser.add_argument("symbol", type=str, help="Symbol to deactivate")
+    deactivate_parser.add_argument("--json", action="store_true", help="Output in JSON format")
+
+    # universe activate
+    activate_parser = universe_subparsers.add_parser("activate", help="Activate a symbol in the universe")
+    activate_parser.add_argument("symbol", type=str, help="Symbol to activate")
+    activate_parser.add_argument("--json", action="store_true", help="Output in JSON format")
+
+    # universe import
+    import_parser = universe_subparsers.add_parser("import", help="Import a universe from CSV or JSON")
+    import_parser.add_argument("path", type=str, help="Path to import file")
+    import_parser.add_argument("--merge", action="store_true", help="Merge with existing universe")
+    import_parser.add_argument("--deactivate-missing", action="store_true", help="Deactivate symbols not in import file")
+    import_parser.add_argument("--json", action="store_true", help="Output in JSON format")
+
+    # universe export
+    export_parser = universe_subparsers.add_parser("export", help="Export universe to CSV or JSON")
+    export_parser.add_argument("--format", type=str, choices=["json", "csv"], default="json", help="Export format")
+    export_parser.add_argument("--output", type=str, help="Output file path")
+    export_parser.add_argument("--json", action="store_true", help="Output in JSON format (for CLI response, not file content)")
+
+    # universe snapshot
+    snapshot_parser = universe_subparsers.add_parser("snapshot", help="Create a universe snapshot")
+    snapshot_parser.add_argument("--json", action="store_true", help="Output in JSON format")
+
+    # universe watchlist
+    watchlist_parser = universe_subparsers.add_parser("watchlist", help="Manage watchlists")
+    watchlist_subparsers = watchlist_parser.add_subparsers(dest="watchlist_command", help="Watchlist commands")
+
+    # universe watchlist list
+    wl_list_parser = watchlist_subparsers.add_parser("list", help="List watchlists")
+    wl_list_parser.add_argument("--json", action="store_true", help="Output in JSON format")
+
+    # universe watchlist show
+    wl_show_parser = watchlist_subparsers.add_parser("show", help="Show watchlist symbols")
+    wl_show_parser.add_argument("name", type=str, help="Watchlist name")
+    wl_show_parser.add_argument("--json", action="store_true", help="Output in JSON format")
+
+    # universe watchlist add
+    wl_add_parser = watchlist_subparsers.add_parser("add", help="Add symbols to watchlist")
+    wl_add_parser.add_argument("name", type=str, help="Watchlist name")
+    wl_add_parser.add_argument("symbols", type=str, nargs="+", help="Symbols to add")
+    wl_add_parser.add_argument("--json", action="store_true", help="Output in JSON format")
+
+    # universe watchlist remove
+    wl_remove_parser = watchlist_subparsers.add_parser("remove", help="Remove symbols from watchlist")
+    wl_remove_parser.add_argument("name", type=str, help="Watchlist name")
+    wl_remove_parser.add_argument("symbols", type=str, nargs="+", help="Symbols to remove")
+    wl_remove_parser.add_argument("--json", action="store_true", help="Output in JSON format")
+
     return parser
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
