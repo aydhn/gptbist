@@ -516,3 +516,73 @@ def cmd_universe(args, app_context) -> int:
     else:
         print(format_error("Missing universe sub-command"))
         return 1
+
+def cmd_normalize_data(args, app_context) -> int:
+    from bist_signal_bot.data.normalizer import MarketDataNormalizer
+    from bist_signal_bot.data.mock_provider import MockMarketDataProvider
+    from bist_signal_bot.data.models import Timeframe, DataVendor
+    from bist_signal_bot.cli.formatting import format_success, format_error, print_output
+    import pandas as pd
+
+    symbol = args.symbol
+    source = args.source
+    timeframe = Timeframe(args.timeframe)
+    save = args.save
+
+    settings = app_context.settings.model_copy()
+    if args.strict:
+        settings.NORMALIZATION_STRICT = True
+
+    normalizer = MarketDataNormalizer(settings)
+    store = app_context.local_store
+
+    try:
+        if source == "local":
+            if not store.exists(symbol, DataVendor.YFINANCE, timeframe):
+                print(format_error(f"Local data not found for {symbol} ({timeframe.value})"))
+                return 1
+            # Read directly to get raw CSV without data_service's auto-normalization to show before/after
+            import pandas as pd
+            from bist_signal_bot.storage.paths import get_ohlcv_file_path
+            file_path = get_ohlcv_file_path(symbol, DataVendor.YFINANCE.value, timeframe.value, settings, "csv")
+            try:
+                df = pd.read_csv(file_path, parse_dates=["timestamp"] if "timestamp" in pd.read_csv(file_path, nrows=0).columns else None)
+            except Exception as e:
+                df = pd.read_csv(file_path) # Fallback if no timestamp
+
+            vendor = DataVendor.YFINANCE
+
+        elif source == "mock":
+            mock_provider = MockMarketDataProvider()
+            mdf = mock_provider.fetch_one(symbol, timeframe)
+            df = mdf.data
+            vendor = DataVendor.UNKNOWN
+        else:
+            print(format_error(f"Unknown source: {source}"))
+            return 1
+
+        res = normalizer.normalize_dataframe(df, symbol, timeframe, vendor)
+
+        saved = False
+        if save:
+            store.write_ohlcv(res.market_data)
+            saved = True
+
+        if args.json:
+            out = res.report.summary()
+            out["saved"] = saved
+            print_output(out, as_json=True)
+        else:
+            print_output(f"Symbol: {res.report.symbol}")
+            print_output(f"Status: {res.report.status.value}")
+            print_output(f"Input Rows: {res.report.input_rows}")
+            print_output(f"Output Rows: {res.report.output_rows}")
+            print_output(f"Issue Count: {res.report.issue_count()}")
+            print_output(f"Output Columns: {res.report.output_columns}")
+            print_output(f"Saved: {saved}")
+
+        return 0 if res.report.status.value != "FAILED" else 1
+
+    except Exception as e:
+        print(format_error(str(e)))
+        return 1
