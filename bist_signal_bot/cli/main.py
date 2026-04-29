@@ -15,8 +15,10 @@ from bist_signal_bot.cli.commands import (
     cmd_quality_demo,
     cmd_version,
     cmd_diagnose,
+    cmd_diagnose,
     cmd_download_data,
-    cmd_universe
+    cmd_universe,
+    cmd_normalize_data
 )
 from bist_signal_bot.core.logging_setup import get_logger
 
@@ -59,7 +61,8 @@ def run_cli(argv: list[str] | None = None) -> int:
         "version": cmd_version,
         "diagnose": cmd_diagnose,
         "download-data": cmd_download_data,
-        "universe": cmd_universe
+        "universe": cmd_universe,
+        "normalize-data": cmd_normalize_data
     }
 
     cmd_func = commands.get(args.command)

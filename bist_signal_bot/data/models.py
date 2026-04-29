@@ -11,6 +11,7 @@ class AssetType(str, Enum):
     INDEX = "INDEX"
     ETF = "ETF"
     UNKNOWN = "UNKNOWN"
+    MOCK = "MOCK"
 
 class Market(str, Enum):
     BIST = "BIST"
@@ -29,6 +30,7 @@ class DataVendor(str, Enum):
     YFINANCE = "YFINANCE"
     LOCAL = "LOCAL"
     UNKNOWN = "UNKNOWN"
+    MOCK = "MOCK"
 
 class SymbolInfo(BaseModel):
     symbol: str
@@ -147,6 +149,71 @@ class MarketDataFrame(BaseModel):
             return None, None
         return self.data.index.min().to_pydatetime(), self.data.index.max().to_pydatetime()
 
+
+
+class NormalizationStatus(str, Enum):
+    SUCCESS = "SUCCESS"
+    WARNING = "WARNING"
+    FAILED = "FAILED"
+    SKIPPED = "SKIPPED"
+
+class NormalizationIssueType(str, Enum):
+    COLUMN_RENAMED = "COLUMN_RENAMED"
+    COLUMN_MISSING = "COLUMN_MISSING"
+    COLUMN_DROPPED = "COLUMN_DROPPED"
+    MULTIINDEX_FLATTENED = "MULTIINDEX_FLATTENED"
+    TIMESTAMP_INDEX_CREATED = "TIMESTAMP_INDEX_CREATED"
+    TIMEZONE_LOCALIZED = "TIMEZONE_LOCALIZED"
+    TIMEZONE_CONVERTED = "TIMEZONE_CONVERTED"
+    NUMERIC_CAST = "NUMERIC_CAST"
+    DUPLICATE_TIMESTAMP_REMOVED = "DUPLICATE_TIMESTAMP_REMOVED"
+    INDEX_SORTED = "INDEX_SORTED"
+    SYMBOL_NORMALIZED = "SYMBOL_NORMALIZED"
+    TIMEFRAME_NORMALIZED = "TIMEFRAME_NORMALIZED"
+    EMPTY_DATA = "EMPTY_DATA"
+    UNKNOWN = "UNKNOWN"
+    MOCK = "MOCK"
+
+class NormalizationIssue(BaseModel):
+    issue_type: NormalizationIssueType
+    message: str
+    affected_columns: list[str] = Field(default_factory=list)
+    affected_rows: int | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+class NormalizationReport(BaseModel):
+    symbol: str
+    timeframe: str
+    source: str
+    status: NormalizationStatus
+    input_rows: int
+    output_rows: int
+    input_columns: list[str] = Field(default_factory=list)
+    output_columns: list[str] = Field(default_factory=list)
+    issues: list[NormalizationIssue] = Field(default_factory=list)
+    started_at: datetime
+    finished_at: datetime
+    elapsed_seconds: float
+
+    def issue_count(self) -> int:
+        return len(self.issues)
+
+    def summary(self) -> dict[str, Any]:
+        return {
+            "symbol": self.symbol,
+            "timeframe": self.timeframe,
+            "source": self.source,
+            "status": self.status.value,
+            "input_rows": self.input_rows,
+            "output_rows": self.output_rows,
+            "issue_count": self.issue_count(),
+            "elapsed_seconds": self.elapsed_seconds,
+        }
+
+
+class NormalizedMarketData(BaseModel):
+    market_data: MarketDataFrame
+    report: NormalizationReport
 class DataFetchRequest(BaseModel):
     symbols: list[str]
     timeframe: Timeframe = Timeframe.DAILY
@@ -172,6 +239,7 @@ class DownloadStatus(str, Enum):
     PARTIAL = "PARTIAL"
 
 class SymbolDownloadResult(BaseModel):
+
     symbol: str
     status: DownloadStatus
     row_count: int
@@ -186,6 +254,9 @@ class SymbolDownloadResult(BaseModel):
     error: str | None = None
     file_path: str | None = None
     elapsed_seconds: float
+
+    normalization_status: str | None = None
+    normalization_issue_count: int | None = None
 
     @field_validator("symbol")
     def validate_symbol(cls, v):
@@ -248,12 +319,14 @@ class BatchDownloadResult(BaseModel):
         return [r.symbol for r in self.results if r.status == DownloadStatus.FAILED]
 
     def summary(self) -> dict[str, Any]:
+        warnings = sum(1 for r in self.results if r.normalization_status == "WARNING")
         return {
             "requested_count": self.requested_count,
             "success_count": self.success_count,
             "failed_count": self.failed_count,
             "skipped_count": self.skipped_count,
             "partial_count": self.partial_count,
+            "normalization_warnings": warnings,
             "elapsed_seconds": self.elapsed_seconds,
             "provider": self.provider,
             "timeframe": self.timeframe,
@@ -287,6 +360,7 @@ class UniverseValidationIssueType(str, Enum):
     INVALID_ASSET_TYPE = "INVALID_ASSET_TYPE"
     EMPTY_UNIVERSE = "EMPTY_UNIVERSE"
     UNKNOWN = "UNKNOWN"
+    MOCK = "MOCK"
 
 class UniverseValidationIssue(BaseModel):
     issue_type: UniverseValidationIssueType

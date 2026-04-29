@@ -59,6 +59,15 @@ def build_parser() -> argparse.ArgumentParser:
     quality_parser.add_argument("--json", action="store_true", help="Output in JSON format")
 
 
+
+    # normalize-data
+    normalize_parser = subparsers.add_parser("normalize-data", help="Normalize OHLCV data for a symbol")
+    normalize_parser.add_argument("symbol", type=str, help="Symbol to normalize")
+    normalize_parser.add_argument("--source", type=str, choices=["local", "mock"], default="local", help="Source to read data from")
+    normalize_parser.add_argument("--timeframe", type=str, default="1d", help="Timeframe (e.g. 1d, 1h)")
+    normalize_parser.add_argument("--save", action="store_true", help="Save normalized data to local store")
+    normalize_parser.add_argument("--strict", action="store_true", help="Fail strictly on normalization errors")
+    normalize_parser.add_argument("--json", action="store_true", help="Output in JSON format")
     # download-data
     download_parser = subparsers.add_parser("download-data", help="Download OHLCV data for symbols")
     download_parser.add_argument("symbols", type=str, nargs="*", help="List of symbols to download")

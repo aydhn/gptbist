@@ -93,3 +93,7 @@ class UniverseImportError(BistSignalBotError):
 class UniverseValidationError(BistSignalBotError):
     """Raised when a symbol universe is invalid."""
     pass
+
+class DataNormalizationError(BistSignalBotError):
+    """Raised when there is an error normalizing data schema or formats."""
+    pass
