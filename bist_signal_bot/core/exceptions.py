@@ -101,3 +101,15 @@ class DataNormalizationError(BistSignalBotError):
 class DataCleaningError(BistSignalBotError):
     """Exception raised for errors during data cleaning."""
     pass
+
+class CorporateActionError(BistSignalBotError):
+    """Raised when there is an error processing corporate actions."""
+    pass
+
+class CorporateActionStoreError(StorageError):
+    """Raised when there is an error interacting with the corporate action store."""
+    pass
+
+class PriceAdjustmentError(BistSignalBotError):
+    """Raised when an error occurs during price adjustment logic."""
+    pass

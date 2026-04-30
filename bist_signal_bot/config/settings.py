@@ -150,6 +150,18 @@ class Settings(BaseSettings):
     DOWNLOAD_REFRESH_DEFAULT: bool = Field(default=False)
     DOWNLOAD_SAVE_DEFAULT: bool = Field(default=True)
 
+    # CORPORATE ACTIONS & ADJUSTMENTS
+    CORPORATE_ACTIONS_DIR_NAME: str = Field(default="corporate_actions")
+    CORPORATE_ACTIONS_FILE_NAME: str = Field(default="corporate_actions.json")
+    AUTO_INITIALIZE_CORPORATE_ACTIONS: bool = Field(default=True)
+    ENABLE_PRICE_ADJUSTMENTS: bool = Field(default=False)
+    DEFAULT_ADJUSTMENT_POLICY: str = Field(default="FLAG_ONLY")
+    ADJUSTMENT_SAVE_ADJUSTED_DATA: bool = Field(default=False)
+    ADJUSTMENT_APPLY_TO_OHLC: bool = Field(default=True)
+    ADJUSTMENT_APPLY_TO_VOLUME: bool = Field(default=True)
+    ADJUSTMENT_FAIL_ON_ERROR: bool = Field(default=True)
+    ADJUSTMENT_REQUIRE_VERIFIED_ACTIONS: bool = Field(default=False)
+
     @model_validator(mode='after')
     def validate_settings(self) -> 'Settings':
         # Apply profile overrides
@@ -245,6 +257,19 @@ class Settings(BaseSettings):
         if self.DOWNLOAD_DEFAULT_TIMEFRAME not in {"1m", "5m", "15m", "30m", "1h", "4h", "1d", "1wk", "1mo"}:
              from bist_signal_bot.core.exceptions import ConfigurationError
              raise ConfigurationError(f"Unsupported timeframe: {self.DOWNLOAD_DEFAULT_TIMEFRAME}")
+
+
+        if self.DEFAULT_ADJUSTMENT_POLICY not in ["NONE", "USE_PROVIDER_ADJUSTED", "MANUAL_SPLIT_ADJUST", "MANUAL_DIVIDEND_ADJUST", "MANUAL_TOTAL_RETURN", "FLAG_ONLY"]:
+             from bist_signal_bot.core.exceptions import ConfigurationError
+             raise ConfigurationError(f"Invalid DEFAULT_ADJUSTMENT_POLICY: {self.DEFAULT_ADJUSTMENT_POLICY}")
+
+        if not self.CORPORATE_ACTIONS_DIR_NAME:
+            from bist_signal_bot.core.exceptions import ConfigurationError
+            raise ConfigurationError("CORPORATE_ACTIONS_DIR_NAME cannot be empty")
+
+        if not self.CORPORATE_ACTIONS_FILE_NAME:
+            from bist_signal_bot.core.exceptions import ConfigurationError
+            raise ConfigurationError("CORPORATE_ACTIONS_FILE_NAME cannot be empty")
 
         validation.enforce_production_safety(self)
 

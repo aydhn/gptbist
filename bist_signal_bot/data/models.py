@@ -48,7 +48,7 @@ class SymbolInfo(BaseModel):
             raise ValueError("Symbol cannot be empty.")
         return ensure_valid_internal_symbol(v)
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, date
 from typing import Any
 from enum import Enum
 
@@ -365,6 +365,11 @@ class SymbolDownloadResult(BaseModel):
     usable_for_backtest: bool | None = None
     usable_for_ml: bool | None = None
 
+    adjustment_status: str | None = None
+    adjustment_policy: str | None = None
+    actions_available: int | None = None
+    actions_applied: int | None = None
+
 
     @field_validator("symbol")
     def validate_symbol(cls, v):
@@ -434,6 +439,10 @@ class BatchDownloadResult(BaseModel):
         unusable_backtest = sum(1 for r in self.results if r.usable_for_backtest is False)
         unusable_ml = sum(1 for r in self.results if r.usable_for_ml is False)
 
+        adjusted_symbols = sum(1 for r in self.results if r.adjustment_status in ["SUCCESS", "FLAG_ONLY"])
+        actions_total = sum(r.actions_applied for r in self.results if r.actions_applied is not None)
+        adjustment_warnings = sum(1 for r in self.results if r.adjustment_status == "WARNING")
+
         return {
             "requested_count": self.requested_count,
             "success_count": self.success_count,
@@ -445,6 +454,10 @@ class BatchDownloadResult(BaseModel):
             "total_dropped_rows": total_dropped,
             "unusable_for_backtest_count": unusable_backtest,
             "unusable_for_ml_count": unusable_ml,
+
+            "adjusted_symbol_count": adjusted_symbols,
+            "actions_applied_total": actions_total,
+            "adjustment_warning_count": adjustment_warnings,
             "elapsed_seconds": self.elapsed_seconds,
             "provider": self.provider,
             "timeframe": self.timeframe,
@@ -536,3 +549,137 @@ class UniverseUpdateResult(BaseModel):
             res["validation_passed"] = self.validation_report.passed
             res["issue_count"] = len(self.validation_report.issues)
         return res
+
+
+class CorporateActionType(str, Enum):
+    SPLIT = "SPLIT"
+    REVERSE_SPLIT = "REVERSE_SPLIT"
+    CASH_DIVIDEND = "CASH_DIVIDEND"
+    BONUS_ISSUE = "BONUS_ISSUE"
+    RIGHTS_ISSUE = "RIGHTS_ISSUE"
+    CAPITAL_INCREASE = "CAPITAL_INCREASE"
+    CAPITAL_DECREASE = "CAPITAL_DECREASE"
+    MERGER = "MERGER"
+    SPIN_OFF = "SPIN_OFF"
+    SYMBOL_CHANGE = "SYMBOL_CHANGE"
+    UNKNOWN = "UNKNOWN"
+
+class AdjustmentPolicy(str, Enum):
+    NONE = "NONE"
+    USE_PROVIDER_ADJUSTED = "USE_PROVIDER_ADJUSTED"
+    MANUAL_SPLIT_ADJUST = "MANUAL_SPLIT_ADJUST"
+    MANUAL_DIVIDEND_ADJUST = "MANUAL_DIVIDEND_ADJUST"
+    MANUAL_TOTAL_RETURN = "MANUAL_TOTAL_RETURN"
+    FLAG_ONLY = "FLAG_ONLY"
+
+class AdjustmentStatus(str, Enum):
+    SUCCESS = "SUCCESS"
+    WARNING = "WARNING"
+    FAILED = "FAILED"
+    SKIPPED = "SKIPPED"
+
+class CorporateAction(BaseModel):
+    symbol: str
+    action_date: date
+    action_type: CorporateActionType
+    ratio: float | None = None
+    cash_amount: float | None = None
+    currency: str = "TRY"
+    description: str | None = None
+    source: str = "manual"
+    verified: bool = False
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+    @field_validator("symbol")
+    def validate_symbol(cls, v):
+        from bist_signal_bot.data.symbol_utils import ensure_valid_internal_symbol
+        return ensure_valid_internal_symbol(v)
+
+    @field_validator("ratio")
+    def validate_ratio(cls, v):
+        if v is not None and v <= 0:
+            raise ValueError("ratio must be positive")
+        return v
+
+    @field_validator("cash_amount")
+    def validate_cash_amount(cls, v):
+        if v is not None and v < 0:
+            raise ValueError("cash_amount cannot be negative")
+        return v
+
+class CorporateActionValidationIssue(BaseModel):
+    symbol: str | None = None
+    action_date: date | None = None
+    issue_type: str
+    message: str
+    severity: str
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+class CorporateActionValidationReport(BaseModel):
+    total_actions: int
+    valid_actions: int
+    invalid_actions: int
+    duplicate_actions: int
+    issues: list[CorporateActionValidationIssue] = Field(default_factory=list)
+    passed: bool
+    generated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+    def summary(self) -> dict[str, Any]:
+        return {
+            "total_actions": self.total_actions,
+            "valid_actions": self.valid_actions,
+            "invalid_actions": self.invalid_actions,
+            "duplicate_actions": self.duplicate_actions,
+            "issue_count": len(self.issues),
+            "passed": self.passed,
+            "generated_at": self.generated_at.isoformat()
+        }
+
+class AdjustmentIssue(BaseModel):
+    issue_type: str
+    message: str
+    affected_rows: int | None = None
+    action_date: date | None = None
+    action_type: CorporateActionType | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+class AdjustmentReport(BaseModel):
+    symbol: str
+    timeframe: str
+    source: str
+    policy: AdjustmentPolicy
+    status: AdjustmentStatus
+    input_rows: int
+    output_rows: int
+    actions_applied: int = 0
+    actions_available: int = 0
+    adjusted_columns: list[str] = Field(default_factory=list)
+    volume_adjusted: bool = False
+    issues: list[AdjustmentIssue] = Field(default_factory=list)
+    started_at: datetime
+    finished_at: datetime
+    elapsed_seconds: float
+
+    def issue_count(self) -> int:
+        return len(self.issues)
+
+    def summary(self) -> dict[str, Any]:
+        return {
+            "symbol": self.symbol,
+            "timeframe": self.timeframe,
+            "source": self.source,
+            "policy": self.policy.value,
+            "status": self.status.value,
+            "input_rows": self.input_rows,
+            "output_rows": self.output_rows,
+            "actions_applied": self.actions_applied,
+            "actions_available": self.actions_available,
+            "adjusted_columns": self.adjusted_columns,
+            "volume_adjusted": self.volume_adjusted,
+            "issue_count": self.issue_count(),
+            "elapsed_seconds": self.elapsed_seconds
+        }
+
+class AdjustedMarketData(BaseModel):
+    market_data: MarketDataFrame
+    report: AdjustmentReport

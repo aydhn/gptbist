@@ -20,6 +20,7 @@ from bist_signal_bot.storage.paths import (
     get_market_data_dir,
     get_market_data_index_path,
     get_ohlcv_file_path,
+    get_adjusted_market_data_dir,
 )
 
 logger = logging.getLogger("bist_signal_bot.local_store")
@@ -144,6 +145,90 @@ class LocalMarketDataStore:
             return mdf
         except Exception as e:
             raise MarketDataStoreError(f"Failed to read or parse local data for {symbol}: {e}")
+
+
+    def exists_adjusted(self, symbol: str, vendor: DataVendor | str, timeframe: Timeframe | str) -> bool:
+        v_str = vendor.value if isinstance(vendor, DataVendor) else vendor
+        tf_str = timeframe.value if isinstance(timeframe, Timeframe) else timeframe
+        internal_symbol = ensure_valid_internal_symbol(symbol)
+
+        adj_dir = get_adjusted_market_data_dir(self.settings) / v_str / tf_str
+        file_path = adj_dir / f"{internal_symbol}.{self.format}"
+        return file_path.exists()
+
+    def write_adjusted_ohlcv(self, market_data: MarketDataFrame) -> StoredMarketDataMetadata:
+        try:
+            market_data.validate_schema()
+        except Exception as e:
+            raise MarketDataStoreError(f"Cannot write invalid MarketDataFrame: {e}")
+
+        v_str = market_data.source.value
+        tf_str = market_data.timeframe.value
+
+        adj_dir = get_adjusted_market_data_dir(self.settings) / v_str / tf_str
+        file_path = adj_dir / f"{market_data.symbol}.{self.format}"
+
+        ensure_dir(file_path.parent)
+
+        df = market_data.data.copy()
+
+        if not isinstance(df.index, pd.DatetimeIndex):
+            if "timestamp" in df.columns:
+                df.set_index("timestamp", inplace=True)
+            else:
+                 raise MarketDataStoreError("DataFrame must have a DatetimeIndex or a 'timestamp' column.")
+
+        df.index.name = "timestamp"
+
+        try:
+            df.to_csv(file_path)
+        except Exception as e:
+            raise MarketDataStoreError(f"Failed to write CSV to {file_path}: {e}")
+
+        start, end = market_data.date_range()
+        metadata = StoredMarketDataMetadata(
+            symbol=market_data.symbol,
+            vendor=v_str,
+            timeframe=tf_str,
+            file_path=str(file_path),
+            row_count=market_data.row_count(),
+            start=start,
+            end=end,
+            adjusted=market_data.adjusted
+        )
+
+        market_data.metadata['saved_to_store'] = True
+        market_data.metadata['storage_path'] = str(file_path)
+        return metadata
+
+    def read_adjusted_ohlcv(self, symbol: str, vendor: DataVendor | str, timeframe: Timeframe | str) -> MarketDataFrame:
+        v_str = vendor.value if isinstance(vendor, DataVendor) else vendor
+        tf_str = timeframe.value if isinstance(timeframe, Timeframe) else timeframe
+        internal_symbol = ensure_valid_internal_symbol(symbol)
+
+        adj_dir = get_adjusted_market_data_dir(self.settings) / v_str / tf_str
+        file_path = adj_dir / f"{internal_symbol}.{self.format}"
+
+        if not file_path.exists():
+            raise MarketDataStoreError(f"No adjusted local data found for {symbol} ({v_str}, {tf_str})")
+
+        try:
+            df = pd.read_csv(file_path, parse_dates=["timestamp"], index_col="timestamp")
+            df.columns = [str(c).lower() for c in df.columns]
+
+            mdf = MarketDataFrame(
+                symbol=internal_symbol,
+                timeframe=Timeframe(tf_str),
+                source=DataVendor(v_str.upper()) if hasattr(DataVendor, v_str.upper()) else DataVendor.UNKNOWN,
+                data=df,
+                fetched_at=datetime.utcnow(),
+                adjusted=True,
+                metadata={'from_cache': True, 'storage_path': str(file_path)}
+            )
+            mdf.validate_schema()
+            return mdf
+        except Exception as e:
+            raise MarketDataStoreError(f"Failed to read or parse adjusted local data for {symbol}: {e}")
 
     def delete_ohlcv(self, symbol: str, vendor: DataVendor | str, timeframe: Timeframe | str) -> bool:
         v_str = vendor.value if isinstance(vendor, DataVendor) else vendor

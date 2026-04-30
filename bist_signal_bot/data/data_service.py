@@ -15,6 +15,9 @@ from bist_signal_bot.storage.local_store import LocalMarketDataStore
 
 from bist_signal_bot.data.cleaning import MarketDataCleaner
 
+from bist_signal_bot.data.adjustments import PriceAdjustmentEngine
+from bist_signal_bot.data.models import AdjustmentReport
+
 
 logger = logging.getLogger("bist_signal_bot.data_service")
 
@@ -34,9 +37,13 @@ class MarketDataService:
         quality_checker: DataQualityChecker | None = None,
         validate_quality: bool = True,
         fail_on_quality_error: bool = False,
+
         cleaner: MarketDataCleaner | None = None,
         clean_data: bool = True,
-        fail_on_cleaning_error: bool = False
+        fail_on_cleaning_error: bool = False,
+        adjustment_engine: PriceAdjustmentEngine | None = None,
+        apply_price_adjustments: bool = False,
+        fail_on_adjustment_error: bool = True
     ):
 
         self.provider = provider
@@ -48,10 +55,16 @@ class MarketDataService:
         self.fail_on_quality_error = fail_on_quality_error
         self.last_quality_reports: dict[str, DataQualityReport] = {}
 
+
         self.cleaner = cleaner or MarketDataCleaner()
         self.clean_data = clean_data
         self.fail_on_cleaning_error = fail_on_cleaning_error
         self.last_cleaning_reports = {}
+
+        self.adjustment_engine = adjustment_engine or PriceAdjustmentEngine()
+        self.apply_price_adjustments = apply_price_adjustments
+        self.fail_on_adjustment_error = fail_on_adjustment_error
+        self.last_adjustment_reports: dict[str, AdjustmentReport] = {}
 
     def _validate_symbol(self, symbol: str) -> None:
         try:
@@ -80,6 +93,24 @@ class MarketDataService:
 
     def get_last_cleaning_report(self, symbol: str) -> Any | None:
         return self.last_cleaning_reports.get(symbol)
+
+    def get_last_adjustment_report(self, symbol: str) -> AdjustmentReport | None:
+        return self.last_adjustment_reports.get(symbol)
+
+    def _apply_adjustment(self, mdf: MarketDataFrame, symbol: str) -> MarketDataFrame:
+        if not self.apply_price_adjustments or not self.adjustment_engine:
+            return mdf
+
+        try:
+            adj_result = self.adjustment_engine.adjust_market_data(mdf)
+            self.last_adjustment_reports[symbol] = adj_result.report
+            return adj_result.market_data
+        except Exception as e:
+            if self.fail_on_adjustment_error:
+                raise e
+            logger.warning(f"Price adjustment failed for {symbol}: {e}")
+            return mdf
+
 
     def _apply_cleaning(self, mdf: MarketDataFrame, symbol: str) -> MarketDataFrame:
         if not self.clean_data or not self.cleaner:
@@ -119,8 +150,10 @@ class MarketDataService:
             period=period
         )
 
+
         mdf.validate_schema()
         mdf = self._apply_cleaning(mdf, symbol)
+        mdf = self._apply_adjustment(mdf, symbol)
         mdf = self._apply_quality_check(mdf, symbol)
 
         if self.store and save:
@@ -160,8 +193,10 @@ class MarketDataService:
             provider_results = self.provider.fetch_ohlcv(req)
 
             for sym, mdf in provider_results.items():
+
                 mdf.validate_schema()
                 mdf = self._apply_cleaning(mdf, sym)
+                mdf = self._apply_adjustment(mdf, sym)
                 mdf = self._apply_quality_check(mdf, sym)
                 results[sym] = mdf
 
