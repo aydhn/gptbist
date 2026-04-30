@@ -142,6 +142,17 @@ def run_healthcheck() -> dict:
             "engine_instantiable": True,
             "mock_capable": True
         },
+        "indicators": {
+            "enabled": settings.ENABLE_INDICATORS,
+            "backend": settings.INDICATOR_BACKEND,
+            "default_registry_indicator_count": 15,
+            "default_set": settings.INDICATOR_DEFAULT_SET,
+            "continue_on_error": settings.INDICATOR_CONTINUE_ON_ERROR,
+            "min_rows_warning": settings.INDICATOR_MIN_ROWS_WARNING,
+            "engine_instantiable": True,
+            "mock_capable": True
+        },
+
         "cleaning": {
             "enabled": settings.ENABLE_DATA_CLEANING,
             "missing_value_policy": settings.CLEANING_MISSING_VALUE_POLICY,

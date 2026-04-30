@@ -943,3 +943,115 @@ def cmd_normalize_data(args, app_context) -> int:
     except Exception as e:
         print(format_error(str(e)))
         return 1
+
+def cmd_indicators(args: argparse.Namespace, ctx: ApplicationContext) -> int:
+    from bist_signal_bot.indicators.registry import IndicatorRegistry
+    from bist_signal_bot.indicators.engine import IndicatorEngine
+    from bist_signal_bot.indicators.models import IndicatorCategory
+    from bist_signal_bot.data.mock_provider import MockMarketDataProvider
+    from bist_signal_bot.data.models import Timeframe, DataVendor
+    from bist_signal_bot.core.audit import AuditEventType
+    from bist_signal_bot.cli.formatting import format_success, format_error, print_output
+    from bist_signal_bot.data.symbol_utils import ensure_valid_internal_symbol
+    from bist_signal_bot.storage.local_store import LocalMarketDataStore
+
+    if args.indicators_command == "list":
+        try:
+            registry = IndicatorRegistry.create_default_registry()
+            category = None
+            if args.category:
+                category = IndicatorCategory(args.category.upper())
+
+            specs = registry.list_specs(category)
+
+            if args.json:
+                out = [s.model_dump() for s in specs]
+                print_output(out, as_json=True)
+            else:
+                print(f"Registered Indicators (Count: {len(specs)})")
+                print("-" * 50)
+                for s in specs:
+                    print(f"Name: {s.name}")
+                    print(f"  Category: {s.category.value}")
+                    print(f"  Required: {s.required_columns}")
+                    print(f"  Params: {s.default_params}")
+                    print(f"  Outputs: {s.output_columns}")
+                    print("-" * 50)
+            return 0
+        except Exception as e:
+            print_output(format_error(str(e)), args.json)
+            return 1
+
+    elif args.indicators_command == "calc":
+        symbol = args.symbol.upper()
+        try:
+            symbol = ensure_valid_internal_symbol(symbol)
+        except Exception as e:
+            print_output(format_error(str(e)), args.json)
+            return 1
+
+        timeframe = Timeframe(args.timeframe)
+
+        engine = IndicatorEngine(settings=ctx.settings)
+
+        try:
+            if args.source == "local":
+                store = LocalMarketDataStore(ctx.settings)
+                mdf = store.read_ohlcv(symbol, ctx.settings.DEFAULT_DATA_PROVIDER, timeframe)
+            else:
+                provider = MockMarketDataProvider(rows=args.rows)
+                mdf = provider.fetch_one(symbol, timeframe)
+
+            if not mdf or mdf.is_empty():
+                print_output(format_error("Failed to load data or data is empty."), args.json)
+                return 1
+
+            if args.default_set or (not args.indicator and not args.default_set):
+                result = engine.calculate_default_set(mdf)
+            else:
+                requests = engine.parse_requests(args.indicator)
+                result = engine.calculate_many(mdf, requests)
+
+            if args.save_output:
+                print("Save output not yet fully supported (Phase 16 scope).")
+
+            if ctx.audit_logger:
+                ctx.audit_logger.log_indicator_calculation(
+                    symbol=symbol,
+                    timeframe=timeframe.value,
+                    indicators=[r.indicator for r in result.results],
+                    success_count=result.success_count,
+                    failed_count=result.failed_count,
+                    elapsed_seconds=result.elapsed_seconds,
+                    run_id=ctx.runtime_context.run_id
+                )
+
+            if args.json:
+                print_output(result.summary(), as_json=True)
+            else:
+                print(f"Indicator Calculation Result for {symbol}")
+                print(f"Requested: {result.requested_count}, Success: {result.success_count}, Failed: {result.failed_count}")
+                print(f"Elapsed: {result.elapsed_seconds:.4f}s")
+                print("\nAdded columns:")
+                for r in result.results:
+                    if r.status == "SUCCESS":
+                        print(f"  {r.indicator}: {r.output_columns}")
+                    else:
+                        print(f"  {r.indicator}: FAILED")
+                        for issue in r.issues:
+                            print(f"    - {issue.message}")
+
+                print("\nLast 5 rows of calculated indicators (sample):")
+                calc_cols = [c for r in result.results for c in r.output_columns]
+                if calc_cols:
+                    print(result.output_data[calc_cols].tail(5).to_string())
+
+            return 0 if result.failed_count == 0 else 1
+
+        except Exception as e:
+            print_output(format_error(f"Calculation failed: {str(e)}"), args.json)
+            return 1
+
+    else:
+        print_output(format_error("Missing indicators sub-command"), args.json)
+        return 1

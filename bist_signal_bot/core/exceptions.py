@@ -113,3 +113,19 @@ class CorporateActionStoreError(StorageError):
 class PriceAdjustmentError(BistSignalBotError):
     """Raised when an error occurs during price adjustment logic."""
     pass
+
+class IndicatorError(BistSignalBotError):
+    """Base exception for indicator errors."""
+    pass
+
+class IndicatorValidationError(IndicatorError):
+    """Raised when an indicator's inputs or parameters are invalid."""
+    pass
+
+class IndicatorCalculationError(IndicatorError):
+    """Raised when an error occurs during indicator calculation."""
+    pass
+
+class IndicatorRegistryError(IndicatorError):
+    """Raised when there is an error in the indicator registry."""
+    pass

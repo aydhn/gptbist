@@ -150,6 +150,14 @@ class Settings(BaseSettings):
     DOWNLOAD_REFRESH_DEFAULT: bool = Field(default=False)
     DOWNLOAD_SAVE_DEFAULT: bool = Field(default=True)
 
+    # INDICATORS
+    ENABLE_INDICATORS: bool = Field(default=True)
+    INDICATOR_BACKEND: str = Field(default="native")
+    INDICATOR_CONTINUE_ON_ERROR: bool = Field(default=True)
+    INDICATOR_DEFAULT_SET: str = Field(default="sma_20,sma_50,ema_20,rsi_14,atr_14,macd,bb_20,obv,return_1,volatility_20")
+    INDICATOR_MIN_ROWS_WARNING: int = Field(default=50)
+    INDICATOR_SAVE_OUTPUT: bool = Field(default=False)
+
     # CORPORATE ACTIONS & ADJUSTMENTS
     CORPORATE_ACTIONS_DIR_NAME: str = Field(default="corporate_actions")
     CORPORATE_ACTIONS_FILE_NAME: str = Field(default="corporate_actions.json")
@@ -258,6 +266,11 @@ class Settings(BaseSettings):
              from bist_signal_bot.core.exceptions import ConfigurationError
              raise ConfigurationError(f"Unsupported timeframe: {self.DOWNLOAD_DEFAULT_TIMEFRAME}")
 
+
+        if self.INDICATOR_BACKEND not in ["native", "ta", "talib", "custom"]:
+             from bist_signal_bot.core.exceptions import ConfigurationError
+             raise ConfigurationError(f"Invalid INDICATOR_BACKEND: {self.INDICATOR_BACKEND}")
+        validation.validate_positive_int(self.INDICATOR_MIN_ROWS_WARNING, "INDICATOR_MIN_ROWS_WARNING")
 
         if self.DEFAULT_ADJUSTMENT_POLICY not in ["NONE", "USE_PROVIDER_ADJUSTED", "MANUAL_SPLIT_ADJUST", "MANUAL_DIVIDEND_ADJUST", "MANUAL_TOTAL_RETURN", "FLAG_ONLY"]:
              from bist_signal_bot.core.exceptions import ConfigurationError
