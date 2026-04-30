@@ -161,3 +161,22 @@ This bot runs purely from the terminal and doesn't rely on web dashboards, strea
 - **Entegrasyon**: `MarketDataService` içerisine dahil edildi ve her `get_ohlcv` çağrısında veriler temizlenerek quality checker'a öyle iletilir. Bu sayede veriler temizlendikten sonra kalitesi test edilir.
 - **Raporlama**: Temizleme süreci sonrası ne kadar satır/değer silindiği veya doldurulduğu `CleanedMarketData` objesi içinde raporlanır ve Metadata içerisine yazılır.
 - **Sıradaki Faz**: Phase 15'te "Bedelsiz bölünme, Temettü vb. Kurumsal Aksiyon (Corporate Actions) düzeltmeleri" yapılacaktır. Bu faza kadar Extreme Return/Volume davranışları bu nedenle silinmez bırakılmıştır.
+
+
+## Phase 17: Trend Indicators, Feature Set & Trend Regime Preparation
+
+**Amacı:** BIST Signal Bot'un trend yönünü, gücünü ve kırılımlarını ölçmesi için kapsamlı trend indikatörlerinin geliştirilmesi.
+- **Trend Feature ve Sinyal Arasındaki Fark:** Bu fazdaki hesaplamalar al/sat sinyali üretmez, stratejilerde (ML veya rule-based) kullanılabilecek matematiksel/durumsal öznitelik skorları üretir.
+- **Eklenen Trend İndikatörleri:**
+  - Moving Average Distance, Crossover State, Crossover Event, Slope
+  - Price Above MA, Consecutive Above/Below MA Count
+  - Donchian Channel, Keltner Channel
+  - ADX / DMI, Aroon
+  - Ichimoku Components, Supertrend, Linear Regression Slope
+  - Trend Strength Composite (Skor hesaplama)
+- **Look-Ahead Bias Önlemi:**
+  - Donchian breakout gibi modellerde `.shift(1)` kullanılarak look-ahead önlenmiştir.
+  - Ichimoku için ileriye dönük (forward-shifted) veri grafikte anlamlı olsa da, veri seti (ML/backtest) için look-ahead bias yaratacağından ham (raw) component olarak kullanılmıştır.
+- **Çalıştırma ve Backtest:**
+  - `python -m bist_signal_bot trend-features ASELS --source mock --level basic` komutlarıyla backtest/ML modeli için detaylı data kolonları (features) oluşturulur.
+- HTML scraping yapılmamış, ücretli API kullanılmamıştır.
