@@ -97,6 +97,30 @@ def build_parser() -> argparse.ArgumentParser:
     ca_parser = subparsers.add_parser("corporate-actions", help="Manage corporate actions")
     ca_subparsers = ca_parser.add_subparsers(dest="ca_command", help="Corporate actions commands")
 
+    # indicators
+
+
+    # indicators
+    indicators_parser = subparsers.add_parser("indicators", help="Manage indicators")
+    indicators_subparsers = indicators_parser.add_subparsers(dest="indicators_command", help="Indicators commands")
+
+    # indicators list
+    ind_list_parser = indicators_subparsers.add_parser("list", help="List registered indicators")
+    ind_list_parser.add_argument("--category", type=str, help="Filter by category")
+    ind_list_parser.add_argument("--json", action="store_true", help="Output in JSON format")
+
+    # indicators calc
+    ind_calc_parser = indicators_subparsers.add_parser("calc", help="Calculate indicators")
+    ind_calc_parser.add_argument("symbol", type=str, help="Symbol to calculate for")
+    ind_calc_parser.add_argument("--source", type=str, choices=["local", "mock"], default="mock", help="Data source")
+    ind_calc_parser.add_argument("--timeframe", type=str, default="1d", help="Timeframe")
+    ind_calc_parser.add_argument("--indicator", action="append", help="Indicator format: name:param=value")
+    ind_calc_parser.add_argument("--default-set", action="store_true", help="Calculate default indicator set")
+    ind_calc_parser.add_argument("--rows", type=int, default=500, help="Number of rows for mock data")
+    ind_calc_parser.add_argument("--save-output", action="store_true", help="Save output to reports folder")
+    ind_calc_parser.add_argument("--json", action="store_true", help="Output in JSON format")
+
+
     # ca init
     ca_init_parser = ca_subparsers.add_parser("init", help="Initialize corporate actions store")
     ca_init_parser.add_argument("--overwrite", action="store_true", help="Overwrite existing store")
