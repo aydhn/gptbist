@@ -4,6 +4,13 @@ from bist_signal_bot.data.models import MissingValuePolicy, InvalidOhlcPolicy, O
 from bist_signal_bot.data.symbol_utils import ensure_valid_internal_symbol
 from bist_signal_bot.data.models import Timeframe
 from bist_signal_bot.storage.local_store import LocalMarketDataStore
+
+from datetime import date
+
+from bist_signal_bot.core.audit import AuditEventType
+from bist_signal_bot.data.corporate_actions import CorporateActionStore
+from bist_signal_bot.data.adjustments import PriceAdjustmentEngine
+from bist_signal_bot.data.models import CorporateAction, CorporateActionType, AdjustmentPolicy
 from bist_signal_bot.data.mock_provider import MockMarketDataProvider
 import argparse
 import sys
@@ -523,6 +530,251 @@ def cmd_universe(args, app_context) -> int:
             return 0 if res.success else 1
     else:
         print(format_error("Missing universe sub-command"))
+        return 1
+
+
+
+def cmd_adjust_data(args: argparse.Namespace, ctx: ApplicationContext) -> int:
+    from bist_signal_bot.data.models import Timeframe
+    from bist_signal_bot.data.mock_provider import MockMarketDataProvider
+    from bist_signal_bot.cli.formatting import format_success, format_error, print_output
+    from bist_signal_bot.data.symbol_utils import ensure_valid_internal_symbol
+
+    try:
+        symbol = ensure_valid_internal_symbol(args.symbol.upper())
+    except Exception as e:
+        print_output(format_error(str(e)), args.json)
+        return 1
+
+    timeframe = Timeframe(args.timeframe)
+    source = args.source
+
+    try:
+        if args.policy:
+            policy = AdjustmentPolicy(args.policy)
+        else:
+            policy = AdjustmentPolicy(ctx.settings.DEFAULT_ADJUSTMENT_POLICY)
+    except Exception as e:
+        print_output(format_error(f"Invalid adjustment policy: {args.policy}"), args.json)
+        return 1
+
+    store = CorporateActionStore(ctx.settings)
+    engine = PriceAdjustmentEngine(
+        settings=ctx.settings,
+        action_store=store,
+        policy=policy,
+        require_verified_actions=args.require_verified,
+        strict=False  # Keep false in CLI to see reports instead of just crashing
+    )
+
+    try:
+        mdf = None
+        if source == "local":
+            local_store = LocalMarketDataStore(ctx.settings)
+            mdf = local_store.read_ohlcv(symbol, ctx.settings.DEFAULT_DATA_PROVIDER, timeframe)
+        elif source == "mock":
+            provider = MockMarketDataProvider(rows=252)
+            mdf = provider.fetch_one(symbol, timeframe)
+
+        if not mdf:
+             print_output(format_error("Failed to load data."), args.json)
+             return 1
+
+        adj_result = engine.adjust_market_data(mdf)
+        report = adj_result.report
+
+        saved_adjusted = False
+        if args.save_adjusted and source == "local":
+             local_store = LocalMarketDataStore(ctx.settings)
+             local_store.write_adjusted_ohlcv(adj_result.market_data)
+             saved_adjusted = True
+
+        out = report.summary()
+        out["saved_adjusted"] = saved_adjusted
+
+        # Log audit
+        ctx.audit_logger.log_universe_update(
+            event_type=AuditEventType.DATA_ADJUSTMENT,
+            message=f"Adjusted data for {symbol}",
+            action="ADJUST_DATA",
+            symbols_affected=[symbol],
+            issue_count=report.issue_count()
+        )
+
+        print_output(out, args.json)
+        return 0 if report.status.value != "FAILED" else 1
+
+    except Exception as e:
+        print_output(format_error(f"Adjustment failed: {str(e)}"), args.json)
+        return 1
+
+def cmd_corporate_actions(args: argparse.Namespace, ctx: ApplicationContext) -> int:
+    from bist_signal_bot.cli.formatting import format_success, format_error, print_output
+    from bist_signal_bot.data.symbol_utils import ensure_valid_internal_symbol
+    store = CorporateActionStore(ctx.settings)
+
+    if args.ca_command == "init":
+        try:
+            path = store.initialize_empty(overwrite=args.overwrite)
+            ctx.audit_logger.log_universe_update(
+                event_type=AuditEventType.CORPORATE_ACTIONS_INIT,
+                message="Initialized corporate actions store",
+                action="INIT",
+                symbols_affected=[],
+                file_path=str(path)
+            )
+            msg = f"Initialized corporate actions store at {path}"
+            print_output({"message": msg, "path": str(path)} if args.json else format_success(msg), args.json)
+            return 0
+        except Exception as e:
+            print_output(format_error(str(e)), args.json)
+            return 1
+
+    elif args.ca_command == "list":
+        try:
+            actions = store.load_actions()
+            if args.symbol:
+                symbol = ensure_valid_internal_symbol(args.symbol.upper())
+                actions = [a for a in actions if a.symbol == symbol]
+
+            out = [a.model_dump(mode="json") for a in actions]
+            if args.json:
+                print_output(out, as_json=True)
+            else:
+                if not actions:
+                    print("No corporate actions found.")
+                for a in actions:
+                    print(f"{a.symbol} | {a.action_date} | {a.action_type.value} | Ratio: {a.ratio} | Cash: {a.cash_amount}")
+            return 0
+        except Exception as e:
+            print_output(format_error(str(e)), args.json)
+            return 1
+
+    elif args.ca_command == "add":
+        try:
+            symbol = ensure_valid_internal_symbol(args.symbol.upper())
+            action_type = CorporateActionType(args.type)
+            action_date = date.fromisoformat(args.date)
+
+            action = CorporateAction(
+                symbol=symbol,
+                action_date=action_date,
+                action_type=action_type,
+                ratio=args.ratio,
+                cash_amount=args.cash,
+                description=args.description
+            )
+
+            store.add_action(action)
+            ctx.audit_logger.log_universe_update(
+                event_type=AuditEventType.CORPORATE_ACTIONS_ADD,
+                message=f"Added action for {symbol}",
+                action="ADD",
+                symbols_affected=[symbol]
+            )
+            msg = f"Successfully added {action_type.value} action for {symbol} on {action_date}"
+            print_output({"message": msg, "action": action.model_dump(mode="json")} if args.json else format_success(msg), args.json)
+            return 0
+        except Exception as e:
+            print_output(format_error(str(e)), args.json)
+            return 1
+
+    elif args.ca_command == "remove":
+        try:
+            symbol = ensure_valid_internal_symbol(args.symbol.upper())
+            action_type = CorporateActionType(args.type)
+            action_date = date.fromisoformat(args.date)
+
+            removed = store.remove_action(symbol, action_date, action_type)
+
+            if removed:
+                ctx.audit_logger.log_universe_update(
+                    event_type=AuditEventType.CORPORATE_ACTIONS_REMOVE,
+                    message=f"Removed action for {symbol}",
+                    action="REMOVE",
+                    symbols_affected=[symbol]
+                )
+                msg = f"Successfully removed {action_type.value} action for {symbol} on {action_date}"
+                print_output({"message": msg, "removed": True} if args.json else format_success(msg), args.json)
+                return 0
+            else:
+                msg = f"Action not found for {symbol} on {action_date}"
+                print_output({"message": msg, "removed": False} if args.json else format_error(msg), args.json)
+                return 1
+        except Exception as e:
+            print_output(format_error(str(e)), args.json)
+            return 1
+
+    elif args.ca_command == "import":
+        try:
+            path = Path(args.path)
+            report = store.import_actions(path)
+
+            ctx.audit_logger.log_universe_update(
+                event_type=AuditEventType.CORPORATE_ACTIONS_IMPORT,
+                message=f"Imported corporate actions from {path.name}",
+                action="IMPORT",
+                symbols_affected=[],
+                file_path=str(path),
+                validation_passed=report.passed,
+                issue_count=len(report.issues)
+            )
+
+            if args.json:
+                print_output(report.summary(), as_json=True)
+            else:
+                from bist_signal_bot.cli.formatting import format_corporate_action_validation
+                print(format_corporate_action_validation(report))
+            return 0 if report.passed else 1
+        except Exception as e:
+            print_output(format_error(str(e)), args.json)
+            return 1
+
+    elif args.ca_command == "export":
+        try:
+            out_path = Path(args.output) if args.output else None
+            path = store.export_actions(out_path, format=args.format)
+
+            ctx.audit_logger.log_universe_update(
+                event_type=AuditEventType.CORPORATE_ACTIONS_EXPORT,
+                message=f"Exported corporate actions to {path.name}",
+                action="EXPORT",
+                symbols_affected=[],
+                file_path=str(path)
+            )
+
+            msg = f"Exported corporate actions to {path}"
+            print_output({"message": msg, "path": str(path)} if args.json else format_success(msg), args.json)
+            return 0
+        except Exception as e:
+            print_output(format_error(str(e)), args.json)
+            return 1
+
+    elif args.ca_command == "validate":
+        try:
+            actions = store.load_actions()
+            report = store.validate_actions(actions)
+
+            ctx.audit_logger.log_universe_update(
+                event_type=AuditEventType.CORPORATE_ACTIONS_VALIDATE,
+                message="Validated corporate actions store",
+                action="VALIDATE",
+                symbols_affected=[],
+                validation_passed=report.passed,
+                issue_count=len(report.issues)
+            )
+
+            if args.json:
+                print_output(report.summary(), as_json=True)
+            else:
+                from bist_signal_bot.cli.formatting import format_corporate_action_validation
+                print(format_corporate_action_validation(report))
+            return 0 if report.passed else 1
+        except Exception as e:
+            print_output(format_error(str(e)), args.json)
+            return 1
+    else:
+        print(format_error("Missing corporate-actions sub-command"))
         return 1
 
 

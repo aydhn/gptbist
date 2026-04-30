@@ -186,3 +186,44 @@ class NotificationFormatter:
             f"ML kullanılabilir: {'true' if report.usable_for_ml else 'false'}"
         ]
         return "\n".join(lines)
+
+
+    def format_adjustment_report(self, report: Any) -> str:
+        lines = [
+            "<b>BIST Bot Veri Düzeltme (Adjustment) Özeti</b>",
+            "",
+            f"Sembol: {self._escape(report.symbol)}",
+            f"Timeframe: {self._escape(report.timeframe)}",
+            f"Durum: {report.status.value}",
+            f"Politika: {report.policy.value}",
+            f"Girdi satır: {report.input_rows}",
+            f"Çıktı satır: {report.output_rows}",
+            f"Kullanılabilir aksiyon: {report.actions_available}",
+            f"Uygulanan aksiyon: {report.actions_applied}",
+            f"Sorun (Issue) sayısı: {report.issue_count()}"
+        ]
+        if report.volume_adjusted:
+            lines.append("Hacim düzeltmesi: Uygulandı")
+
+        return "\n".join(lines)
+
+    def format_corporate_action_validation(self, report: Any) -> str:
+        lines = [
+            "<b>BIST Bot Kurumsal Aksiyon Doğrulama Raporu</b>",
+            "",
+            f"Toplam aksiyon: {report.total_actions}",
+            f"Geçerli: {report.valid_actions}",
+            f"Geçersiz: {report.invalid_actions}",
+            f"Kopya (Duplicate): {report.duplicate_actions}",
+            f"Durum: {'BAŞARILI' if report.passed else 'BAŞARISIZ'}"
+        ]
+
+        if report.issues:
+            lines.append("")
+            lines.append("Detaylar:")
+            for issue in report.issues[:5]:  # limit to first 5
+                lines.append(f"- [{issue.severity}] {self._escape(issue.symbol or 'N/A')}: {self._escape(issue.message)}")
+            if len(report.issues) > 5:
+                lines.append(f"...ve {len(report.issues) - 5} sorun daha.")
+
+        return "\n".join(lines)

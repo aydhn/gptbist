@@ -60,3 +60,28 @@ def format_cleaning_report(report) -> str:
         f"Usable for ML: {report.usable_for_ml}"
     ]
     return "\n".join(lines)
+
+
+def format_corporate_action_validation(report) -> str:
+    lines = [
+        "Corporate Actions Validation Report",
+        f"Total: {report.total_actions} | Valid: {report.valid_actions} | Invalid: {report.invalid_actions} | Duplicates: {report.duplicate_actions}",
+        f"Passed: {'Yes' if report.passed else 'No'}"
+    ]
+    if report.issues:
+        lines.append("Issues:")
+        for i in report.issues:
+            lines.append(f"  - [{i.severity}] {i.issue_type} ({i.symbol}): {i.message}")
+    return "\n".join(lines)
+
+def format_adjustment_report(report) -> str:
+    lines = [
+        f"Adjustment Report for {report.symbol}",
+        f"Policy: {report.policy.value} | Status: {report.status.value}",
+        f"Input rows: {report.input_rows} | Output rows: {report.output_rows}",
+        f"Actions available: {report.actions_available} | Applied: {report.actions_applied}",
+        f"Adjusted columns: {', '.join(report.adjusted_columns) if report.adjusted_columns else 'None'}",
+        f"Volume adjusted: {'Yes' if report.volume_adjusted else 'No'}",
+        f"Issues: {report.issue_count()}"
+    ]
+    return "\n".join(lines)

@@ -81,3 +81,19 @@ def get_universe_snapshots_dir(settings: Settings | None = None) -> Path:
     s = settings or default_settings
     universe_dir = get_universe_dir(s)
     return ensure_dir(universe_dir / s.UNIVERSE_SNAPSHOTS_DIR_NAME)
+
+
+def get_corporate_actions_dir(settings: Settings | None = None) -> Path:
+    s = settings or default_settings
+    data_dir = get_data_dir(s)
+    return ensure_dir(data_dir / s.CORPORATE_ACTIONS_DIR_NAME)
+
+def get_corporate_actions_file_path(settings: Settings | None = None) -> Path:
+    s = settings or default_settings
+    ca_dir = get_corporate_actions_dir(s)
+    return ca_dir / s.CORPORATE_ACTIONS_FILE_NAME
+
+def get_adjusted_market_data_dir(settings: Settings | None = None) -> Path:
+    s = settings or default_settings
+    market_data_dir = get_market_data_dir(s)
+    return ensure_dir(market_data_dir / "ohlcv_adjusted")

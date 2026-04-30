@@ -11,6 +11,8 @@ from bist_signal_bot.core.context import get_runtime_context
 from bist_signal_bot.data.symbol_universe import DEFAULT_SEED_SYMBOLS, SymbolUniverse
 from bist_signal_bot.data.universe_updater import UniverseUpdater
 from bist_signal_bot.data.universe_store import UniverseStore
+
+from bist_signal_bot.data.corporate_actions import CorporateActionStore
 from bist_signal_bot.storage.paths import (
     CACHE_DIR,
     DATA_DIR,
@@ -18,6 +20,8 @@ from bist_signal_bot.storage.paths import (
     get_market_data_dir,
     get_market_data_index_path,
     get_metadata_dir,
+    get_corporate_actions_dir,
+    get_corporate_actions_file_path,
 )
 
 
@@ -123,6 +127,21 @@ def run_healthcheck() -> dict:
             "dry_run": settings.DRY_RUN,
         },
 
+
+        "corporate_actions": {
+            "dir_path": str(get_corporate_actions_dir(settings)),
+            "file_path": str(get_corporate_actions_file_path(settings)),
+            "file_exists": CorporateActionStore(settings).exists(),
+            "auto_initialize": settings.AUTO_INITIALIZE_CORPORATE_ACTIONS,
+            "enable_price_adjustments": settings.ENABLE_PRICE_ADJUSTMENTS,
+            "default_policy": settings.DEFAULT_ADJUSTMENT_POLICY,
+            "save_adjusted_data": settings.ADJUSTMENT_SAVE_ADJUSTED_DATA,
+            "apply_to_ohlc": settings.ADJUSTMENT_APPLY_TO_OHLC,
+            "apply_to_volume": settings.ADJUSTMENT_APPLY_TO_VOLUME,
+            "require_verified": settings.ADJUSTMENT_REQUIRE_VERIFIED_ACTIONS,
+            "engine_instantiable": True,
+            "mock_capable": True
+        },
         "cleaning": {
             "enabled": settings.ENABLE_DATA_CLEANING,
             "missing_value_policy": settings.CLEANING_MISSING_VALUE_POLICY,

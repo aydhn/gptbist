@@ -82,6 +82,63 @@ def build_parser() -> argparse.ArgumentParser:
     normalize_parser.add_argument("--save", action="store_true", help="Save normalized data to local store")
     normalize_parser.add_argument("--strict", action="store_true", help="Fail strictly on normalization errors")
     normalize_parser.add_argument("--json", action="store_true", help="Output in JSON format")
+
+    # adjust-data
+    adjust_parser = subparsers.add_parser("adjust-data", help="Apply price adjustments to OHLCV data for a symbol")
+    adjust_parser.add_argument("symbol", type=str, help="Symbol to adjust")
+    adjust_parser.add_argument("--source", type=str, choices=["local", "mock"], default="local", help="Source to read data from")
+    adjust_parser.add_argument("--timeframe", type=str, default="1d", help="Timeframe (e.g. 1d, 1h)")
+    adjust_parser.add_argument("--policy", type=str, help="Adjustment policy (e.g. FLAG_ONLY, MANUAL_SPLIT_ADJUST, USE_PROVIDER_ADJUSTED)")
+    adjust_parser.add_argument("--save-adjusted", action="store_true", help="Save adjusted data to local store")
+    adjust_parser.add_argument("--require-verified", action="store_true", help="Only apply verified corporate actions")
+    adjust_parser.add_argument("--json", action="store_true", help="Output in JSON format")
+
+    # corporate-actions
+    ca_parser = subparsers.add_parser("corporate-actions", help="Manage corporate actions")
+    ca_subparsers = ca_parser.add_subparsers(dest="ca_command", help="Corporate actions commands")
+
+    # ca init
+    ca_init_parser = ca_subparsers.add_parser("init", help="Initialize corporate actions store")
+    ca_init_parser.add_argument("--overwrite", action="store_true", help="Overwrite existing store")
+    ca_init_parser.add_argument("--json", action="store_true", help="Output in JSON format")
+
+    # ca list
+    ca_list_parser = ca_subparsers.add_parser("list", help="List corporate actions")
+    ca_list_parser.add_argument("--symbol", type=str, help="Filter by symbol")
+    ca_list_parser.add_argument("--json", action="store_true", help="Output in JSON format")
+
+    # ca add
+    ca_add_parser = ca_subparsers.add_parser("add", help="Add a corporate action")
+    ca_add_parser.add_argument("symbol", type=str, help="Symbol")
+    ca_add_parser.add_argument("--date", type=str, required=True, help="Action date (YYYY-MM-DD)")
+    ca_add_parser.add_argument("--type", type=str, required=True, help="Action type (e.g. SPLIT, CASH_DIVIDEND)")
+    ca_add_parser.add_argument("--ratio", type=float, help="Ratio (for splits)")
+    ca_add_parser.add_argument("--cash", type=float, help="Cash amount (for dividends)")
+    ca_add_parser.add_argument("--description", type=str, help="Description")
+    ca_add_parser.add_argument("--json", action="store_true", help="Output in JSON format")
+
+    # ca remove
+    ca_remove_parser = ca_subparsers.add_parser("remove", help="Remove a corporate action")
+    ca_remove_parser.add_argument("symbol", type=str, help="Symbol")
+    ca_remove_parser.add_argument("--date", type=str, required=True, help="Action date (YYYY-MM-DD)")
+    ca_remove_parser.add_argument("--type", type=str, required=True, help="Action type")
+    ca_remove_parser.add_argument("--json", action="store_true", help="Output in JSON format")
+
+    # ca import
+    ca_import_parser = ca_subparsers.add_parser("import", help="Import corporate actions from CSV or JSON")
+    ca_import_parser.add_argument("path", type=str, help="Path to import file")
+    ca_import_parser.add_argument("--json", action="store_true", help="Output in JSON format")
+
+    # ca export
+    ca_export_parser = ca_subparsers.add_parser("export", help="Export corporate actions to CSV or JSON")
+    ca_export_parser.add_argument("--format", type=str, choices=["json", "csv"], default="json", help="Export format")
+    ca_export_parser.add_argument("--output", type=str, help="Output file path")
+    ca_export_parser.add_argument("--json", action="store_true", help="Output in JSON format")
+
+    # ca validate
+    ca_validate_parser = ca_subparsers.add_parser("validate", help="Validate corporate actions store")
+    ca_validate_parser.add_argument("--json", action="store_true", help="Output in JSON format")
+
     # download-data
     download_parser = subparsers.add_parser("download-data", help="Download OHLCV data for symbols")
     download_parser.add_argument("symbols", type=str, nargs="*", help="List of symbols to download")

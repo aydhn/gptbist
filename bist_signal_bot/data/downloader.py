@@ -106,7 +106,17 @@ class MarketDataDownloader:
             cleaning_issue_count = mdf.metadata.get("cleaning_issue_count")
             dropped_rows = mdf.metadata.get("dropped_rows")
             usable_for_backtest = mdf.metadata.get("usable_for_backtest")
+
+            cleaning_status = mdf.metadata.get("cleaning_status")
+            cleaning_issue_count = mdf.metadata.get("cleaning_issue_count")
+            dropped_rows = mdf.metadata.get("dropped_rows")
+            usable_for_backtest = mdf.metadata.get("usable_for_backtest")
             usable_for_ml = mdf.metadata.get("usable_for_ml")
+
+            adjustment_status = mdf.metadata.get("adjustment_status")
+            adjustment_policy = mdf.metadata.get("adjustment_policy")
+            actions_available = mdf.metadata.get("actions_available")
+            actions_applied = mdf.metadata.get("actions_applied")
 
             return SymbolDownloadResult(
                 symbol=symbol,
@@ -126,8 +136,13 @@ class MarketDataDownloader:
                 cleaning_status=cleaning_status,
                 cleaning_issue_count=cleaning_issue_count,
                 dropped_rows=dropped_rows,
+
                 usable_for_backtest=usable_for_backtest,
-                usable_for_ml=usable_for_ml
+                usable_for_ml=usable_for_ml,
+                adjustment_status=adjustment_status,
+                adjustment_policy=adjustment_policy,
+                actions_available=actions_available,
+                actions_applied=actions_applied
             )
 
         except Exception as e:
