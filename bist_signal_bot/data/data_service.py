@@ -13,6 +13,9 @@ from bist_signal_bot.data.symbol_universe import SymbolUniverse
 from bist_signal_bot.data.symbol_utils import ensure_valid_internal_symbol
 from bist_signal_bot.storage.local_store import LocalMarketDataStore
 
+from bist_signal_bot.data.cleaning import MarketDataCleaner
+
+
 logger = logging.getLogger("bist_signal_bot.data_service")
 
 class MarketDataService:
@@ -20,6 +23,7 @@ class MarketDataService:
     Service layer to handle data fetching from a provider.
     Integrates with SymbolUniverse, local storage, and validates incoming requests.
     """
+
 
     def __init__(
         self,
@@ -29,8 +33,12 @@ class MarketDataService:
         prefer_local: bool = True,
         quality_checker: DataQualityChecker | None = None,
         validate_quality: bool = True,
-        fail_on_quality_error: bool = False
+        fail_on_quality_error: bool = False,
+        cleaner: MarketDataCleaner | None = None,
+        clean_data: bool = True,
+        fail_on_cleaning_error: bool = False
     ):
+
         self.provider = provider
         self.universe = universe
         self.store = store
@@ -39,6 +47,11 @@ class MarketDataService:
         self.validate_quality = validate_quality
         self.fail_on_quality_error = fail_on_quality_error
         self.last_quality_reports: dict[str, DataQualityReport] = {}
+
+        self.cleaner = cleaner or MarketDataCleaner()
+        self.clean_data = clean_data
+        self.fail_on_cleaning_error = fail_on_cleaning_error
+        self.last_cleaning_reports = {}
 
     def _validate_symbol(self, symbol: str) -> None:
         try:
@@ -63,6 +76,24 @@ class MarketDataService:
             raise DataQualityError(f"Data quality checks failed for {symbol}. Critical: {report.has_critical()}, Errors: {report.error_count()}")
 
         return mdf
+
+
+    def get_last_cleaning_report(self, symbol: str) -> Any | None:
+        return self.last_cleaning_reports.get(symbol)
+
+    def _apply_cleaning(self, mdf: MarketDataFrame, symbol: str) -> MarketDataFrame:
+        if not self.clean_data or not self.cleaner:
+            return mdf
+
+        try:
+            cleaned_result = self.cleaner.clean_market_data(mdf)
+            self.last_cleaning_reports[symbol] = cleaned_result.report
+            return cleaned_result.market_data
+        except Exception as e:
+            if self.fail_on_cleaning_error:
+                raise e
+            logger.warning(f"Data cleaning failed for {symbol}: {e}")
+            return mdf
 
     def get_last_quality_report(self, symbol: str) -> DataQualityReport | None:
         return self.last_quality_reports.get(symbol)
@@ -89,7 +120,7 @@ class MarketDataService:
         )
 
         mdf.validate_schema()
-
+        mdf = self._apply_cleaning(mdf, symbol)
         mdf = self._apply_quality_check(mdf, symbol)
 
         if self.store and save:
@@ -130,6 +161,7 @@ class MarketDataService:
 
             for sym, mdf in provider_results.items():
                 mdf.validate_schema()
+                mdf = self._apply_cleaning(mdf, sym)
                 mdf = self._apply_quality_check(mdf, sym)
                 results[sym] = mdf
 

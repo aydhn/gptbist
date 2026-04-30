@@ -122,6 +122,21 @@ def run_healthcheck() -> dict:
             "gpu_enabled": settings.ENABLE_GPU,
             "dry_run": settings.DRY_RUN,
         },
+
+        "cleaning": {
+            "enabled": settings.ENABLE_DATA_CLEANING,
+            "missing_value_policy": settings.CLEANING_MISSING_VALUE_POLICY,
+            "invalid_ohlc_policy": settings.CLEANING_INVALID_OHLC_POLICY,
+            "outlier_policy": settings.CLEANING_OUTLIER_POLICY,
+            "duplicate_timestamp_policy": settings.CLEANING_DUPLICATE_TIMESTAMP_POLICY,
+            "max_daily_return_abs": settings.CLEANING_MAX_DAILY_RETURN_ABS,
+            "max_volume_zscore": settings.CLEANING_MAX_VOLUME_ZSCORE,
+            "min_rows_after_cleaning": settings.CLEANING_MIN_ROWS_AFTER_CLEANING,
+            "strict": settings.CLEANING_STRICT,
+            "fail_on_error": settings.CLEANING_FAIL_ON_ERROR,
+            "cleaner_instantiable": True,
+            "mock_cleaning_capable": True
+        },
         "data_quality": {
             "enabled": settings.ENABLE_DATA_QUALITY_CHECK,
             "min_rows": settings.DATA_QUALITY_MIN_ROWS,

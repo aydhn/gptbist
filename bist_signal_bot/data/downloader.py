@@ -102,6 +102,11 @@ class MarketDataDownloader:
                 except Exception:
                     pass
 
+            cleaning_status = mdf.metadata.get("cleaning_status")
+            cleaning_issue_count = mdf.metadata.get("cleaning_issue_count")
+            dropped_rows = mdf.metadata.get("dropped_rows")
+            usable_for_backtest = mdf.metadata.get("usable_for_backtest")
+            usable_for_ml = mdf.metadata.get("usable_for_ml")
 
             return SymbolDownloadResult(
                 symbol=symbol,
@@ -117,7 +122,12 @@ class MarketDataDownloader:
                 quality_passed=quality_passed,
                 error=None,
                 file_path=file_path,
-                elapsed_seconds=elapsed
+                elapsed_seconds=elapsed,
+                cleaning_status=cleaning_status,
+                cleaning_issue_count=cleaning_issue_count,
+                dropped_rows=dropped_rows,
+                usable_for_backtest=usable_for_backtest,
+                usable_for_ml=usable_for_ml
             )
 
         except Exception as e:

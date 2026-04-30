@@ -63,6 +63,19 @@ class Settings(BaseSettings):
     METADATA_DIR_NAME: str = Field(default="metadata")
     MARKET_DATA_INDEX_FILE: str = Field(default="market_data_index.json")
 
+
+    # DATA CLEANING
+    ENABLE_DATA_CLEANING: bool = Field(default=True)
+    CLEANING_MISSING_VALUE_POLICY: str = Field(default="FORWARD_FILL")
+    CLEANING_INVALID_OHLC_POLICY: str = Field(default="DROP_ROW")
+    CLEANING_OUTLIER_POLICY: str = Field(default="FLAG_ONLY")
+    CLEANING_DUPLICATE_TIMESTAMP_POLICY: str = Field(default="KEEP_LAST")
+    CLEANING_MAX_DAILY_RETURN_ABS: float = Field(default=0.35)
+    CLEANING_MAX_VOLUME_ZSCORE: float = Field(default=8.0)
+    CLEANING_MIN_ROWS_AFTER_CLEANING: int = Field(default=100)
+    CLEANING_STRICT: bool = Field(default=False)
+    CLEANING_FAIL_ON_ERROR: bool = Field(default=True)
+
     # DATA QUALITY
     ENABLE_DATA_QUALITY_CHECK: bool = Field(default=True)
     DATA_QUALITY_MIN_ROWS: int = Field(default=100)
@@ -169,9 +182,32 @@ class Settings(BaseSettings):
         validation.validate_non_negative_float(self.TELEGRAM_RATE_LIMIT_SECONDS, "TELEGRAM_RATE_LIMIT_SECONDS")
         validation.validate_non_negative_float(self.TELEGRAM_ERROR_COOLDOWN_SECONDS, "TELEGRAM_ERROR_COOLDOWN_SECONDS")
 
+
         validation.validate_positive_int(self.DATA_QUALITY_MIN_ROWS, "DATA_QUALITY_MIN_ROWS")
         validation.validate_percentage(self.DATA_QUALITY_MAX_DAILY_RETURN_ABS, "DATA_QUALITY_MAX_DAILY_RETURN_ABS")
         validation.validate_positive_int(self.DATA_QUALITY_MAX_ALLOWED_GAP_DAYS, "DATA_QUALITY_MAX_ALLOWED_GAP_DAYS")
+
+        # Cleaning validation
+        if self.CLEANING_MISSING_VALUE_POLICY not in ["DROP_ROW", "FORWARD_FILL", "BACKWARD_FILL", "INTERPOLATE", "LEAVE_UNCHANGED", "FAIL"]:
+             from bist_signal_bot.core.exceptions import ConfigurationError
+             raise ConfigurationError(f"Invalid CLEANING_MISSING_VALUE_POLICY: {self.CLEANING_MISSING_VALUE_POLICY}")
+
+        if self.CLEANING_INVALID_OHLC_POLICY not in ["DROP_ROW", "LEAVE_UNCHANGED", "FAIL"]:
+             from bist_signal_bot.core.exceptions import ConfigurationError
+             raise ConfigurationError(f"Invalid CLEANING_INVALID_OHLC_POLICY: {self.CLEANING_INVALID_OHLC_POLICY}")
+
+        if self.CLEANING_OUTLIER_POLICY not in ["FLAG_ONLY", "DROP_ROW", "WINSORIZE", "LEAVE_UNCHANGED", "FAIL"]:
+             from bist_signal_bot.core.exceptions import ConfigurationError
+             raise ConfigurationError(f"Invalid CLEANING_OUTLIER_POLICY: {self.CLEANING_OUTLIER_POLICY}")
+
+        if self.CLEANING_DUPLICATE_TIMESTAMP_POLICY not in ["KEEP_LAST", "KEEP_FIRST", "DROP_ALL", "FAIL"]:
+             from bist_signal_bot.core.exceptions import ConfigurationError
+             raise ConfigurationError(f"Invalid CLEANING_DUPLICATE_TIMESTAMP_POLICY: {self.CLEANING_DUPLICATE_TIMESTAMP_POLICY}")
+
+        validation.validate_percentage(self.CLEANING_MAX_DAILY_RETURN_ABS, "CLEANING_MAX_DAILY_RETURN_ABS")
+        validation.validate_non_negative_float(self.CLEANING_MAX_VOLUME_ZSCORE, "CLEANING_MAX_VOLUME_ZSCORE")
+        validation.validate_positive_int(self.CLEANING_MIN_ROWS_AFTER_CLEANING, "CLEANING_MIN_ROWS_AFTER_CLEANING")
+
 
         validation.validate_time_format(self.BIST_REGULAR_OPEN, "BIST_REGULAR_OPEN")
         validation.validate_time_format(self.BIST_REGULAR_CLOSE, "BIST_REGULAR_CLOSE")

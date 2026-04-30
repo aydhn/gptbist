@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, UTC, timedelta
 
 import numpy as np
 import pandas as pd
@@ -52,7 +52,25 @@ class MockMarketDataProvider(BaseMarketDataProvider):
             start = end - timedelta(days=rows)
 
         # Calculate actual rows based on start/end if both provided, otherwise use self.rows
-        dates = pd.bdate_range(start=start.strftime("%Y-%m-%d"), end=end.strftime("%Y-%m-%d"))
+
+        if isinstance(start, str):
+            try:
+                pd.to_datetime(start)
+            except ValueError:
+                # likely a period like "2y"
+                start = datetime.now(UTC) - pd.Timedelta(days=730)
+                end = datetime.now(UTC)
+
+        if isinstance(end, str):
+            try:
+                pd.to_datetime(end)
+            except ValueError:
+                end = datetime.now(UTC)
+
+        start_str = start if isinstance(start, str) else start.strftime("%Y-%m-%d")
+        end_str = end if isinstance(end, str) else end.strftime("%Y-%m-%d")
+        dates = pd.bdate_range(start=start_str, end=end_str)
+
 
         if len(dates) == 0:
             return pd.DataFrame()

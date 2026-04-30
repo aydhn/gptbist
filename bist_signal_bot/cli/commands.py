@@ -1,3 +1,11 @@
+
+from bist_signal_bot.data.cleaning import MarketDataCleaner
+from bist_signal_bot.data.models import MissingValuePolicy, InvalidOhlcPolicy, OutlierPolicy, DuplicateTimestampPolicy
+from bist_signal_bot.data.symbol_utils import ensure_valid_internal_symbol
+from bist_signal_bot.data.models import Timeframe
+from bist_signal_bot.storage.local_store import LocalMarketDataStore
+from bist_signal_bot.data.mock_provider import MockMarketDataProvider
+import argparse
 import sys
 import platform
 from datetime import datetime
@@ -515,6 +523,103 @@ def cmd_universe(args, app_context) -> int:
             return 0 if res.success else 1
     else:
         print(format_error("Missing universe sub-command"))
+        return 1
+
+
+def cmd_clean_data(args: argparse.Namespace, ctx: ApplicationContext) -> int:
+    symbol = args.symbol.upper()
+    try:
+        symbol = ensure_valid_internal_symbol(symbol)
+    except Exception as e:
+        print_output(format_error(str(e)), args.json)
+        return 1
+
+    timeframe = Timeframe(args.timeframe)
+    source = args.source
+
+    # Optional policies
+    cleaner_kwargs = {"settings": ctx.settings, "strict": args.strict}
+
+    if args.policy_missing:
+        try:
+            cleaner_kwargs["missing_value_policy"] = MissingValuePolicy(args.policy_missing)
+        except Exception as e:
+            print_output(format_error(f"Invalid missing policy: {args.policy_missing}"), args.json)
+            return 1
+
+    if args.policy_invalid_ohlc:
+        try:
+            cleaner_kwargs["invalid_ohlc_policy"] = InvalidOhlcPolicy(args.policy_invalid_ohlc)
+        except Exception as e:
+            print_output(format_error(f"Invalid invalid ohlc policy: {args.policy_invalid_ohlc}"), args.json)
+            return 1
+
+    if args.policy_outlier:
+        try:
+            cleaner_kwargs["outlier_policy"] = OutlierPolicy(args.policy_outlier)
+        except Exception as e:
+            print_output(format_error(f"Invalid outlier policy: {args.policy_outlier}"), args.json)
+            return 1
+
+    if args.policy_duplicate:
+        try:
+            cleaner_kwargs["duplicate_timestamp_policy"] = DuplicateTimestampPolicy(args.policy_duplicate)
+        except Exception as e:
+            print_output(format_error(f"Invalid duplicate policy: {args.policy_duplicate}"), args.json)
+            return 1
+
+    cleaner = MarketDataCleaner(**cleaner_kwargs)
+
+    try:
+        mdf = None
+        if source == "local":
+            store = LocalMarketDataStore(ctx.settings)
+            mdf = store.read_ohlcv(symbol, ctx.settings.DEFAULT_DATA_PROVIDER, timeframe)
+        elif source == "mock":
+            provider = MockMarketDataProvider(rows=252)
+            mdf = provider.fetch_one(symbol, timeframe)
+
+        if not mdf:
+             print_output(format_error("Failed to load data."), args.json)
+             return 1
+
+        # Add some issues if mock to show cleaning
+        if source == "mock" and not mdf.is_empty():
+            import numpy as np
+            # simulate a duplicate
+            last_date = mdf.data.index[-1]
+            mdf.data.loc[last_date] = mdf.data.iloc[-1]
+            # simulate missing
+            mdf.data.iloc[10, 0] = np.nan # open missing
+
+        cleaned_mdf = cleaner.clean_market_data(mdf)
+        report = cleaned_mdf.report
+
+        saved = False
+        if args.save:
+             store = LocalMarketDataStore(ctx.settings)
+             store.write_ohlcv(cleaned_mdf.market_data)
+             saved = True
+
+        res = {
+            "symbol": report.symbol,
+            "status": report.status.value,
+            "input_rows": int(report.input_rows),
+            "output_rows": int(report.output_rows),
+            "dropped_rows": int(report.dropped_rows),
+            "filled_values": int(report.filled_values),
+            "flagged_outliers": int(report.flagged_outliers),
+            "usable_for_backtest": bool(report.usable_for_backtest),
+            "usable_for_ml": bool(report.usable_for_ml),
+            "issue_count": int(report.issue_count()),
+            "saved": saved
+        }
+
+        print_output(res, args.json)
+        return 0 if report.status.value != "FAILED" else 1
+
+    except Exception as e:
+        print_output(format_error(f"Cleaning failed: {str(e)}"), args.json)
         return 1
 
 def cmd_normalize_data(args, app_context) -> int:

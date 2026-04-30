@@ -150,3 +150,14 @@ This bot runs purely from the terminal and doesn't rely on web dashboards, strea
 - Configurable settings via `settings.py` for retry limits, symbol caps, and defaults.
 - Telegram Summary support.
 - Fully wired into the CLI: `python -m bist_signal_bot download-data ASELS`
+
+## Phase 14 Çıktıları
+- **Data Cleaning Katmanı**: İndirilen OHLCV verilerindeki eksik, hatalı ve aykırı durumları handle eden `MarketDataCleaner` entegre edildi. Normalization ile formatı düzeltilen veri bu adımda mantıksal olarak düzeltilir.
+- **Politikalar**:
+  - Missing Values: İleri/geri doldurma veya boşluk silme.
+  - Invalid OHLC: Mantıksız open/high/low/close ilişkilerini düşürme.
+  - Duplicate Timestamp: İlkini tut, sonuncuyu tut veya hata ver.
+  - Outliers (Aykırı Değerler): Extreme volume veya getiri durumları sadece işaretlenir (Flag Only), varsayılan olarak silinmez (bölünmeler/sermaye artırımları olabileceği için).
+- **Entegrasyon**: `MarketDataService` içerisine dahil edildi ve her `get_ohlcv` çağrısında veriler temizlenerek quality checker'a öyle iletilir. Bu sayede veriler temizlendikten sonra kalitesi test edilir.
+- **Raporlama**: Temizleme süreci sonrası ne kadar satır/değer silindiği veya doldurulduğu `CleanedMarketData` objesi içinde raporlanır ve Metadata içerisine yazılır.
+- **Sıradaki Faz**: Phase 15'te "Bedelsiz bölünme, Temettü vb. Kurumsal Aksiyon (Corporate Actions) düzeltmeleri" yapılacaktır. Bu faza kadar Extreme Return/Volume davranışları bu nedenle silinmez bırakılmıştır.
