@@ -122,6 +122,16 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 
+    # momentum-features
+    momentum_features_parser = subparsers.add_parser("momentum-features", help="Generate momentum features")
+    momentum_features_parser.add_argument("symbol", type=str, help="Symbol to process")
+    momentum_features_parser.add_argument("--source", type=str, choices=["local", "mock"], default="local", help="Data source")
+    momentum_features_parser.add_argument("--timeframe", type=str, default="1d", help="Timeframe (e.g. 1d)")
+    momentum_features_parser.add_argument("--rows", type=int, help="Mock data rows")
+    momentum_features_parser.add_argument("--level", type=str, choices=["basic", "advanced", "full"], default="basic", help="Feature level")
+    momentum_features_parser.add_argument("--save-output", action="store_true", help="Save output to CSV")
+    momentum_features_parser.add_argument("--json", action="store_true", help="Output in JSON format")
+
     # trend-features
     trend_parser = subparsers.add_parser("trend-features", help="Calculate trend features for a symbol")
     trend_parser.add_argument("symbol", type=str, help="Symbol to calculate features for")

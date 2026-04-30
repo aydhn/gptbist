@@ -3,6 +3,7 @@ import sys
 from bist_signal_bot.app.bootstrap import bootstrap_app
 from bist_signal_bot.cli.parsers import parse_args
 from bist_signal_bot.cli.commands import (
+    cmd_momentum_features,
     cmd_trend_features,
     cmd_healthcheck,
     cmd_config,
@@ -71,7 +72,8 @@ def run_cli(argv: list[str] | None = None) -> int:
         "corporate-actions": cmd_corporate_actions,
         "adjust-data": cmd_adjust_data,
         "indicators": cmd_indicators,
-        "trend-features": cmd_trend_features
+        "trend-features": cmd_trend_features,
+        "momentum-features": cmd_momentum_features
     }
 
     cmd_func = commands.get(args.command)

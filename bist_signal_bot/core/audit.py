@@ -32,6 +32,7 @@ class AuditEventType(str, Enum):
     CLI_COMMAND = "CLI_COMMAND"
     UNIVERSE_INIT = "UNIVERSE_INIT"
     TREND_FEATURE_CALCULATION = "TREND_FEATURE_CALCULATION"
+    MOMENTUM_FEATURE_CALCULATION = "MOMENTUM_FEATURE_CALCULATION"
     UNIVERSE_VALIDATE = "UNIVERSE_VALIDATE"
     UNIVERSE_ADD_SYMBOL = "UNIVERSE_ADD_SYMBOL"
     UNIVERSE_REMOVE_SYMBOL = "UNIVERSE_REMOVE_SYMBOL"
@@ -176,4 +177,19 @@ class AuditLogger:
             message=message,
             run_id=run_id,
             metadata=metadata
+        ))
+
+    def log_indicator_calculation(self, symbol: str, timeframe: str, indicators: list[str], success_count: int, failed_count: int, elapsed_seconds: float, run_id: str | None = None) -> None:
+        self.log_event(AuditEvent(
+            event_type=AuditEventType.CLI_COMMAND,
+            message=f"Calculated indicators for {symbol}",
+            symbol=symbol,
+            run_id=run_id,
+            metadata={
+                "timeframe": timeframe,
+                "indicators_requested": indicators,
+                "success_count": success_count,
+                "failed_count": failed_count,
+                "elapsed_seconds": elapsed_seconds
+            }
         ))

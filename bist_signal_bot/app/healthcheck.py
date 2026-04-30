@@ -153,6 +153,19 @@ def run_healthcheck() -> dict:
             "mock_capable": True
         },
 
+        "momentum_indicators": {
+            "enabled": settings.ENABLE_MOMENTUM_INDICATORS,
+            "feature_level": settings.MOMENTUM_FEATURE_LEVEL,
+            "rsi_window": settings.MOMENTUM_RSI_WINDOW,
+            "roc_window": settings.MOMENTUM_ROC_WINDOW,
+            "stoch_k_window": settings.MOMENTUM_STOCH_K_WINDOW,
+            "stoch_d_window": settings.MOMENTUM_STOCH_D_WINDOW,
+            "cci_window": settings.MOMENTUM_CCI_WINDOW,
+            "mfi_window": settings.MOMENTUM_MFI_WINDOW,
+            "registered_momentum_indicator_count": 13,
+            "builder_instantiable": True,
+            "mock_capable": True
+        },
         "cleaning": {
             "enabled": settings.ENABLE_DATA_CLEANING,
             "missing_value_policy": settings.CLEANING_MISSING_VALUE_POLICY,

@@ -33,6 +33,14 @@ class IndicatorRegistry:
 
     @classmethod
     def create_default_registry(cls) -> "IndicatorRegistry":
+
+        from bist_signal_bot.indicators.momentum import (
+            MomentumIndicator, RateOfChangePercentIndicator, RSIEnhancedIndicator,
+            StochasticEnhancedIndicator, WilliamsRIndicator, CCIIndicator, MFIIndicator,
+            TSIIndicator, UltimateOscillatorIndicator, PPOIndicator, KSTIndicator,
+            ConnorsRSIIndicator, MomentumStrengthCompositeIndicator
+        )
+
         from bist_signal_bot.indicators.native import (
             SMAIndicator, EMAIndicator, WMAIndicator, RSIIndicator, ROCIndicator,
             TrueRangeIndicator, ATRIndicator, BollingerBandsIndicator, MACDIndicator,
@@ -80,4 +88,18 @@ class IndicatorRegistry:
         registry.register(DailyReturnIndicator())
         registry.register(LogReturnIndicator())
         registry.register(RollingVolatilityIndicator())
+
+        registry.register(MomentumIndicator())
+        registry.register(RateOfChangePercentIndicator())
+        registry.register(RSIEnhancedIndicator())
+        registry.register(StochasticEnhancedIndicator())
+        registry.register(WilliamsRIndicator())
+        registry.register(CCIIndicator())
+        registry.register(MFIIndicator())
+        registry.register(TSIIndicator())
+        registry.register(UltimateOscillatorIndicator())
+        registry.register(PPOIndicator())
+        registry.register(KSTIndicator())
+        registry.register(ConnorsRSIIndicator())
+        registry.register(MomentumStrengthCompositeIndicator())
         return registry
