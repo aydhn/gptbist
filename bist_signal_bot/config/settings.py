@@ -151,7 +151,7 @@ class Settings(BaseSettings):
     DOWNLOAD_SAVE_DEFAULT: bool = Field(default=True)
 
     # INDICATORS
-# TREND INDICATORS & FEATURES
+    # TREND INDICATORS & FEATURES
     ENABLE_TREND_INDICATORS: bool = Field(default=True)
     TREND_FEATURE_LEVEL: str = Field(default="basic")
     TREND_SHORT_WINDOW: int = Field(default=20)
@@ -166,6 +166,29 @@ class Settings(BaseSettings):
     TREND_SUPERTREND_MULTIPLIER: float = Field(default=3.0)
     TREND_AROON_WINDOW: int = Field(default=25)
     TREND_LINREG_WINDOW: int = Field(default=20)
+
+    # MOMENTUM FEATURES
+    ENABLE_MOMENTUM_INDICATORS: bool = Field(default=True)
+    MOMENTUM_FEATURE_LEVEL: str = Field(default="basic")
+    MOMENTUM_RSI_WINDOW: int = Field(default=14)
+    MOMENTUM_ROC_WINDOW: int = Field(default=10)
+    MOMENTUM_STOCH_K_WINDOW: int = Field(default=14)
+    MOMENTUM_STOCH_D_WINDOW: int = Field(default=3)
+    MOMENTUM_WILLIAMS_WINDOW: int = Field(default=14)
+    MOMENTUM_CCI_WINDOW: int = Field(default=20)
+    MOMENTUM_MFI_WINDOW: int = Field(default=14)
+    MOMENTUM_TSI_SLOW: int = Field(default=25)
+    MOMENTUM_TSI_FAST: int = Field(default=13)
+    MOMENTUM_TSI_SIGNAL: int = Field(default=7)
+    MOMENTUM_PPO_FAST: int = Field(default=12)
+    MOMENTUM_PPO_SLOW: int = Field(default=26)
+    MOMENTUM_PPO_SIGNAL: int = Field(default=9)
+    MOMENTUM_ULTIMATE_SHORT: int = Field(default=7)
+    MOMENTUM_ULTIMATE_MEDIUM: int = Field(default=14)
+    MOMENTUM_ULTIMATE_LONG: int = Field(default=28)
+    MOMENTUM_OVERBOUGHT: float = Field(default=70.0)
+    MOMENTUM_OVERSOLD: float = Field(default=30.0)
+
 
     ENABLE_INDICATORS: bool = Field(default=True)
     INDICATOR_BACKEND: str = Field(default="native")

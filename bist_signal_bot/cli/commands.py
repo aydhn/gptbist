@@ -1172,3 +1172,118 @@ def cmd_trend_features(args, ctx) -> int:
         print(f"Trend feature calculation error: {e}")
         print_output(format_error(str(e)), args.json)
         return 1
+
+def cmd_momentum_features(args, ctx) -> int:
+    from bist_signal_bot.features.momentum_features import MomentumFeatureBuilder
+    from bist_signal_bot.indicators.engine import IndicatorEngine
+    from bist_signal_bot.data.mock_provider import MockMarketDataProvider
+    from bist_signal_bot.data.models import Timeframe, DataVendor
+    from bist_signal_bot.cli.formatting import format_success, format_error, print_output
+    from bist_signal_bot.data.symbol_utils import ensure_valid_internal_symbol
+    import pandas as pd
+    import time
+
+    symbol = args.symbol.upper()
+    try:
+        symbol = ensure_valid_internal_symbol(symbol)
+    except Exception as e:
+        print_output(format_error(str(e)), args.json)
+        return 1
+
+    engine = IndicatorEngine(settings=ctx.settings)
+    builder = MomentumFeatureBuilder(indicator_engine=engine, settings=ctx.settings)
+
+    start_time = time.time()
+
+    try:
+        if args.source == "mock":
+            provider = MockMarketDataProvider(rows=args.rows if args.rows else 500)
+            mdf = provider.fetch_one(symbol, timeframe=Timeframe(args.timeframe))
+        else:
+            from bist_signal_bot.data.universe_store import UniverseStore
+            from bist_signal_bot.data.storage import LocalDataStore
+
+            store = LocalDataStore(ctx.settings)
+            mdf = store.load_market_data(symbol, timeframe=Timeframe(args.timeframe), vendor=DataVendor.YFINANCE)
+            if mdf.is_empty:
+                print_output(format_error(f"Local data not found for {symbol} / {args.timeframe}."), args.json)
+                return 1
+
+        if args.level == "basic":
+            result = builder.build_basic_momentum_features(mdf)
+        elif args.level == "advanced":
+            result = builder.build_advanced_momentum_features(mdf)
+        else:
+            result = builder.build_full_momentum_features(mdf)
+
+        elapsed = time.time() - start_time
+
+        # Log to audit
+        if ctx.settings.ENABLE_AUDIT_LOG:
+            from bist_signal_bot.core.audit import AuditEvent, AuditEventType
+            ctx.audit_logger.log_event(
+                AuditEvent(
+                    event_type=AuditEventType.MOMENTUM_FEATURE_CALCULATION,
+                    message=f"Calculated momentum features for {symbol}",
+                    metadata={
+                        "symbol": symbol,
+                        "timeframe": args.timeframe,
+                        "level": args.level,
+                        "requested_count": result.requested_count,
+                        "success_count": sum(1 for r in result.results if r.status == "SUCCESS"),
+                        "failed_count": sum(1 for r in result.results if r.status != "SUCCESS"),
+                        "elapsed_seconds": elapsed
+                    }
+                )
+            )
+
+        # Optional save
+        if getattr(args, "save_output", False):
+            import os
+            from bist_signal_bot.config.paths import get_reports_dir
+
+            out_dir = get_reports_dir(ctx.settings)
+            os.makedirs(out_dir, exist_ok=True)
+
+            ts_str = pd.Timestamp.now().strftime("%Y%m%d_%H%M%S")
+            csv_path = out_dir / f"{symbol}_{args.timeframe}_momentum_{args.level}_{ts_str}.csv"
+
+            result.output_data.to_csv(csv_path)
+
+        success_count = sum(1 for r in result.results if r.status == "SUCCESS")
+        failed_count = sum(1 for r in result.results if r.status != "SUCCESS")
+
+        # Format summary
+        df = result.output_data
+        summary = {}
+        if not df.empty:
+            last_row = df.iloc[-1].to_dict()
+            summary = {
+                "close": last_row.get("close")
+            }
+            if "rsi_14" in last_row: summary["rsi_14"] = last_row.get("rsi_14")
+            if "roc_pct_10" in last_row: summary["roc_pct_10"] = last_row.get("roc_pct_10")
+            if "stoch_k_14" in last_row: summary["stoch_k_14"] = last_row.get("stoch_k_14")
+            if "stoch_d_14_3" in last_row: summary["stoch_d_14_3"] = last_row.get("stoch_d_14_3")
+            if "mfi_14" in last_row: summary["mfi_14"] = last_row.get("mfi_14")
+            if "momentum_strength_score" in last_row: summary["momentum_strength_score"] = last_row.get("momentum_strength_score")
+            if "momentum_direction_score" in last_row: summary["momentum_direction_score"] = last_row.get("momentum_direction_score")
+
+        out = {
+            "symbol": symbol,
+            "level": args.level,
+            "rows": len(df),
+            "requested_indicators": result.requested_count,
+            "success_count": success_count,
+            "failed_count": failed_count,
+            "output_momentum_columns": list(df.columns),
+            "momentum_feature_summary": summary
+        }
+
+        print_output(out, args.json)
+        return 0
+
+    except Exception as e:
+        print(f"Momentum feature calculation error: {e}")
+        print_output(format_error(str(e)), args.json)
+        return 1
