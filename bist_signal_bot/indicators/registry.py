@@ -39,7 +39,32 @@ class IndicatorRegistry:
             StochasticIndicator, OBVIndicator, VWAPIndicator, DailyReturnIndicator,
             LogReturnIndicator, RollingVolatilityIndicator
         )
+
+        from bist_signal_bot.indicators.trend import (
+            MovingAverageDistanceIndicator, MovingAverageCrossoverStateIndicator,
+            MovingAverageCrossoverEventIndicator, MovingAverageSlopeIndicator,
+            PriceAboveMovingAverageIndicator, ConsecutiveAboveBelowMAIndicator,
+            DonchianChannelIndicator, KeltnerChannelIndicator, ADXIndicator,
+            AroonIndicator, IchimokuIndicator, SupertrendIndicator,
+            LinearRegressionSlopeIndicator, TrendStrengthCompositeIndicator
+        )
+
         registry = cls()
+        registry.register(MovingAverageDistanceIndicator())
+        registry.register(MovingAverageCrossoverStateIndicator())
+        registry.register(MovingAverageCrossoverEventIndicator())
+        registry.register(MovingAverageSlopeIndicator())
+        registry.register(PriceAboveMovingAverageIndicator())
+        registry.register(ConsecutiveAboveBelowMAIndicator())
+        registry.register(DonchianChannelIndicator())
+        registry.register(KeltnerChannelIndicator())
+        registry.register(ADXIndicator())
+        registry.register(AroonIndicator())
+        registry.register(IchimokuIndicator())
+        registry.register(SupertrendIndicator())
+        registry.register(LinearRegressionSlopeIndicator())
+        registry.register(TrendStrengthCompositeIndicator())
+
         registry.register(SMAIndicator())
         registry.register(EMAIndicator())
         registry.register(WMAIndicator())

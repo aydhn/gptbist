@@ -121,6 +121,17 @@ def build_parser() -> argparse.ArgumentParser:
     ind_calc_parser.add_argument("--json", action="store_true", help="Output in JSON format")
 
 
+
+    # trend-features
+    trend_parser = subparsers.add_parser("trend-features", help="Calculate trend features for a symbol")
+    trend_parser.add_argument("symbol", type=str, help="Symbol to calculate features for")
+    trend_parser.add_argument("--source", type=str, choices=["local", "mock"], default="mock", help="Data source")
+    trend_parser.add_argument("--timeframe", type=str, default="1d", help="Timeframe")
+    trend_parser.add_argument("--rows", type=int, default=500, help="Number of rows for mock data")
+    trend_parser.add_argument("--level", type=str, choices=["basic", "advanced", "full"], default="basic", help="Feature level")
+    trend_parser.add_argument("--save-output", action="store_true", help="Save output to reports folder")
+    trend_parser.add_argument("--json", action="store_true", help="Output in JSON format")
+
     # ca init
     ca_init_parser = ca_subparsers.add_parser("init", help="Initialize corporate actions store")
     ca_init_parser.add_argument("--overwrite", action="store_true", help="Overwrite existing store")

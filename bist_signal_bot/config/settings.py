@@ -151,6 +151,22 @@ class Settings(BaseSettings):
     DOWNLOAD_SAVE_DEFAULT: bool = Field(default=True)
 
     # INDICATORS
+# TREND INDICATORS & FEATURES
+    ENABLE_TREND_INDICATORS: bool = Field(default=True)
+    TREND_FEATURE_LEVEL: str = Field(default="basic")
+    TREND_SHORT_WINDOW: int = Field(default=20)
+    TREND_MEDIUM_WINDOW: int = Field(default=50)
+    TREND_LONG_WINDOW: int = Field(default=200)
+    TREND_ADX_WINDOW: int = Field(default=14)
+    TREND_ATR_WINDOW: int = Field(default=14)
+    TREND_DONCHIAN_WINDOW: int = Field(default=20)
+    TREND_KELTNER_EMA_WINDOW: int = Field(default=20)
+    TREND_KELTNER_ATR_MULTIPLIER: float = Field(default=2.0)
+    TREND_SUPERTREND_ATR_WINDOW: int = Field(default=10)
+    TREND_SUPERTREND_MULTIPLIER: float = Field(default=3.0)
+    TREND_AROON_WINDOW: int = Field(default=25)
+    TREND_LINREG_WINDOW: int = Field(default=20)
+
     ENABLE_INDICATORS: bool = Field(default=True)
     INDICATOR_BACKEND: str = Field(default="native")
     INDICATOR_CONTINUE_ON_ERROR: bool = Field(default=True)
@@ -173,6 +189,24 @@ class Settings(BaseSettings):
     @model_validator(mode='after')
     def validate_settings(self) -> 'Settings':
         # Apply profile overrides
+        if self.TREND_FEATURE_LEVEL not in ["basic", "advanced", "full"]:
+            from bist_signal_bot.core.exceptions import ConfigurationError
+            raise ConfigurationError("TREND_FEATURE_LEVEL must be basic, advanced, or full")
+
+        if not (0 < self.TREND_SHORT_WINDOW < self.TREND_MEDIUM_WINDOW < self.TREND_LONG_WINDOW):
+            from bist_signal_bot.core.exceptions import ConfigurationError
+            raise ConfigurationError("Trend windows must be positive and follow: short < medium < long")
+
+        if any(w <= 0 for w in [self.TREND_ADX_WINDOW, self.TREND_ATR_WINDOW, self.TREND_DONCHIAN_WINDOW,
+                               self.TREND_KELTNER_EMA_WINDOW, self.TREND_SUPERTREND_ATR_WINDOW,
+                               self.TREND_AROON_WINDOW, self.TREND_LINREG_WINDOW]):
+            from bist_signal_bot.core.exceptions import ConfigurationError
+            raise ConfigurationError("Trend window parameters must be positive")
+
+        if self.TREND_KELTNER_ATR_MULTIPLIER <= 0 or self.TREND_SUPERTREND_MULTIPLIER <= 0:
+            from bist_signal_bot.core.exceptions import ConfigurationError
+            raise ConfigurationError("Trend multiplier parameters must be positive")
+
         profile = get_profile(self.APP_ENV)
         for key, value in profile.safe_defaults.items():
             pass
