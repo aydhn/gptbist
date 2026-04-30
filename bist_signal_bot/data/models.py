@@ -214,6 +214,106 @@ class NormalizationReport(BaseModel):
 class NormalizedMarketData(BaseModel):
     market_data: MarketDataFrame
     report: NormalizationReport
+
+class CleaningStatus(str, Enum):
+    SUCCESS = "SUCCESS"
+    WARNING = "WARNING"
+    FAILED = "FAILED"
+    SKIPPED = "SKIPPED"
+
+class MissingValuePolicy(str, Enum):
+    DROP_ROW = "DROP_ROW"
+    FORWARD_FILL = "FORWARD_FILL"
+    BACKWARD_FILL = "BACKWARD_FILL"
+    INTERPOLATE = "INTERPOLATE"
+    LEAVE_UNCHANGED = "LEAVE_UNCHANGED"
+    FAIL = "FAIL"
+
+class InvalidOhlcPolicy(str, Enum):
+    DROP_ROW = "DROP_ROW"
+    LEAVE_UNCHANGED = "LEAVE_UNCHANGED"
+    FAIL = "FAIL"
+
+class OutlierPolicy(str, Enum):
+    FLAG_ONLY = "FLAG_ONLY"
+    DROP_ROW = "DROP_ROW"
+    WINSORIZE = "WINSORIZE"
+    LEAVE_UNCHANGED = "LEAVE_UNCHANGED"
+    FAIL = "FAIL"
+
+class DuplicateTimestampPolicy(str, Enum):
+    KEEP_LAST = "KEEP_LAST"
+    KEEP_FIRST = "KEEP_FIRST"
+    DROP_ALL = "DROP_ALL"
+    FAIL = "FAIL"
+
+class CleaningIssueType(str, Enum):
+    MISSING_VALUE = "MISSING_VALUE"
+    INVALID_OHLC = "INVALID_OHLC"
+    NEGATIVE_PRICE = "NEGATIVE_PRICE"
+    NEGATIVE_VOLUME = "NEGATIVE_VOLUME"
+    ZERO_PRICE = "ZERO_PRICE"
+    DUPLICATE_TIMESTAMP = "DUPLICATE_TIMESTAMP"
+    EXTREME_RETURN = "EXTREME_RETURN"
+    EXTREME_VOLUME = "EXTREME_VOLUME"
+    EMPTY_ROW = "EMPTY_ROW"
+    ROW_DROPPED = "ROW_DROPPED"
+    VALUE_FILLED = "VALUE_FILLED"
+    VALUE_WINSORIZED = "VALUE_WINSORIZED"
+    INSUFFICIENT_ROWS_AFTER_CLEANING = "INSUFFICIENT_ROWS_AFTER_CLEANING"
+    UNKNOWN = "UNKNOWN"
+
+class CleaningIssue(BaseModel):
+    issue_type: CleaningIssueType
+    message: str
+    affected_rows: int | None = None
+    affected_columns: list[str] = Field(default_factory=list)
+    sample_timestamps: list[str] = Field(default_factory=list)
+    action_taken: str
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+class CleaningReport(BaseModel):
+    symbol: str
+    timeframe: str
+    source: str
+    status: CleaningStatus
+    input_rows: int
+    output_rows: int
+    dropped_rows: int = 0
+    filled_values: int = 0
+    flagged_outliers: int = 0
+    winsorized_values: int = 0
+    issues: list[CleaningIssue] = Field(default_factory=list)
+    started_at: datetime
+    finished_at: datetime
+    elapsed_seconds: float
+    usable_for_backtest: bool
+    usable_for_ml: bool
+
+    def issue_count(self) -> int:
+        return len(self.issues)
+
+    def summary(self) -> dict[str, Any]:
+        return {
+            "symbol": self.symbol,
+            "timeframe": self.timeframe,
+            "source": self.source,
+            "status": self.status.value,
+            "input_rows": self.input_rows,
+            "output_rows": self.output_rows,
+            "dropped_rows": self.dropped_rows,
+            "filled_values": self.filled_values,
+            "flagged_outliers": self.flagged_outliers,
+            "issue_count": self.issue_count(),
+            "usable_for_backtest": self.usable_for_backtest,
+            "usable_for_ml": self.usable_for_ml,
+            "elapsed_seconds": self.elapsed_seconds,
+        }
+
+class CleanedMarketData(BaseModel):
+    market_data: MarketDataFrame
+    report: CleaningReport
+
 class DataFetchRequest(BaseModel):
     symbols: list[str]
     timeframe: Timeframe = Timeframe.DAILY
@@ -255,8 +355,16 @@ class SymbolDownloadResult(BaseModel):
     file_path: str | None = None
     elapsed_seconds: float
 
+
     normalization_status: str | None = None
     normalization_issue_count: int | None = None
+
+    cleaning_status: str | None = None
+    cleaning_issue_count: int | None = None
+    dropped_rows: int | None = None
+    usable_for_backtest: bool | None = None
+    usable_for_ml: bool | None = None
+
 
     @field_validator("symbol")
     def validate_symbol(cls, v):
@@ -318,8 +426,14 @@ class BatchDownloadResult(BaseModel):
     def failed_symbols(self) -> list[str]:
         return [r.symbol for r in self.results if r.status == DownloadStatus.FAILED]
 
+
     def summary(self) -> dict[str, Any]:
         warnings = sum(1 for r in self.results if r.normalization_status == "WARNING")
+        cleaning_warnings = sum(1 for r in self.results if r.cleaning_status == "WARNING")
+        total_dropped = sum(r.dropped_rows for r in self.results if r.dropped_rows is not None)
+        unusable_backtest = sum(1 for r in self.results if r.usable_for_backtest is False)
+        unusable_ml = sum(1 for r in self.results if r.usable_for_ml is False)
+
         return {
             "requested_count": self.requested_count,
             "success_count": self.success_count,
@@ -327,6 +441,10 @@ class BatchDownloadResult(BaseModel):
             "skipped_count": self.skipped_count,
             "partial_count": self.partial_count,
             "normalization_warnings": warnings,
+            "cleaning_warning_count": cleaning_warnings,
+            "total_dropped_rows": total_dropped,
+            "unusable_for_backtest_count": unusable_backtest,
+            "unusable_for_ml_count": unusable_ml,
             "elapsed_seconds": self.elapsed_seconds,
             "provider": self.provider,
             "timeframe": self.timeframe,

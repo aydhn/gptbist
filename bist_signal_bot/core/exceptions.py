@@ -97,3 +97,7 @@ class UniverseValidationError(BistSignalBotError):
 class DataNormalizationError(BistSignalBotError):
     """Raised when there is an error normalizing data schema or formats."""
     pass
+
+class DataCleaningError(BistSignalBotError):
+    """Exception raised for errors during data cleaning."""
+    pass

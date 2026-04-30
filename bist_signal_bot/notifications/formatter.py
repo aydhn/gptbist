@@ -168,3 +168,21 @@ class NotificationFormatter:
                 lines.append(f"- {self._escape(sym)}: {self._escape(err)}")
 
         return "\n".join(lines)
+
+    def format_cleaning_report(self, report: Any) -> str:
+        """Formats a CleaningReport into a Telegram message."""
+        lines = [
+            "<b>BIST Bot Veri Temizleme Özeti</b>",
+            "",
+            f"Sembol: {self._escape(report.symbol)}",
+            f"Timeframe: {self._escape(report.timeframe)}",
+            f"Durum: {report.status.value}",
+            f"Girdi satır: {report.input_rows}",
+            f"Çıktı satır: {report.output_rows}",
+            f"Silinen satır: {report.dropped_rows}",
+            f"Doldurulan değer: {report.filled_values}",
+            f"Aykırı işaretlenen: {report.flagged_outliers}",
+            f"Backtest kullanılabilir: {'true' if report.usable_for_backtest else 'false'}",
+            f"ML kullanılabilir: {'true' if report.usable_for_ml else 'false'}"
+        ]
+        return "\n".join(lines)

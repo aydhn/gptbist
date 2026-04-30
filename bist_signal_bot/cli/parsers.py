@@ -60,6 +60,20 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 
+
+    # clean-data
+    clean_parser = subparsers.add_parser("clean-data", help="Clean OHLCV data for a symbol")
+    clean_parser.add_argument("symbol", type=str, help="Symbol to clean")
+    clean_parser.add_argument("--source", type=str, choices=["local", "mock"], default="local", help="Source to read data from")
+    clean_parser.add_argument("--timeframe", type=str, default="1d", help="Timeframe (e.g. 1d, 1h)")
+    clean_parser.add_argument("--save", action="store_true", help="Save cleaned data to local store")
+    clean_parser.add_argument("--policy-missing", type=str, help="Missing value policy")
+    clean_parser.add_argument("--policy-invalid-ohlc", type=str, help="Invalid OHLC policy")
+    clean_parser.add_argument("--policy-outlier", type=str, help="Outlier policy")
+    clean_parser.add_argument("--policy-duplicate", type=str, help="Duplicate timestamp policy")
+    clean_parser.add_argument("--strict", action="store_true", help="Fail strictly on cleaning errors")
+    clean_parser.add_argument("--json", action="store_true", help="Output in JSON format")
+
     # normalize-data
     normalize_parser = subparsers.add_parser("normalize-data", help="Normalize OHLCV data for a symbol")
     normalize_parser.add_argument("symbol", type=str, help="Symbol to normalize")

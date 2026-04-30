@@ -62,7 +62,8 @@ def test_data_service_fail_on_quality_error(bad_provider):
         provider=bad_provider,
         quality_checker=checker,
         validate_quality=True,
-        fail_on_quality_error=True
+        fail_on_quality_error=True,
+        clean_data=False # DISABLE CLEANER SO ERROR REACHES QUALITY CHECKER
     )
 
     with pytest.raises(DataQualityError):

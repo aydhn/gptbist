@@ -46,3 +46,17 @@ def format_warning(message: str) -> str:
 
 def format_error(message: str) -> str:
     return f"[ERROR] {message}"
+
+def format_cleaning_report(report) -> str:
+    lines = [
+        f"Symbol: {report.symbol}",
+        f"Status: {report.status.value}",
+        f"Input rows: {report.input_rows}",
+        f"Output rows: {report.output_rows}",
+        f"Dropped: {report.dropped_rows}",
+        f"Filled: {report.filled_values}",
+        f"Issues: {report.issue_count()}",
+        f"Usable for Backtest: {report.usable_for_backtest}",
+        f"Usable for ML: {report.usable_for_ml}"
+    ]
+    return "\n".join(lines)
