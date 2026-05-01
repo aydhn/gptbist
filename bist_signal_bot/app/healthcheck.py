@@ -152,6 +152,18 @@ def run_healthcheck() -> dict:
             "engine_instantiable": True,
             "mock_capable": True
         },
+        "volatility_indicators": {
+            "enabled": settings.ENABLE_VOLATILITY_INDICATORS,
+            "feature_level": settings.VOLATILITY_FEATURE_LEVEL,
+            "atr_window": settings.VOL_ATR_WINDOW,
+            "vol_window": settings.VOL_WINDOW,
+            "rank_window": settings.VOL_RANK_WINDOW,
+            "annualization": settings.VOL_ANNUALIZATION,
+            "registered_volatility_indicator_count": 16,
+            "builder_instantiable": True,
+            "mock_capable": True
+        },
+
 
         "momentum_indicators": {
             "enabled": settings.ENABLE_MOMENTUM_INDICATORS,

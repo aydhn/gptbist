@@ -180,3 +180,22 @@ This bot runs purely from the terminal and doesn't rely on web dashboards, strea
 - **Çalıştırma ve Backtest:**
   - `python -m bist_signal_bot trend-features ASELS --source mock --level basic` komutlarıyla backtest/ML modeli için detaylı data kolonları (features) oluşturulur.
 - HTML scraping yapılmamış, ücretli API kullanılmamıştır.
+
+
+## Phase 19: Volatility Indicators, Feature Set & Risk Regime Preparation
+
+**Amacı:** BIST Signal Bot'un fiyat oynaklığını, volatilite sıkışmasını/genişlemesini, ATR tabanlı risk ölçümlerini, range bazlı volatiliteyi, gap riskini ve ileride risk/rejim/pozisyon boyutlandırma modüllerinde kullanılacak volatilite feature setlerini ölçebilmesi için kapsamlı volatilite indikatörleri katmanını geliştirmek.
+- **Volatility Feature ve Sinyal Arasındaki Fark:** Bu fazdaki hesaplamalar al/sat tavsiyesi/sinyali üretmez, stratejilerde (ML veya rule-based) kullanılabilecek matematiksel/durumsal öznitelik skorları üretir. Compression/expansion skorları finansal tavsiye değildir.
+- **Eklenen Volatilite İndikatörleri:**
+  - ATR Percent ve Normalized True Range
+  - Historical Volatility ve Realized Volatility
+  - Parkinson, Garman-Klass ve Rogers-Satchell Volatility
+  - Range Percent ve Gap Percent (Risk Feature'ları)
+  - BB Width Percentile ve ATR Percentile (Sıkışma/Genişleme mantığı)
+  - Volatility Z-Score, Compression Score, Expansion Score
+  - Volatility Regime Feature (Risk/rejim için kullanılacak) ve Volatility Composite Score
+- **Look-Ahead Bias Önlemi ve Güvenlik:**
+  - Logaritmik formüllerde sıfır veya negatif fiyatların neden olabileceği matematiksel hatalara karşı (örn `Garman-Klass`) güvenli maskeleme ve clipping uygulanmıştır. Negatif varyans üretebilecek durumlar önlenmiştir. Gelecek mum verisi kullanılmaz.
+- **Çalıştırma ve Özellik Üretimi (Feature Generation):**
+  - `python -m bist_signal_bot volatility-features ASELS --source mock --level basic` komutlarıyla backtest/ML modeli ve risk engine için detaylı data kolonları (features) oluşturulur.
+- HTML scraping yapılmamış, ücretli API kullanılmamıştır. Tamamen yerel (local-first) altyapı üzerinde çalışır.

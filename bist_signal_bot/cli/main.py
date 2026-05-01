@@ -23,7 +23,8 @@ from bist_signal_bot.cli.commands import (
     cmd_normalize_data,
     cmd_corporate_actions,
     cmd_adjust_data,
-    cmd_indicators
+    cmd_indicators,
+    cmd_volatility_features,
 )
 from bist_signal_bot.core.logging_setup import get_logger
 
@@ -73,7 +74,9 @@ def run_cli(argv: list[str] | None = None) -> int:
         "adjust-data": cmd_adjust_data,
         "indicators": cmd_indicators,
         "trend-features": cmd_trend_features,
-        "momentum-features": cmd_momentum_features
+        "momentum-features": cmd_momentum_features,
+        "volatility-features": cmd_volatility_features,
+
     }
 
     cmd_func = commands.get(args.command)

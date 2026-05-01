@@ -1287,3 +1287,99 @@ def cmd_momentum_features(args, ctx) -> int:
         print(f"Momentum feature calculation error: {e}")
         print_output(format_error(str(e)), args.json)
         return 1
+
+
+def cmd_volatility_features(args, ctx) -> int:
+    from bist_signal_bot.features.volatility_features import VolatilityFeatureBuilder
+    from bist_signal_bot.data.mock_provider import MockMarketDataProvider
+    from bist_signal_bot.data.data_service import MarketDataService
+    from bist_signal_bot.cli.formatting import print_output
+    from bist_signal_bot.core.audit import AuditEventType
+    from datetime import datetime
+    import pandas as pd
+    import logging
+
+    logger = logging.getLogger("bist_signal_bot.cli")
+
+    try:
+        symbol = args.symbol.upper()
+
+        if args.source == "mock":
+            rows = args.rows or 200
+            provider = MockMarketDataProvider(rows=rows)
+            mdf = provider.fetch_one(symbol, args.timeframe)
+        else:
+            service = MarketDataService(settings=ctx.settings)
+            mdf = service.get_ohlcv(symbol, args.timeframe)
+
+        if mdf is None or mdf.data.empty:
+            print_output({"error": "No data found or available"}, as_json=args.json)
+            return 1
+
+        builder = VolatilityFeatureBuilder(settings=ctx.settings)
+
+        if args.level == "basic":
+            result = builder.build_basic_volatility_features(mdf)
+        elif args.level == "advanced":
+            result = builder.build_advanced_volatility_features(mdf)
+        else:
+            result = builder.build_full_volatility_features(mdf)
+
+        ctx.audit_logger.log_event(
+            ctx.audit_logger._audit_file and ctx.audit_logger.settings.ENABLE_AUDIT_LOG and __import__("bist_signal_bot.core.audit").core.audit.AuditEvent(
+                event_type=AuditEventType.VOLATILITY_FEATURE_CALCULATION,
+                message=f"Calculated volatility features for {symbol}",
+                symbol=symbol,
+                metadata={
+                    "timeframe": args.timeframe,
+                    "level": args.level,
+                    "requested_count": result.requested_count,
+                    "success_count": result.success_count,
+                    "failed_count": result.failed_count,
+                    "elapsed_seconds": result.elapsed_seconds
+                }
+            )
+        )
+
+        df = result.output_data
+
+        if args.save_output:
+            out_dir = ctx.settings.DATA_DIR / "features"
+            out_dir.mkdir(parents=True, exist_ok=True)
+            ts_str = datetime.now().strftime("%Y%md%H%M%S")
+            csv_path = out_dir / f"{symbol}_{args.timeframe}_volatility_{args.level}_{ts_str}.csv"
+            df.to_csv(csv_path)
+
+        summary = {}
+        if not df.empty:
+            last_row = df.iloc[-1].to_dict()
+            summary["close"] = last_row.get("close")
+            if "atr_pct_14" in last_row: summary["atr_pct_14"] = last_row.get("atr_pct_14")
+            if "hist_vol_20" in last_row: summary["hist_vol_20"] = last_row.get("hist_vol_20")
+            if "range_pct" in last_row: summary["range_pct"] = last_row.get("range_pct")
+            if "gap_pct" in last_row: summary["gap_pct"] = last_row.get("gap_pct")
+            if "vol_regime_state_20_252" in last_row: summary["vol_regime_state"] = last_row.get("vol_regime_state_20_252")
+            if "volatility_risk_score" in last_row: summary["volatility_risk_score"] = last_row.get("volatility_risk_score")
+            if "volatility_regime_score" in last_row: summary["volatility_regime_score"] = last_row.get("volatility_regime_score")
+
+            # Clean up nan for dict dump
+            summary = {k: None if pd.isna(v) else v for k, v in summary.items()}
+
+        out_data = {
+            "symbol": symbol,
+            "level": args.level,
+            "rows": len(df),
+            "requested_count": result.requested_count,
+            "success_count": result.success_count,
+            "failed_count": result.failed_count,
+            "output_volatility_columns": list(df.columns),
+            "volatility_feature_summary": summary
+        }
+
+        print_output(out_data, as_json=args.json)
+        return 0
+
+    except Exception as e:
+        logger.error(f"Command error: {e}", exc_info=True)
+        print_output({"error": str(e)}, as_json=args.json)
+        return 1

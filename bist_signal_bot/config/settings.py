@@ -196,6 +196,20 @@ class Settings(BaseSettings):
     INDICATOR_DEFAULT_SET: str = Field(default="sma_20,sma_50,ema_20,rsi_14,atr_14,macd,bb_20,obv,return_1,volatility_20")
     INDICATOR_MIN_ROWS_WARNING: int = Field(default=50)
     INDICATOR_SAVE_OUTPUT: bool = Field(default=False)
+    # VOLATILITY INDICATORS
+    ENABLE_VOLATILITY_INDICATORS: bool = Field(default=True)
+    VOLATILITY_FEATURE_LEVEL: str = Field(default="basic")
+    VOL_ATR_WINDOW: int = Field(default=14)
+    VOL_WINDOW: int = Field(default=20)
+    VOL_RANK_WINDOW: int = Field(default=100)
+    VOL_REGIME_RANK_WINDOW: int = Field(default=252)
+    VOL_BB_WINDOW: int = Field(default=20)
+    VOL_BB_STD: float = Field(default=2.0)
+    VOL_ANNUALIZATION: int = Field(default=252)
+    VOL_Z_WINDOW: int = Field(default=100)
+    VOL_GAP_WINDOW: int = Field(default=20)
+    VOL_RANGE_WINDOW: int = Field(default=20)
+
 
     # CORPORATE ACTIONS & ADJUSTMENTS
     CORPORATE_ACTIONS_DIR_NAME: str = Field(default="corporate_actions")
@@ -229,6 +243,20 @@ class Settings(BaseSettings):
         if self.TREND_KELTNER_ATR_MULTIPLIER <= 0 or self.TREND_SUPERTREND_MULTIPLIER <= 0:
             from bist_signal_bot.core.exceptions import ConfigurationError
             raise ConfigurationError("Trend multiplier parameters must be positive")
+        if self.VOLATILITY_FEATURE_LEVEL not in ["basic", "advanced", "full"]:
+            from bist_signal_bot.core.exceptions import ConfigurationError
+            raise ConfigurationError("VOLATILITY_FEATURE_LEVEL must be basic, advanced, or full")
+
+        if any(w <= 0 for w in [self.VOL_ATR_WINDOW, self.VOL_WINDOW, self.VOL_RANK_WINDOW,
+                               self.VOL_REGIME_RANK_WINDOW, self.VOL_BB_WINDOW, self.VOL_ANNUALIZATION,
+                               self.VOL_Z_WINDOW, self.VOL_GAP_WINDOW, self.VOL_RANGE_WINDOW]):
+            from bist_signal_bot.core.exceptions import ConfigurationError
+            raise ConfigurationError("Volatility window parameters must be positive")
+
+        if self.VOL_BB_STD <= 0:
+            from bist_signal_bot.core.exceptions import ConfigurationError
+            raise ConfigurationError("Volatility std parameters must be positive")
+
 
         profile = get_profile(self.APP_ENV)
         for key, value in profile.safe_defaults.items():
