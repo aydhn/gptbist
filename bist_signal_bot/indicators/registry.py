@@ -56,6 +56,17 @@ class IndicatorRegistry:
             AroonIndicator, IchimokuIndicator, SupertrendIndicator,
             LinearRegressionSlopeIndicator, TrendStrengthCompositeIndicator
         )
+        from bist_signal_bot.indicators.volatility import (
+            ATRPercentIndicator, NormalizedTrueRangeIndicator,
+            HistoricalVolatilityIndicator, RealizedVolatilityIndicator,
+            ParkinsonVolatilityIndicator, GarmanKlassVolatilityIndicator,
+            RogersSatchellVolatilityIndicator, RangePercentIndicator,
+            GapPercentIndicator, BollingerBandwidthPercentileIndicator,
+            ATRPercentileIndicator, VolatilityZScoreIndicator,
+            VolatilityCompressionScoreIndicator, VolatilityExpansionScoreIndicator,
+            VolatilityRegimeFeatureIndicator, VolatilityCompositeScoreIndicator
+        )
+
 
         registry = cls()
         registry.register(MovingAverageDistanceIndicator())
@@ -102,4 +113,20 @@ class IndicatorRegistry:
         registry.register(KSTIndicator())
         registry.register(ConnorsRSIIndicator())
         registry.register(MomentumStrengthCompositeIndicator())
+        registry.register(ATRPercentIndicator())
+        registry.register(NormalizedTrueRangeIndicator())
+        registry.register(HistoricalVolatilityIndicator())
+        registry.register(RealizedVolatilityIndicator())
+        registry.register(ParkinsonVolatilityIndicator())
+        registry.register(GarmanKlassVolatilityIndicator())
+        registry.register(RogersSatchellVolatilityIndicator())
+        registry.register(RangePercentIndicator())
+        registry.register(GapPercentIndicator())
+        registry.register(BollingerBandwidthPercentileIndicator())
+        registry.register(ATRPercentileIndicator())
+        registry.register(VolatilityZScoreIndicator())
+        registry.register(VolatilityCompressionScoreIndicator())
+        registry.register(VolatilityExpansionScoreIndicator())
+        registry.register(VolatilityRegimeFeatureIndicator())
+        registry.register(VolatilityCompositeScoreIndicator())
         return registry
