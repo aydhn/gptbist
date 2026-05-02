@@ -198,6 +198,23 @@ class Settings(BaseSettings):
     INDICATOR_SAVE_OUTPUT: bool = Field(default=False)
     # VOLATILITY INDICATORS
     ENABLE_VOLATILITY_INDICATORS: bool = Field(default=True)
+
+    ENABLE_VOLUME_INDICATORS: bool = Field(default=True)
+    VOLUME_FEATURE_LEVEL: str = Field(default="basic")
+    VOLUME_WINDOW: int = Field(default=20)
+    VOLUME_ROC_WINDOW: int = Field(default=10)
+    VOLUME_SPIKE_MULTIPLIER: float = Field(default=2.0)
+    VOLUME_BREAKOUT_MULTIPLIER: float = Field(default=1.5)
+    VOLUME_PRICE_WINDOW: int = Field(default=20)
+    VOLUME_CMF_WINDOW: int = Field(default=20)
+    VOLUME_FORCE_EMA_SPAN: int = Field(default=13)
+    VOLUME_EOM_WINDOW: int = Field(default=14)
+    VOLUME_KVO_FAST: int = Field(default=34)
+    VOLUME_KVO_SLOW: int = Field(default=55)
+    VOLUME_KVO_SIGNAL: int = Field(default=13)
+    VOLUME_MIN_TURNOVER_TRY: float = Field(default=1000000.0)
+    VOLUME_LIQUIDITY_WINDOW: int = Field(default=20)
+
     VOLATILITY_FEATURE_LEVEL: str = Field(default="basic")
     VOL_ATR_WINDOW: int = Field(default=14)
     VOL_WINDOW: int = Field(default=20)
@@ -256,6 +273,30 @@ class Settings(BaseSettings):
         if self.VOL_BB_STD <= 0:
             from bist_signal_bot.core.exceptions import ConfigurationError
             raise ConfigurationError("Volatility std parameters must be positive")
+
+        if self.VOLUME_FEATURE_LEVEL not in ["basic", "advanced", "full"]:
+            from bist_signal_bot.core.exceptions import ConfigurationError
+            raise ConfigurationError("VOLUME_FEATURE_LEVEL must be basic, advanced, or full")
+
+        if any(w <= 0 for w in [self.VOLUME_WINDOW, self.VOLUME_ROC_WINDOW, self.VOLUME_PRICE_WINDOW,
+                               self.VOLUME_CMF_WINDOW, self.VOLUME_FORCE_EMA_SPAN, self.VOLUME_EOM_WINDOW,
+                               self.VOLUME_KVO_FAST, self.VOLUME_KVO_SLOW, self.VOLUME_KVO_SIGNAL,
+                               self.VOLUME_LIQUIDITY_WINDOW]):
+            from bist_signal_bot.core.exceptions import ConfigurationError
+            raise ConfigurationError("Volume window parameters must be positive integers")
+
+        if self.VOLUME_SPIKE_MULTIPLIER <= 0 or self.VOLUME_BREAKOUT_MULTIPLIER <= 0:
+            from bist_signal_bot.core.exceptions import ConfigurationError
+            raise ConfigurationError("Volume multiplier parameters must be positive")
+
+        if self.VOLUME_KVO_FAST >= self.VOLUME_KVO_SLOW:
+            from bist_signal_bot.core.exceptions import ConfigurationError
+            raise ConfigurationError("VOLUME_KVO_FAST must be less than VOLUME_KVO_SLOW")
+
+        if self.VOLUME_MIN_TURNOVER_TRY < 0:
+            from bist_signal_bot.core.exceptions import ConfigurationError
+            raise ConfigurationError("VOLUME_MIN_TURNOVER_TRY cannot be negative")
+
 
 
         profile = get_profile(self.APP_ENV)

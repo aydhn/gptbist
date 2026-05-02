@@ -293,6 +293,17 @@ def build_parser() -> argparse.ArgumentParser:
     wl_remove_parser.add_argument("--json", action="store_true", help="Output in JSON format")
 
 
+
+    # volume-features
+    volume_features_parser = subparsers.add_parser("volume-features", help="Generate volume features")
+    volume_features_parser.add_argument("symbol", type=str, help="Symbol to process")
+    volume_features_parser.add_argument("--source", type=str, choices=["local", "mock"], default="local", help="Data source")
+    volume_features_parser.add_argument("--timeframe", type=str, default="1d", help="Timeframe (e.g. 1d)")
+    volume_features_parser.add_argument("--rows", type=int, help="Mock data rows")
+    volume_features_parser.add_argument("--level", type=str, choices=["basic", "advanced", "full"], default="basic", help="Feature level")
+    volume_features_parser.add_argument("--save-output", action="store_true", help="Save output to CSV")
+    volume_features_parser.add_argument("--json", action="store_true", help="Output in JSON format")
+
     # volatility-features
     volatility_features_parser = subparsers.add_parser("volatility-features", help="Generate volatility features")
     volatility_features_parser.add_argument("symbol", type=str, help="Symbol to process")
