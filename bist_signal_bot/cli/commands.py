@@ -7,7 +7,7 @@ from bist_signal_bot.storage.local_store import LocalMarketDataStore
 
 from datetime import date
 
-from bist_signal_bot.core.audit import AuditEventType
+from bist_signal_bot.core.audit import AuditEventType, AuditEvent
 from bist_signal_bot.data.corporate_actions import CorporateActionStore
 from bist_signal_bot.data.adjustments import PriceAdjustmentEngine
 from bist_signal_bot.data.models import CorporateAction, CorporateActionType, AdjustmentPolicy
@@ -543,7 +543,7 @@ def cmd_adjust_data(args: argparse.Namespace, ctx: ApplicationContext) -> int:
     try:
         symbol = ensure_valid_internal_symbol(args.symbol.upper())
     except Exception as e:
-        print_output(format_error(str(e)), args.json)
+        print_output({"error": str(e)}, as_json=args.json)
         return 1
 
     timeframe = Timeframe(args.timeframe)
@@ -627,7 +627,7 @@ def cmd_corporate_actions(args: argparse.Namespace, ctx: ApplicationContext) -> 
             print_output({"message": msg, "path": str(path)} if args.json else format_success(msg), args.json)
             return 0
         except Exception as e:
-            print_output(format_error(str(e)), args.json)
+            print_output({"error": str(e)}, as_json=args.json)
             return 1
 
     elif args.ca_command == "list":
@@ -647,7 +647,7 @@ def cmd_corporate_actions(args: argparse.Namespace, ctx: ApplicationContext) -> 
                     print(f"{a.symbol} | {a.action_date} | {a.action_type.value} | Ratio: {a.ratio} | Cash: {a.cash_amount}")
             return 0
         except Exception as e:
-            print_output(format_error(str(e)), args.json)
+            print_output({"error": str(e)}, as_json=args.json)
             return 1
 
     elif args.ca_command == "add":
@@ -676,7 +676,7 @@ def cmd_corporate_actions(args: argparse.Namespace, ctx: ApplicationContext) -> 
             print_output({"message": msg, "action": action.model_dump(mode="json")} if args.json else format_success(msg), args.json)
             return 0
         except Exception as e:
-            print_output(format_error(str(e)), args.json)
+            print_output({"error": str(e)}, as_json=args.json)
             return 1
 
     elif args.ca_command == "remove":
@@ -702,7 +702,7 @@ def cmd_corporate_actions(args: argparse.Namespace, ctx: ApplicationContext) -> 
                 print_output({"message": msg, "removed": False} if args.json else format_error(msg), args.json)
                 return 1
         except Exception as e:
-            print_output(format_error(str(e)), args.json)
+            print_output({"error": str(e)}, as_json=args.json)
             return 1
 
     elif args.ca_command == "import":
@@ -727,7 +727,7 @@ def cmd_corporate_actions(args: argparse.Namespace, ctx: ApplicationContext) -> 
                 print(format_corporate_action_validation(report))
             return 0 if report.passed else 1
         except Exception as e:
-            print_output(format_error(str(e)), args.json)
+            print_output({"error": str(e)}, as_json=args.json)
             return 1
 
     elif args.ca_command == "export":
@@ -747,7 +747,7 @@ def cmd_corporate_actions(args: argparse.Namespace, ctx: ApplicationContext) -> 
             print_output({"message": msg, "path": str(path)} if args.json else format_success(msg), args.json)
             return 0
         except Exception as e:
-            print_output(format_error(str(e)), args.json)
+            print_output({"error": str(e)}, as_json=args.json)
             return 1
 
     elif args.ca_command == "validate":
@@ -771,7 +771,7 @@ def cmd_corporate_actions(args: argparse.Namespace, ctx: ApplicationContext) -> 
                 print(format_corporate_action_validation(report))
             return 0 if report.passed else 1
         except Exception as e:
-            print_output(format_error(str(e)), args.json)
+            print_output({"error": str(e)}, as_json=args.json)
             return 1
     else:
         print(format_error("Missing corporate-actions sub-command"))
@@ -783,7 +783,7 @@ def cmd_clean_data(args: argparse.Namespace, ctx: ApplicationContext) -> int:
     try:
         symbol = ensure_valid_internal_symbol(symbol)
     except Exception as e:
-        print_output(format_error(str(e)), args.json)
+        print_output({"error": str(e)}, as_json=args.json)
         return 1
 
     timeframe = Timeframe(args.timeframe)
@@ -950,7 +950,7 @@ def cmd_indicators(args: argparse.Namespace, ctx: ApplicationContext) -> int:
     from bist_signal_bot.indicators.models import IndicatorCategory
     from bist_signal_bot.data.mock_provider import MockMarketDataProvider
     from bist_signal_bot.data.models import Timeframe, DataVendor
-    from bist_signal_bot.core.audit import AuditEventType
+    from bist_signal_bot.core.audit import AuditEventType, AuditEvent
     from bist_signal_bot.cli.formatting import format_success, format_error, print_output
     from bist_signal_bot.data.symbol_utils import ensure_valid_internal_symbol
     from bist_signal_bot.storage.local_store import LocalMarketDataStore
@@ -979,7 +979,7 @@ def cmd_indicators(args: argparse.Namespace, ctx: ApplicationContext) -> int:
                     print("-" * 50)
             return 0
         except Exception as e:
-            print_output(format_error(str(e)), args.json)
+            print_output({"error": str(e)}, as_json=args.json)
             return 1
 
     elif args.indicators_command == "calc":
@@ -987,7 +987,7 @@ def cmd_indicators(args: argparse.Namespace, ctx: ApplicationContext) -> int:
         try:
             symbol = ensure_valid_internal_symbol(symbol)
         except Exception as e:
-            print_output(format_error(str(e)), args.json)
+            print_output({"error": str(e)}, as_json=args.json)
             return 1
 
         timeframe = Timeframe(args.timeframe)
@@ -1071,7 +1071,7 @@ def cmd_trend_features(args, ctx) -> int:
     try:
         symbol = ensure_valid_internal_symbol(symbol)
     except Exception as e:
-        print_output(format_error(str(e)), args.json)
+        print_output({"error": str(e)}, as_json=args.json)
         return 1
 
     engine = IndicatorEngine(settings=ctx.settings)
@@ -1170,7 +1170,7 @@ def cmd_trend_features(args, ctx) -> int:
 
     except Exception as e:
         print(f"Trend feature calculation error: {e}")
-        print_output(format_error(str(e)), args.json)
+        print_output({"error": str(e)}, as_json=args.json)
         return 1
 
 def cmd_momentum_features(args, ctx) -> int:
@@ -1187,7 +1187,7 @@ def cmd_momentum_features(args, ctx) -> int:
     try:
         symbol = ensure_valid_internal_symbol(symbol)
     except Exception as e:
-        print_output(format_error(str(e)), args.json)
+        print_output({"error": str(e)}, as_json=args.json)
         return 1
 
     engine = IndicatorEngine(settings=ctx.settings)
@@ -1285,7 +1285,7 @@ def cmd_momentum_features(args, ctx) -> int:
 
     except Exception as e:
         print(f"Momentum feature calculation error: {e}")
-        print_output(format_error(str(e)), args.json)
+        print_output({"error": str(e)}, as_json=args.json)
         return 1
 
 
@@ -1294,7 +1294,7 @@ def cmd_volatility_features(args, ctx) -> int:
     from bist_signal_bot.data.mock_provider import MockMarketDataProvider
     from bist_signal_bot.data.data_service import MarketDataService
     from bist_signal_bot.cli.formatting import print_output
-    from bist_signal_bot.core.audit import AuditEventType
+    from bist_signal_bot.core.audit import AuditEventType, AuditEvent
     from datetime import datetime
     import pandas as pd
     import logging
@@ -1326,7 +1326,7 @@ def cmd_volatility_features(args, ctx) -> int:
             result = builder.build_full_volatility_features(mdf)
 
         ctx.audit_logger.log_event(
-            ctx.audit_logger._audit_file and ctx.audit_logger.settings.ENABLE_AUDIT_LOG and __import__("bist_signal_bot.core.audit").core.audit.AuditEvent(
+            ctx.audit_logger._audit_file and ctx.audit_logger.settings.ENABLE_AUDIT_LOG and AuditEvent(
                 event_type=AuditEventType.VOLATILITY_FEATURE_CALCULATION,
                 message=f"Calculated volatility features for {symbol}",
                 symbol=symbol,
@@ -1382,4 +1382,108 @@ def cmd_volatility_features(args, ctx) -> int:
     except Exception as e:
         logger.error(f"Command error: {e}", exc_info=True)
         print_output({"error": str(e)}, as_json=args.json)
+        return 1
+
+def cmd_volume_features(args, ctx) -> int:
+    from bist_signal_bot.features.volume_features import VolumeFeatureBuilder
+    from bist_signal_bot.indicators.engine import IndicatorEngine
+    from bist_signal_bot.data.mock_provider import MockMarketDataProvider
+    from bist_signal_bot.data.models import Timeframe, DataVendor
+    from bist_signal_bot.cli.formatting import format_success, format_error, print_output
+    from bist_signal_bot.data.symbol_utils import ensure_valid_internal_symbol
+    from bist_signal_bot.core.audit import AuditEventType, AuditEvent
+    import pandas as pd
+    import time
+
+    symbol = args.symbol.upper()
+    try:
+        symbol = ensure_valid_internal_symbol(symbol)
+    except Exception as e:
+        print_output({"error": str(e)}, as_json=args.json)
+        return 1
+
+    # logger not in ctx
+
+    start_time = time.time()
+    try:
+        engine = IndicatorEngine(settings=ctx.settings)
+        builder = VolumeFeatureBuilder(indicator_engine=engine, settings=ctx.settings)
+
+        if args.source == "mock":
+            provider = MockMarketDataProvider()
+            rows = args.rows or 250
+            req = __import__("bist_signal_bot.data.models").data.models.DataFetchRequest(symbols=[symbol], timeframe=Timeframe(args.timeframe), rows=args.rows or 250); mdf = provider.fetch_ohlcv(req).get(symbol)
+        else:
+            from bist_signal_bot.data.data_service import LocalDataService
+            service = LocalDataService(ctx.settings)
+            mdf = service.load_data(symbol, Timeframe(args.timeframe))
+
+        if mdf is None or len(mdf.data) == 0:
+            print_output({"error": f"No data available for {symbol}"}, as_json=args.json)
+            return 1
+
+        if args.level == "basic":
+            result = builder.build_basic_volume_features(mdf)
+        elif args.level == "advanced":
+            result = builder.build_advanced_volume_features(mdf)
+        else:
+            result = builder.build_full_volume_features(mdf)
+
+        summary = result.summary()
+
+        ctx.audit_logger.log_event(
+            ctx.audit_logger._audit_file and ctx.audit_logger.settings.ENABLE_AUDIT_LOG and AuditEvent(
+                event_type=AuditEventType.VOLUME_FEATURE_CALCULATION,
+                symbol=symbol,
+                message=f"Calculated volume features for {symbol}",
+                metadata={
+                    "timeframe": args.timeframe,
+                    "level": args.level,
+                    "requested_count": result.requested_count,
+                    "success_count": result.success_count,
+                    "failed_count": result.failed_count,
+                    "elapsed_seconds": round(time.time() - start_time, 4)
+                }
+            )
+        )
+
+        if args.save_output:
+            out_dir = ctx.settings.DATA_DIR / "features"
+            out_dir.mkdir(parents=True, exist_ok=True)
+            out_file = out_dir / f"{symbol}_{args.timeframe}_volume_{args.level}.csv"
+            result.output_data.to_csv(out_file)
+            summary["saved_to"] = str(out_file)
+
+        if args.json:
+            import json
+            print(json.dumps(summary, indent=2))
+        else:
+            print(f"Volume Feature Calculation for {symbol}")
+            print(f"Level: {args.level}")
+            print(f"Requested: {result.requested_count}, Success: {result.success_count}, Failed: {result.failed_count}")
+            print(f"Output columns: {len(result.output_data.columns)}")
+            if len(result.output_data) > 0:
+                print("\nVolume feature summary:")
+
+                # Show key volume feature columns if they exist
+                last_row = result.output_data.iloc[-1]
+                cols_to_show = [
+                    "close", "volume",
+                    f"volume_ratio_{ctx.settings.VOLUME_WINDOW}",
+                    f"volume_zscore_{ctx.settings.VOLUME_WINDOW}",
+                    f"volume_spike_{ctx.settings.VOLUME_WINDOW}_{str(ctx.settings.VOLUME_SPIKE_MULTIPLIER).replace('.', '_')}",
+                    f"cmf_{ctx.settings.VOLUME_CMF_WINDOW}",
+                    f"liquidity_score_{ctx.settings.VOLUME_LIQUIDITY_WINDOW}",
+                    "volume_activity_score",
+                    "volume_pressure_score"
+                ]
+                for col in cols_to_show:
+                    if col in last_row.index:
+                        print(f"  {col}: {last_row[col]}")
+
+        return 0
+
+    except Exception as e:
+        # logger not in ctx
+        print_output({"error": f"Volume feature calculation error: {e}"}, as_json=args.json)
         return 1
