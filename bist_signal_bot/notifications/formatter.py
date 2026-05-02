@@ -244,3 +244,37 @@ class NotificationFormatter:
             lines.append(f"Üretilen kolon: {len(result.output_data.columns)}")
 
         return "\n".join(lines)
+
+
+    def format_pattern_feature_summary(self, result: Any, symbol: str | None = None, level: str | None = None) -> str:
+        lines = [
+            "<b>BIST Bot Pattern Feature Özeti</b>",
+            "",
+            f"Sembol: {self._escape(symbol or 'Bilinmiyor')}",
+            f"Seviye: {self._escape(level or 'Bilinmiyor')}",
+            f"İstenen: {result.requested_count}",
+            f"Başarılı: {result.success_count}",
+            f"Başarısız: {result.failed_count}",
+        ]
+
+        if result.success_count > 0:
+            lines.append(f"Üretilen kolon: {len(result.output_data.columns)}")
+
+        return "\n".join(lines)
+
+
+    def format_pattern_feature_summary(self, result: Any, symbol: str | None = None, level: str | None = None) -> str:
+        lines = [
+            "<b>BIST Bot Pattern Feature Özeti</b>",
+            "",
+            f"Sembol: {self._escape(symbol or 'Bilinmiyor')}",
+            f"Seviye: {self._escape(level or 'Bilinmiyor')}",
+            f"İstenen: {result.requested_count}",
+            f"Başarılı: {result.success_count}",
+            f"Başarısız: {result.failed_count}",
+        ]
+
+        if result.success_count > 0:
+            lines.append(f"Üretilen kolon: {len(result.output_data.columns)}")
+
+        return "\n".join(lines)

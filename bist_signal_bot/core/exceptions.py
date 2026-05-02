@@ -129,3 +129,27 @@ class IndicatorCalculationError(IndicatorError):
 class IndicatorRegistryError(IndicatorError):
     """Raised when there is an error in the indicator registry."""
     pass
+
+class PatternDetectionError(BistSignalBotError):
+    """Raised when an error occurs during pattern detection."""
+    pass
+
+class PatternValidationError(PatternDetectionError):
+    """Raised when pattern inputs or parameters are invalid."""
+    pass
+
+class PatternEngineError(PatternDetectionError):
+    """Raised when there is an error in the pattern engine."""
+    pass
+
+class PatternDetectionError(BistSignalBotError):
+    """Raised when an error occurs during pattern detection."""
+    pass
+
+class PatternValidationError(PatternDetectionError):
+    """Raised when pattern inputs or parameters are invalid."""
+    pass
+
+class PatternEngineError(PatternDetectionError):
+    """Raised when there is an error in the pattern engine."""
+    pass
