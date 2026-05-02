@@ -274,6 +274,21 @@ def run_healthcheck() -> dict:
             "validation_passed": validation_passed,
             "issue_count": issue_count
         },
+
+        "divergence_engine": {
+            "enabled": settings.ENABLE_DIVERGENCE_ENGINE,
+            "feature_level": settings.DIVERGENCE_FEATURE_LEVEL,
+            "pivot_mode": settings.DIVERGENCE_PIVOT_MODE,
+            "lookback": settings.DIVERGENCE_LOOKBACK,
+            "confirmation_bars": settings.DIVERGENCE_CONFIRMATION_BARS,
+            "min_pivot_distance": settings.DIVERGENCE_MIN_PIVOT_DISTANCE,
+            "max_pivot_distance": settings.DIVERGENCE_MAX_PIVOT_DISTANCE,
+            "include_hidden": settings.DIVERGENCE_INCLUDE_HIDDEN,
+            "include_regular": settings.DIVERGENCE_INCLUDE_REGULAR,
+            "default_indicators": settings.DIVERGENCE_DEFAULT_INDICATORS,
+            "engine_instantiable": True,
+            "mock_capable": True
+        },
         "notifications": {
             "telegram_enabled": settings.ENABLE_TELEGRAM,
             "telegram_configured": bool(settings.ENABLE_TELEGRAM and settings.TELEGRAM_BOT_TOKEN and settings.TELEGRAM_CHAT_ID),

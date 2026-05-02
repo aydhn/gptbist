@@ -1790,3 +1790,108 @@ def cmd_pattern_features(args, ctx) -> int:
         logger.error(f"Pattern feature error: {e}", exc_info=True)
         print_output({"error": str(e)}, as_json=args.json)
         return 1
+def cmd_divergence_detect(args, ctx) -> int:
+    from bist_signal_bot.divergence.engine import DivergenceEngine
+    from bist_signal_bot.features.divergence_features import DivergenceFeatureBuilder
+    from bist_signal_bot.data.mock_provider import MockMarketDataProvider
+    from bist_signal_bot.data.data_service import MarketDataService
+    from bist_signal_bot.cli.formatting import print_output, format_divergence_result
+    from bist_signal_bot.core.audit import AuditEventType, AuditEvent
+    import pandas as pd
+    import logging
+
+    logger = logging.getLogger("bist_signal_bot.cli")
+
+    try:
+        symbol = args.symbol.upper()
+
+        if args.source == "mock":
+            rows = args.rows or 200
+            provider = MockMarketDataProvider(rows=rows)
+            mdf = provider.fetch_one(symbol, args.timeframe)
+        else:
+            service = MarketDataService(settings=ctx.settings)
+            mdf = service.get_ohlcv(symbol, args.timeframe)
+
+        if mdf is None or mdf.data.empty:
+            print_output({"error": "No data found or available"}, as_json=args.json)
+            return 1
+
+        engine = DivergenceEngine(settings=ctx.settings)
+        builder = DivergenceFeatureBuilder(divergence_engine=engine, settings=ctx.settings)
+
+        if args.level:
+            if args.level == "basic":
+                result_obj = builder.build_basic_divergence_features(mdf)
+            elif args.level == "advanced":
+                result_obj = builder.build_advanced_divergence_features(mdf)
+            else:
+                result_obj = builder.build_full_divergence_features(mdf)
+        else:
+            # Manual options
+            kwargs = {
+                "pivot_mode": args.pivot_mode,
+            }
+            if args.lookback is not None: kwargs["lookback"] = args.lookback
+            if args.confirmation_bars is not None: kwargs["confirmation_bars"] = args.confirmation_bars
+            if args.min_pivot_distance is not None: kwargs["min_pivot_distance"] = args.min_pivot_distance
+            if args.max_pivot_distance is not None: kwargs["max_pivot_distance"] = args.max_pivot_distance
+            kwargs["include_hidden"] = args.include_hidden
+            kwargs["include_regular"] = args.include_regular
+
+            req = engine.parse_request(indicators=args.indicators, **kwargs)
+            result_obj = engine.detect(mdf, req)
+
+        result = result_obj.result
+        df = result_obj.output_data
+
+        ctx.audit_logger.log_event(
+            ctx.audit_logger._audit_file and ctx.audit_logger.settings.ENABLE_AUDIT_LOG and AuditEvent(
+                event_type=AuditEventType.DIVERGENCE_DETECTION,
+                message=f"Calculated divergence features for {symbol}",
+                symbol=symbol,
+                metadata={
+                    "timeframe": args.timeframe,
+                    "pivot_mode": result.pivot_mode.value,
+                    "indicators": result.requested_indicators,
+                    "detected_count": result.detected_count,
+                    "bullish_count": result.bullish_count(),
+                    "bearish_count": result.bearish_count(),
+                    "elapsed_seconds": result.elapsed_seconds
+                }
+            )
+        )
+
+        if args.save_output:
+            out_dir = ctx.settings.DATA_DIR / "features"
+            out_dir.mkdir(parents=True, exist_ok=True)
+            df.to_csv(out_dir / f"{symbol}_{args.timeframe}_divergence.csv")
+
+        if args.json:
+            print_output(result.summary(), as_json=True)
+        else:
+            print(f"Symbol: {symbol}\\nTimeframe: {args.timeframe}\\nPivot Mode: {result.pivot_mode.value}\\nRows: {len(df)}\\n")
+
+            lines = [
+                "Divergence feature summary",
+                f"Requested indicators: {', '.join(result.requested_indicators)}",
+                f"Detected count: {result.detected_count}",
+                f"Bullish count: {result.bullish_count()}",
+                f"Bearish count: {result.bearish_count()}",
+                f"Strong count: {result.strong_count()}",
+                f"Output columns: {', '.join(result.output_columns)}"
+            ]
+
+            if result.events:
+                lines.append("\\nLast 5 events:")
+                for e in result.events[-5:]:
+                    lines.append(f"  {e.divergence_type.value} on {e.indicator} (Strength: {e.strength.value})")
+
+            print("\\n".join(lines))
+
+        return 0
+
+    except Exception as e:
+        logger.error(f"Divergence feature error: {e}", exc_info=True)
+        print_output({"error": str(e)}, as_json=args.json)
+        return 1

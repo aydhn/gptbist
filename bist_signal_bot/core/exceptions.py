@@ -153,3 +153,19 @@ class PatternValidationError(PatternDetectionError):
 class PatternEngineError(PatternDetectionError):
     """Raised when there is an error in the pattern engine."""
     pass
+
+class DivergenceError(BistSignalBotError):
+    """Raised when an error occurs during divergence detection."""
+    pass
+
+class DivergenceValidationError(DivergenceError):
+    """Raised when divergence inputs or parameters are invalid."""
+    pass
+
+class DivergenceDetectionError(DivergenceError):
+    """Raised when there is an error detecting divergences."""
+    pass
+
+class PivotDetectionError(DivergenceError):
+    """Raised when there is an error detecting pivot points."""
+    pass
