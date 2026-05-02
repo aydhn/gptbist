@@ -165,6 +165,30 @@ def run_healthcheck() -> dict:
         },
 
 
+
+        "pattern_detectors": {
+            "enabled": settings.ENABLE_PATTERN_DETECTORS,
+            "feature_level": settings.PATTERN_FEATURE_LEVEL,
+            "breakout_window": settings.PATTERN_BREAKOUT_WINDOW,
+            "sr_window": settings.PATTERN_SR_WINDOW,
+            "volume_window": settings.PATTERN_VOLUME_WINDOW,
+            "gap_threshold": settings.PATTERN_GAP_THRESHOLD,
+            "registered_pattern_detector_count": 0, # Will be set dynamically when registry is imported
+            "builder_instantiable": True,
+            "mock_capable": True
+        },
+
+        "pattern_detectors": {
+            "enabled": settings.ENABLE_PATTERN_DETECTORS,
+            "feature_level": settings.PATTERN_FEATURE_LEVEL,
+            "breakout_window": settings.PATTERN_BREAKOUT_WINDOW,
+            "sr_window": settings.PATTERN_SR_WINDOW,
+            "volume_window": settings.PATTERN_VOLUME_WINDOW,
+            "gap_threshold": settings.PATTERN_GAP_THRESHOLD,
+            "registered_pattern_detector_count": 0, # Will be set dynamically when registry is imported
+            "builder_instantiable": True,
+            "mock_capable": True
+        },
         "momentum_indicators": {
             "enabled": settings.ENABLE_MOMENTUM_INDICATORS,
             "feature_level": settings.MOMENTUM_FEATURE_LEVEL,

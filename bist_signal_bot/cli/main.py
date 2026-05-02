@@ -3,6 +3,9 @@ import sys
 from bist_signal_bot.app.bootstrap import bootstrap_app
 from bist_signal_bot.cli.parsers import parse_args
 from bist_signal_bot.cli.commands import (
+    cmd_patterns_list,
+    cmd_patterns_detect,
+    cmd_pattern_features,
     cmd_momentum_features,
     cmd_trend_features,
     cmd_healthcheck,
@@ -78,6 +81,8 @@ def run_cli(argv: list[str] | None = None) -> int:
         "momentum-features": cmd_momentum_features,
         "volatility-features": cmd_volatility_features,
         "volume-features": cmd_volume_features,
+        "patterns": lambda a, c: cmd_patterns_list(a, c) if a.patterns_command == 'list' else cmd_patterns_detect(a, c),
+        "pattern-features": cmd_pattern_features,
     }
 
     cmd_func = commands.get(args.command)
