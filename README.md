@@ -209,3 +209,18 @@ Phase 21 introduces an extensive library of pattern detection components designe
 - **Support & Resistance**: Dynamically tracks rolling SR levels and pivot points utilizing strict `shift(1)` isolation, avoiding baseline leakage.
 
 This layer purely emits calculated features for backtesting and ML ingestion; it explicitly does **NOT** issue financial or trading advice. As per the strict requirements, there is no dashboard, HTML scraping, paid API integration, or real-order execution. Check out the available tools using `python -m bist_signal_bot patterns list` and `python -m bist_signal_bot pattern-features ASELS --source mock --level full`.
+
+### Phase 22: Divergence Engine & Feature Layer
+- **Divergence Engine Goal:** Detect price-indicator discrepancies (divergences) natively without look-ahead bias to provide rich ML/backtest features.
+- **Regular Divergence:** Detects potential trend reversals (e.g. Price Lower Lows but Indicator Higher Lows -> Regular Bullish).
+- **Hidden Divergence:** Detects trend continuation signals (e.g. Price Higher Lows but Indicator Lower Lows -> Hidden Bullish).
+- **Pivot Detection Modes:**
+  - `LOOKBACK_ONLY` (Default): Uses only past lookback window to find extremes. No look-ahead bias, suitable for real-time feature generation.
+  - `CONFIRMED_LAGGED`: Wait for confirmation bars. Highly reliable but features are artificially delayed by confirmation lag to avoid future leakage in backtests.
+- **Supported Indicators:** Native support via short-hand mappings (`rsi`, `macd_hist`, `obv`, `mfi`, `stoch_k`, `ppo_hist`, `cmf`, `momentum`).
+- **Strength Score:** A composite heuristic score (0-100) assessing magnitude and duration of divergence. *Note: this is not a financial recommendation.*
+- **Usage via CLI:**
+  - `python -m bist_signal_bot divergence detect ASELS --source mock --level basic`
+  - `python -m bist_signal_bot divergence detect ASELS --source mock --indicators rsi macd_hist`
+- **Output:** Outputs dataframe columns like `div_regular_bullish_rsi`, `div_strength_rsi`, and `div_bars_since_last_rsi` suitable for ML models.
+- **No GUI, No Web Scraping:** This phase conforms strictly to the local-first CLI architecture.

@@ -7,6 +7,19 @@ from bist_signal_bot.config.secrets import settings_safe_dump
 
 class Settings(BaseSettings):
     # Pattern Detection Features
+    # DIVERGENCE ENGINE
+    ENABLE_DIVERGENCE_ENGINE: bool = Field(default=True)
+    DIVERGENCE_FEATURE_LEVEL: str = Field(default="basic")
+    DIVERGENCE_PIVOT_MODE: str = Field(default="LOOKBACK_ONLY")
+    DIVERGENCE_LOOKBACK: int = Field(default=5)
+    DIVERGENCE_CONFIRMATION_BARS: int = Field(default=3)
+    DIVERGENCE_MIN_PIVOT_DISTANCE: int = Field(default=3)
+    DIVERGENCE_MAX_PIVOT_DISTANCE: int = Field(default=60)
+    DIVERGENCE_MIN_STRENGTH_SCORE: float = Field(default=0.0)
+    DIVERGENCE_INCLUDE_HIDDEN: bool = Field(default=True)
+    DIVERGENCE_INCLUDE_REGULAR: bool = Field(default=True)
+    DIVERGENCE_DEFAULT_INDICATORS: str = Field(default="rsi,macd_hist,obv")
+
     ENABLE_PATTERN_DETECTORS: bool = Field(default=True, description="Enable or disable pattern detectors.")
     PATTERN_FEATURE_LEVEL: str = Field(default="basic", description="Feature level for patterns: basic, advanced, or full.")
     PATTERN_BREAKOUT_WINDOW: int = Field(default=20, description="Window size for breakout detection.")
@@ -313,6 +326,34 @@ class Settings(BaseSettings):
 
 
 
+
+        if self.DIVERGENCE_FEATURE_LEVEL not in ["basic", "advanced", "full"]:
+            from bist_signal_bot.core.exceptions import ConfigurationError
+            raise ConfigurationError("DIVERGENCE_FEATURE_LEVEL must be basic, advanced, or full")
+
+        if self.DIVERGENCE_PIVOT_MODE not in ["LOOKBACK_ONLY", "CONFIRMED_LAGGED"]:
+            from bist_signal_bot.core.exceptions import ConfigurationError
+            raise ConfigurationError("DIVERGENCE_PIVOT_MODE must be LOOKBACK_ONLY or CONFIRMED_LAGGED")
+
+        if self.DIVERGENCE_LOOKBACK <= 0:
+            from bist_signal_bot.core.exceptions import ConfigurationError
+            raise ConfigurationError("DIVERGENCE_LOOKBACK must be positive")
+
+        if self.DIVERGENCE_CONFIRMATION_BARS < 0:
+            from bist_signal_bot.core.exceptions import ConfigurationError
+            raise ConfigurationError("DIVERGENCE_CONFIRMATION_BARS cannot be negative")
+
+        if self.DIVERGENCE_MAX_PIVOT_DISTANCE <= self.DIVERGENCE_MIN_PIVOT_DISTANCE:
+            from bist_signal_bot.core.exceptions import ConfigurationError
+            raise ConfigurationError("DIVERGENCE_MAX_PIVOT_DISTANCE must be strictly greater than DIVERGENCE_MIN_PIVOT_DISTANCE")
+
+        if not (0.0 <= self.DIVERGENCE_MIN_STRENGTH_SCORE <= 100.0):
+            from bist_signal_bot.core.exceptions import ConfigurationError
+            raise ConfigurationError("DIVERGENCE_MIN_STRENGTH_SCORE must be between 0.0 and 100.0")
+
+        if not self.DIVERGENCE_DEFAULT_INDICATORS:
+            from bist_signal_bot.core.exceptions import ConfigurationError
+            raise ConfigurationError("DIVERGENCE_DEFAULT_INDICATORS cannot be empty")
         if self.PATTERN_FEATURE_LEVEL not in ["basic", "advanced", "full"]:
             from bist_signal_bot.core.exceptions import ConfigurationError
             raise ConfigurationError("PATTERN_FEATURE_LEVEL must be basic, advanced, or full")

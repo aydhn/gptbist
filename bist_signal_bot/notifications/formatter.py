@@ -278,3 +278,21 @@ class NotificationFormatter:
             lines.append(f"Üretilen kolon: {len(result.output_data.columns)}")
 
         return "\n".join(lines)
+
+
+def format_divergence_result(result, symbol: str | None = None) -> str:
+    sym = symbol or result.symbol
+    lines = [
+        "<b>BIST Bot Divergence Feature Özeti</b>",
+        "",
+        f"Sembol: {sym}",
+        f"Pivot modu: {result.pivot_mode.value}",
+        f"İndikatörler: {', '.join(result.requested_indicators)}",
+        f"Tespit sayısı: {result.detected_count}",
+        f"Bullish: {result.bullish_count()}",
+        f"Bearish: {result.bearish_count()}",
+        f"Strong: {result.strong_count()}",
+        "",
+        "<i>Bu çıktı sinyal/tavsiye değildir.</i>"
+    ]
+    return "\n".join(lines)

@@ -29,6 +29,7 @@ from bist_signal_bot.cli.commands import (
     cmd_indicators,
     cmd_volatility_features,
     cmd_volume_features,
+    cmd_divergence_detect,
 )
 from bist_signal_bot.core.logging_setup import get_logger
 
@@ -82,7 +83,9 @@ def run_cli(argv: list[str] | None = None) -> int:
         "volatility-features": cmd_volatility_features,
         "volume-features": cmd_volume_features,
         "patterns": lambda a, c: cmd_patterns_list(a, c) if a.patterns_command == 'list' else cmd_patterns_detect(a, c),
-        "pattern-features": cmd_pattern_features,
+                "pattern-features": cmd_pattern_features,
+        "divergence": lambda a, c: cmd_divergence_detect(a, c) if getattr(a, "subcommand", None) == "detect" else 1,
+
     }
 
     cmd_func = commands.get(args.command)

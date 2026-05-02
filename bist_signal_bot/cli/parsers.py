@@ -350,6 +350,32 @@ def build_parser() -> argparse.ArgumentParser:
     volatility_features_parser.add_argument("--save-output", action="store_true", help="Save output to CSV")
     volatility_features_parser.add_argument("--json", action="store_true", help="Output in JSON format")
 
+
+    # Divergence Commands
+    divergence_parser = subparsers.add_parser("divergence", help="Divergence feature engine")
+    divergence_subparsers = divergence_parser.add_subparsers(dest="subcommand", help="Divergence subcommands")
+
+    # Divergence Detect
+    div_detect_parser = divergence_subparsers.add_parser("detect", help="Detect divergence features")
+    div_detect_parser.add_argument("symbol", help="Stock symbol to detect divergence")
+    div_detect_parser.add_argument("--source", choices=["local", "mock"], default="local", help="Data source")
+    div_detect_parser.add_argument("--timeframe", default="1d", help="Timeframe (e.g. 1d, 1h)")
+    div_detect_parser.add_argument("--rows", type=int, help="Number of rows to fetch (mock source)")
+    div_detect_parser.add_argument("--level", choices=["basic", "advanced", "full"], help="Feature level")
+    div_detect_parser.add_argument("--indicators", nargs="+", help="Specific indicators to use")
+    div_detect_parser.add_argument("--pivot-mode", choices=["LOOKBACK_ONLY", "CONFIRMED_LAGGED"], default="LOOKBACK_ONLY", help="Pivot detection mode")
+    div_detect_parser.add_argument("--lookback", type=int, help="Lookback for pivot detection")
+    div_detect_parser.add_argument("--confirmation-bars", type=int, help="Confirmation bars for CONFIRMED_LAGGED mode")
+    div_detect_parser.add_argument("--min-pivot-distance", type=int, help="Minimum bars between pivots")
+    div_detect_parser.add_argument("--max-pivot-distance", type=int, help="Maximum bars between pivots")
+    div_detect_parser.add_argument("--include-hidden", dest="include_hidden", action="store_true", help="Include hidden divergences")
+    div_detect_parser.add_argument("--no-hidden", dest="include_hidden", action="store_false", help="Exclude hidden divergences")
+    div_detect_parser.add_argument("--include-regular", dest="include_regular", action="store_true", help="Include regular divergences")
+    div_detect_parser.add_argument("--no-regular", dest="include_regular", action="store_false", help="Exclude regular divergences")
+    div_detect_parser.set_defaults(include_hidden=True, include_regular=True)
+    div_detect_parser.add_argument("--save-output", action="store_true", help="Save output to CSV")
+    div_detect_parser.add_argument("--json", action="store_true", help="Output in JSON format")
+
     return parser
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
