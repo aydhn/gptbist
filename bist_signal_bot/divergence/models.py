@@ -161,4 +161,3 @@ def check_max_min_distance(cls, values):
     return values
 
 # We have to patch DivergenceRequest with model_validator
-DivergenceRequest.model_validator(mode='after')(check_max_min_distance)

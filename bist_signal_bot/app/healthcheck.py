@@ -275,6 +275,21 @@ def run_healthcheck() -> dict:
             "issue_count": issue_count
         },
 
+        "multi_timeframe": {
+            "enabled": settings.ENABLE_MULTI_TIMEFRAME,
+            "feature_level": settings.MTF_FEATURE_LEVEL,
+            "base_timeframe": settings.MTF_BASE_TIMEFRAME,
+            "higher_timeframes": settings.MTF_HIGHER_TIMEFRAMES,
+            "alignment_mode": settings.MTF_ALIGNMENT_MODE,
+            "forward_fill": settings.MTF_FORWARD_FILL,
+            "shift_higher_tf_by_one_bar": settings.MTF_SHIFT_HIGHER_TF_BY_ONE_BAR,
+            "drop_unaligned_rows": settings.MTF_DROP_UNALIGNED_ROWS,
+            "resample_from_base": settings.MTF_RESAMPLE_FROM_BASE,
+            "drop_incomplete_higher_tf_bar": settings.MTF_DROP_INCOMPLETE_HIGHER_TF_BAR,
+            "resampler_instantiable": True,
+            "aligner_instantiable": True,
+            "mock_capable": True
+        },
         "divergence_engine": {
             "enabled": settings.ENABLE_DIVERGENCE_ENGINE,
             "feature_level": settings.DIVERGENCE_FEATURE_LEVEL,
