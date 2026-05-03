@@ -536,6 +536,18 @@ class Settings(BaseSettings):
         return f"{self.__class__.__name__}({safe_dict})"
 
 
+
+    ENABLE_STRATEGY_ENGINE: bool = Field(default=True)
+    DEFAULT_STRATEGY: str = Field(default="moving_average_trend")
+    STRATEGY_RUN_MODE: str = Field(default="research")
+    STRATEGY_DEFAULT_TIMEFRAME: str = Field(default="1d")
+    STRATEGY_ALLOW_SHORT: bool = Field(default=False)
+    STRATEGY_CONTINUE_ON_ERROR: bool = Field(default=True)
+    STRATEGY_MIN_SCORE: float = Field(default=60.0)
+    STRATEGY_USE_LATEST_BAR_ONLY: bool = Field(default=True)
+    STRATEGY_SAVE_OUTPUT: bool = Field(default=False)
+    STRATEGY_CANDIDATE_DISCLAIMER: str = Field(default="Research signal candidate only. Not investment advice. No order was sent.")
+
     ENABLE_MULTI_TIMEFRAME: bool = Field(default=True)
     MTF_FEATURE_LEVEL: str = Field(default="basic")
     MTF_BASE_TIMEFRAME: str = Field(default="1d")

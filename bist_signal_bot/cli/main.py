@@ -35,6 +35,18 @@ from bist_signal_bot.core.logging_setup import get_logger
 
 logger = get_logger("bist_signal_bot.cli")
 
+
+def dispatch_strategies(args, ctx) -> int:
+    from bist_signal_bot.cli.commands import cmd_strategies_list, cmd_strategies_run, cmd_strategies_batch
+    if args.strategies_cmd == "list":
+        return cmd_strategies_list(args, ctx)
+    elif args.strategies_cmd == "run":
+        return cmd_strategies_run(args, ctx)
+    elif args.strategies_cmd == "batch":
+        return cmd_strategies_batch(args, ctx)
+    return 1
+
+
 def run_cli(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
 
@@ -85,6 +97,7 @@ def run_cli(argv: list[str] | None = None) -> int:
         "patterns": lambda a, c: cmd_patterns_list(a, c) if a.patterns_command == 'list' else cmd_patterns_detect(a, c),
                 "pattern-features": cmd_pattern_features,
         "divergence": lambda a, c: cmd_divergence_detect(a, c) if getattr(a, "subcommand", None) == "detect" else 1,
+        "strategies": dispatch_strategies,
 
     }
 

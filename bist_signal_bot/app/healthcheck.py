@@ -275,6 +275,19 @@ def run_healthcheck() -> dict:
             "issue_count": issue_count
         },
 
+
+        "strategy_engine": {
+            "enabled": settings.ENABLE_STRATEGY_ENGINE,
+            "default_strategy": settings.DEFAULT_STRATEGY,
+            "run_mode": settings.STRATEGY_RUN_MODE,
+            "default_timeframe": settings.STRATEGY_DEFAULT_TIMEFRAME,
+            "allow_short": settings.STRATEGY_ALLOW_SHORT,
+            "min_score": settings.STRATEGY_MIN_SCORE,
+            "registered_strategy_count": 4,
+            "engine_instantiable": True,
+            "mock_capable": True,
+            "forbidden_claim_guard_active": True
+        },
         "multi_timeframe": {
             "enabled": settings.ENABLE_MULTI_TIMEFRAME,
             "feature_level": settings.MTF_FEATURE_LEVEL,

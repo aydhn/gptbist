@@ -18,9 +18,6 @@ class DataProviderError(BistSignalBotError):
     """Raised when a data provider fails to fetch data."""
     pass
 
-class StrategyError(BistSignalBotError):
-    """Raised when a strategy execution fails."""
-    pass
 
 class InvalidSymbolError(BistSignalBotError):
     """Raised when a symbol is invalid or doesn't match internal format rules."""
@@ -184,4 +181,24 @@ class TimeframeAlignmentError(TimeframeError):
 
 class MultiTimeframeError(TimeframeError):
     """Raised when an error occurs in the multi-timeframe engine or feature builder."""
+    pass
+
+class StrategyError(BistSignalBotError):
+    """Raised when a strategy execution fails."""
+    pass
+
+class StrategyValidationError(StrategyError):
+    """Raised when a strategy configuration or context is invalid."""
+    pass
+
+class StrategyExecutionError(StrategyError):
+    """Raised when a strategy encounters an error during run."""
+    pass
+
+class StrategyRegistryError(StrategyError):
+    """Raised when there is an error in the strategy registry."""
+    pass
+
+class SignalCandidateError(BistSignalBotError):
+    """Raised when a signal candidate is invalid."""
     pass

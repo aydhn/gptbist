@@ -376,7 +376,45 @@ def build_parser() -> argparse.ArgumentParser:
     div_detect_parser.add_argument("--save-output", action="store_true", help="Save output to CSV")
     div_detect_parser.add_argument("--json", action="store_true", help="Output in JSON format")
 
+
+    # STRATEGIES Command
+    parser_strategies = subparsers.add_parser("strategies", help="Strategy engine operations")
+    strategies_subparsers = parser_strategies.add_subparsers(dest="strategies_cmd", required=True)
+
+    # strategies list
+    list_strat_parser = strategies_subparsers.add_parser("list", help="List available strategies")
+    list_strat_parser.add_argument("--category", type=str, help="Filter by category (e.g., TREND_FOLLOWING)")
+    list_strat_parser.add_argument("--json", action="store_true", help="Output in JSON format")
+
+    # strategies run
+    run_strat_parser = strategies_subparsers.add_parser("run", help="Run strategy on a single symbol")
+    run_strat_parser.add_argument("symbol", type=str, help="Symbol to run strategy for")
+    run_strat_parser.add_argument("--strategy", type=str, required=True, help="Strategy name")
+    run_strat_parser.add_argument("--source", type=str, choices=["mock", "local"], default="local", help="Data source")
+    run_strat_parser.add_argument("--timeframe", type=str, default="1d", help="Timeframe (e.g., 1d, 1wk)")
+    run_strat_parser.add_argument("--period", type=str, help="History period")
+    run_strat_parser.add_argument("--rows", type=int, help="Rows for mock data")
+    run_strat_parser.add_argument("--param", type=str, action="append", help="Strategy parameters (e.g., --param fast=20)")
+    run_strat_parser.add_argument("--allow-short", action="store_true", help="Allow short signal candidates")
+    run_strat_parser.add_argument("--json", action="store_true", help="Output in JSON format")
+
+    # strategies batch
+    batch_strat_parser = strategies_subparsers.add_parser("batch", help="Run strategy on multiple symbols")
+    batch_strat_parser.add_argument("--strategy", type=str, required=True, help="Strategy name")
+
+    group = batch_strat_parser.add_mutually_exclusive_group(required=True)
+    group.add_argument("--symbols", type=str, nargs="+", help="List of symbols")
+    group.add_argument("--all", action="store_true", help="Run on all symbols")
+    group.add_argument("--group", type=str, help="Run on symbol group")
+
+    batch_strat_parser.add_argument("--source", type=str, choices=["mock", "local"], default="local", help="Data source")
+    batch_strat_parser.add_argument("--param", type=str, action="append", help="Strategy parameters")
+    batch_strat_parser.add_argument("--allow-short", action="store_true", help="Allow short signal candidates")
+    batch_strat_parser.add_argument("--fail-fast", action="store_true", help="Stop batch on first error")
+    batch_strat_parser.add_argument("--json", action="store_true", help="Output in JSON format")
+
     return parser
+
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = build_parser()

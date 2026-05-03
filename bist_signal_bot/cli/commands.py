@@ -1970,3 +1970,222 @@ def cmd_mtf_features(args, ctx) -> int:
         logger.error(f"MTF feature error: {e}", exc_info=True)
         print_output({"error": str(e)}, as_json=args.json)
         return 1
+
+def cmd_strategies_list(args, ctx) -> int:
+    from bist_signal_bot.strategies.registry import get_registry
+    from bist_signal_bot.cli.formatting import print_output
+    import logging
+
+    logger = logging.getLogger("bist_signal_bot.cli")
+
+    try:
+        registry = get_registry()
+
+        category = None
+        if args.category:
+            from bist_signal_bot.strategies.models import StrategyCategory
+            category = StrategyCategory(args.category)
+
+        specs = registry.list_specs(category)
+
+        if args.json:
+            print_output([s.model_dump() for s in specs], as_json=True)
+            return 0
+
+        print(f"Registered Strategies ({len(specs)}):")
+        print("-" * 50)
+
+        for spec in specs:
+            print(f"Name: {spec.name}")
+            print(f"Category: {spec.category.value}")
+            print(f"Position Side: {spec.position_side.value}")
+            print(f"Supports Short: {spec.supports_short}")
+            print(f"Supports MTF: {spec.supports_multi_timeframe}")
+            print(f"Required Columns: {', '.join(spec.required_columns) if spec.required_columns else 'None'}")
+            print(f"Default Params: {spec.default_params}")
+            print("-" * 50)
+
+        return 0
+
+    except Exception as e:
+        logger.error(f"Strategy list error: {e}", exc_info=True)
+        print_output({"error": str(e)}, as_json=args.json)
+        return 1
+
+def cmd_strategies_run(args, ctx) -> int:
+    from bist_signal_bot.strategies.engine import StrategyEngine
+    from bist_signal_bot.data.mock_provider import MockMarketDataProvider
+    from bist_signal_bot.data.data_service import MarketDataService
+    from bist_signal_bot.cli.formatting import print_output
+    from bist_signal_bot.core.audit import AuditEventType, AuditEvent
+    import logging
+
+    logger = logging.getLogger("bist_signal_bot.cli")
+
+    try:
+        symbol = args.symbol.upper()
+        strategy_name = args.strategy.lower()
+
+        engine = StrategyEngine(settings=ctx.settings)
+        params = engine.parse_params(args.param)
+
+        if args.allow_short:
+            params["allow_short"] = True
+
+        if args.source == "mock":
+            rows = args.rows or 252
+            provider = MockMarketDataProvider(rows=rows)
+            mdf = provider.fetch_one(symbol, args.timeframe)
+            data_service = provider
+        else:
+            service = MarketDataService(settings=ctx.settings)
+            period = args.period or ctx.settings.DEFAULT_HISTORY_PERIOD
+            mdf = service.get_ohlcv(symbol, args.timeframe, period=period)
+            data_service = service
+
+        if mdf is None or mdf.data.empty:
+            print_output({"error": f"No data found for {symbol}"}, as_json=args.json)
+            return 1
+
+        engine.data_service = data_service
+        result = engine.run_strategy_on_data(
+            strategy_name=strategy_name,
+            symbol=symbol,
+            data=mdf,
+            params=params,
+            timeframe=args.timeframe
+        )
+
+        # Log audit event if configured
+        if ctx.audit_logger.settings.ENABLE_AUDIT_LOG and result.candidate:
+            ctx.audit_logger.log_event(AuditEvent(
+                event_type=AuditEventType.SIGNAL_CANDIDATE_GENERATED,
+                message=f"Generated signal candidate for {symbol}",
+                symbol=symbol,
+                metadata=result.summary()
+            ))
+
+        if args.json:
+            print_output(result.summary(), as_json=True)
+        else:
+            print(f"Strategy Execution Result:")
+            print(f"Symbol: {symbol}")
+            print(f"Strategy: {strategy_name}")
+            print(f"Status: {result.status}")
+            print(f"Elapsed: {result.elapsed_seconds:.3f}s")
+
+            if result.candidate:
+                c = result.candidate
+                print(f"\n--- SIGNAL CANDIDATE ---")
+                print(f"Direction: {c.direction.value}")
+                print(f"Score: {c.score:.1f}")
+                print(f"Strength: {c.strength.value}")
+                print(f"Status: {c.status.value}")
+
+                if c.reasons:
+                    print("\nReasons:")
+                    for r in c.reasons:
+                        print(f"  - {r.message}")
+
+                if c.risk_notes:
+                    print("\nRisk Notes:")
+                    for rn in c.risk_notes:
+                        print(f"  - {rn.message}")
+
+                print(f"\n{c.disclaimer}")
+            else:
+                print("\nNo actionable candidate generated.")
+
+            if result.issues:
+                print("\nIssues:")
+                for issue in result.issues:
+                    print(f"  - [{issue.severity.upper()}] {issue.message}")
+
+        return 0
+
+    except Exception as e:
+        logger.error(f"Strategy run error: {e}", exc_info=True)
+        print_output({"error": str(e)}, as_json=args.json)
+        return 1
+
+def cmd_strategies_batch(args, ctx) -> int:
+    from bist_signal_bot.strategies.engine import StrategyEngine
+    from bist_signal_bot.data.mock_provider import MockMarketDataProvider
+    from bist_signal_bot.data.data_service import MarketDataService
+    from bist_signal_bot.cli.formatting import print_output
+    from bist_signal_bot.core.audit import AuditEventType, AuditEvent
+    import logging
+
+    logger = logging.getLogger("bist_signal_bot.cli")
+
+    try:
+        strategy_name = args.strategy.lower()
+
+        # Determine symbols to run
+        if args.all:
+            # We would normally get this from universe, using mock fallback for tests
+            symbols = ["ASELS", "GARAN", "THYAO", "BIMAS", "EREGL"]
+        elif args.group:
+            # Placeholder for group logic
+            symbols = ["ASELS", "THYAO"]
+        elif args.symbols:
+            symbols = [s.upper() for s in args.symbols]
+        else:
+            print_output({"error": "Must specify --symbols, --group, or --all"}, as_json=args.json)
+            return 1
+
+        engine = StrategyEngine(settings=ctx.settings)
+        params = engine.parse_params(args.param)
+
+        if args.allow_short:
+            params["allow_short"] = True
+
+        if args.source == "mock":
+            # Mock data provider is sufficient for batch testing
+            engine.data_service = MockMarketDataProvider()
+        else:
+            engine.data_service = MarketDataService(settings=ctx.settings)
+
+        continue_on_error = not getattr(args, "fail_fast", False)
+
+        batch_result = engine.run_strategy_batch(
+            strategy_name=strategy_name,
+            symbols=symbols,
+            params=params,
+            continue_on_error=continue_on_error
+        )
+
+        if ctx.audit_logger.settings.ENABLE_AUDIT_LOG:
+            ctx.audit_logger.log_event(AuditEvent(
+                event_type=AuditEventType.STRATEGY_BATCH_RUN,
+                message=f"Ran batch strategy {strategy_name} on {len(symbols)} symbols",
+                symbol="ALL",
+                metadata=batch_result.summary()
+            ))
+
+        if args.json:
+            print_output(batch_result.summary(), as_json=True)
+        else:
+            print(f"Batch Strategy Result: {strategy_name}")
+            print(f"Processed: {batch_result.symbol_count}")
+            print(f"Success: {batch_result.success_count}")
+            print(f"Failed: {batch_result.failed_count}")
+            print(f"Elapsed: {batch_result.elapsed_seconds:.2f}s")
+            print(f"\nSignals generated: {len(batch_result.candidates)}")
+            print(f"  LONG: {batch_result.long_count()}")
+            print(f"  SHORT: {batch_result.short_count()}")
+            print(f"  WATCH: {batch_result.watch_count()}")
+
+            if batch_result.issues:
+                print(f"\nTop Issues:")
+                for issue in batch_result.issues[:5]:
+                    print(f"  - {issue}")
+
+            print(f"\nResearch signal candidates only. Not investment advice.")
+
+        return 0
+
+    except Exception as e:
+        logger.error(f"Strategy batch error: {e}", exc_info=True)
+        print_output({"error": str(e)}, as_json=args.json)
+        return 1
