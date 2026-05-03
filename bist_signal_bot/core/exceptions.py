@@ -202,3 +202,19 @@ class StrategyRegistryError(StrategyError):
 class SignalCandidateError(BistSignalBotError):
     """Raised when a signal candidate is invalid."""
     pass
+
+class BenchmarkError(BistSignalBotError):
+    """Base exception for benchmark errors."""
+    pass
+
+class BenchmarkValidationError(BenchmarkError):
+    """Raised when benchmark parameters or inputs are invalid."""
+    pass
+
+class BenchmarkExecutionError(BenchmarkError):
+    """Raised when a benchmark encounters an error during run."""
+    pass
+
+class BenchmarkRegistryError(BenchmarkError):
+    """Raised when there is an error in the benchmark registry."""
+    pass
