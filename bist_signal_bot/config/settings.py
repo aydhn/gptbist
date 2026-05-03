@@ -510,6 +510,22 @@ class Settings(BaseSettings):
             from bist_signal_bot.core.exceptions import ConfigurationError
             raise ConfigurationError("CORPORATE_ACTIONS_FILE_NAME cannot be empty")
 
+
+        if getattr(self, "MTF_FEATURE_LEVEL", "basic") not in ["basic", "advanced", "full"]:
+            from bist_signal_bot.core.exceptions import ConfigurationError
+            raise ConfigurationError("MTF_FEATURE_LEVEL must be basic, advanced, or full")
+
+        if getattr(self, "MTF_BASE_TIMEFRAME", "1d") not in {"1m", "5m", "15m", "30m", "1h", "4h", "1d", "1wk", "1mo"}:
+             from bist_signal_bot.core.exceptions import ConfigurationError
+             raise ConfigurationError(f"Unsupported MTF_BASE_TIMEFRAME: {self.MTF_BASE_TIMEFRAME}")
+
+        if not getattr(self, "MTF_HIGHER_TIMEFRAMES", "1wk"):
+            from bist_signal_bot.core.exceptions import ConfigurationError
+            raise ConfigurationError("MTF_HIGHER_TIMEFRAMES cannot be empty")
+
+        if getattr(self, "MTF_ALIGNMENT_MODE", "CLOSED_BAR_ONLY") not in ["CLOSED_BAR_ONLY", "ALLOW_CURRENT_PARTIAL", "EXACT_TIMESTAMP", "ASOF_BACKWARD"]:
+             from bist_signal_bot.core.exceptions import ConfigurationError
+             raise ConfigurationError(f"Invalid MTF_ALIGNMENT_MODE: {self.MTF_ALIGNMENT_MODE}")
         validation.enforce_production_safety(self)
 
         return self
@@ -518,6 +534,22 @@ class Settings(BaseSettings):
         """Provide a safe string representation hiding secrets."""
         safe_dict = settings_safe_dump(self)
         return f"{self.__class__.__name__}({safe_dict})"
+
+
+    ENABLE_MULTI_TIMEFRAME: bool = Field(default=True)
+    MTF_FEATURE_LEVEL: str = Field(default="basic")
+    MTF_BASE_TIMEFRAME: str = Field(default="1d")
+    MTF_HIGHER_TIMEFRAMES: str = Field(default="1wk,1mo")
+    MTF_ALIGNMENT_MODE: str = Field(default="CLOSED_BAR_ONLY")
+    MTF_FORWARD_FILL: bool = Field(default=True)
+    MTF_SHIFT_HIGHER_TF_BY_ONE_BAR: bool = Field(default=True)
+    MTF_DROP_UNALIGNED_ROWS: bool = Field(default=False)
+    MTF_USE_PROVIDER_HIGHER_TF: bool = Field(default=False)
+    MTF_RESAMPLE_FROM_BASE: bool = Field(default=True)
+    MTF_DROP_INCOMPLETE_HIGHER_TF_BAR: bool = Field(default=True)
+    MTF_PREFIX_COLUMNS: bool = Field(default=True)
+    MTF_SAVE_OUTPUT: bool = Field(default=False)
+
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 

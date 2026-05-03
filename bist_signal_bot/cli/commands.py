@@ -1895,3 +1895,78 @@ def cmd_divergence_detect(args, ctx) -> int:
         logger.error(f"Divergence feature error: {e}", exc_info=True)
         print_output({"error": str(e)}, as_json=args.json)
         return 1
+
+def cmd_mtf_features(args, ctx) -> int:
+    from bist_signal_bot.features.multi_timeframe_features import MultiTimeframeFeatureBuilder
+    from bist_signal_bot.data.mock_provider import MockMarketDataProvider
+    from bist_signal_bot.data.data_service import MarketDataService
+    from bist_signal_bot.data.models import Timeframe
+    from bist_signal_bot.cli.formatting import print_output, format_multi_timeframe_result
+    from bist_signal_bot.core.audit import AuditEventType, AuditEvent
+    import pandas as pd
+    import logging
+
+    logger = logging.getLogger("bist_signal_bot.cli")
+
+    try:
+        symbol = args.symbol.upper()
+        base_tf = Timeframe(args.base_timeframe)
+
+        if args.source == "mock":
+            rows = args.rows or 252
+            provider = MockMarketDataProvider(rows=rows)
+            mdf = provider.fetch_one(symbol, base_tf)
+        else:
+            service = MarketDataService(settings=ctx.settings)
+            period = args.period or "2y"
+            mdf = service.get_ohlcv(symbol, base_tf, period=period)
+
+        if mdf is None or mdf.data.empty:
+            print_output({"error": "No data found or available"}, as_json=args.json)
+            return 1
+
+        if args.alignment_mode:
+            ctx.settings.MTF_ALIGNMENT_MODE = args.alignment_mode
+        if args.no_forward_fill:
+            ctx.settings.MTF_FORWARD_FILL = False
+        if args.no_shift_higher_tf:
+            ctx.settings.MTF_SHIFT_HIGHER_TF_BY_ONE_BAR = False
+        if args.drop_unaligned:
+            ctx.settings.MTF_DROP_UNALIGNED_ROWS = True
+
+        ctx.settings.MTF_BASE_TIMEFRAME = base_tf.value
+        if args.higher:
+            ctx.settings.MTF_HIGHER_TIMEFRAMES = ",".join(args.higher)
+
+        builder = MultiTimeframeFeatureBuilder(settings=ctx.settings)
+
+        if args.level == "basic":
+            result = builder.build_basic_mtf_features(mdf, symbol=symbol)
+        elif args.level == "advanced":
+            result = builder.build_advanced_mtf_features(mdf, symbol=symbol)
+        else:
+            result = builder.build_full_mtf_features(mdf, symbol=symbol)
+
+        df = result.output_data
+
+        if args.save_output:
+            out_dir = ctx.settings.DATA_DIR / "features"
+            out_dir.mkdir(parents=True, exist_ok=True)
+            df.to_csv(out_dir / f"{symbol}_mtf_{args.base_timeframe}_{args.level}.csv")
+
+        if args.json:
+            out_dict = result.summary()
+            if len(df) > 0:
+                last_row = df.iloc[-1].to_dict()
+                last_row = {k: v for k, v in last_row.items() if not pd.isna(v)}
+                out_dict['sample_last_row'] = last_row
+            print_output(out_dict, as_json=True)
+        else:
+            print(format_multi_timeframe_result(result))
+
+        return 0
+
+    except Exception as e:
+        logger.error(f"MTF feature error: {e}", exc_info=True)
+        print_output({"error": str(e)}, as_json=args.json)
+        return 1

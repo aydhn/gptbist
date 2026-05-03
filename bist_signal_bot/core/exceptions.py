@@ -169,3 +169,19 @@ class DivergenceDetectionError(DivergenceError):
 class PivotDetectionError(DivergenceError):
     """Raised when there is an error detecting pivot points."""
     pass
+
+class TimeframeError(BistSignalBotError):
+    """Base exception for timeframe errors."""
+    pass
+
+class TimeframeResampleError(TimeframeError):
+    """Raised when an error occurs during timeframe resampling."""
+    pass
+
+class TimeframeAlignmentError(TimeframeError):
+    """Raised when an error occurs during timeframe alignment."""
+    pass
+
+class MultiTimeframeError(TimeframeError):
+    """Raised when an error occurs in the multi-timeframe engine or feature builder."""
+    pass

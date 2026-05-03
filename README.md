@@ -224,3 +224,14 @@ This layer purely emits calculated features for backtesting and ML ingestion; it
   - `python -m bist_signal_bot divergence detect ASELS --source mock --indicators rsi macd_hist`
 - **Output:** Outputs dataframe columns like `div_regular_bullish_rsi`, `div_strength_rsi`, and `div_bars_since_last_rsi` suitable for ML models.
 - **No GUI, No Web Scraping:** This phase conforms strictly to the local-first CLI architecture.
+
+### Phase 23: Çoklu Zaman Dilimi Sistemi ve Multi-Timeframe Feature Katmanı
+BIST Signal Bot artık çoklu zaman dilimi (multi-timeframe) mimarisine sahiptir. Bu sistem, günlük, haftalık, aylık veya intraday verileri look-ahead bias yaratmadan tek bir veri setinde hizalayabilir. Üst zaman diliminden gelen bar bilgileri (`shift_higher_tf_by_one_bar=True`) ile kaydırılarak yalnızca kapanmış barlar alt timeframe satırlarına taşınır.
+
+**Özellikler:**
+- **Resample Kuralları:** OHLCV mantığıyla bar aggregation. Eksik/yarım kalan son barlar filtrelenebilir.
+- **Alignment Modes:** `CLOSED_BAR_ONLY` (varsayılan) ile sadece bitmiş olan periyodlar değerlendirilir.
+- **MultiTimeframeFeatureBuilder:** `basic`, `advanced` ve `full` feature level seçenekleriyle otomatik SMA, RSI, ATR, vb. eklentileri yapar.
+- **Prefix Standardı:** Çakışmaları engellemek için `w_`, `m_` prefixleri kullanılır.
+- **CLI Entegrasyonu:** `python -m bist_signal_bot mtf-features ASELS --source mock --level full`
+- HTML scraping veya ücretli veri kaynağı kullanılmaz, tamamen mevcut altyapıya bağımlıdır.

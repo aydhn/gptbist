@@ -121,3 +121,35 @@ def format_pattern_batch_result(result) -> str:
                     lines.append(f"  {feature}: {val}")
 
     return "\n".join(lines)
+
+import pandas as pd
+
+def format_multi_timeframe_result(result) -> str:
+    lines = [
+        "BIST Bot Multi-Timeframe Feature Özeti",
+        "",
+        f"Sembol: {result.symbol}",
+        f"Base: {result.base_timeframe}",
+        f"Higher: {', '.join(result.alignment_report.higher_timeframes)}",
+        f"Output rows: {result.alignment_report.output_rows}",
+        f"Eklenen kolon: {len(result.alignment_report.added_columns)}",
+        f"Alignment: {result.alignment_report.alignment_mode.value}",
+        ""
+    ]
+
+    if len(result.output_data) > 0:
+        lines.append("Multi-timeframe feature summary on last row:")
+        try:
+            last_row = result.output_data.iloc[-1]
+            if 'close' in last_row:
+                lines.append(f"  close: {safe_float(last_row['close'], 2)}")
+
+            for col in ['tf_1wk_sma_20', 'tf_1wk_rsi_14', 'tf_1mo_sma_10', 'w_sma_20', 'w_rsi_14', 'm_sma_10']:
+                if col in last_row and not pd.isna(last_row[col]):
+                    lines.append(f"  {col}: {safe_float(last_row[col], 2)}")
+        except Exception:
+            pass
+
+    lines.append("")
+    lines.append("Bu çıktı sinyal/tavsiye değildir.")
+    return "\n".join(lines)
