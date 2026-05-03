@@ -413,6 +413,49 @@ def build_parser() -> argparse.ArgumentParser:
     batch_strat_parser.add_argument("--fail-fast", action="store_true", help="Stop batch on first error")
     batch_strat_parser.add_argument("--json", action="store_true", help="Output in JSON format")
 
+    # BENCHMARKS Command
+    parser_benchmarks = subparsers.add_parser("benchmarks", help="Benchmark reference operations")
+    benchmarks_subparsers = parser_benchmarks.add_subparsers(dest="benchmarks_cmd", required=True)
+
+    # benchmarks list
+    list_bench_parser = benchmarks_subparsers.add_parser("list", help="List available benchmarks")
+    list_bench_parser.add_argument("--category", type=str, help="Filter by category (e.g., BUY_AND_HOLD)")
+    list_bench_parser.add_argument("--json", action="store_true", help="Output in JSON format")
+
+    # benchmarks run
+    run_bench_parser = benchmarks_subparsers.add_parser("run", help="Run benchmark on a single symbol")
+    run_bench_parser.add_argument("symbol", type=str, help="Symbol to run benchmark for")
+    run_bench_parser.add_argument("--benchmark", type=str, required=True, help="Benchmark name")
+    run_bench_parser.add_argument("--source", type=str, choices=["mock", "local"], default="local", help="Data source")
+    run_bench_parser.add_argument("--timeframe", type=str, default="1d", help="Timeframe (e.g., 1d)")
+    run_bench_parser.add_argument("--period", type=str, help="History period")
+    run_bench_parser.add_argument("--rows", type=int, help="Rows for mock data")
+    run_bench_parser.add_argument("--param", type=str, action="append", help="Benchmark parameters (e.g., --param window=200)")
+    run_bench_parser.add_argument("--json", action="store_true", help="Output in JSON format")
+
+    # benchmarks batch
+    batch_bench_parser = benchmarks_subparsers.add_parser("batch", help="Run benchmark on multiple symbols")
+    batch_bench_parser.add_argument("--benchmark", type=str, required=True, help="Benchmark name")
+
+    b_group = batch_bench_parser.add_mutually_exclusive_group(required=True)
+    b_group.add_argument("--symbols", type=str, nargs="+", help="List of symbols")
+    b_group.add_argument("--all", action="store_true", help="Run on all symbols")
+    b_group.add_argument("--group", type=str, help="Run on symbol group")
+
+    batch_bench_parser.add_argument("--source", type=str, choices=["mock", "local"], default="local", help="Data source")
+    batch_bench_parser.add_argument("--param", type=str, action="append", help="Benchmark parameters")
+    batch_bench_parser.add_argument("--fail-fast", action="store_true", help="Stop batch on first error")
+    batch_bench_parser.add_argument("--json", action="store_true", help="Output in JSON format")
+
+    # benchmarks default
+    default_bench_parser = benchmarks_subparsers.add_parser("default", help="Run default set of benchmarks on a symbol")
+    default_bench_parser.add_argument("symbol", type=str, help="Symbol to run default benchmarks for")
+    default_bench_parser.add_argument("--source", type=str, choices=["mock", "local"], default="local", help="Data source")
+    default_bench_parser.add_argument("--timeframe", type=str, default="1d", help="Timeframe")
+    default_bench_parser.add_argument("--period", type=str, help="History period")
+    default_bench_parser.add_argument("--rows", type=int, help="Rows for mock data")
+    default_bench_parser.add_argument("--json", action="store_true", help="Output in JSON format")
+
     return parser
 
 

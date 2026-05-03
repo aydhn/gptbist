@@ -253,3 +253,43 @@ BIST Signal Bot artık çoklu zaman dilimi (multi-timeframe) mimarisine sahiptir
   - `strategies run`
   - `strategies batch`
 - **Future Preparations**: This lays the foundation for backtest modules, machine learning filters, and automated optimization, while preventing look-ahead bias and avoiding web-scraping/paid APIs.
+
+## Phase 25: Baseline & Benchmark Strategies
+
+The purpose of this phase is to provide simple, transparent, deterministic, and testable benchmark strategies against which we can compare other algorithmic signals. This creates a reference performance layer to answer whether a custom strategy is actually generating alpha over naive approaches.
+
+**Key Concepts:**
+* **Reference Output**: Benchmark outputs are purely for reference and comparison. They do not claim to provide alpha and are not investment advice.
+* **Buy-and-Hold**: A continuous LONG reference strategy for a given symbol.
+* **Cash**: A continuous FLAT reference representing a 100% cash position.
+* **Equal-Weight**: Evaluates multiple symbols and assigns equal weights to each.
+* **Moving Average**: A basic reference strategy going LONG when price > SMA, else FLAT.
+* **Naive Momentum**: Evaluates whether the N-period return is positive.
+* **Naive Volatility Filter**: Returns LONG when historical volatility is within limits, else FLAT.
+* **Deterministic Random Baseline**: Generates pseudo-random deterministic signals strictly as a "sanity check" baseline.
+
+These benchmarks are registered within `BenchmarkRegistry` and executed via the `BenchmarkEngine`. We intentionally separate benchmarks from `StrategyRegistry` to keep their purposes distinct in our architecture.
+
+**Usage:**
+
+List all available benchmarks:
+```bash
+python -m bist_signal_bot benchmarks list
+```
+
+Run a benchmark for a symbol:
+```bash
+python -m bist_signal_bot benchmarks run ASELS --source mock --benchmark moving_average_benchmark --param window=200
+```
+
+Run a batch benchmark on multiple symbols:
+```bash
+python -m bist_signal_bot benchmarks batch --benchmark equal_weight --symbols ASELS THYAO GARAN --source mock
+```
+
+Run default benchmarks for comparison on a symbol:
+```bash
+python -m bist_signal_bot benchmarks default ASELS --source mock
+```
+
+*Note: No real orders are sent. No HTML scraping is performed. No paid APIs are used.*

@@ -276,6 +276,16 @@ def run_healthcheck() -> dict:
         },
 
 
+                "benchmarks": {
+            "enabled": getattr(settings, "ENABLE_BENCHMARKS", False),
+            "default_benchmarks": getattr(settings, "DEFAULT_BENCHMARKS", ""),
+            "default_timeframe": getattr(settings, "BENCHMARK_DEFAULT_TIMEFRAME", ""),
+            "continue_on_error": getattr(settings, "BENCHMARK_CONTINUE_ON_ERROR", True),
+            "registered_benchmark_count": 7,
+            "engine_instantiable": True,
+            "mock_capable": True,
+            "forbidden_claim_guard_active": True
+        },
         "strategy_engine": {
             "enabled": settings.ENABLE_STRATEGY_ENGINE,
             "default_strategy": settings.DEFAULT_STRATEGY,

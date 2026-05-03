@@ -296,3 +296,53 @@ def format_divergence_result(result, symbol: str | None = None) -> str:
         "<i>Bu çıktı sinyal/tavsiye değildir.</i>"
     ]
     return "\n".join(lines)
+
+    def format_benchmark_result(self, result: Any) -> str:
+        """Formats a BenchmarkExecutionResult into a Telegram message."""
+        lines = [
+            "<b>BIST Bot Benchmark Reference</b>",
+            "",
+            f"Sembol: {self._escape(result.request.symbol or 'N/A')}",
+            f"Benchmark: {self._escape(result.request.benchmark_name)}",
+        ]
+
+        if result.signals:
+            signal = result.signals[0]
+            lines.append(f"Intent: {signal.intent.value}")
+            lines.append(f"Score: {signal.score:.2f}")
+            if signal.reference_price is not None:
+                lines.append(f"Reference Price: {signal.reference_price:.2f}")
+
+            if signal.reasons:
+                lines.append(f"Reason: {self._escape(signal.reasons[0])}")
+
+        lines.append("")
+        lines.append("<i>Bu çıktı benchmark referansıdır.</i>")
+        lines.append("<i>Yatırım tavsiyesi değildir. Emir gönderilmedi.</i>")
+
+        # Primitive forbidden claim guard (full guard is handled by core but we double check representation)
+        text = "\n".join(lines)
+        forbidden_phrases = ["kesin al", "kesin sat", "garanti getiri", "risksiz", "yüzde yüz"]
+        for p in forbidden_phrases:
+            if p in text.lower():
+                 return "<b>[WARNING]</b>\nBenchmark çıktısında yasaklı ifade saptandı. İçerik gizlendi."
+
+        return text
+
+    def format_benchmark_batch(self, batch: Any) -> str:
+        """Formats a BenchmarkBatchResult into a Telegram message."""
+        lines = [
+            "<b>BIST Bot Benchmark Batch Özeti</b>",
+            "",
+            f"Benchmark: {self._escape(batch.benchmark_name)}",
+            f"İstenen Sembol: {len(batch.requested_symbols)}",
+            f"Başarılı Sinyal: {batch.success_count}",
+            f"Başarısız Sembol/Run: {batch.failed_count}",
+        ]
+
+        lines.append("")
+        lines.append("<i>Bu çıktı benchmark referansıdır.</i>")
+        lines.append("<i>Yatırım tavsiyesi değildir. Emir gönderilmedi.</i>")
+
+        text = "\n".join(lines)
+        return text

@@ -2189,3 +2189,222 @@ def cmd_strategies_batch(args, ctx) -> int:
         logger.error(f"Strategy batch error: {e}", exc_info=True)
         print_output({"error": str(e)}, as_json=args.json)
         return 1
+
+
+def cmd_benchmarks_list(args, ctx) -> int:
+    from bist_signal_bot.benchmarks.registry import create_default_benchmark_registry
+    from bist_signal_bot.cli.formatting import print_output
+    import logging
+
+    logger = logging.getLogger("bist_signal_bot.cli")
+
+    try:
+        registry = create_default_benchmark_registry()
+
+        category = None
+        if getattr(args, "category", None):
+            from bist_signal_bot.benchmarks.models import BenchmarkCategory
+            category = BenchmarkCategory(args.category)
+
+        specs = registry.list_specs(category)
+
+        if args.json:
+            print_output([s.model_dump() for s in specs], as_json=True)
+            return 0
+
+        print(f"Registered Benchmarks ({len(specs)}):")
+        print("-" * 50)
+
+        for spec in specs:
+            print(f"Name: {spec.name}")
+            print(f"Category: {spec.category.value}")
+            print(f"Required Columns: {', '.join(spec.required_columns) if spec.required_columns else 'None'}")
+            print(f"Supports Portfolio: {spec.supports_portfolio}")
+            print(f"Deterministic: {spec.deterministic}")
+            print(f"Default Params: {spec.default_params}")
+            print("-" * 50)
+
+        return 0
+
+    except Exception as e:
+        logger.error(f"Benchmark list error: {e}", exc_info=True)
+        print_output({"error": str(e)}, as_json=args.json)
+        return 1
+
+
+def cmd_benchmarks_run(args, ctx) -> int:
+    from bist_signal_bot.benchmarks.engine import BenchmarkEngine
+    from bist_signal_bot.data.mock_provider import MockMarketDataProvider
+    from bist_signal_bot.data.data_service import MarketDataService
+    from bist_signal_bot.cli.formatting import print_output, format_benchmark_result
+    from bist_signal_bot.core.audit import AuditEventType, AuditEvent
+    import logging
+
+    logger = logging.getLogger("bist_signal_bot.cli")
+
+    try:
+        symbol = args.symbol.upper() if args.symbol else None
+        benchmark_name = args.benchmark.lower()
+
+        engine = BenchmarkEngine(settings=ctx.settings)
+        params = engine.parse_params(args.param)
+
+        if args.source == "mock":
+            rows = args.rows or 252
+            provider = MockMarketDataProvider(rows=rows)
+            mdf = provider.fetch_one(symbol, args.timeframe) if symbol else None
+            data_service = provider
+        else:
+            service = MarketDataService(settings=ctx.settings)
+            period = args.period or ctx.settings.DOWNLOAD_DEFAULT_PERIOD
+            mdf = service.get_ohlcv(symbol, args.timeframe, period=period) if symbol else None
+            data_service = service
+
+        if (mdf is None or mdf.data.empty) and benchmark_name != "cash":
+            print_output({"error": f"No data found for {symbol}"}, as_json=args.json)
+            return 1
+
+        engine.data_service = data_service
+        result = engine.run_on_data(
+            benchmark_name=benchmark_name,
+            symbol=symbol,
+            data=mdf,
+            params=params,
+            timeframe=args.timeframe
+        )
+
+        if ctx.audit_logger.settings.ENABLE_AUDIT_LOG:
+            ctx.audit_logger.log_event(AuditEvent(
+                event_type=AuditEventType.BENCHMARK_RUN,
+                message=f"Ran benchmark {benchmark_name} for {symbol}",
+                symbol=symbol,
+                metadata=result.summary()
+            ))
+
+        if args.json:
+            print_output(result.summary(), as_json=True)
+        else:
+            print(format_benchmark_result(result))
+
+        return 0
+
+    except Exception as e:
+        logger.error(f"Benchmark run error: {e}", exc_info=True)
+        print_output({"error": str(e)}, as_json=args.json)
+        return 1
+
+def cmd_benchmarks_batch(args, ctx) -> int:
+    from bist_signal_bot.benchmarks.engine import BenchmarkEngine
+    from bist_signal_bot.data.mock_provider import MockMarketDataProvider
+    from bist_signal_bot.data.data_service import MarketDataService
+    from bist_signal_bot.cli.formatting import print_output, format_benchmark_batch
+    from bist_signal_bot.core.audit import AuditEventType, AuditEvent
+    import logging
+
+    logger = logging.getLogger("bist_signal_bot.cli")
+
+    try:
+        benchmark_name = args.benchmark.lower()
+
+        if args.all:
+            symbols = ["ASELS", "GARAN", "THYAO", "BIMAS", "EREGL"]
+        elif args.group:
+            symbols = ["ASELS", "THYAO"]
+        elif args.symbols:
+            symbols = [s.upper() for s in args.symbols]
+        else:
+            print_output({"error": "Must specify --symbols, --group, or --all"}, as_json=args.json)
+            return 1
+
+        engine = BenchmarkEngine(settings=ctx.settings)
+        params = engine.parse_params(args.param)
+
+        if args.source == "mock":
+            engine.data_service = MockMarketDataProvider()
+        else:
+            engine.data_service = MarketDataService(settings=ctx.settings)
+
+        continue_on_error = not getattr(args, "fail_fast", False)
+
+        batch_result = engine.run_batch(
+            benchmark_name=benchmark_name,
+            symbols=symbols,
+            params=params,
+            continue_on_error=continue_on_error
+        )
+
+        if ctx.audit_logger.settings.ENABLE_AUDIT_LOG:
+            ctx.audit_logger.log_event(AuditEvent(
+                event_type=AuditEventType.BENCHMARK_BATCH_RUN,
+                message=f"Ran batch benchmark {benchmark_name}",
+                symbol="ALL",
+                metadata=batch_result.summary()
+            ))
+
+        if args.json:
+            print_output(batch_result.summary(), as_json=True)
+        else:
+            print(format_benchmark_batch(batch_result))
+
+        return 0
+
+    except Exception as e:
+        logger.error(f"Benchmark batch error: {e}", exc_info=True)
+        print_output({"error": str(e)}, as_json=args.json)
+        return 1
+
+
+def cmd_benchmarks_default(args, ctx) -> int:
+    from bist_signal_bot.benchmarks.engine import BenchmarkEngine
+    from bist_signal_bot.data.mock_provider import MockMarketDataProvider
+    from bist_signal_bot.data.data_service import MarketDataService
+    from bist_signal_bot.cli.formatting import print_output, format_benchmark_result
+    from bist_signal_bot.core.audit import AuditEventType, AuditEvent
+    import logging
+
+    logger = logging.getLogger("bist_signal_bot.cli")
+
+    try:
+        symbol = args.symbol.upper()
+
+        engine = BenchmarkEngine(settings=ctx.settings)
+
+        if args.source == "mock":
+            rows = args.rows or 252
+            provider = MockMarketDataProvider(rows=rows)
+            mdf = provider.fetch_one(symbol, args.timeframe)
+        else:
+            service = MarketDataService(settings=ctx.settings)
+            period = args.period or ctx.settings.DOWNLOAD_DEFAULT_PERIOD
+            mdf = service.get_ohlcv(symbol, args.timeframe, period=period)
+
+        if mdf is None or mdf.data.empty:
+            print_output({"error": f"No data found for {symbol}"}, as_json=args.json)
+            return 1
+
+        results = engine.run_default_benchmarks(symbol=symbol, data=mdf)
+
+        if ctx.audit_logger.settings.ENABLE_AUDIT_LOG:
+            ctx.audit_logger.log_event(AuditEvent(
+                event_type=AuditEventType.BENCHMARK_RUN,
+                message=f"Ran default benchmarks for {symbol}",
+                symbol=symbol,
+                metadata={"benchmarks_run": list(results.keys())}
+            ))
+
+        if args.json:
+            out = {k: v.summary() for k, v in results.items()}
+            print_output(out, as_json=True)
+        else:
+            print(f"Default Benchmarks for {symbol}")
+            print("=" * 50)
+            for k, v in results.items():
+                print(f"\n[{k.upper()}]")
+                print(format_benchmark_result(v))
+
+        return 0
+
+    except Exception as e:
+        logger.error(f"Benchmark default error: {e}", exc_info=True)
+        print_output({"error": str(e)}, as_json=args.json)
+        return 1

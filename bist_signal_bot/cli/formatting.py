@@ -153,3 +153,52 @@ def format_multi_timeframe_result(result) -> str:
     lines.append("")
     lines.append("Bu çıktı sinyal/tavsiye değildir.")
     return "\n".join(lines)
+
+def format_benchmark_result(result) -> str:
+    lines = [
+        f"Benchmark: {result.request.benchmark_name}",
+        f"Symbol: {result.request.symbol or 'N/A'}",
+        f"Status: {result.status.value}",
+        f"Elapsed: {safe_float(result.elapsed_seconds, 2)}s"
+    ]
+
+    if result.signals:
+        signal = result.signals[0]
+        lines.append(f"Intent: {signal.intent.value}")
+        lines.append(f"Score: {safe_float(signal.score, 2)}")
+        if signal.weight is not None:
+             lines.append(f"Weight: {safe_float(signal.weight, 2)}")
+        if signal.reference_price is not None:
+            lines.append(f"Reference Price: {safe_float(signal.reference_price, 2)}")
+        if signal.reasons:
+            lines.append(f"Reason: {signal.reasons[0]}")
+        lines.append(f"Disclaimer: {signal.disclaimer}")
+
+    if result.issues:
+        lines.append("Issues:")
+        for issue in result.issues:
+            lines.append(f"  - {issue}")
+
+    return "\n".join(lines)
+
+
+def format_benchmark_batch(batch) -> str:
+    lines = [
+        f"Benchmark Batch: {batch.benchmark_name}",
+        f"Requested Symbols: {len(batch.requested_symbols)}",
+        f"Success: {batch.success_count}",
+        f"Failed: {batch.failed_count}",
+        f"Elapsed: {safe_float(batch.elapsed_seconds, 2)}s",
+        ""
+    ]
+
+    # Calculate totals
+    longs = sum(1 for r in batch.results for s in r.signals if s.intent.value == "LONG")
+    flats = sum(1 for r in batch.results for s in r.signals if s.intent.value == "FLAT")
+    shorts = sum(1 for r in batch.results for s in r.signals if s.intent.value == "SHORT")
+
+    lines.append(f"Long Intents: {longs}")
+    lines.append(f"Flat Intents: {flats}")
+    lines.append(f"Short Intents: {shorts}")
+
+    return "\n".join(lines)

@@ -526,9 +526,25 @@ class Settings(BaseSettings):
         if getattr(self, "MTF_ALIGNMENT_MODE", "CLOSED_BAR_ONLY") not in ["CLOSED_BAR_ONLY", "ALLOW_CURRENT_PARTIAL", "EXACT_TIMESTAMP", "ASOF_BACKWARD"]:
              from bist_signal_bot.core.exceptions import ConfigurationError
              raise ConfigurationError(f"Invalid MTF_ALIGNMENT_MODE: {self.MTF_ALIGNMENT_MODE}")
+
+        if not getattr(self, "DEFAULT_BENCHMARKS", ""):
+            from bist_signal_bot.core.exceptions import ConfigurationError
+            raise ConfigurationError("DEFAULT_BENCHMARKS cannot be empty")
+
+        if getattr(self, "BENCHMARK_DEFAULT_TIMEFRAME", "1d") not in {"1m", "5m", "15m", "30m", "1h", "4h", "1d", "1wk", "1mo"}:
+             from bist_signal_bot.core.exceptions import ConfigurationError
+             raise ConfigurationError(f"Unsupported BENCHMARK_DEFAULT_TIMEFRAME: {self.BENCHMARK_DEFAULT_TIMEFRAME}")
+
+        validation.validate_percentage(self.BENCHMARK_BUY_AND_HOLD_WEIGHT, "BENCHMARK_BUY_AND_HOLD_WEIGHT")
+        validation.validate_positive_int(self.BENCHMARK_MA_WINDOW, "BENCHMARK_MA_WINDOW")
+        validation.validate_positive_int(self.BENCHMARK_MOMENTUM_LOOKBACK, "BENCHMARK_MOMENTUM_LOOKBACK")
+        validation.validate_positive_int(self.BENCHMARK_VOL_WINDOW, "BENCHMARK_VOL_WINDOW")
+        validation.validate_non_negative_float(self.BENCHMARK_MAX_VOL, "BENCHMARK_MAX_VOL")
+
         validation.enforce_production_safety(self)
 
         return self
+
 
     def __repr__(self) -> str:
         """Provide a safe string representation hiding secrets."""
@@ -563,7 +579,22 @@ class Settings(BaseSettings):
     MTF_SAVE_OUTPUT: bool = Field(default=False)
 
 
+
+    # Benchmark Settings
+    ENABLE_BENCHMARKS: bool = Field(default=True)
+    DEFAULT_BENCHMARKS: str = Field(default="buy_and_hold,moving_average_benchmark,naive_momentum,naive_volatility_filter")
+    BENCHMARK_DEFAULT_TIMEFRAME: str = Field(default="1d")
+    BENCHMARK_CONTINUE_ON_ERROR: bool = Field(default=True)
+    BENCHMARK_SAVE_OUTPUT: bool = Field(default=False)
+    BENCHMARK_BUY_AND_HOLD_WEIGHT: float = Field(default=1.0)
+    BENCHMARK_MA_WINDOW: int = Field(default=200)
+    BENCHMARK_MOMENTUM_LOOKBACK: int = Field(default=60)
+    BENCHMARK_VOL_WINDOW: int = Field(default=20)
+    BENCHMARK_MAX_VOL: float = Field(default=0.60)
+    BENCHMARK_RANDOM_SEED: int = Field(default=42)
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+
 
 settings = Settings()
     # Pattern Detection Features

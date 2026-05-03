@@ -47,6 +47,19 @@ def dispatch_strategies(args, ctx) -> int:
     return 1
 
 
+
+def dispatch_benchmarks(args, ctx) -> int:
+    from bist_signal_bot.cli.commands import cmd_benchmarks_list, cmd_benchmarks_run, cmd_benchmarks_batch, cmd_benchmarks_default
+    if args.benchmarks_cmd == "list":
+        return cmd_benchmarks_list(args, ctx)
+    elif args.benchmarks_cmd == "run":
+        return cmd_benchmarks_run(args, ctx)
+    elif args.benchmarks_cmd == "batch":
+        return cmd_benchmarks_batch(args, ctx)
+    elif args.benchmarks_cmd == "default":
+        return cmd_benchmarks_default(args, ctx)
+    return 1
+
 def run_cli(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
 
@@ -97,7 +110,8 @@ def run_cli(argv: list[str] | None = None) -> int:
         "patterns": lambda a, c: cmd_patterns_list(a, c) if a.patterns_command == 'list' else cmd_patterns_detect(a, c),
                 "pattern-features": cmd_pattern_features,
         "divergence": lambda a, c: cmd_divergence_detect(a, c) if getattr(a, "subcommand", None) == "detect" else 1,
-        "strategies": dispatch_strategies,
+                "strategies": dispatch_strategies,
+        "benchmarks": dispatch_benchmarks,
 
     }
 
