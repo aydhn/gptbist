@@ -235,3 +235,21 @@ BIST Signal Bot artık çoklu zaman dilimi (multi-timeframe) mimarisine sahiptir
 - **Prefix Standardı:** Çakışmaları engellemek için `w_`, `m_` prefixleri kullanılır.
 - **CLI Entegrasyonu:** `python -m bist_signal_bot mtf-features ASELS --source mock --level full`
 - HTML scraping veya ücretli veri kaynağı kullanılmaz, tamamen mevcut altyapıya bağımlıdır.
+
+## Phase 24: Strategy Architecture
+- **Strategy Architecture**: Establishes a professional strategy engine capable of running research, backtests, paper trading, and live signals. Defines strict input/output contracts.
+- **Strategy vs Indicator**: Strategies use indicators and features to make directional determinations (LONG/SHORT/FLAT), whereas indicators just provide raw data.
+- **SignalCandidate Model**: Represents a trade intent (direction, score, confidence, reasons, risk notes).
+- **Not Orders / Not Advice**: The system only produces "Research signal candidates". It sends NO orders, connects to NO brokers, and issues NO investment advice.
+- **BaseStrategy Lifecycle**: Validation of context and parameters -> Feature preparation -> Candidate generation -> Result aggregation.
+- **Registry & Engine**: `StrategyRegistry` manages available strategies. `StrategyEngine` orchestrates execution.
+- **Builtin Baseline Strategies**:
+  - `moving_average_trend`: simple crossover.
+  - `rsi_mean_reversion`: oversold/overbought baseline.
+  - `breakout_volume`: volume confirmed highs/lows.
+  - `composite_feature`: aggregates trend, momentum, and volume.
+- **CLI Commands**:
+  - `strategies list`
+  - `strategies run`
+  - `strategies batch`
+- **Future Preparations**: This lays the foundation for backtest modules, machine learning filters, and automated optimization, while preventing look-ahead bias and avoiding web-scraping/paid APIs.
