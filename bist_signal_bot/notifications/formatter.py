@@ -4,6 +4,40 @@ from typing import Any
 from bist_signal_bot.notifications.models import NotificationMessage
 
 
+
+from bist_signal_bot.costs.models import RoundTripCostBreakdown, TransactionCostBreakdown
+
+def format_transaction_cost_breakdown(cost: TransactionCostBreakdown) -> str:
+    amount = f"{cost.gross_notional:,.2f}" if cost.gross_notional > 0 else "N/A"
+    total_cost_fmt = f"{cost.total_cost:,.2f}"
+
+    msg = f"BIST Bot Maliyet Tahmini\n\n"
+    msg += f"Sembol: {cost.input.symbol}\n"
+    msg += f"Yön: {cost.side.value}\n"
+    msg += f"Tutar: {amount} TRY\n"
+    msg += f"Komisyon: {cost.commission.commission_amount:,.2f} TRY\n"
+    msg += f"Slippage: {cost.slippage.slippage_total_amount:,.2f} TRY ({cost.slippage.slippage_bps:.2f} bps)\n"
+    msg += f"Spread: {cost.spread.spread_total_amount:,.2f} TRY ({cost.spread.spread_bps:.2f} bps)\n"
+    msg += f"Toplam Maliyet: {total_cost_fmt} TRY ({cost.total_cost_bps:.2f} bps)\n"
+    msg += f"Efektif Fiyat: {cost.effective_price:,.2f}\n\n"
+    msg += "Bu yalnızca tahmini işlem maliyetidir.\n"
+    msg += "Yatırım tavsiyesi değildir.\n"
+    msg += "Emir gönderilmedi."
+
+    return msg
+
+def format_round_trip_cost_breakdown(cost: RoundTripCostBreakdown) -> str:
+    msg = f"BIST Bot Round-Trip Maliyet Tahmini\n\n"
+    msg += f"Sembol: {cost.entry_cost.input.symbol}\n"
+    msg += f"Miktar: {cost.entry_cost.input.quantity}\n"
+    msg += f"Toplam Maliyet: {cost.total_cost:,.2f} TRY ({cost.total_cost_bps:.2f} bps)\n"
+    msg += f"Breakeven (Başa Baş): {cost.breakeven_move_pct:.2f}%\n\n"
+    msg += "Bu yalnızca tahmini işlem maliyetidir.\n"
+    msg += "Yatırım tavsiyesi değildir.\n"
+    msg += "Emir gönderilmedi."
+
+    return msg
+
 class NotificationFormatter:
     def __init__(self, parse_mode: str = "HTML", timezone_str: str = "Europe/Istanbul"):
         self.parse_mode = parse_mode.upper()

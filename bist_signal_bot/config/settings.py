@@ -541,7 +541,62 @@ class Settings(BaseSettings):
         validation.validate_positive_int(self.BENCHMARK_VOL_WINDOW, "BENCHMARK_VOL_WINDOW")
         validation.validate_non_negative_float(self.BENCHMARK_MAX_VOL, "BENCHMARK_MAX_VOL")
 
+
+        if getattr(self, "COST_SCENARIO", "BASE") not in ["OPTIMISTIC", "BASE", "CONSERVATIVE", "STRESS"]:
+            from bist_signal_bot.core.exceptions import ConfigurationError
+            raise ConfigurationError(f"Invalid COST_SCENARIO: {self.COST_SCENARIO}")
+
+        if getattr(self, "COMMISSION_MODEL_TYPE", "BPS") not in ["BPS", "FLAT", "BPS_PLUS_FLAT"]:
+            from bist_signal_bot.core.exceptions import ConfigurationError
+            raise ConfigurationError(f"Invalid COMMISSION_MODEL_TYPE: {self.COMMISSION_MODEL_TYPE}")
+
+        if getattr(self, "SLIPPAGE_MODEL_TYPE", "HYBRID") not in ["FIXED_BPS", "VOLUME_BASED", "VOLATILITY_BASED", "HYBRID"]:
+            from bist_signal_bot.core.exceptions import ConfigurationError
+            raise ConfigurationError(f"Invalid SLIPPAGE_MODEL_TYPE: {self.SLIPPAGE_MODEL_TYPE}")
+
+        if getattr(self, "SPREAD_MODEL_TYPE", "LIQUIDITY_BUCKET") not in ["FIXED_BPS", "LIQUIDITY_BUCKET", "VOLUME_BASED"]:
+            from bist_signal_bot.core.exceptions import ConfigurationError
+            raise ConfigurationError(f"Invalid SPREAD_MODEL_TYPE: {self.SPREAD_MODEL_TYPE}")
+
+        validation.validate_non_negative_float(getattr(self, "COMMISSION_BPS", 0.0), "COMMISSION_BPS")
+        validation.validate_non_negative_float(getattr(self, "COMMISSION_FLAT_FEE", 0.0), "COMMISSION_FLAT_FEE")
+        validation.validate_non_negative_float(getattr(self, "COMMISSION_MINIMUM", 0.0), "COMMISSION_MINIMUM")
+        validation.validate_non_negative_float(getattr(self, "TRANSACTION_TAX_BPS", 0.0), "TRANSACTION_TAX_BPS")
+        validation.validate_non_negative_float(getattr(self, "OTHER_FEE_BPS", 0.0), "OTHER_FEE_BPS")
+
+        validation.validate_non_negative_float(getattr(self, "FIXED_SLIPPAGE_BPS", 0.0), "FIXED_SLIPPAGE_BPS")
+        validation.validate_non_negative_float(getattr(self, "VOLUME_IMPACT_FACTOR", 0.0), "VOLUME_IMPACT_FACTOR")
+        validation.validate_non_negative_float(getattr(self, "VOLATILITY_IMPACT_FACTOR", 0.0), "VOLATILITY_IMPACT_FACTOR")
+        validation.validate_non_negative_float(getattr(self, "MIN_SLIPPAGE_BPS", 0.0), "MIN_SLIPPAGE_BPS")
+        validation.validate_non_negative_float(getattr(self, "MAX_SLIPPAGE_BPS", 0.0), "MAX_SLIPPAGE_BPS")
+
+        min_slip = getattr(self, "MIN_SLIPPAGE_BPS", 0.0)
+        max_slip = getattr(self, "MAX_SLIPPAGE_BPS", 0.0)
+        if max_slip < min_slip:
+            from bist_signal_bot.core.exceptions import ConfigurationError
+            raise ConfigurationError("MAX_SLIPPAGE_BPS must be >= MIN_SLIPPAGE_BPS")
+
+        validation.validate_non_negative_float(getattr(self, "FIXED_SPREAD_BPS", 0.0), "FIXED_SPREAD_BPS")
+        validation.validate_non_negative_float(getattr(self, "HIGH_LIQUIDITY_SPREAD_BPS", 0.0), "HIGH_LIQUIDITY_SPREAD_BPS")
+        validation.validate_non_negative_float(getattr(self, "MEDIUM_LIQUIDITY_SPREAD_BPS", 0.0), "MEDIUM_LIQUIDITY_SPREAD_BPS")
+        validation.validate_non_negative_float(getattr(self, "LOW_LIQUIDITY_SPREAD_BPS", 0.0), "LOW_LIQUIDITY_SPREAD_BPS")
+
+        validation.validate_non_negative_float(getattr(self, "COST_DEFAULT_AVG_DAILY_VOLUME", 0.0), "COST_DEFAULT_AVG_DAILY_VOLUME")
+        validation.validate_non_negative_float(getattr(self, "COST_DEFAULT_AVG_DAILY_TURNOVER", 0.0), "COST_DEFAULT_AVG_DAILY_TURNOVER")
+
+        high_turnover = getattr(self, "LIQUIDITY_HIGH_TURNOVER_TRY", 100000000.0)
+        med_turnover = getattr(self, "LIQUIDITY_MEDIUM_TURNOVER_TRY", 10000000.0)
+
+        if high_turnover <= 0 or med_turnover <= 0:
+             from bist_signal_bot.core.exceptions import ConfigurationError
+             raise ConfigurationError("LIQUIDITY_*_TURNOVER_TRY must be positive")
+
+        if high_turnover <= med_turnover:
+             from bist_signal_bot.core.exceptions import ConfigurationError
+             raise ConfigurationError("LIQUIDITY_HIGH_TURNOVER_TRY must be > LIQUIDITY_MEDIUM_TURNOVER_TRY")
+
         validation.enforce_production_safety(self)
+
 
         return self
 
@@ -592,6 +647,36 @@ class Settings(BaseSettings):
     BENCHMARK_VOL_WINDOW: int = Field(default=20)
     BENCHMARK_MAX_VOL: float = Field(default=0.60)
     BENCHMARK_RANDOM_SEED: int = Field(default=42)
+
+
+    # COST MODEL
+    ENABLE_COST_MODEL: bool = Field(default=True)
+    COST_SCENARIO: str = Field(default="BASE")
+
+    COMMISSION_MODEL_TYPE: str = Field(default="BPS")
+    COMMISSION_BPS: float = Field(default=5.0)
+    COMMISSION_FLAT_FEE: float = Field(default=0.0)
+    COMMISSION_MINIMUM: float = Field(default=0.0)
+    TRANSACTION_TAX_BPS: float = Field(default=0.0)
+    OTHER_FEE_BPS: float = Field(default=0.0)
+
+    SLIPPAGE_MODEL_TYPE: str = Field(default="HYBRID")
+    FIXED_SLIPPAGE_BPS: float = Field(default=5.0)
+    VOLUME_IMPACT_FACTOR: float = Field(default=10.0)
+    VOLATILITY_IMPACT_FACTOR: float = Field(default=0.25)
+    MIN_SLIPPAGE_BPS: float = Field(default=0.0)
+    MAX_SLIPPAGE_BPS: float = Field(default=100.0)
+
+    SPREAD_MODEL_TYPE: str = Field(default="LIQUIDITY_BUCKET")
+    FIXED_SPREAD_BPS: float = Field(default=5.0)
+    HIGH_LIQUIDITY_SPREAD_BPS: float = Field(default=3.0)
+    MEDIUM_LIQUIDITY_SPREAD_BPS: float = Field(default=8.0)
+    LOW_LIQUIDITY_SPREAD_BPS: float = Field(default=20.0)
+
+    LIQUIDITY_HIGH_TURNOVER_TRY: float = Field(default=100000000.0)
+    LIQUIDITY_MEDIUM_TURNOVER_TRY: float = Field(default=10000000.0)
+    COST_DEFAULT_AVG_DAILY_VOLUME: float = Field(default=0.0)
+    COST_DEFAULT_AVG_DAILY_TURNOVER: float = Field(default=0.0)
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 

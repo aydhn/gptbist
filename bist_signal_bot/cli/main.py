@@ -48,6 +48,11 @@ def dispatch_strategies(args, ctx) -> int:
 
 
 
+def dispatch_costs(args, ctx) -> int:
+    from bist_signal_bot.cli.commands import handle_costs_command
+    handle_costs_command(args, ctx.settings)
+    return 0
+
 def dispatch_benchmarks(args, ctx) -> int:
     from bist_signal_bot.cli.commands import cmd_benchmarks_list, cmd_benchmarks_run, cmd_benchmarks_batch, cmd_benchmarks_default
     if args.benchmarks_cmd == "list":
@@ -112,6 +117,7 @@ def run_cli(argv: list[str] | None = None) -> int:
         "divergence": lambda a, c: cmd_divergence_detect(a, c) if getattr(a, "subcommand", None) == "detect" else 1,
                 "strategies": dispatch_strategies,
         "benchmarks": dispatch_benchmarks,
+        "costs": dispatch_costs,
 
     }
 

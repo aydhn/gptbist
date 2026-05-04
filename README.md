@@ -293,3 +293,32 @@ python -m bist_signal_bot benchmarks default ASELS --source mock
 ```
 
 *Note: No real orders are sent. No HTML scraping is performed. No paid APIs are used.*
+
+## Phase 26: Cost, Slippage & Spread Model
+
+The BIST Signal Bot includes a robust transaction cost model designed to simulate realistic Borsa Istanbul conditions. It is specifically built to enable realistic backtesting and paper trading performance metrics.
+
+### Key Features
+- **Commission Model:** Supports fixed amounts, basis points (BPS) and hybrid formats.
+- **Slippage Model:** Includes fixed BPS, volume-based (using square root of participation), volatility-based, and hybrid slippage models.
+- **Spread Model:** Estimates market spread based on a symbol's liquidity bucket (High, Medium, Low) derived from its average daily turnover.
+- **Cost Scenarios:** Test varying market conditions using `OPTIMISTIC`, `BASE`, `CONSERVATIVE`, and `STRESS` scenarios.
+
+**IMPORTANT:**
+This bot does **NOT** know your actual brokerage commission rates, exchange fees, or exact market slippage. The default configuration uses professional but conservative estimations. You must configure your specific commission rates in your `.env` file for accurate modeling. This bot does **NOT** place real orders, scrape HTML, or use paid APIs.
+
+### Configuration
+Customize your transaction costs via `.env` variables:
+- `COST_SCENARIO` (e.g. `BASE` or `CONSERVATIVE`)
+- `COMMISSION_MODEL_TYPE`, `COMMISSION_BPS`, `COMMISSION_FLAT_FEE`, `COMMISSION_MINIMUM`
+- `SLIPPAGE_MODEL_TYPE`, `FIXED_SLIPPAGE_BPS`, `MAX_SLIPPAGE_BPS`
+- `SPREAD_MODEL_TYPE`, `HIGH_LIQUIDITY_SPREAD_BPS`, `LOW_LIQUIDITY_SPREAD_BPS`
+
+### CLI Usage
+Estimate costs before placing manual trades:
+```bash
+python -m bist_signal_bot costs estimate ASELS --side BUY --quantity 100 --price 50
+python -m bist_signal_bot costs round-trip ASELS --side BUY --quantity 100 --entry-price 50 --exit-price 55
+python -m bist_signal_bot costs scenarios
+python -m bist_signal_bot costs config
+```

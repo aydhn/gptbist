@@ -218,3 +218,23 @@ class BenchmarkExecutionError(BenchmarkError):
 class BenchmarkRegistryError(BenchmarkError):
     """Raised when there is an error in the benchmark registry."""
     pass
+
+class CostModelError(BistSignalBotError):
+    """Base exception for cost model errors."""
+    pass
+
+class CommissionModelError(CostModelError):
+    """Raised when there is an error in commission calculation."""
+    pass
+
+class SlippageModelError(CostModelError):
+    """Raised when there is an error in slippage calculation."""
+    pass
+
+class SpreadModelError(CostModelError):
+    """Raised when there is an error in spread calculation."""
+    pass
+
+class TransactionCostError(CostModelError):
+    """Raised when there is an error in overall transaction cost calculation."""
+    pass
