@@ -168,3 +168,182 @@ class BacktestResult:
             "finished_at": self.finished_at.isoformat(),
             "disclaimer": self.disclaimer,
         }
+
+@dataclass
+class BenchmarkComparisonReport:
+    strategy_name: str
+    benchmark_name: str
+    symbol: str | None
+    strategy_total_return_pct: float
+    benchmark_total_return_pct: float
+    excess_return_pct: float
+    strategy_max_drawdown_pct: float | None
+    benchmark_max_drawdown_pct: float | None
+    strategy_sharpe: float | None
+    benchmark_sharpe: float | None
+    outperform: bool | None
+    warnings: list[str]
+    generated_at: datetime
+    metadata: dict[str, Any]
+
+    def summary(self) -> dict[str, Any]:
+        return self.__dict__
+
+@dataclass
+class ReturnMetrics:
+    total_return_pct: float
+    annualized_return_pct: float | None
+    cumulative_return_pct: float
+    average_daily_return_pct: float | None
+    best_day_return_pct: float | None
+    worst_day_return_pct: float | None
+
+@dataclass
+class RiskMetrics:
+    volatility_annualized_pct: float | None
+    downside_volatility_pct: float | None
+    max_drawdown_pct: float | None
+    max_drawdown_duration_bars: int | None
+    value_at_risk_95_pct: float | None
+    conditional_value_at_risk_95_pct: float | None
+
+@dataclass
+class RiskAdjustedMetrics:
+    sharpe_ratio: float | None
+    sortino_ratio: float | None
+    calmar_ratio: float | None
+    return_over_max_drawdown: float | None
+
+@dataclass
+class TradeMetrics:
+    trade_count: int
+    closed_trade_count: int
+    winning_trades: int
+    losing_trades: int
+    breakeven_trades: int
+    win_rate_pct: float | None
+    loss_rate_pct: float | None
+    average_trade_return_pct: float | None
+    average_winner_pct: float | None
+    average_loser_pct: float | None
+    best_trade_pct: float | None
+    worst_trade_pct: float | None
+    gross_profit: float
+    gross_loss: float
+    net_profit: float
+    profit_factor: float | None
+    expectancy: float | None
+    average_bars_held: float | None
+
+@dataclass
+class CostMetrics:
+    total_commission: float
+    total_slippage: float
+    total_spread: float
+    total_tax: float
+    total_other_fees: float
+    total_cost: float
+    total_cost_bps: float | None
+    cost_as_pct_of_initial_capital: float | None
+    cost_as_pct_of_gross_profit: float | None
+
+@dataclass
+class ExposureMetrics:
+    average_exposure_pct: float | None
+    max_exposure_pct: float | None
+    time_in_market_pct: float | None
+    average_open_positions: float | None
+    max_open_positions: int | None
+
+@dataclass
+class BacktestPerformanceReport:
+    strategy_name: str
+    symbol: str | None
+    timeframe: str
+    initial_capital: float
+    final_equity: float
+    return_metrics: ReturnMetrics
+    risk_metrics: RiskMetrics
+    risk_adjusted_metrics: RiskAdjustedMetrics
+    trade_metrics: TradeMetrics
+    cost_metrics: CostMetrics
+    exposure_metrics: ExposureMetrics
+    started_at: datetime
+    finished_at: datetime
+    generated_at: datetime
+    warnings: list[str]
+    disclaimer: str
+    metadata: dict[str, Any]
+
+    def summary(self) -> dict[str, Any]:
+        return {
+            "strategy_name": self.strategy_name,
+            "symbol": self.symbol,
+            "timeframe": self.timeframe,
+            "initial_capital": self.initial_capital,
+            "final_equity": self.final_equity,
+            "returns": self.return_metrics.__dict__,
+            "risk": self.risk_metrics.__dict__,
+            "risk_adjusted": self.risk_adjusted_metrics.__dict__,
+            "trades": self.trade_metrics.__dict__,
+            "costs": self.cost_metrics.__dict__,
+            "exposure": self.exposure_metrics.__dict__,
+            "warnings": self.warnings,
+            "disclaimer": self.disclaimer
+        }
+
+    def compact_summary(self) -> dict[str, Any]:
+        return {
+            "strategy_name": self.strategy_name,
+            "symbol": self.symbol,
+            "initial_capital": self.initial_capital,
+            "final_equity": self.final_equity,
+            "total_return_pct": self.return_metrics.total_return_pct,
+            "annualized_return_pct": self.return_metrics.annualized_return_pct,
+            "max_drawdown_pct": self.risk_metrics.max_drawdown_pct,
+            "sharpe_ratio": self.risk_adjusted_metrics.sharpe_ratio,
+            "win_rate_pct": self.trade_metrics.win_rate_pct,
+            "profit_factor": self.trade_metrics.profit_factor,
+            "trade_count": self.trade_metrics.trade_count,
+            "total_cost": self.cost_metrics.total_cost
+        }
+
+@dataclass
+class BenchmarkComparisonReport:
+    strategy_name: str
+    benchmark_name: str
+    symbol: str | None
+    strategy_total_return_pct: float
+    benchmark_total_return_pct: float
+    excess_return_pct: float
+    strategy_max_drawdown_pct: float | None
+    benchmark_max_drawdown_pct: float | None
+    strategy_sharpe: float | None
+    benchmark_sharpe: float | None
+    outperform: bool | None
+    warnings: list[str]
+    generated_at: datetime
+    metadata: dict[str, Any]
+
+    def summary(self) -> dict[str, Any]:
+        return self.__dict__
+
+@dataclass
+class BacktestReportBundle:
+    backtest_result: BacktestResult
+    performance_report: BacktestPerformanceReport
+    benchmark_comparisons: list[BenchmarkComparisonReport]
+    equity_curve: pd.DataFrame
+    drawdown_curve: pd.DataFrame
+    trades: pd.DataFrame
+    generated_at: datetime
+    output_files: dict[str, str]
+    metadata: dict[str, Any]
+
+    def summary(self) -> dict[str, Any]:
+        return {
+            "performance_report": self.performance_report.compact_summary(),
+            "benchmark_comparisons": [b.summary() for b in self.benchmark_comparisons],
+            "output_files": self.output_files,
+            "generated_at": self.generated_at.isoformat()
+        }

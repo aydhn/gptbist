@@ -225,3 +225,41 @@ def format_backtest_summary(result) -> str:
         "==================================================",
     ]
     return "\n".join(lines)
+
+def format_backtest_report_text(bundle: 'BacktestReportBundle') -> str:
+    from bist_signal_bot.backtesting.models import BacktestReportBundle
+
+    pr = bundle.performance_report
+
+    lines = [
+        "========================================",
+        "      BIST SIGNAL BOT BACKTEST REPORT   ",
+        "========================================",
+        f"Strategy: {pr.strategy_name}",
+        f"Symbol: {pr.symbol or 'PORTFOLIO'}",
+        f"Initial Capital: {pr.initial_capital:.2f}",
+        f"Final Equity: {pr.final_equity:.2f}",
+        f"Total Return: {pr.return_metrics.total_return_pct:.2f}%",
+        f"Annualized Return: {pr.return_metrics.annualized_return_pct:.2f}%" if pr.return_metrics.annualized_return_pct else "Annualized Return: N/A",
+        f"Max Drawdown: {pr.risk_metrics.max_drawdown_pct:.2f}%" if pr.risk_metrics.max_drawdown_pct is not None else "Max Drawdown: N/A",
+        f"Sharpe Ratio: {pr.risk_adjusted_metrics.sharpe_ratio:.2f}" if pr.risk_adjusted_metrics.sharpe_ratio is not None else "Sharpe Ratio: N/A",
+        f"Sortino Ratio: {pr.risk_adjusted_metrics.sortino_ratio:.2f}" if pr.risk_adjusted_metrics.sortino_ratio is not None else "Sortino Ratio: N/A",
+        f"Win Rate: {pr.trade_metrics.win_rate_pct:.2f}%" if pr.trade_metrics.win_rate_pct is not None else "Win Rate: N/A",
+        f"Profit Factor: {pr.trade_metrics.profit_factor:.2f}" if pr.trade_metrics.profit_factor is not None else "Profit Factor: N/A",
+        f"Trade Count: {pr.trade_metrics.trade_count}",
+        f"Total Cost: {pr.cost_metrics.total_cost:.2f}"
+    ]
+
+    if bundle.benchmark_comparisons:
+        lines.append("----------------------------------------")
+        lines.append("Benchmark Comparisons:")
+        for comp in bundle.benchmark_comparisons:
+            outperform = "Yes" if comp.outperform else "No"
+            lines.append(f"  vs {comp.benchmark_name}: Excess Return = {comp.excess_return_pct:.2f}% | Outperform = {outperform}")
+
+    lines.append("----------------------------------------")
+    lines.append("Disclaimer:")
+    lines.append(pr.disclaimer)
+    lines.append("========================================")
+
+    return "\n".join(lines)

@@ -250,3 +250,15 @@ class BacktestExecutionError(BacktestError):
 
 class BacktestValidationError(BacktestError):
     pass
+
+class BacktestMetricsError(BistSignalBotError):
+    pass
+
+class BacktestReportError(BistSignalBotError):
+    pass
+
+class BenchmarkComparisonError(BistSignalBotError):
+    pass
+
+class PerformanceAnalysisError(BistSignalBotError):
+    pass

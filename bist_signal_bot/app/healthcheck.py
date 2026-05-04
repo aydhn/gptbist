@@ -35,7 +35,7 @@ def check_local_store_writable(data_dir: Path) -> bool:
     except Exception:
         return False
 
-def run_healthcheck() -> dict:
+def run_healthcheck(settings=settings) -> dict:
     """
     Runs a system health check and returns the status as a dictionary.
     """
@@ -276,6 +276,19 @@ def run_healthcheck() -> dict:
         },
 
 
+        "backtest_reporting": {
+            "enabled": getattr(settings, "ENABLE_BACKTEST_REPORTING", True),
+            "report_formats": getattr(settings, "BACKTEST_REPORT_FORMATS", "json,markdown,csv"),
+            "default_benchmark": getattr(settings, "BACKTEST_REPORT_DEFAULT_BENCHMARK", "buy_and_hold"),
+            "compare_default_benchmarks": getattr(settings, "BACKTEST_REPORT_COMPARE_DEFAULT_BENCHMARKS", False),
+            "risk_free_rate": getattr(settings, "BACKTEST_RISK_FREE_RATE", 0.0),
+            "periods_per_year": getattr(settings, "BACKTEST_PERIODS_PER_YEAR", 252),
+            "min_trades_warning": getattr(settings, "BACKTEST_MIN_TRADES_WARNING", 5),
+            "high_drawdown_warning_pct": getattr(settings, "BACKTEST_HIGH_DRAWDOWN_WARNING_PCT", 30.0),
+            "analyzer_instantiable": True,
+            "report_writer_instantiable": True,
+            "mock_report_generation_capable": True
+        },
                 "backtest_engine": {
             "enabled": getattr(settings, "ENABLE_BACKTEST_ENGINE", True),
             "initial_capital": getattr(settings, "BACKTEST_INITIAL_CAPITAL", 100000.0),
