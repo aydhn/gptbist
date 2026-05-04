@@ -2699,3 +2699,106 @@ def cmd_backtest_report(args, ctx) -> int:
     args.report = True
     args.report_format = getattr(args, "format", "json")
     return cmd_backtest_run(args, ctx)
+
+def handle_validate_backtest(args):
+    import json
+    import pandas as pd
+    from bist_signal_bot.validation.walk_forward import WalkForwardAnalyzer
+    from bist_signal_bot.validation.robustness import RobustnessAnalyzer
+    from bist_signal_bot.validation.models import ValidationConfig, ValidationMode, RobustnessParameterRange
+    from bist_signal_bot.backtesting.engine import BacktestEngine
+    from bist_signal_bot.strategies.engine import StrategyEngine
+
+
+    if args.source == "mock":
+        df = pd.DataFrame({'close': range(500)}, index=pd.date_range('2020-01-01', periods=500))
+    else:
+        from bist_signal_bot.storage.local_store import LocalDataStore
+        store = LocalDataStore()
+        df = store.load_ohlcv(symbol=args.symbol)
+
+    engine = BacktestEngine(strategy_engine=StrategyEngine(), cost_engine=None)
+
+    params = {}
+    if hasattr(args, 'param') and args.param:
+        for p in args.param:
+            k, v = p.split("=")
+            try:
+                if "." in v: params[k] = float(v)
+                else: params[k] = int(v)
+            except:
+                params[k] = v
+
+    if args.validate_command == "train-test":
+        analyzer = WalkForwardAnalyzer(backtest_engine=engine)
+        config = ValidationConfig(mode=ValidationMode.TRAIN_TEST_SPLIT)
+        if getattr(args, 'train_ratio', None): config.train_ratio = args.train_ratio
+        if getattr(args, 'compare_benchmark', None):
+            config.compare_benchmark = True
+            config.benchmark_name = args.compare_benchmark
+
+        result = analyzer.run_train_test(args.strategy, args.symbol, df, params, config)
+        if getattr(args, 'json', False):
+            print(json.dumps(result.summary(), indent=2, default=str))
+        else:
+            print(f"Train/Test Validation Complete for {args.strategy} on {args.symbol}")
+            print(f"Test Return: {result.split_results[0].test_report.return_metrics.total_return_pct:.2f}%")
+            if result.split_results[0].train_report:
+                print(f"Train Return: {result.split_results[0].train_report.return_metrics.total_return_pct:.2f}%")
+            print(f"Overfit Risk: {result.overfit_risk_level.value}")
+
+    elif args.validate_command == "walk-forward":
+        analyzer = WalkForwardAnalyzer(backtest_engine=engine)
+        config = ValidationConfig(
+            mode=ValidationMode.EXPANDING_WINDOW if getattr(args, 'expanding', False) else ValidationMode.WALK_FORWARD,
+            expanding=getattr(args, 'expanding', False)
+        )
+        if getattr(args, 'train_window', None): config.train_window_rows = args.train_window
+        if getattr(args, 'test_window', None): config.test_window_rows = args.test_window
+        if getattr(args, 'step', None): config.step_rows = args.step
+        if getattr(args, 'max_splits', None): config.max_splits = args.max_splits
+        if getattr(args, 'save_report', False): config.save_reports = True
+
+        result = analyzer.run_walk_forward(args.strategy, args.symbol, df, params, config)
+
+        if getattr(args, 'json', False):
+            print(json.dumps(result.summary(), indent=2, default=str))
+        else:
+            print(f"Walk-Forward Validation Complete for {args.strategy} on {args.symbol}")
+            print(f"Splits: {len(result.splits)}")
+            print(f"Mean OOS Return: {result.aggregate_report.get('mean_test_return_pct', 0):.2f}%")
+            print(f"Overfit Risk: {result.overfit_risk_level.value}")
+            for w in result.overfit_warnings:
+                print(f"Warning: {w}")
+
+    elif args.validate_command == "robustness":
+        analyzer = RobustnessAnalyzer(backtest_engine=engine)
+        ranges = []
+        if getattr(args, 'param_range', None):
+            for pr in args.param_range:
+                k, vs = pr.split("=")
+                vals = []
+                for v in vs.split(","):
+                    try:
+                        if "." in v: vals.append(float(v))
+                        else: vals.append(int(v))
+                    except:
+                        vals.append(v)
+                ranges.append(RobustnessParameterRange(name=k, values=vals))
+
+        result = analyzer.run_parameter_robustness(
+            strategy_name=args.strategy,
+            symbol=args.symbol,
+            data=df,
+            base_params=params,
+            parameter_ranges=ranges,
+            max_runs=getattr(args, 'max_runs', None)
+        )
+
+        if getattr(args, 'json', False):
+            print(json.dumps(result.summary(), indent=2, default=str))
+        else:
+            print(f"Robustness Validation Complete for {args.strategy} on {args.symbol}")
+            print(f"Runs: {len(result.run_results)}")
+            print(f"Stability Score: {result.stability_score:.2f}")
+            print(f"Overfit Risk: {result.overfit_risk_level.value}")

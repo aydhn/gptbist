@@ -262,3 +262,19 @@ class BenchmarkComparisonError(BistSignalBotError):
 
 class PerformanceAnalysisError(BistSignalBotError):
     pass
+
+
+class ValidationAnalysisError(BistSignalBotError):
+    pass
+
+class TimeSeriesSplitError(ValidationAnalysisError):
+    pass
+
+class WalkForwardError(ValidationAnalysisError):
+    pass
+
+class RobustnessAnalysisError(ValidationAnalysisError):
+    pass
+
+class OverfitRiskError(ValidationAnalysisError):
+    pass
