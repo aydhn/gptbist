@@ -202,3 +202,26 @@ def format_benchmark_batch(batch) -> str:
     lines.append(f"Short Intents: {shorts}")
 
     return "\n".join(lines)
+
+def format_backtest_summary(result) -> str:
+    lines = [
+        "==================================================",
+        f" BACKTEST RESULTS: {result.strategy_name.upper()} ",
+        "==================================================",
+        f"Symbol          : {result.symbol or 'N/A'}",
+        f"Mode            : {result.config.execution_price_mode.value}",
+        f"Cost Scenario   : {result.config.scenario.value}",
+        "--------------------------------------------------",
+        f"Initial Capital : {result.config.initial_capital:,.2f}",
+        f"Final Equity    : {result.final_equity():,.2f}",
+        f"Total Return    : {result.total_return_pct():.2f}%",
+        f"Total Costs     : {result.total_cost():,.2f}",
+        "--------------------------------------------------",
+        f"Trade Count     : {result.trade_count()}",
+        f"Closed Trades   : {result.closed_trade_count()}",
+        f"Elapsed Time    : {result.elapsed_seconds:.3f}s",
+        "==================================================",
+        result.disclaimer,
+        "==================================================",
+    ]
+    return "\n".join(lines)

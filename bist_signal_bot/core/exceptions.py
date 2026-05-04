@@ -238,3 +238,15 @@ class SpreadModelError(CostModelError):
 class TransactionCostError(CostModelError):
     """Raised when there is an error in overall transaction cost calculation."""
     pass
+
+class BacktestError(BistSignalBotError):
+    pass
+
+class PortfolioAccountingError(BacktestError):
+    pass
+
+class BacktestExecutionError(BacktestError):
+    pass
+
+class BacktestValidationError(BacktestError):
+    pass

@@ -523,6 +523,7 @@ def build_parser() -> argparse.ArgumentParser:
     default_bench_parser.add_argument("--json", action="store_true", help="Output in JSON format")
 
     add_costs_parser(subparsers)
+    add_backtest_parser(subparsers)
     return parser
 
 
@@ -567,3 +568,46 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         args.json = False
         args.verbose = False
     return args
+
+
+def add_backtest_parser(subparsers):
+    parser_backtest = subparsers.add_parser("backtest", help="Backtest engine operations")
+    backtest_subparsers = parser_backtest.add_subparsers(dest="backtest_cmd", required=True)
+
+    # backtest run
+    run_parser = backtest_subparsers.add_parser("run", help="Run backtest on a single symbol")
+    run_parser.add_argument("symbol", type=str, help="Symbol to run backtest for")
+    run_parser.add_argument("--strategy", type=str, required=True, help="Strategy name")
+    run_parser.add_argument("--source", type=str, choices=["mock", "local"], default="local", help="Data source")
+    run_parser.add_argument("--timeframe", type=str, default="1d", help="Timeframe (e.g., 1d)")
+    run_parser.add_argument("--period", type=str, help="History period")
+    run_parser.add_argument("--rows", type=int, help="Rows for mock data")
+    run_parser.add_argument("--param", type=str, action="append", help="Strategy parameters")
+    run_parser.add_argument("--initial-capital", type=float, help="Initial capital")
+    run_parser.add_argument("--execution", type=str, choices=["NEXT_OPEN", "NEXT_CLOSE", "SAME_CLOSE_FOR_RESEARCH_ONLY"], help="Execution mode")
+    run_parser.add_argument("--cost-scenario", type=str, choices=["OPTIMISTIC", "BASE", "CONSERVATIVE", "STRESS"], help="Cost scenario")
+    run_parser.add_argument("--max-position-size-pct", type=float, help="Max position size percentage")
+    run_parser.add_argument("--allow-short", action="store_true", help="Allow short trades")
+    run_parser.add_argument("--no-costs", action="store_true", help="Disable commission and slippage")
+    run_parser.add_argument("--save-results", action="store_true", help="Save backtest results")
+    run_parser.add_argument("--json", action="store_true", help="Output in JSON format")
+
+    # backtest batch
+    batch_parser = backtest_subparsers.add_parser("batch", help="Run backtest on multiple symbols")
+    batch_parser.add_argument("--strategy", type=str, required=True, help="Strategy name")
+
+    group = batch_parser.add_mutually_exclusive_group(required=True)
+    group.add_argument("--symbols", type=str, nargs="+", help="List of symbols")
+    group.add_argument("--all", action="store_true", help="Run on all symbols")
+    group.add_argument("--group", type=str, help="Run on symbol group")
+
+    batch_parser.add_argument("--source", type=str, choices=["mock", "local"], default="local", help="Data source")
+    batch_parser.add_argument("--param", type=str, action="append", help="Strategy parameters")
+    batch_parser.add_argument("--initial-capital", type=float, help="Initial capital")
+    batch_parser.add_argument("--execution", type=str, choices=["NEXT_OPEN", "NEXT_CLOSE", "SAME_CLOSE_FOR_RESEARCH_ONLY"], help="Execution mode")
+    batch_parser.add_argument("--cost-scenario", type=str, choices=["OPTIMISTIC", "BASE", "CONSERVATIVE", "STRESS"], help="Cost scenario")
+    batch_parser.add_argument("--max-position-size-pct", type=float, help="Max position size percentage")
+    batch_parser.add_argument("--allow-short", action="store_true", help="Allow short trades")
+    batch_parser.add_argument("--no-costs", action="store_true", help="Disable commission and slippage")
+    batch_parser.add_argument("--save-results", action="store_true", help="Save backtest results")
+    batch_parser.add_argument("--json", action="store_true", help="Output in JSON format")

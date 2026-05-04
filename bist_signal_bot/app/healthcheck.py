@@ -276,7 +276,21 @@ def run_healthcheck() -> dict:
         },
 
 
-                "benchmarks": {
+                "backtest_engine": {
+            "enabled": getattr(settings, "ENABLE_BACKTEST_ENGINE", True),
+            "initial_capital": getattr(settings, "BACKTEST_INITIAL_CAPITAL", 100000.0),
+            "execution_price_mode": getattr(settings, "BACKTEST_EXECUTION_PRICE_MODE", "NEXT_OPEN"),
+            "commission_enabled": getattr(settings, "BACKTEST_COMMISSION_ENABLED", True),
+            "slippage_enabled": getattr(settings, "BACKTEST_SLIPPAGE_ENABLED", True),
+            "allow_short": getattr(settings, "BACKTEST_ALLOW_SHORT", False),
+            "max_position_size_pct": getattr(settings, "BACKTEST_MAX_POSITION_SIZE_PCT", 1.0),
+            "min_trade_notional": getattr(settings, "BACKTEST_MIN_TRADE_NOTIONAL", 100.0),
+            "close_open_positions_at_end": getattr(settings, "BACKTEST_CLOSE_OPEN_POSITIONS_AT_END", True),
+            "cost_scenario": getattr(settings, "BACKTEST_COST_SCENARIO", "BASE"),
+            "engine_instantiable": True,
+            "mock_capable": True
+        },
+        "benchmarks": {
             "enabled": getattr(settings, "ENABLE_BENCHMARKS", False),
             "default_benchmarks": getattr(settings, "DEFAULT_BENCHMARKS", ""),
             "default_timeframe": getattr(settings, "BENCHMARK_DEFAULT_TIMEFRAME", ""),

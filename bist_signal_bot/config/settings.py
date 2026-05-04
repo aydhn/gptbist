@@ -150,6 +150,24 @@ class Settings(BaseSettings):
     BACKTEST_COMMISSION_RATE: float = Field(default=0.002)
     BACKTEST_SLIPPAGE_RATE: float = Field(default=0.001)
     BACKTEST_ALLOW_SHORT: bool = Field(default=False)
+    # BACKTEST
+    ENABLE_BACKTEST_ENGINE: bool = Field(default=True)
+    BACKTEST_INITIAL_CAPITAL: float = Field(default=100000.0)
+    BACKTEST_EXECUTION_PRICE_MODE: str = Field(default="NEXT_OPEN")
+    BACKTEST_COMMISSION_ENABLED: bool = Field(default=True)
+    BACKTEST_SLIPPAGE_ENABLED: bool = Field(default=True)
+    BACKTEST_ALLOW_SHORT: bool = Field(default=False)
+    BACKTEST_MAX_POSITION_SIZE_PCT: float = Field(default=1.0)
+    BACKTEST_MIN_TRADE_NOTIONAL: float = Field(default=100.0)
+    BACKTEST_CLOSE_ON_OPPOSITE_SIGNAL: bool = Field(default=True)
+    BACKTEST_CLOSE_ON_FLAT_SIGNAL: bool = Field(default=False)
+    BACKTEST_ONE_POSITION_PER_SYMBOL: bool = Field(default=True)
+    BACKTEST_USE_FRACTIONAL_SHARES: bool = Field(default=False)
+    BACKTEST_CLOSE_OPEN_POSITIONS_AT_END: bool = Field(default=True)
+    BACKTEST_COST_SCENARIO: str = Field(default="BASE")
+    BACKTEST_SAVE_RESULTS: bool = Field(default=False)
+    BACKTEST_RESULTS_DIR_NAME: str = Field(default="backtests")
+
 
     # RISK
     MAX_POSITION_SIZE_PCT: float = Field(default=0.10)
