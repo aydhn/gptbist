@@ -48,6 +48,12 @@ def dispatch_strategies(args, ctx) -> int:
 
 
 
+
+def dispatch_validate_backtest(args, ctx) -> int:
+    from bist_signal_bot.cli.commands import handle_validate_backtest
+    handle_validate_backtest(args)
+    return 0
+
 def dispatch_backtest(args, ctx) -> int:
     from bist_signal_bot.cli.commands_backtest import handle_backtest_command
     return handle_backtest_command(args, ctx)
@@ -123,6 +129,7 @@ def run_cli(argv: list[str] | None = None) -> int:
         "benchmarks": dispatch_benchmarks,
         "costs": dispatch_costs,
         "backtest": dispatch_backtest,
+        "validate-backtest": dispatch_validate_backtest,
 
     }
 
