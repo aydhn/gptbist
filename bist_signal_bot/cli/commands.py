@@ -2408,3 +2408,90 @@ def cmd_benchmarks_default(args, ctx) -> int:
         logger.error(f"Benchmark default error: {e}", exc_info=True)
         print_output({"error": str(e)}, as_json=args.json)
         return 1
+
+def handle_costs_command(args, settings):
+    from bist_signal_bot.costs.engine import TransactionCostEngine
+    from bist_signal_bot.costs.models import CostScenario, TradeCostInput, OrderSide, OrderType
+    from bist_signal_bot.costs.scenarios import list_cost_scenarios, scenario_description
+    from bist_signal_bot.notifications.formatter import format_transaction_cost_breakdown, format_round_trip_cost_breakdown
+    from bist_signal_bot.core.audit import AuditLogger, AuditEventType
+    import json
+
+    if args.costs_command == "estimate":
+        scenario = CostScenario(args.scenario) if getattr(args, "scenario", None) else CostScenario(settings.COST_SCENARIO)
+        engine = TransactionCostEngine.from_settings(settings)
+        engine.scenario = scenario
+
+        input_data = TradeCostInput(
+            symbol=args.symbol,
+            side=OrderSide(args.side),
+            order_type=OrderType.MARKET,
+            quantity=args.quantity,
+            price=args.price,
+            average_daily_volume=getattr(args, "avg_daily_volume", None),
+            average_daily_turnover=getattr(args, "avg_daily_turnover", None),
+            volatility=getattr(args, "volatility", None)
+        )
+
+        breakdown = engine.calculate_trade_cost(input_data)
+
+        audit_logger = AuditLogger(settings)
+        audit_logger.log_cost_model_calculation(
+            symbol=args.symbol,
+            side=args.side,
+            quantity=args.quantity,
+            price=args.price,
+            scenario=scenario.value,
+            total_cost=breakdown.total_cost,
+            total_cost_bps=breakdown.total_cost_bps
+        )
+
+        if getattr(args, "json", False):
+            print(json.dumps(breakdown.summary(), indent=2))
+        else:
+            print(format_transaction_cost_breakdown(breakdown))
+
+    elif args.costs_command == "round-trip":
+        scenario = CostScenario(args.scenario) if getattr(args, "scenario", None) else CostScenario(settings.COST_SCENARIO)
+        engine = TransactionCostEngine.from_settings(settings)
+        engine.scenario = scenario
+
+        entry = TradeCostInput(
+            symbol=args.symbol,
+            side=OrderSide(args.side),
+            order_type=OrderType.MARKET,
+            quantity=args.quantity,
+            price=args.entry_price,
+        )
+
+        breakdown = engine.calculate_round_trip(entry, args.exit_price)
+
+        if getattr(args, "json", False):
+            print(json.dumps(breakdown.summary(), indent=2))
+        else:
+            print(format_round_trip_cost_breakdown(breakdown))
+
+    elif args.costs_command == "scenarios":
+        scenarios = list_cost_scenarios()
+        result = [{"scenario": s.value, "description": scenario_description(s)} for s in scenarios]
+
+        if getattr(args, "json", False):
+            print(json.dumps(result, indent=2))
+        else:
+            for r in result:
+                print(f"- {r['scenario']}: {r['description']}")
+
+    elif args.costs_command == "config":
+        keys = [
+            "COMMISSION_MODEL_TYPE", "COMMISSION_BPS", "COMMISSION_FLAT_FEE", "COMMISSION_MINIMUM",
+            "TRANSACTION_TAX_BPS", "SLIPPAGE_MODEL_TYPE", "FIXED_SLIPPAGE_BPS", "MAX_SLIPPAGE_BPS",
+            "SPREAD_MODEL_TYPE", "HIGH_LIQUIDITY_SPREAD_BPS", "MEDIUM_LIQUIDITY_SPREAD_BPS", "LOW_LIQUIDITY_SPREAD_BPS"
+        ]
+
+        config = {k: getattr(settings, k, None) for k in keys}
+
+        if getattr(args, "json", False):
+            print(json.dumps(config, indent=2))
+        else:
+            for k, v in config.items():
+                print(f"{k}: {v}")

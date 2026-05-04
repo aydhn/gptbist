@@ -1,5 +1,71 @@
 import argparse
 
+def add_costs_parser(subparsers):
+    costs_parser = subparsers.add_parser(
+        "costs",
+        help="Estimate transaction costs, slippage, and spread."
+    )
+    costs_subparsers = costs_parser.add_subparsers(dest="costs_command", required=True)
+
+    estimate_parser = costs_subparsers.add_parser("estimate", help="Estimate transaction cost for a single trade.")
+    estimate_parser.add_argument("symbol", type=str, help="Symbol to estimate cost for (e.g. ASELS)")
+    estimate_parser.add_argument("--side", type=str, required=True, choices=["BUY", "SELL"], help="Order side")
+    estimate_parser.add_argument("--quantity", type=float, required=True, help="Quantity of shares")
+    estimate_parser.add_argument("--price", type=float, required=True, help="Price per share")
+    estimate_parser.add_argument("--avg-daily-volume", type=float, dest="avg_daily_volume", help="Average daily volume for slippage calculation")
+    estimate_parser.add_argument("--avg-daily-turnover", type=float, dest="avg_daily_turnover", help="Average daily turnover for spread bucket calculation")
+    estimate_parser.add_argument("--volatility", type=float, help="Volatility for slippage calculation")
+    estimate_parser.add_argument("--scenario", type=str, choices=["OPTIMISTIC", "BASE", "CONSERVATIVE", "STRESS"], help="Cost scenario to use")
+    estimate_parser.add_argument("--json", action="store_true", help="Output result as JSON")
+
+    round_trip_parser = costs_subparsers.add_parser("round-trip", help="Estimate total round trip cost for an entry and exit.")
+    round_trip_parser.add_argument("symbol", type=str, help="Symbol to estimate cost for (e.g. ASELS)")
+    round_trip_parser.add_argument("--side", type=str, required=True, choices=["BUY", "SELL"], help="Entry order side")
+    round_trip_parser.add_argument("--quantity", type=float, required=True, help="Quantity of shares")
+    round_trip_parser.add_argument("--entry-price", type=float, dest="entry_price", required=True, help="Entry price per share")
+    round_trip_parser.add_argument("--exit-price", type=float, dest="exit_price", required=True, help="Exit price per share")
+    round_trip_parser.add_argument("--scenario", type=str, choices=["OPTIMISTIC", "BASE", "CONSERVATIVE", "STRESS"], help="Cost scenario to use")
+    round_trip_parser.add_argument("--json", action="store_true", help="Output result as JSON")
+
+    scenarios_parser = costs_subparsers.add_parser("scenarios", help="List available cost scenarios and their descriptions.")
+    scenarios_parser.add_argument("--json", action="store_true", help="Output result as JSON")
+
+    config_parser = costs_subparsers.add_parser("config", help="View current active cost model configuration.")
+    config_parser.add_argument("--json", action="store_true", help="Output result as JSON")
+
+def add_costs_parser(subparsers):
+    costs_parser = subparsers.add_parser(
+        "costs",
+        help="Estimate transaction costs, slippage, and spread."
+    )
+    costs_subparsers = costs_parser.add_subparsers(dest="costs_command", required=True)
+
+    estimate_parser = costs_subparsers.add_parser("estimate", help="Estimate transaction cost for a single trade.")
+    estimate_parser.add_argument("symbol", type=str, help="Symbol to estimate cost for (e.g. ASELS)")
+    estimate_parser.add_argument("--side", type=str, required=True, choices=["BUY", "SELL"], help="Order side")
+    estimate_parser.add_argument("--quantity", type=float, required=True, help="Quantity of shares")
+    estimate_parser.add_argument("--price", type=float, required=True, help="Price per share")
+    estimate_parser.add_argument("--avg-daily-volume", type=float, dest="avg_daily_volume", help="Average daily volume for slippage calculation")
+    estimate_parser.add_argument("--avg-daily-turnover", type=float, dest="avg_daily_turnover", help="Average daily turnover for spread bucket calculation")
+    estimate_parser.add_argument("--volatility", type=float, help="Volatility for slippage calculation")
+    estimate_parser.add_argument("--scenario", type=str, choices=["OPTIMISTIC", "BASE", "CONSERVATIVE", "STRESS"], help="Cost scenario to use")
+    estimate_parser.add_argument("--json", action="store_true", help="Output result as JSON")
+
+    round_trip_parser = costs_subparsers.add_parser("round-trip", help="Estimate total round trip cost for an entry and exit.")
+    round_trip_parser.add_argument("symbol", type=str, help="Symbol to estimate cost for (e.g. ASELS)")
+    round_trip_parser.add_argument("--side", type=str, required=True, choices=["BUY", "SELL"], help="Entry order side")
+    round_trip_parser.add_argument("--quantity", type=float, required=True, help="Quantity of shares")
+    round_trip_parser.add_argument("--entry-price", type=float, dest="entry_price", required=True, help="Entry price per share")
+    round_trip_parser.add_argument("--exit-price", type=float, dest="exit_price", required=True, help="Exit price per share")
+    round_trip_parser.add_argument("--scenario", type=str, choices=["OPTIMISTIC", "BASE", "CONSERVATIVE", "STRESS"], help="Cost scenario to use")
+    round_trip_parser.add_argument("--json", action="store_true", help="Output result as JSON")
+
+    scenarios_parser = costs_subparsers.add_parser("scenarios", help="List available cost scenarios and their descriptions.")
+    scenarios_parser.add_argument("--json", action="store_true", help="Output result as JSON")
+
+    config_parser = costs_subparsers.add_parser("config", help="View current active cost model configuration.")
+    config_parser.add_argument("--json", action="store_true", help="Output result as JSON")
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="bist_signal_bot",
@@ -456,8 +522,42 @@ def build_parser() -> argparse.ArgumentParser:
     default_bench_parser.add_argument("--rows", type=int, help="Rows for mock data")
     default_bench_parser.add_argument("--json", action="store_true", help="Output in JSON format")
 
+    add_costs_parser(subparsers)
     return parser
 
+
+def add_costs_parser(subparsers):
+    costs_parser = subparsers.add_parser(
+        "costs",
+        help="Estimate transaction costs, slippage, and spread."
+    )
+    costs_subparsers = costs_parser.add_subparsers(dest="costs_command", required=True)
+
+    estimate_parser = costs_subparsers.add_parser("estimate", help="Estimate transaction cost for a single trade.")
+    estimate_parser.add_argument("symbol", type=str, help="Symbol to estimate cost for (e.g. ASELS)")
+    estimate_parser.add_argument("--side", type=str, required=True, choices=["BUY", "SELL"], help="Order side")
+    estimate_parser.add_argument("--quantity", type=float, required=True, help="Quantity of shares")
+    estimate_parser.add_argument("--price", type=float, required=True, help="Price per share")
+    estimate_parser.add_argument("--avg-daily-volume", type=float, dest="avg_daily_volume", help="Average daily volume for slippage calculation")
+    estimate_parser.add_argument("--avg-daily-turnover", type=float, dest="avg_daily_turnover", help="Average daily turnover for spread bucket calculation")
+    estimate_parser.add_argument("--volatility", type=float, help="Volatility for slippage calculation")
+    estimate_parser.add_argument("--scenario", type=str, choices=["OPTIMISTIC", "BASE", "CONSERVATIVE", "STRESS"], help="Cost scenario to use")
+    estimate_parser.add_argument("--json", action="store_true", help="Output result as JSON")
+
+    round_trip_parser = costs_subparsers.add_parser("round-trip", help="Estimate total round trip cost for an entry and exit.")
+    round_trip_parser.add_argument("symbol", type=str, help="Symbol to estimate cost for (e.g. ASELS)")
+    round_trip_parser.add_argument("--side", type=str, required=True, choices=["BUY", "SELL"], help="Entry order side")
+    round_trip_parser.add_argument("--quantity", type=float, required=True, help="Quantity of shares")
+    round_trip_parser.add_argument("--entry-price", type=float, dest="entry_price", required=True, help="Entry price per share")
+    round_trip_parser.add_argument("--exit-price", type=float, dest="exit_price", required=True, help="Exit price per share")
+    round_trip_parser.add_argument("--scenario", type=str, choices=["OPTIMISTIC", "BASE", "CONSERVATIVE", "STRESS"], help="Cost scenario to use")
+    round_trip_parser.add_argument("--json", action="store_true", help="Output result as JSON")
+
+    scenarios_parser = costs_subparsers.add_parser("scenarios", help="List available cost scenarios and their descriptions.")
+    scenarios_parser.add_argument("--json", action="store_true", help="Output result as JSON")
+
+    config_parser = costs_subparsers.add_parser("config", help="View current active cost model configuration.")
+    config_parser.add_argument("--json", action="store_true", help="Output result as JSON")
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = build_parser()

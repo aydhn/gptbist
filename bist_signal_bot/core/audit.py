@@ -47,6 +47,9 @@ class AuditEventType(str, Enum):
     BENCHMARK_BATCH_RUN = "BENCHMARK_BATCH_RUN"
     BENCHMARK_SIGNAL_GENERATED = "BENCHMARK_SIGNAL_GENERATED"
 
+    COST_MODEL_CALCULATION = "COST_MODEL_CALCULATION"
+    COST_SCENARIO_SELECTED = "COST_SCENARIO_SELECTED"
+
 
 
     UNIVERSE_VALIDATE = "UNIVERSE_VALIDATE"
@@ -207,5 +210,21 @@ class AuditLogger:
                 "success_count": success_count,
                 "failed_count": failed_count,
                 "elapsed_seconds": elapsed_seconds
+            }
+        ))
+
+    def log_cost_model_calculation(self, symbol: str, side: str, quantity: float, price: float, scenario: str, total_cost: float, total_cost_bps: float, run_id: str | None = None) -> None:
+        self.log_event(AuditEvent(
+            event_type=AuditEventType.COST_MODEL_CALCULATION,
+            message="Cost model calculated",
+            symbol=symbol,
+            run_id=run_id,
+            metadata={
+                "side": side,
+                "quantity": quantity,
+                "price": price,
+                "scenario": scenario,
+                "total_cost": total_cost,
+                "total_cost_bps": total_cost_bps
             }
         ))
