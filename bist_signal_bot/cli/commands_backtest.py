@@ -11,7 +11,11 @@ from bist_signal_bot.core.audit import AuditEventType, AuditEvent
 logger = logging.getLogger("bist_signal_bot.cli")
 
 def handle_backtest_command(args, ctx) -> int:
+    from bist_signal_bot.cli.commands import cmd_backtest_run, cmd_backtest_report
     if args.backtest_cmd == "run":
+        if getattr(args, "report", False):
+            return cmd_backtest_run(args, ctx)
+
         try:
             symbol = args.symbol.upper()
             strategy_name = args.strategy
@@ -86,6 +90,9 @@ def handle_backtest_command(args, ctx) -> int:
             print_output({"error": str(e)}, as_json=getattr(args, "json", False))
             return 1
 
+    elif args.backtest_cmd == "report":
+         return cmd_backtest_report(args, ctx)
+
     elif args.backtest_cmd == "batch":
         try:
             strategy_name = args.strategy
@@ -159,7 +166,7 @@ def handle_backtest_command(args, ctx) -> int:
                 print(f"Batch Backtest Results: {strategy_name}")
                 print("=" * 50)
                 for sym, res in results.items():
-                    print(f"\\n[{sym}]")
+                    print(f"\n[{sym}]")
                     print(format_backtest_summary(res))
 
             return 0

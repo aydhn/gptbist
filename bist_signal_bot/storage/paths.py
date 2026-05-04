@@ -97,3 +97,8 @@ def get_adjusted_market_data_dir(settings: Settings | None = None) -> Path:
     s = settings or default_settings
     market_data_dir = get_market_data_dir(s)
     return ensure_dir(market_data_dir / "ohlcv_adjusted")
+
+def get_backtest_results_dir(settings: Settings | None = None) -> Path:
+    s = settings or default_settings
+    reports_dir = PROJECT_ROOT / s.REPORTS_DIR
+    return ensure_dir(reports_dir / "backtests")
