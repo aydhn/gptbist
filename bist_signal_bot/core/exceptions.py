@@ -299,3 +299,21 @@ class RiskFilterError(RiskEngineError):
 
 class RiskDecisionError(RiskEngineError):
     pass
+
+class PortfolioError(BistSignalBotError):
+    pass
+
+class PortfolioValidationError(PortfolioError):
+    pass
+
+class PortfolioRiskError(PortfolioError):
+    pass
+
+class PortfolioAllocationError(PortfolioError):
+    pass
+
+class CorrelationAnalysisError(PortfolioError):
+    pass
+
+class ExposureLimitError(PortfolioError):
+    pass

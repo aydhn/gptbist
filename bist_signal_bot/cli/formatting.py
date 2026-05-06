@@ -272,3 +272,12 @@ def format_risk_decision_text(decision) -> str:
 def format_risk_batch_text(batch) -> str:
     from bist_signal_bot.risk.reporting import format_risk_batch_text as reporting_fmt
     return reporting_fmt(batch)
+
+def format_divergence_result(result, symbol: str | None = None) -> str:
+    lines = [
+        "Divergence Report",
+        f"Symbol: {symbol or result.symbol}",
+        f"Detected: {len(result.divergences)}",
+        f"Elapsed: {safe_float(result.elapsed_seconds, 2)}s"
+    ]
+    return "\n".join(lines)
