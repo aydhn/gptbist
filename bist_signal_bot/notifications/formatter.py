@@ -39,6 +39,46 @@ def format_round_trip_cost_breakdown(cost: RoundTripCostBreakdown) -> str:
     return msg
 
 class NotificationFormatter:
+
+    def format_risk_decision(self, decision) -> str:
+        lines = [
+            "🛡 <b>BIST Bot Risk Değerlendirme Özeti</b>\n",
+            f"<b>Sembol:</b> {decision.signal.symbol}",
+            f"<b>Strateji:</b> {decision.signal.strategy_name}",
+            f"<b>Risk Durumu:</b> {decision.status.value}"
+        ]
+
+        if decision.position_size:
+            lines.append(f"<b>Pozisyon Tutarı:</b> {decision.position_size.final_notional:.2f} TL")
+            lines.append(f"<b>Adet:</b> {decision.position_size.quantity}")
+
+        if decision.stop_target:
+            lines.append(f"<b>Entry Ref:</b> {decision.stop_target.entry_price:.2f}")
+            if decision.stop_target.stop_price:
+                lines.append(f"<b>Stop Ref:</b> {decision.stop_target.stop_price:.2f}")
+            if decision.stop_target.target_price:
+                lines.append(f"<b>Target Ref:</b> {decision.stop_target.target_price:.2f}")
+            if decision.stop_target.risk_reward:
+                lines.append(f"<b>Risk/Reward:</b> {decision.stop_target.risk_reward:.2f}")
+
+        if decision.estimated_total_cost:
+            lines.append(f"<b>Tahmini Maliyet:</b> {decision.estimated_total_cost:.2f} TL")
+
+        lines.append("\n⚠️ <i>Bu çıktı risk araştırma çıktısıdır.\nYatırım tavsiyesi değildir.\nEmir gönderilmedi.</i>")
+        return "\n".join(lines)
+
+    def format_risk_batch_result(self, batch) -> str:
+        lines = [
+            "🛡 <b>Toplu Risk Değerlendirmesi</b>\n",
+            f"<b>İstenen:</b> {batch.requested_count}",
+            f"<b>Onaylanan:</b> {batch.approved_count}",
+            f"<b>Reddedilen:</b> {batch.rejected_count}",
+            f"<b>Düşürülen:</b> {batch.reduced_count}",
+            f"<b>Sadece İzleme:</b> {batch.watch_only_count}",
+            "\n⚠️ <i>Risk araştırma çıktısıdır. Yatırım tavsiyesi değildir.</i>"
+        ]
+        return "\n".join(lines)
+
     def __init__(self, parse_mode: str = "HTML", timezone_str: str = "Europe/Istanbul"):
         self.parse_mode = parse_mode.upper()
         self.timezone_str = timezone_str

@@ -12,7 +12,7 @@ from bist_signal_bot.data.mock_provider import MockMarketDataProvider
 def test_backtest_engine_moving_average_trend():
     # Setup
     settings = Settings()
-    strategy_engine = StrategyEngine(settings)
+    strategy_engine = StrategyEngine(settings=settings)
     cost_engine = TransactionCostEngine.from_settings(settings)
 
     engine = BacktestEngine(strategy_engine, cost_engine, settings)
@@ -37,7 +37,7 @@ def test_backtest_engine_moving_average_trend():
 
 def test_backtest_batch_symbols():
     settings = Settings()
-    strategy_engine = StrategyEngine(settings)
+    strategy_engine = StrategyEngine(settings=settings)
     cost_engine = TransactionCostEngine.from_settings(settings)
     engine = BacktestEngine(strategy_engine, cost_engine, settings)
 

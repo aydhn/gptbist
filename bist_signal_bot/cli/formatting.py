@@ -263,3 +263,12 @@ def format_backtest_report_text(bundle: 'BacktestReportBundle') -> str:
     lines.append("========================================")
 
     return "\n".join(lines)
+
+
+def format_risk_decision_text(decision) -> str:
+    from bist_signal_bot.risk.reporting import format_risk_decision_text as reporting_fmt
+    return reporting_fmt(decision)
+
+def format_risk_batch_text(batch) -> str:
+    from bist_signal_bot.risk.reporting import format_risk_batch_text as reporting_fmt
+    return reporting_fmt(batch)

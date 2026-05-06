@@ -75,6 +75,12 @@ def dispatch_benchmarks(args, ctx) -> int:
         return cmd_benchmarks_default(args, ctx)
     return 1
 
+
+def dispatch_risk(args, ctx) -> int:
+    from bist_signal_bot.cli.commands import handle_risk_commands
+    ctx.logger = logger
+    return handle_risk_commands(args, ctx)
+
 def run_cli(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
 
@@ -130,6 +136,7 @@ def run_cli(argv: list[str] | None = None) -> int:
         "costs": dispatch_costs,
         "backtest": dispatch_backtest,
         "validate-backtest": dispatch_validate_backtest,
+        "risk": dispatch_risk,
 
     }
 

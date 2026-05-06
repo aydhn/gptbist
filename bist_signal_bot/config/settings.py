@@ -696,6 +696,45 @@ class Settings(BaseSettings):
     COST_DEFAULT_AVG_DAILY_VOLUME: float = Field(default=0.0)
     COST_DEFAULT_AVG_DAILY_TURNOVER: float = Field(default=0.0)
 
+
+    # RISK ENGINE
+    ENABLE_RISK_ENGINE: bool = Field(default=True)
+    RISK_DEFAULT_EQUITY: float = Field(default=100000.0)
+    RISK_DEFAULT_AVAILABLE_CASH: float = Field(default=100000.0)
+    RISK_ALLOW_SHORT: bool = Field(default=False)
+    RISK_USE_FRACTIONAL_SHARES: bool = Field(default=False)
+
+    RISK_POSITION_SIZING_METHOD: str = Field(default="RISK_PERCENT")
+    RISK_FIXED_NOTIONAL: float = Field(default=10000.0)
+    RISK_EQUITY_POSITION_PCT: float = Field(default=0.10)
+    RISK_PER_TRADE_PCT: float = Field(default=0.01)
+    RISK_MAX_POSITION_SIZE_PCT: float = Field(default=0.20)
+    RISK_MIN_TRADE_NOTIONAL: float = Field(default=100.0)
+
+    RISK_STOP_METHOD: str = Field(default="ATR_MULTIPLE")
+    RISK_TARGET_METHOD: str = Field(default="RISK_REWARD_MULTIPLE")
+    RISK_FIXED_STOP_PCT: float = Field(default=0.05)
+    RISK_FIXED_TARGET_PCT: float = Field(default=0.10)
+    RISK_ATR_MULTIPLIER: float = Field(default=2.0)
+    RISK_TARGET_R_MULTIPLE: float = Field(default=2.0)
+    RISK_SWING_LOOKBACK: int = Field(default=20)
+
+    RISK_MIN_SIGNAL_SCORE: float = Field(default=50.0)
+    RISK_MIN_CONFIDENCE: float = Field(default=40.0)
+    RISK_MIN_RISK_REWARD: float = Field(default=1.2)
+    RISK_MAX_PORTFOLIO_RISK_PCT: float = Field(default=0.05)
+    RISK_MAX_DAILY_SIGNALS: int = Field(default=10)
+    RISK_MAX_OPEN_POSITIONS: int = Field(default=5)
+    RISK_ALLOW_SAME_SYMBOL_POSITION: bool = Field(default=False)
+    RISK_MIN_AVG_TURNOVER_TRY: float = Field(default=1000000.0)
+    RISK_MAX_VOLATILITY_PCT: float = Field(default=0.80)
+    RISK_MAX_ATR_PCT: float = Field(default=0.15)
+    RISK_MAX_COST_BPS: float = Field(default=100.0)
+    RISK_REJECT_IF_NO_STOP: bool = Field(default=True)
+    RISK_REJECT_IF_NO_TARGET: bool = Field(default=False)
+
+    BACKTEST_USE_RISK_ENGINE: bool = Field(default=False)
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
 
