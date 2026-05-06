@@ -58,6 +58,7 @@ def add_backtest_parser(subparsers):
     run_parser.add_argument("--no-costs", action="store_true", help="Disable commission and slippage")
     run_parser.add_argument("--save-results", action="store_true", help="Save backtest results")
     run_parser.add_argument("--json", action="store_true", help="Output in JSON format")
+    run_parser.add_argument("--use-risk-engine", action="store_true", help="Use risk engine")
 
     # backtest batch
     batch_parser = backtest_subparsers.add_parser("batch", help="Run backtest on multiple symbols")
@@ -393,7 +394,56 @@ def build_parser() -> argparse.ArgumentParser:
     default_bench_parser.add_argument("--json", action="store_true", help="Output in JSON format")
 
 
+
+    # Risk Engine commands
+    risk_parser = subparsers.add_parser("risk", help="Risk engine operations")
+    risk_subparsers = risk_parser.add_subparsers(dest="risk_cmd", required=True)
+
+    # risk evaluate
+    risk_eval_parser = risk_subparsers.add_parser("evaluate", help="Evaluate a strategy signal with the risk engine")
+    risk_eval_parser.add_argument("symbol", type=str, help="Symbol to evaluate")
+    risk_eval_parser.add_argument("--source", type=str, choices=["local", "mock"], default="local", help="Data source")
+    risk_eval_parser.add_argument("--strategy", type=str, required=True, help="Strategy name")
+    risk_eval_parser.add_argument("--timeframe", type=str, default="1d", help="Timeframe")
+    risk_eval_parser.add_argument("--rows", type=int, help="Rows for mock data")
+    risk_eval_parser.add_argument("--param", type=str, action="append", help="Strategy parameters (e.g. key=val)")
+    risk_eval_parser.add_argument("--equity", type=float, help="Account equity")
+    risk_eval_parser.add_argument("--cash", type=float, help="Available cash")
+    risk_eval_parser.add_argument("--daily-signal-count", type=int, help="Daily signal count")
+    risk_eval_parser.add_argument("--open-position-count", type=int, help="Open position count")
+    risk_eval_parser.add_argument("--portfolio-risk-pct", type=float, help="Current portfolio risk percent")
+    risk_eval_parser.add_argument("--sizing", type=str, help="Position sizing method")
+    risk_eval_parser.add_argument("--stop", type=str, help="Stop method")
+    risk_eval_parser.add_argument("--target", type=str, help="Target method")
+    risk_eval_parser.add_argument("--json", action="store_true", help="Output JSON")
+
+    # risk size
+    risk_size_parser = risk_subparsers.add_parser("size", help="Calculate position size")
+    risk_size_parser.add_argument("symbol", type=str, help="Symbol to evaluate")
+    risk_size_parser.add_argument("--side", type=str, required=True, choices=["LONG", "SHORT"], help="Trade side")
+    risk_size_parser.add_argument("--entry", type=float, required=True, help="Entry price")
+    risk_size_parser.add_argument("--stop", type=float, help="Stop price")
+    risk_size_parser.add_argument("--target", type=float, help="Target price")
+    risk_size_parser.add_argument("--equity", type=float, required=True, help="Account equity")
+    risk_size_parser.add_argument("--method", type=str, help="Position sizing method")
+    risk_size_parser.add_argument("--json", action="store_true", help="Output JSON")
+
+    # risk stop-target
+    risk_st_parser = risk_subparsers.add_parser("stop-target", help="Calculate stop/target reference")
+    risk_st_parser.add_argument("symbol", type=str, help="Symbol to evaluate")
+    risk_st_parser.add_argument("--side", type=str, required=True, choices=["LONG", "SHORT"], help="Trade side")
+    risk_st_parser.add_argument("--entry", type=float, required=True, help="Entry price")
+    risk_st_parser.add_argument("--atr", type=float, help="Optional ATR value for ATR-based methods")
+    risk_st_parser.add_argument("--method-stop", type=str, help="Stop method")
+    risk_st_parser.add_argument("--method-target", type=str, help="Target method")
+    risk_st_parser.add_argument("--json", action="store_true", help="Output JSON")
+
+    # risk config
+    risk_cfg_parser = risk_subparsers.add_parser("config", help="Show risk configuration summary")
+    risk_cfg_parser.add_argument("--json", action="store_true", help="Output JSON")
+
     add_costs_parser(subparsers)
+
     add_validate_backtest_parser(subparsers)
     add_backtest_parser(subparsers)
     return parser

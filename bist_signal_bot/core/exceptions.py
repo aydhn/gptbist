@@ -278,3 +278,24 @@ class RobustnessAnalysisError(ValidationAnalysisError):
 
 class OverfitRiskError(ValidationAnalysisError):
     pass
+
+class RiskEngineError(BistSignalBotError):
+    pass
+
+class RiskValidationError(RiskEngineError):
+    pass
+
+class PositionSizingError(RiskEngineError):
+    pass
+
+class StopModelError(RiskEngineError):
+    pass
+
+class TargetModelError(RiskEngineError):
+    pass
+
+class RiskFilterError(RiskEngineError):
+    pass
+
+class RiskDecisionError(RiskEngineError):
+    pass

@@ -369,4 +369,35 @@ def run_healthcheck(settings=settings) -> dict:
             "chat_id_configured": bool(settings.TELEGRAM_CHAT_ID)
         }
     }
+
+    # Risk Engine Checks
+    try:
+        from bist_signal_bot.risk.engine import RiskEngine
+        risk_engine = RiskEngine.from_settings(settings)
+
+        risk_health = {
+            "enabled": settings.ENABLE_RISK_ENGINE,
+            "default_equity": settings.RISK_DEFAULT_EQUITY,
+            "allow_short": settings.RISK_ALLOW_SHORT,
+            "position_sizing_method": settings.RISK_POSITION_SIZING_METHOD,
+            "stop_method": settings.RISK_STOP_METHOD,
+            "target_method": settings.RISK_TARGET_METHOD,
+            "risk_per_trade_pct": settings.RISK_PER_TRADE_PCT,
+            "max_position_size_pct": settings.RISK_MAX_POSITION_SIZE_PCT,
+            "max_portfolio_risk_pct": settings.RISK_MAX_PORTFOLIO_RISK_PCT,
+            "max_daily_signals": settings.RISK_MAX_DAILY_SIGNALS,
+            "max_open_positions": settings.RISK_MAX_OPEN_POSITIONS,
+            "min_signal_score": settings.RISK_MIN_SIGNAL_SCORE,
+            "min_confidence": settings.RISK_MIN_CONFIDENCE,
+            "min_risk_reward": settings.RISK_MIN_RISK_REWARD,
+            "risk_engine_instantiable": True,
+            "mock_risk_decision_capable": True,
+            "backtest_risk_integration_default_enabled": settings.BACKTEST_USE_RISK_ENGINE
+        }
+        health_status["risk_engine"] = risk_health
+
+    except Exception as e:
+        health_status["risk_engine"] = {"status": "ERROR", "error": str(e)}
+        health_status["status"] = "UNHEALTHY"
+
     return health_status
