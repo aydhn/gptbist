@@ -352,3 +352,12 @@ python -m bist_signal_bot risk config
 * **No Real Orders:** The system calculates abstract target positions. Real execution and order routing are deliberately out of scope for this architecture.
 * **No Dashboards:** Execution is purely CLI or via testing modules.
 * **Deterministic:** Calculations are entirely based on offline history.
+
+
+### Phase 31: Portfolio Risk Engine
+- **Portfolio vs Trade Risk**: Trade-level risk evaluates individual signals independently. Portfolio-level risk assesses how multiple signals affect the portfolio dynamically, ensuring capital boundaries and distribution limits are respected.
+- **Exposure Management**: Controls Gross Exposure, Net Exposure, Max Sector Weight, and Max Symbol Weight.
+- **Correlation Checks**: Cross-references new candidate signals against existing holdings. Limits overexposure to highly correlated assets. Correlation is derived from historical data and does not guarantee future relationships.
+- **Allocation Strategies**: Implements multiple allocation models including `HYBRID`, `EQUAL_WEIGHT`, `SCORE_WEIGHTED`, `RISK_PARITY_SIMPLE`, `VOLATILITY_SCALED`, and `LIQUIDITY_WEIGHTED`.
+- **Backtest Integration**: Portfolio logic is kept decoupled from backtest by default (`BACKTEST_USE_PORTFOLIO_RISK_ENGINE` disabled) so single-symbol runs still perform natively. Multi-symbol portfolio backtesting with these limits is reserved for advanced configurations.
+- **No Real Orders**: `PortfolioRiskDecision` structures are strictly "Portfolio risk research outputs". They are NOT investment advice and no real orders are sent. The project adheres to strict restrictions against automated live trading, HTML scraping, and paid APIs.

@@ -3075,3 +3075,183 @@ def handle_validate_backtest(args):
             print(f"Runs: {len(result.run_results)}")
             print(f"Stability Score: {result.stability_score:.2f}")
             print(f"Overfit Risk: {result.overfit_risk_level.value}")
+
+
+def run_portfolio_risk_evaluate(args, ctx):
+    from bist_signal_bot.portfolio.risk_engine import PortfolioRiskEngine
+    from bist_signal_bot.portfolio.reporting import portfolio_risk_decision_to_dict
+    from bist_signal_bot.cli.formatting import print_portfolio_decision
+    from bist_signal_bot.config.settings import settings
+    from bist_signal_bot.signals.engine import StrategyEngine
+    import pandas as pd
+
+    # 1. Fetch data
+    symbols = args.symbols or ["ASELS", "THYAO", "GARAN"]
+
+    if getattr(args, "source", "local") == "mock":
+        from bist_signal_bot.data.mock_provider import MockMarketDataProvider
+        provider = MockMarketDataProvider(settings=settings)
+    else:
+        from bist_signal_bot.data.yfinance_provider import YFinanceProvider
+        provider = YFinanceProvider(settings=settings)
+
+    data_by_sym = {}
+    for s in symbols:
+        try:
+            df = provider.fetch_ohlcv(s)
+            data_by_sym[s] = df
+        except Exception:
+             pass
+
+    if not data_by_sym:
+        print("No valid data fetched")
+        return
+
+    # 2. Run strategy
+    strategy_name = getattr(args, "strategy", settings.DEFAULT_STRATEGY) or settings.DEFAULT_STRATEGY
+    engine = StrategyEngine(settings=settings)
+
+    signals = []
+    for s, df in data_by_sym.items():
+        try:
+            sig = engine.run(strategy_name, s, df, params={})
+            signals.append(sig)
+        except Exception:
+            pass
+
+    # 3. Setup portfolio risk engine with overrides
+    s_copy = settings.model_copy()
+    if getattr(args, "equity", None):
+        s_copy.PORTFOLIO_DEFAULT_EQUITY = args.equity
+    if getattr(args, "cash", None) is not None:
+        s_copy.PORTFOLIO_DEFAULT_CASH = args.cash
+    if getattr(args, "allocation", None):
+        s_copy.PORTFOLIO_ALLOCATION_METHOD = args.allocation
+    if getattr(args, "max_symbol_weight", None):
+         s_copy.PORTFOLIO_MAX_SYMBOL_WEIGHT_PCT = args.max_symbol_weight
+    if getattr(args, "max_gross_exposure", None):
+         s_copy.PORTFOLIO_MAX_GROSS_EXPOSURE_PCT = args.max_gross_exposure
+    if getattr(args, "max_correlation", None):
+         s_copy.PORTFOLIO_MAX_PAIRWISE_CORRELATION = args.max_correlation
+
+    pre = PortfolioRiskEngine(settings=s_copy, logger=ctx.logger)
+    state = pre.build_default_portfolio_state(equity=getattr(args, "equity", None), cash=getattr(args, "cash", None))
+
+    # 4. Evaluate
+    decision = pre.evaluate_portfolio_signals(signals, state, data_by_sym)
+
+    # 5. Output
+    print_portfolio_decision(decision, as_json=getattr(args, "json", False))
+
+
+def run_portfolio_risk_allocation(args, ctx):
+    from bist_signal_bot.portfolio.allocation import PortfolioAllocator
+    from bist_signal_bot.portfolio.models import AllocationRequest, PortfolioState, AllocationMethod
+    from bist_signal_bot.risk.models import RiskDecision, RiskDecisionStatus, RiskFilterResult, PositionSizeResult, StopTargetReference
+    from bist_signal_bot.signals.models import SignalCandidate, SignalDirection
+    from bist_signal_bot.cli.formatting import format_allocation_table
+    import pandas as pd
+    from datetime import datetime
+
+    symbols = args.symbols
+    scores = getattr(args, "scores", None) or [70.0] * len(symbols)
+    equity = getattr(args, "equity", 100000.0)
+
+    signals = []
+    decisions = []
+    for s, sc in zip(symbols, scores):
+        sig = SignalCandidate(
+            symbol=s, strategy_name="mock", direction=SignalDirection.LONG,
+            score=sc, confidence=100.0, timeframe="1d", entry_reference_price=100.0,
+            generated_at=datetime.utcnow()
+        )
+        signals.append(sig)
+
+        pos_size = PositionSizeResult(method="FIXED_NOTIONAL", symbol=s, side=SignalDirection.LONG, equity=equity, entry_price=100.0, quantity=equity*0.2/100, final_notional=equity * 0.2, original_notional=equity*0.2, final_position_pct=0.2, max_position_pct=0.2)
+        filter_res = RiskFilterResult(passed=True, status=RiskDecisionStatus.APPROVED, reasons=[])
+        stop_targ = StopTargetReference(entry_price=100.0, stop_price=90.0, target_price=120.0, risk_reward=2.0)
+
+        d = RiskDecision(
+            signal=sig, side=SignalDirection.LONG, approved=True, status=RiskDecisionStatus.APPROVED, filter_result=filter_res, position_size=pos_size, stop_target=stop_targ, risk_pct=0.02,
+            issues=[], warnings=[], generated_at=datetime.utcnow()
+        )
+        decisions.append(d)
+
+    state = PortfolioState(equity=equity, cash=equity, timestamp=datetime.utcnow())
+    allocator = PortfolioAllocator(settings=ctx.settings, logger=ctx.logger)
+
+    req = AllocationRequest(
+        signals=signals, risk_decisions=decisions, portfolio_state=state,
+        method=AllocationMethod(getattr(args, "allocation", "EQUAL_WEIGHT")),
+        total_allocation_pct=ctx.settings.PORTFOLIO_TOTAL_ALLOCATION_PCT,
+        max_symbol_weight_pct=ctx.settings.PORTFOLIO_MAX_SYMBOL_WEIGHT_PCT
+    )
+
+    res = allocator.allocate(req)
+    print(format_allocation_table(res))
+
+
+def run_portfolio_risk_correlation(args, ctx):
+    from bist_signal_bot.portfolio.correlation import CorrelationAnalyzer
+    from bist_signal_bot.cli.formatting import print_correlation_result
+
+    symbols = args.symbols or ["ASELS", "THYAO", "GARAN"]
+
+    if getattr(args, "source", "local") == "mock":
+        from bist_signal_bot.data.mock_provider import MockMarketDataProvider
+        provider = MockMarketDataProvider(settings=ctx.settings)
+    else:
+        from bist_signal_bot.data.yfinance_provider import YFinanceProvider
+        provider = YFinanceProvider(settings=ctx.settings)
+
+    data_by_sym = {}
+    for s in symbols:
+        try:
+            df = provider.fetch_ohlcv(s)
+            data_by_sym[s] = df
+        except Exception:
+             pass
+
+    analyzer = CorrelationAnalyzer(settings=ctx.settings, logger=ctx.logger)
+    res = analyzer.calculate_correlation_matrix(data_by_sym, method=getattr(args, "method", "pearson"), lookback_rows=getattr(args, "lookback", 60))
+
+    print_correlation_result(res, as_json=getattr(args, "json", False))
+
+
+def run_portfolio_risk_exposure(args, ctx):
+    from bist_signal_bot.portfolio.holdings import build_portfolio_state
+    from bist_signal_bot.portfolio.exposure import ExposureAnalyzer
+    import json
+
+    state = build_portfolio_state(equity=getattr(args, "equity", 100000), cash=getattr(args, "cash", 50000))
+    analyzer = ExposureAnalyzer()
+    res = analyzer.calculate_exposure(state)
+
+    print(json.dumps(res.summary(), indent=2))
+
+def run_portfolio_risk_config(args, ctx):
+    from bist_signal_bot.config.secrets import settings_safe_dump
+    import json
+
+    safe = settings_safe_dump(ctx.settings)
+    pr_keys = {k: v for k, v in safe.items() if "PORTFOLIO" in k}
+
+    if getattr(args, "json", False):
+        print(json.dumps(pr_keys, indent=2))
+    else:
+        for k, v in pr_keys.items():
+            print(f"{k}: {v}")
+
+def handle_portfolio_risk_command(args, ctx):
+    if args.portfolio_command == "evaluate":
+        run_portfolio_risk_evaluate(args, ctx)
+    elif args.portfolio_command == "allocation":
+        run_portfolio_risk_allocation(args, ctx)
+    elif args.portfolio_command == "correlation":
+        run_portfolio_risk_correlation(args, ctx)
+    elif args.portfolio_command == "exposure":
+        run_portfolio_risk_exposure(args, ctx)
+    elif args.portfolio_command == "config":
+        run_portfolio_risk_config(args, ctx)
+    else:
+        print("Invalid portfolio command")

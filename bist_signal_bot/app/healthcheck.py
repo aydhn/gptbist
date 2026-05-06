@@ -400,4 +400,36 @@ def run_healthcheck(settings=settings) -> dict:
         health_status["risk_engine"] = {"status": "ERROR", "error": str(e)}
         health_status["status"] = "UNHEALTHY"
 
+
+    # Portfolio Risk Engine
+    try:
+        from bist_signal_bot.portfolio.risk_engine import PortfolioRiskEngine
+        pre = PortfolioRiskEngine(settings=settings)
+        state = pre.build_default_portfolio_state()
+
+        health_status["portfolio_risk_engine"] = {
+            "status": "healthy",
+            "enabled": getattr(settings, "ENABLE_PORTFOLIO_RISK_ENGINE", False),
+            "allocation_method": getattr(settings, "PORTFOLIO_ALLOCATION_METHOD", "HYBRID"),
+            "default_equity": getattr(settings, "PORTFOLIO_DEFAULT_EQUITY", 100000.0),
+            "max_gross_exposure_pct": getattr(settings, "PORTFOLIO_MAX_GROSS_EXPOSURE_PCT", 1.0),
+            "max_net_exposure_pct": getattr(settings, "PORTFOLIO_MAX_NET_EXPOSURE_PCT", 1.0),
+            "max_symbol_weight_pct": getattr(settings, "PORTFOLIO_MAX_SYMBOL_WEIGHT_PCT", 0.20),
+            "max_sector_weight_pct": getattr(settings, "PORTFOLIO_MAX_SECTOR_WEIGHT_PCT", 0.40),
+            "min_cash_pct": getattr(settings, "PORTFOLIO_MIN_CASH_PCT", 0.05),
+            "max_open_positions": getattr(settings, "PORTFOLIO_MAX_OPEN_POSITIONS", 5),
+            "correlation_check_enabled": getattr(settings, "PORTFOLIO_ENABLE_CORRELATION_CHECK", True),
+            "correlation_lookback_rows": getattr(settings, "PORTFOLIO_CORRELATION_LOOKBACK_ROWS", 60),
+            "max_pairwise_correlation": getattr(settings, "PORTFOLIO_MAX_PAIRWISE_CORRELATION", 0.80),
+            "correlation_method": getattr(settings, "PORTFOLIO_CORRELATION_METHOD", "pearson"),
+            "instantiable": True,
+            "mock_portfolio_capable": True
+        }
+    except Exception as e:
+        health_status["portfolio_risk_engine"] = {
+            "status": "unhealthy",
+            "error": str(e)
+        }
+        health_status["status"] = "degraded"
+
     return health_status
