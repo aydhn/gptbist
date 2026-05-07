@@ -1,5 +1,5 @@
 import pytest
-from bist_signal_bot.notifications.formatter import TelegramFormatter
+from bist_signal_bot.notifications.formatter import format_paper_execution_report as TelegramFormatter
 from bist_signal_bot.paper.models import PaperRunResult, PaperAccount, PaperAccountStatus
 
 def test_paper_notification_formatter():

@@ -3255,3 +3255,112 @@ def handle_portfolio_risk_command(args, ctx):
         run_portfolio_risk_config(args, ctx)
     else:
         print("Invalid portfolio command")
+
+
+from bist_signal_bot.scanner.engine import SignalScannerEngine
+from bist_signal_bot.scanner.models import ScanSortKey, ScanUniverseMode
+from bist_signal_bot.scanner.storage import ScanReportStore
+from bist_signal_bot.scanner.reporting import format_scan_report_text
+
+def cmd_scan(args, app_context) -> int:
+    from bist_signal_bot.cli.formatting import print_output, format_error
+    cmd = args.scan_command
+
+    if cmd == "recent":
+        store = ScanReportStore(app_context.settings)
+        recent = store.list_recent_scans(limit=args.limit)
+        if args.json:
+            print_output(recent, as_json=True)
+            return 0
+
+        if not recent:
+            print("No recent scans found.")
+            return 0
+
+        print("Recent Scans:")
+        for r in recent:
+            print(f"[{r.get('started_at', 'Unknown')}] Strategy: {r.get('strategy', 'N/A')} | Universe: {r.get('universe_mode', 'N/A')} | Status: {r.get('status', 'N/A')} | Path: {r.get('path', 'N/A')}")
+        return 0
+
+    if cmd == "config":
+        s = app_context.settings
+        config = {
+            "enabled": getattr(s, "ENABLE_SIGNAL_SCANNER", True),
+            "default_strategy": getattr(s, "SCANNER_DEFAULT_STRATEGY", "moving_average_trend"),
+            "default_source": getattr(s, "SCANNER_DEFAULT_SOURCE", "mock"),
+            "default_timeframe": getattr(s, "SCANNER_DEFAULT_TIMEFRAME", "1d"),
+            "top_n": getattr(s, "SCANNER_DEFAULT_TOP_N", 10),
+            "use_trade_risk": getattr(s, "SCANNER_USE_TRADE_RISK", True),
+            "use_portfolio_risk": getattr(s, "SCANNER_USE_PORTFOLIO_RISK", True),
+            "save_report": getattr(s, "SCANNER_SAVE_REPORT", False),
+            "send_telegram": getattr(s, "SCANNER_SEND_TELEGRAM", False)
+        }
+        print_output(config, as_json=args.json)
+        return 0
+
+    # Parse params
+    params = {}
+    if getattr(args, "param", None):
+        for p in args.param:
+            if "=" in p:
+                k, v = p.split("=", 1)
+                params[k] = v
+
+    engine = SignalScannerEngine(
+        data_service=app_context.data_service,
+        strategy_engine=app_context.strategy_engine,
+        risk_engine=app_context.risk_engine,
+        portfolio_risk_engine=app_context.portfolio_risk_engine,
+        paper_engine=app_context.paper_engine,
+        settings=app_context.settings,
+        notifier=app_context.notifier,
+        logger=app_context.logger
+    )
+
+    req = engine.build_default_request(strategy_name=args.strategy)
+    req.source = args.source
+    req.timeframe = args.timeframe
+    req.rows = args.rows
+    req.params = params
+    req.top_n = args.top
+    req.sort_key = ScanSortKey(args.sort.upper())
+
+    if args.min_score is not None:
+        req.min_signal_score = args.min_score
+    if args.min_confidence is not None:
+        req.min_confidence = args.min_confidence
+    if args.min_final_score is not None:
+        req.min_final_score = args.min_final_score
+
+    req.use_trade_risk = args.trade_risk
+    req.use_portfolio_risk = args.portfolio_risk
+    req.save_report = args.save_report
+    req.send_telegram = args.telegram
+    req.continue_on_error = args.continue_on_error
+
+    if cmd == "symbols":
+        req.universe_mode = ScanUniverseMode.SYMBOLS
+        req.symbols = args.symbols
+    elif cmd == "watchlist":
+        req.universe_mode = ScanUniverseMode.WATCHLIST
+        req.watchlist_name = args.watchlist
+    elif cmd == "group":
+        req.universe_mode = ScanUniverseMode.GROUP
+        req.group_name = args.group
+    elif cmd == "all":
+        req.universe_mode = ScanUniverseMode.ALL
+
+    try:
+        report = engine.scan(req)
+
+        if args.json:
+            from bist_signal_bot.scanner.reporting import scan_report_to_dict
+            print_output(scan_report_to_dict(report), as_json=True)
+        else:
+            text = format_scan_report_text(report)
+            print(text)
+
+        return 0 if report.status in ("SUCCESS", "PARTIAL_SUCCESS") else 1
+    except Exception as e:
+        print(format_error(f"Scan execution failed: {e}"))
+        return 1

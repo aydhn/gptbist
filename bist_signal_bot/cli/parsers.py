@@ -1,5 +1,57 @@
 import argparse
 
+
+def add_scan_parser(subparsers):
+    scan_parser = subparsers.add_parser(
+        "scan",
+        help="Run signal scanner on symbols, watchlist, or groups."
+    )
+    scan_subparsers = scan_parser.add_subparsers(dest="scan_command", required=True)
+
+    def add_common_args(p):
+        p.add_argument("--source", type=str, choices=["mock", "local"], default="mock", help="Data source to use")
+        p.add_argument("--strategy", type=str, required=True, help="Strategy to run")
+        p.add_argument("--timeframe", type=str, default="1d", help="Timeframe to scan (e.g. 1d)")
+        p.add_argument("--rows", type=int, help="Number of rows to fetch")
+        p.add_argument("--param", action="append", help="Strategy parameter in key=value format")
+        p.add_argument("--top", type=int, default=10, help="Top N candidates to return")
+        p.add_argument("--sort", type=str, default="FINAL_SCORE", help="Sort key")
+        p.add_argument("--min-score", type=float, help="Minimum signal score")
+        p.add_argument("--min-confidence", type=float, help="Minimum signal confidence")
+        p.add_argument("--min-final-score", type=float, help="Minimum final score")
+        p.add_argument("--trade-risk", action="store_true", default=True, help="Use trade risk (default)")
+        p.add_argument("--no-trade-risk", action="store_false", dest="trade_risk", help="Disable trade risk")
+        p.add_argument("--portfolio-risk", action="store_true", default=True, help="Use portfolio risk (default)")
+        p.add_argument("--no-portfolio-risk", action="store_false", dest="portfolio_risk", help="Disable portfolio risk")
+        p.add_argument("--save-report", action="store_true", help="Save report to disk")
+        p.add_argument("--format", type=str, default="json,csv,markdown", help="Report formats to save")
+        p.add_argument("--telegram", action="store_true", help="Send telegram summary")
+        p.add_argument("--continue-on-error", action="store_true", default=True, help="Continue scanning on symbol error")
+        p.add_argument("--fail-fast", action="store_false", dest="continue_on_error", help="Stop scanning on symbol error")
+        p.add_argument("--json", action="store_true", help="Output result as JSON")
+
+    symbols_parser = scan_subparsers.add_parser("symbols", help="Scan specific symbols")
+    symbols_parser.add_argument("symbols", nargs="+", help="Symbols to scan (e.g. ASELS THYAO)")
+    add_common_args(symbols_parser)
+
+    watchlist_parser = scan_subparsers.add_parser("watchlist", help="Scan a watchlist")
+    watchlist_parser.add_argument("watchlist", help="Watchlist name to scan")
+    add_common_args(watchlist_parser)
+
+    group_parser = scan_subparsers.add_parser("group", help="Scan a group")
+    group_parser.add_argument("group", help="Group name to scan")
+    add_common_args(group_parser)
+
+    all_parser = scan_subparsers.add_parser("all", help="Scan all symbols in the universe")
+    add_common_args(all_parser)
+
+    recent_parser = scan_subparsers.add_parser("recent", help="List recent scan reports")
+    recent_parser.add_argument("--limit", type=int, default=10, help="Number of recent reports to list")
+    recent_parser.add_argument("--json", action="store_true", help="Output result as JSON")
+
+    config_parser = scan_subparsers.add_parser("config", help="Show scanner configuration")
+    config_parser.add_argument("--json", action="store_true", help="Output result as JSON")
+
 def add_costs_parser(subparsers):
     costs_parser = subparsers.add_parser(
         "costs",
@@ -443,6 +495,7 @@ def build_parser() -> argparse.ArgumentParser:
     risk_cfg_parser.add_argument("--json", action="store_true", help="Output JSON")
 
     add_costs_parser(subparsers)
+    add_scan_parser(subparsers)
 
     add_validate_backtest_parser(subparsers)
     add_backtest_parser(subparsers)

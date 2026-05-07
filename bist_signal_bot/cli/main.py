@@ -30,6 +30,7 @@ from bist_signal_bot.cli.commands import (
     cmd_volatility_features,
     cmd_volume_features,
     cmd_divergence_detect,
+    cmd_scan,
 )
 from bist_signal_bot.core.logging_setup import get_logger
 
@@ -137,6 +138,7 @@ def run_cli(argv: list[str] | None = None) -> int:
         "backtest": dispatch_backtest,
         "validate-backtest": dispatch_validate_backtest,
         "risk": dispatch_risk,
+        "scan": cmd_scan,
 
     }
 
