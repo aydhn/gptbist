@@ -420,3 +420,57 @@ def format_divergence_result(result, symbol: str | None = None) -> str:
 
         text = "\n".join(lines)
         return text
+
+    def format_paper_run_result(self, result: Any) -> str:
+        lines = [
+            "<b>BIST Bot Paper Trading Özeti</b>",
+            "",
+            f"Account: {self._escape(result.account.account_id)}",
+            f"Signals: {len(result.signals)}",
+            f"Paper Orders: {len(result.orders)}",
+            f"Paper Fills: {len(result.fills)}",
+            f"Cash: {result.account.cash:,.2f} TRY",
+            f"Equity: {result.account.equity:,.2f} TRY",
+            f"Open Positions: {len(result.positions)}",
+            "",
+            "<i>Bu bir paper trading simülasyonudur.</i>",
+            "<i>Yatırım tavsiyesi değildir.</i>",
+            "<i>Gerçek emir gönderilmedi.</i>"
+        ]
+
+        text = "\n".join(lines)
+        forbidden_phrases = ["kesin al", "kesin sat", "garanti getiri", "risksiz", "yüzde yüz"]
+        for p in forbidden_phrases:
+            if p in text.lower():
+                 return "<b>[WARNING]</b>\nPaper çıktısında yasaklı ifade saptandı. İçerik gizlendi."
+
+        return text
+
+    def format_paper_fill(self, fill: Any) -> str:
+        lines = [
+            "<b>BIST Bot Paper Simulated Fill</b>",
+            "",
+            f"Sembol: {self._escape(fill.symbol)}",
+            f"Yön: {self._escape(fill.side.value)}",
+            f"Miktar: {fill.quantity}",
+            f"Gerçekleşen Fiyat: {fill.fill_price:,.2f}",
+            f"Efektif Fiyat: {fill.effective_price:,.2f}",
+            f"Toplam Maliyet: {fill.total_cost:,.2f} TRY",
+            "",
+            "<i>Simülasyon. Gerçek emir gönderilmedi.</i>"
+        ]
+        return "\n".join(lines)
+
+    def format_paper_status(self, state: Any) -> str:
+        lines = [
+            "<b>BIST Bot Paper Account Status</b>",
+            "",
+            f"Account ID: {self._escape(state.account.account_id)}",
+            f"Status: {state.account.status.value}",
+            f"Cash: {state.account.cash:,.2f} TRY",
+            f"Equity: {state.account.equity:,.2f} TRY",
+            f"Open Positions: {len(state.open_positions())}",
+            "",
+            "<i>Simülasyon. Gerçek portföy değildir.</i>"
+        ]
+        return "\n".join(lines)
