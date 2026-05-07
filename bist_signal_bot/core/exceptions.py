@@ -317,3 +317,27 @@ class CorrelationAnalysisError(PortfolioError):
 
 class ExposureLimitError(PortfolioError):
     pass
+
+class PaperTradingError(BistSignalBotError):
+    """Base exception for Paper Trading Engine errors."""
+    pass
+
+class PaperAccountError(PaperTradingError):
+    """Raised when an error occurs with a paper account."""
+    pass
+
+class PaperLedgerError(PaperTradingError):
+    """Raised when an error occurs reading or writing the paper ledger."""
+    pass
+
+class PaperOrderError(PaperTradingError):
+    """Raised when a paper order is invalid or cannot be processed."""
+    pass
+
+class PaperExecutionError(PaperTradingError):
+    """Raised when an error occurs simulating paper order execution."""
+    pass
+
+class PaperPositionError(PaperTradingError):
+    """Raised when an error occurs managing paper positions."""
+    pass

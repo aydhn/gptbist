@@ -447,3 +447,75 @@ def build_parser() -> argparse.ArgumentParser:
     add_validate_backtest_parser(subparsers)
     add_backtest_parser(subparsers)
     return parser
+
+def add_paper_parser(subparsers: argparse._SubParsersAction) -> None:
+    paper_parser = subparsers.add_parser("paper", help="Paper trading commands")
+    paper_subparsers = paper_parser.add_subparsers(dest="paper_command", required=True)
+
+    # Init
+    init_parser = paper_subparsers.add_parser("init", help="Initialize a paper trading account")
+    init_parser.add_argument("--account", help="Account ID to initialize")
+    init_parser.add_argument("--cash", type=float, help="Initial cash amount")
+    init_parser.add_argument("--overwrite", action="store_true", help="Overwrite existing ledger")
+
+    # Status
+    status_parser = paper_subparsers.add_parser("status", help="Show paper account status")
+    status_parser.add_argument("--account", help="Account ID")
+    status_parser.add_argument("--json", action="store_true", help="Output JSON")
+
+    # Run-once
+    run_parser = paper_subparsers.add_parser("run-once", help="Run a strategy and create paper orders")
+    run_parser.add_argument("symbols", nargs="+", help="Symbols to run on")
+    run_parser.add_argument("--account", help="Account ID")
+    run_parser.add_argument("--source", choices=["mock", "local"], default="local", help="Data source")
+    run_parser.add_argument("--strategy", required=True, help="Strategy name")
+    run_parser.add_argument("--timeframe", default="1D", help="Timeframe (e.g., 1D, 1W)")
+    run_parser.add_argument("--rows", type=int, default=500, help="Number of rows to fetch")
+    run_parser.add_argument("--param", action="append", help="Strategy parameter (key=value)")
+    run_parser.add_argument("--execution", default="LATEST_CLOSE_RESEARCH", help="Execution mode")
+    run_parser.add_argument("--no-trade-risk", action="store_true", help="Disable trade-level risk engine")
+    run_parser.add_argument("--no-portfolio-risk", action="store_true", help="Disable portfolio risk engine")
+    run_parser.add_argument("--telegram-summary", action="store_true", help="Send summary to Telegram")
+    run_parser.add_argument("--json", action="store_true", help="Output JSON")
+
+    # Positions
+    pos_parser = paper_subparsers.add_parser("positions", help="List open positions")
+    pos_parser.add_argument("--account", help="Account ID")
+    pos_parser.add_argument("--json", action="store_true", help="Output JSON")
+
+    # Orders
+    orders_parser = paper_subparsers.add_parser("orders", help="List orders")
+    orders_parser.add_argument("--account", help="Account ID")
+    orders_parser.add_argument("--status", help="Filter by order status")
+    orders_parser.add_argument("--json", action="store_true", help="Output JSON")
+
+    # Fills
+    fills_parser = paper_subparsers.add_parser("fills", help="List fills")
+    fills_parser.add_argument("--account", help="Account ID")
+    fills_parser.add_argument("--json", action="store_true", help="Output JSON")
+
+    # Trades
+    trades_parser = paper_subparsers.add_parser("trades", help="List trades")
+    trades_parser.add_argument("--account", help="Account ID")
+    trades_parser.add_argument("--json", action="store_true", help="Output JSON")
+
+    # Close
+    close_parser = paper_subparsers.add_parser("close", help="Close an open position")
+    close_parser.add_argument("symbol", help="Symbol to close")
+    close_parser.add_argument("--account", help="Account ID")
+    close_parser.add_argument("--source", choices=["mock", "local"], default="local", help="Data source")
+    close_parser.add_argument("--manual-price", type=float, help="Manual execution price")
+
+    # Reset
+    reset_parser = paper_subparsers.add_parser("reset", help="Reset a paper account")
+    reset_parser.add_argument("--account", help="Account ID")
+    reset_parser.add_argument("--cash", type=float, help="Initial cash amount after reset")
+    reset_parser.add_argument("--confirm", action="store_true", help="Must confirm to reset")
+
+    # Export
+    export_parser = paper_subparsers.add_parser("export", help="Export ledger to CSV")
+    export_parser.add_argument("--account", help="Account ID")
+
+    # Config
+    config_parser = paper_subparsers.add_parser("config", help="Show paper trading config")
+    config_parser.add_argument("--json", action="store_true", help="Output JSON")

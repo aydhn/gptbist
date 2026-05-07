@@ -102,3 +102,14 @@ def get_backtest_results_dir(settings: Settings | None = None) -> Path:
     s = settings or default_settings
     reports_dir = PROJECT_ROOT / s.REPORTS_DIR
     return ensure_dir(reports_dir / "backtests")
+
+def get_paper_dir(settings: "Settings | None" = None) -> Path:
+    s = settings or _default_settings
+    dir_path = get_data_dir(s) / s.PAPER_ACCOUNTS_DIR_NAME
+    dir_path.mkdir(parents=True, exist_ok=True)
+    return dir_path
+
+def get_paper_account_dir(account_id: str, settings: "Settings | None" = None) -> Path:
+    dir_path = get_paper_dir(settings) / account_id
+    dir_path.mkdir(parents=True, exist_ok=True)
+    return dir_path

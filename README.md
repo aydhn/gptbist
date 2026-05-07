@@ -361,3 +361,40 @@ python -m bist_signal_bot risk config
 - **Allocation Strategies**: Implements multiple allocation models including `HYBRID`, `EQUAL_WEIGHT`, `SCORE_WEIGHTED`, `RISK_PARITY_SIMPLE`, `VOLATILITY_SCALED`, and `LIQUIDITY_WEIGHTED`.
 - **Backtest Integration**: Portfolio logic is kept decoupled from backtest by default (`BACKTEST_USE_PORTFOLIO_RISK_ENGINE` disabled) so single-symbol runs still perform natively. Multi-symbol portfolio backtesting with these limits is reserved for advanced configurations.
 - **No Real Orders**: `PortfolioRiskDecision` structures are strictly "Portfolio risk research outputs". They are NOT investment advice and no real orders are sent. The project adheres to strict restrictions against automated live trading, HTML scraping, and paid APIs.
+
+## Phase 32: Paper Trading Motoru v1, Sanal Emir Defteri ve Simülasyon Katmanı
+
+This phase introduces a robust Paper Trading Engine designed to simulate real market execution without ever placing real orders or putting real capital at risk. It acts as the execution simulator for signals validated by the Strategy Engine, Risk Engine, and Portfolio Risk Engine.
+
+**Purpose & Guiding Principles:**
+- **No Real Orders:** The Paper Trading Engine only produces a simulated ledger. Broker APIs are completely isolated, and no real-money orders are ever placed.
+- **Local-First Ledger:** All paper trades, positions, fills, and ledger events are stored locally in atomic JSON files, preventing database dependencies.
+- **Strict Verification:** Every order passes through trade-level and portfolio-level risk engines prior to a simulated "fill." Without risk approval, orders are rejected.
+- **Deterministic Execution Modes:** Simulation executes deterministically against predefined conditions (e.g., `LATEST_CLOSE_RESEARCH`, `NEXT_OPEN_SIMULATED`, `MANUAL_PRICE`) to facilitate both research and CLI-driven workflow without look-ahead bias.
+- **No Web Elements:** There are absolutely no web scraping techniques, Streamlit dashboards, HTML manipulation, or paid APIs included in this simulation layer.
+
+**Core Data Models:**
+- `PaperAccount`: Holds initial cash, current cash, equity, and realized/unrealized PnL.
+- `PaperOrder`: The representation of an intent to buy/sell after risk checks. Includes metadata from the Strategy and Risk layers.
+- `PaperFill`: Represents the simulated execution of a `PaperOrder`, heavily influenced by the `TransactionCostEngine` (commission, slippage, spread).
+- `PaperPosition`: Summarizes active holdings and their mark-to-market values.
+- `PaperLedgerState`: The aggregate state holding the account, orders, fills, positions, trades, and event history, saved as `ledger.json`.
+
+**CLI Integrations:**
+The new `paper` CLI commands provide comprehensive control over your simulation environment:
+```bash
+python -m bist_signal_bot paper init --account default --cash 100000
+python -m bist_signal_bot paper status
+python -m bist_signal_bot paper run-once ASELS --source mock --strategy moving_average_trend
+python -m bist_signal_bot paper positions
+python -m bist_signal_bot paper orders
+python -m bist_signal_bot paper fills
+python -m bist_signal_bot paper trades
+python -m bist_signal_bot paper close ASELS --account default --source mock
+python -m bist_signal_bot paper export --account default
+python -m bist_signal_bot paper config
+```
+
+**Notifications & Audit:**
+- Simulated runs can optionally be pushed to Telegram using `PAPER_SEND_TELEGRAM_SUMMARY`. All outputs strictly emphasize that the messages are for simulation/research purposes only and do not constitute investment advice.
+- Complete audit trails (`PAPER_ACCOUNT_INITIALIZED`, `PAPER_FILL_SIMULATED`, etc.) are written sequentially to `audit.log` for debugging and back-verification.

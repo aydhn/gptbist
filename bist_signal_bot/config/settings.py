@@ -735,6 +735,33 @@ class Settings(BaseSettings):
 
     BACKTEST_USE_RISK_ENGINE: bool = Field(default=False)
 
+    # Paper Trading Features
+    ENABLE_PAPER_TRADING: bool = Field(default=True)
+    PAPER_DEFAULT_ACCOUNT_ID: str = Field(default="default")
+    PAPER_INITIAL_CASH: float = Field(default=100000.0)
+    PAPER_ACCOUNTS_DIR_NAME: str = Field(default="paper")
+    PAPER_REQUIRE_RISK_APPROVAL: bool = Field(default=True)
+    PAPER_USE_PORTFOLIO_RISK: bool = Field(default=True)
+    PAPER_USE_TRADE_RISK: bool = Field(default=True)
+    PAPER_EXECUTION_MODE: str = Field(default="LATEST_CLOSE_RESEARCH")
+    PAPER_ALLOW_SHORT: bool = Field(default=False)
+    PAPER_USE_FRACTIONAL_SHARES: bool = Field(default=False)
+
+    PAPER_MAX_ORDERS_PER_RUN: int = Field(default=20)
+    PAPER_MAX_FILLS_PER_RUN: int = Field(default=20)
+    PAPER_REJECT_IF_ACCOUNT_NOT_ACTIVE: bool = Field(default=True)
+    PAPER_REJECT_IF_INSUFFICIENT_CASH: bool = Field(default=True)
+    PAPER_MARK_TO_MARKET_AFTER_RUN: bool = Field(default=True)
+    PAPER_AUTO_EXPORT_CSV: bool = Field(default=False)
+
+    PAPER_FALLBACK_POSITION_NOTIONAL: float = Field(default=10000.0)
+    PAPER_FALLBACK_MAX_POSITION_PCT: float = Field(default=0.10)
+
+    PAPER_SEND_TELEGRAM_SUMMARY: bool = Field(default=False)
+    PAPER_NOTIFY_ON_FILL: bool = Field(default=False)
+    PAPER_NOTIFY_ON_REJECT: bool = Field(default=False)
+
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
 
