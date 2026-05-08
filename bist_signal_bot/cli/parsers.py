@@ -446,6 +446,46 @@ def build_parser() -> argparse.ArgumentParser:
 
     add_validate_backtest_parser(subparsers)
     add_backtest_parser(subparsers)
+
+    # SCAN
+    scan_parser = subparsers.add_parser("scan", help="Signal Scanner v1")
+    scan_sub = scan_parser.add_subparsers(dest="scan_command", required=True)
+
+    scan_sym = scan_sub.add_parser("symbols", help="Scan explicit symbols")
+    scan_sym.add_argument("symbols", nargs="+")
+    scan_sym.add_argument("--source", default="mock")
+    scan_sym.add_argument("--strategy", required=True)
+    scan_sym.add_argument("--top", type=int, default=10)
+    scan_sym.add_argument("--sort", default="FINAL_SCORE")
+    scan_sym.add_argument("--no-portfolio-risk", action="store_true")
+    scan_sym.add_argument("--json", action="store_true")
+
+    scan_wl = scan_sub.add_parser("watchlist", help="Scan a watchlist")
+    scan_wl.add_argument("watchlist")
+    scan_wl.add_argument("--source", default="mock")
+    scan_wl.add_argument("--strategy", required=True)
+    scan_wl.add_argument("--save-report", action="store_true")
+    scan_wl.add_argument("--telegram", action="store_true")
+
+    scan_group = scan_sub.add_parser("group", help="Scan a group")
+    scan_group.add_argument("group")
+    scan_group.add_argument("--source", default="mock")
+    scan_group.add_argument("--strategy", required=True)
+    scan_group.add_argument("--top", type=int, default=10)
+
+    scan_all = scan_sub.add_parser("all", help="Scan all active symbols")
+    scan_all.add_argument("--source", default="mock")
+    scan_all.add_argument("--strategy", required=True)
+    scan_all.add_argument("--top", type=int, default=10)
+    scan_all.add_argument("--save-report", action="store_true")
+
+    scan_recent = scan_sub.add_parser("recent", help="List recent scans")
+    scan_recent.add_argument("--limit", type=int, default=20)
+    scan_recent.add_argument("--json", action="store_true")
+
+    scan_config = scan_sub.add_parser("config", help="Show scanner config")
+    scan_config.add_argument("--json", action="store_true")
+
     return parser
 
 def add_paper_parser(subparsers: argparse._SubParsersAction) -> None:

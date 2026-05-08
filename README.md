@@ -398,3 +398,60 @@ python -m bist_signal_bot paper config
 **Notifications & Audit:**
 - Simulated runs can optionally be pushed to Telegram using `PAPER_SEND_TELEGRAM_SUMMARY`. All outputs strictly emphasize that the messages are for simulation/research purposes only and do not constitute investment advice.
 - Complete audit trails (`PAPER_ACCOUNT_INITIALIZED`, `PAPER_FILL_SIMULATED`, etc.) are written sequentially to `audit.log` for debugging and back-verification.
+
+## Phase 33: BIST Signal Scanner v1
+
+Signal Scanner is a professional-grade component designed to scan symbols across the BIST universe, generate signals, run risk checks, evaluate portfolio allocations, rank, and summarize the top candidates.
+
+### **Important Notes:**
+- **Signal scan research output only. Not investment advice. No real order was sent.**
+- **No HTML/web scraping** is performed.
+- **No paid APIs** or services are used.
+- **No real broker APIs** are called.
+- The output of the scanner is solely for research and backtesting purposes.
+
+### **Capabilities:**
+- **Universe Modes**: Easily run scans on `symbols`, `watchlist`, `group`, or `all` active symbols.
+- **Integration with Engines**: Leverages `StrategyEngine`, `RiskEngine`, and `PortfolioRiskEngine` to score and validate signals.
+- **Ranking and Filtering**: Top candidates are ranked by `FINAL_SCORE` (or other sort keys), filtering out low confidence or high-risk signals.
+- **Top N Candidates**: Truncates results to the Top N scoring candidates for concise reports.
+- **Local Storage**: Automatically caches reports (JSON, CSV, Markdown) locally using `ScanReportStore`.
+- **Telegram Notification**: Optional concise telegram summaries of the top candidates.
+- **PaperTradingEngine**: Paper execution is disabled by default (`SCANNER_ALLOW_PAPER_EXECUTION=False`). It can be enabled strictly for simulation flows.
+- **Error Isolation**: Built-in `continue_on_error` parameter to ensure one failing symbol does not break the entire scan batch.
+
+### **CLI Usage:**
+```bash
+# Scan specific symbols
+python -m bist_signal_bot scan symbols ASELS THYAO GARAN --source mock --strategy moving_average_trend
+
+# Scan symbols and limit to top 5
+python -m bist_signal_bot scan symbols ASELS THYAO GARAN --source mock --strategy breakout_volume --top 5
+
+# Scan with custom sorting
+python -m bist_signal_bot scan symbols ASELS THYAO GARAN --source mock --strategy moving_average_trend --sort FINAL_SCORE
+
+# Scan and disable portfolio risk checks
+python -m bist_signal_bot scan symbols ASELS THYAO GARAN --source mock --strategy moving_average_trend --no-portfolio-risk
+
+# Output JSON
+python -m bist_signal_bot scan symbols ASELS THYAO GARAN --source mock --strategy moving_average_trend --json
+
+# Scan watchlist
+python -m bist_signal_bot scan watchlist default --source mock --strategy moving_average_trend
+
+# Scan watchlist and save reports
+python -m bist_signal_bot scan watchlist default --source mock --strategy breakout_volume --save-report
+
+# Scan a specific group
+python -m bist_signal_bot scan group LIQUID --source mock --strategy moving_average_trend
+
+# Scan all active symbols
+python -m bist_signal_bot scan all --source mock --strategy moving_average_trend --top 20
+
+# View recent scans
+python -m bist_signal_bot scan recent
+
+# View scanner config
+python -m bist_signal_bot scan config
+```

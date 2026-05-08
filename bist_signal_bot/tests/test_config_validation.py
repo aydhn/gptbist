@@ -15,6 +15,7 @@ from bist_signal_bot.core.exceptions import ConfigurationError, OperationalSafet
 
 
 class MockSettings(BaseModel):
+    model_config = {"arbitrary_types_allowed": True}
     APP_ENV: str = "production"
     DEBUG_TRACEBACKS: bool = False
     DRY_RUN: bool = True

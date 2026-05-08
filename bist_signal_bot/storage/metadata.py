@@ -9,6 +9,7 @@ from bist_signal_bot.storage.paths import ensure_dir
 
 
 class StoredMarketDataMetadata(BaseModel):
+    model_config = {"arbitrary_types_allowed": True}
     symbol: str
     vendor: str
     timeframe: str
@@ -22,6 +23,7 @@ class StoredMarketDataMetadata(BaseModel):
     schema_version: str = "1.0"
 
 class MarketDataIndex(BaseModel):
+    model_config = {"arbitrary_types_allowed": True}
     items: dict[str, StoredMarketDataMetadata] = Field(default_factory=dict)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 

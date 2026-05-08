@@ -474,3 +474,46 @@ def format_divergence_result(result, symbol: str | None = None) -> str:
             "<i>Simülasyon. Gerçek portföy değildir.</i>"
         ]
         return "\n".join(lines)
+
+    def format_scan_report(self, report: Any) -> str:
+        lines = [
+            "<b>BIST Bot Sinyal Tarama Özeti</b>",
+            "",
+            f"Strateji: {self._escape(report.request.strategy_name)}",
+            f"Taranan: {report.total_symbols}",
+            f"Geçen: {report.passed_count}",
+            f"Reddedilen: {report.rejected_count}",
+            f"Filtrelenen: {report.filtered_count}",
+            f"Hata: {report.error_count}",
+            ""
+        ]
+
+        top = report.top_candidates(report.request.top_n)
+        if top:
+            lines.append("<b>Top Adaylar:</b>")
+            for r in top:
+                sig_dir = r.signal.direction.value if r.signal else "N/A"
+                final_score = r.risk_decision.final_score if r.risk_decision and r.risk_decision.final_score else (r.signal.score if r.signal and r.signal.score else 0)
+                lines.append(f"{r.rank}. {self._escape(r.symbol)} — Final Score: {final_score:.1f} — Status: {r.status.value}")
+        else:
+            lines.append("Geçen aday bulunamadı.")
+
+        lines.extend([
+            "",
+            "<i>Bu çıktı araştırma amaçlı sinyal taramasıdır.</i>",
+            "<i>Yatırım tavsiyesi değildir.</i>",
+            "<i>Gerçek emir gönderilmedi.</i>"
+        ])
+
+        text = "\n".join(lines)
+
+        forbidden_phrases = ["kesin al", "kesin sat", "garanti getiri", "risksiz", "yüzde yüz"]
+        for p in forbidden_phrases:
+            if p in text.lower():
+                 return "<b>[WARNING]</b>\nTarama çıktısında yasaklı ifade saptandı. İçerik gizlendi."
+
+        return text
+
+    def format_scan_top_candidates(self, report: Any, limit: int = 5) -> str:
+        # Alias or similar behavior
+        return self.format_scan_report(report)

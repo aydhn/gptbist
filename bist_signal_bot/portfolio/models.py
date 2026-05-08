@@ -95,6 +95,7 @@ class PortfolioHolding(BaseModel):
         return v
 
 class PortfolioState(BaseModel):
+    model_config = {"arbitrary_types_allowed": True}
     equity: float
     cash: float
     holdings: list[PortfolioHolding] = Field(default_factory=list)

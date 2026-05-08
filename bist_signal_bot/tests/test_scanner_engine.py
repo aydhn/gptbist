@@ -1,0 +1,53 @@
+import pytest
+import pandas as pd
+from bist_signal_bot.scanner.engine import SignalScannerEngine
+from bist_signal_bot.scanner.models import ScanRequest, ScanUniverseMode, ScanCandidateStatus, ScanStatus, ScanSortKey
+from bist_signal_bot.config.settings import Settings
+from bist_signal_bot.strategies.models import StrategyExecutionResult, StrategyExecutionIssue
+from bist_signal_bot.signals.models import SignalCandidate, SignalDirection, SignalStrength
+from bist_signal_bot.risk.models import RiskDecision, RiskDecisionStatus
+
+class MockDataService:
+    def get_history(self, symbol, **kwargs):
+        if symbol == "BADDATA":
+            return pd.DataFrame()
+        return pd.DataFrame({'close': [100, 101, 102]})
+
+class MockStrategyEngine:
+    def run_strategy_on_data(self, strategy_name, symbol, data, **kwargs):
+        if symbol == "ERRORSTRAT":
+            return StrategyExecutionResult(request={"strategy_name": strategy_name, "symbol": symbol, "run_mode": "RESEARCH", "timeframe": "1d", "params": {}}, status="error", issues=[StrategyExecutionIssue(strategy_name=strategy_name, symbol=symbol, message="error")])
+        sig = SignalCandidate(strategy_name=strategy_name, symbol=symbol, direction=SignalDirection.LONG, score=80.0, strength=SignalStrength.STRONG, confidence=80.0)
+        return StrategyExecutionResult(request={"strategy_name": strategy_name, "symbol": symbol, "run_mode": "RESEARCH", "timeframe": "1d", "params": {}}, status="success", candidate=sig, )
+
+class MockRiskEngine:
+    def build_default_context(self):
+        return None
+    def evaluate_signal(self, signal, context, data):
+        from bist_signal_bot.risk.models import RiskFilterResult
+        return RiskDecision(signal=signal, side=signal.direction, approved=True, filter_result=RiskFilterResult(status=RiskDecisionStatus.APPROVED, passed=True, active_rules=[], triggered_rules=[]), symbol=signal.symbol, status=RiskDecisionStatus.APPROVED, final_score=90.0)
+
+class MockPortfolioRiskEngine:
+    def evaluate_portfolio_signals(self, signals, state):
+        from bist_signal_bot.portfolio.models import PortfolioRiskDecision, PortfolioDecisionStatus
+        return PortfolioRiskDecision(portfolio_state=state, input_signals=signals, trade_risk_decisions=[], approved_count=1, rejected_count=0, reduced_count=0, reject_reasons=[], warnings=[], status=PortfolioDecisionStatus.APPROVED, allocations=[])
+
+def test_resolve_symbols():
+    engine = SignalScannerEngine(data_service=MockDataService(), strategy_engine=MockStrategyEngine())
+    req = ScanRequest(strategy_name="t", universe_mode=ScanUniverseMode.SYMBOLS, symbols=["A", "B", "A"])
+    symbols = engine.resolve_symbols(req)
+    assert symbols == ["A", "B"]
+
+def test_scan_symbol_success():
+    engine = SignalScannerEngine(data_service=MockDataService(), strategy_engine=MockStrategyEngine(), risk_engine=MockRiskEngine(), portfolio_risk_engine=MockPortfolioRiskEngine())
+    req = ScanRequest(strategy_name="t", universe_mode=ScanUniverseMode.SYMBOLS, symbols=["A"])
+    res = engine.scan_symbol("A", req)
+    assert res.status == ScanCandidateStatus.PASSED
+
+def test_scan_continue_on_error():
+    engine = SignalScannerEngine(data_service=MockDataService(), strategy_engine=MockStrategyEngine(), risk_engine=MockRiskEngine(), portfolio_risk_engine=MockPortfolioRiskEngine())
+    req = ScanRequest(strategy_name="t", universe_mode=ScanUniverseMode.SYMBOLS, symbols=["BADDATA", "A"], continue_on_error=True)
+    report = engine.scan(req)
+    assert report.status == ScanStatus.PARTIAL_SUCCESS
+    assert report.passed_count == 1
+    assert report.error_count == 1

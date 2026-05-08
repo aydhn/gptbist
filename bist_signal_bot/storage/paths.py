@@ -1,3 +1,4 @@
+from typing import Any
 from pathlib import Path
 
 from bist_signal_bot.config.settings import Settings
@@ -113,3 +114,11 @@ def get_paper_account_dir(account_id: str, settings: "Settings | None" = None) -
     dir_path = get_paper_dir(settings) / account_id
     dir_path.mkdir(parents=True, exist_ok=True)
     return dir_path
+
+def get_scans_dir(settings: Any | None = None) -> Path:
+    from bist_signal_bot.config.settings import Settings
+    if settings is None:
+        settings = Settings()
+    path = Path(settings.DATA_DIR) / settings.SCANNER_RESULTS_DIR_NAME
+    path.mkdir(parents=True, exist_ok=True)
+    return path

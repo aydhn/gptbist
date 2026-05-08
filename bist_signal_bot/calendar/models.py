@@ -21,6 +21,7 @@ class MarketDayType(str, Enum):
     UNKNOWN = "UNKNOWN"
 
 class MarketSessionStatus(BaseModel):
+    model_config = {"arbitrary_types_allowed": True}
     now: datetime
     timezone: str
     is_trading_day: bool

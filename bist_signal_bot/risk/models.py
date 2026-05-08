@@ -59,6 +59,7 @@ class RiskSide(str, Enum):
     FLAT = "FLAT"
 
 class RiskContext(BaseModel):
+    model_config = {"arbitrary_types_allowed": True}
     equity: float
     available_cash: float
     current_positions: dict[str, Any] = Field(default_factory=dict)
@@ -104,6 +105,7 @@ class RiskContext(BaseModel):
         return v
 
 class StopTargetReference(BaseModel):
+    model_config = {"arbitrary_types_allowed": True}
     entry_price: float
     stop_price: float | None = None
     target_price: float | None = None
@@ -136,6 +138,7 @@ class StopTargetReference(BaseModel):
         return v
 
 class PositionSizeResult(BaseModel):
+    model_config = {"arbitrary_types_allowed": True}
     method: PositionSizingMethod
     symbol: str
     side: RiskSide
@@ -171,6 +174,7 @@ class PositionSizeResult(BaseModel):
         return v
 
 class RiskFilterResult(BaseModel):
+    model_config = {"arbitrary_types_allowed": True}
     passed: bool
     status: RiskDecisionStatus
     reject_reasons: list[RiskRejectReason] = Field(default_factory=list)
@@ -179,6 +183,7 @@ class RiskFilterResult(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 class RiskDecision(BaseModel):
+    model_config = {"arbitrary_types_allowed": True}
     signal: SignalCandidate
     status: RiskDecisionStatus
     side: RiskSide
@@ -224,6 +229,7 @@ class RiskDecision(BaseModel):
         return d
 
 class RiskBatchResult(BaseModel):
+    model_config = {"arbitrary_types_allowed": True}
     decisions: list[RiskDecision] = Field(default_factory=list)
     requested_count: int = 0
     approved_count: int = 0
