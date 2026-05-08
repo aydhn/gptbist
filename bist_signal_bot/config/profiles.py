@@ -16,6 +16,7 @@ class RunMode(str, Enum):
     LIVE_SIGNAL = "live_signal"
 
 class ConfigProfile(BaseModel):
+    model_config = {"arbitrary_types_allowed": True}
     env: AppEnvironment
     description: str
     safe_defaults: dict[str, Any]

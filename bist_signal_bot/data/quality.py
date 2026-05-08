@@ -30,6 +30,7 @@ class DataQualityIssueType(str, Enum):
     UNKNOWN = "UNKNOWN"
 
 class DataQualityIssue(BaseModel):
+    model_config = {"arbitrary_types_allowed": True}
     issue_type: DataQualityIssueType
     severity: DataQualitySeverity
     symbol: str | None = None
@@ -41,6 +42,7 @@ class DataQualityIssue(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 class DataQualityReport(BaseModel):
+    model_config = {"arbitrary_types_allowed": True}
     symbol: str
     timeframe: str
     source: str

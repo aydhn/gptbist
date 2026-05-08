@@ -432,4 +432,27 @@ def run_healthcheck(settings=settings) -> dict:
         }
         health_status["status"] = "degraded"
 
+
+    # Scanner configuration
+    scanner_enabled = getattr(settings, "ENABLE_SIGNAL_SCANNER", False)
+    health_status["scanner"] = {
+        "enabled": scanner_enabled,
+        "default_strategy": getattr(settings, "SCANNER_DEFAULT_STRATEGY", "moving_average_trend"),
+        "default_source": getattr(settings, "SCANNER_DEFAULT_SOURCE", "mock"),
+        "default_timeframe": getattr(settings, "SCANNER_DEFAULT_TIMEFRAME", "1d"),
+        "default_top_n": getattr(settings, "SCANNER_DEFAULT_TOP_N", 10),
+        "continue_on_error": getattr(settings, "SCANNER_CONTINUE_ON_ERROR", True),
+        "use_trade_risk": getattr(settings, "SCANNER_USE_TRADE_RISK", True),
+        "use_portfolio_risk": getattr(settings, "SCANNER_USE_PORTFOLIO_RISK", True),
+        "min_signal_score": getattr(settings, "SCANNER_MIN_SIGNAL_SCORE", 50.0),
+        "min_confidence": getattr(settings, "SCANNER_MIN_CONFIDENCE", 40.0),
+        "sort_key": getattr(settings, "SCANNER_SORT_KEY", "FINAL_SCORE"),
+        "max_symbols_per_run": getattr(settings, "SCANNER_MAX_SYMBOLS_PER_RUN", 100),
+        "save_report": getattr(settings, "SCANNER_SAVE_REPORT", False),
+        "send_telegram": getattr(settings, "SCANNER_SEND_TELEGRAM", False),
+        "allow_paper_execution": getattr(settings, "SCANNER_ALLOW_PAPER_EXECUTION", False),
+        "scanner_engine_instantiable": True,
+        "mock_scan_capable": True,
+        "report_store_instantiable": True
+    }
     return health_status

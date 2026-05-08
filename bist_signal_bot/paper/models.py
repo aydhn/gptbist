@@ -61,6 +61,7 @@ class PaperLedgerEventType(str, Enum):
     UNKNOWN = "UNKNOWN"
 
 class PaperAccount(BaseModel):
+    model_config = {"arbitrary_types_allowed": True}
     account_id: str
     status: PaperAccountStatus = PaperAccountStatus.ACTIVE
     initial_cash: float
@@ -92,6 +93,7 @@ class PaperAccount(BaseModel):
         return v
 
 class PaperOrder(BaseModel):
+    model_config = {"arbitrary_types_allowed": True}
     order_id: str
     account_id: str
     symbol: str
@@ -137,6 +139,7 @@ class PaperOrder(BaseModel):
         return self
 
 class PaperFill(BaseModel):
+    model_config = {"arbitrary_types_allowed": True}
     fill_id: str
     order_id: str
     account_id: str
@@ -170,6 +173,7 @@ class PaperFill(BaseModel):
         return v
 
 class PaperPosition(BaseModel):
+    model_config = {"arbitrary_types_allowed": True}
     position_id: str
     account_id: str
     symbol: str
@@ -205,6 +209,7 @@ class PaperPosition(BaseModel):
         return v
 
 class PaperTrade(BaseModel):
+    model_config = {"arbitrary_types_allowed": True}
     trade_id: str
     account_id: str
     symbol: str
@@ -224,6 +229,7 @@ class PaperTrade(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 class PaperLedgerEvent(BaseModel):
+    model_config = {"arbitrary_types_allowed": True}
     event_id: str
     account_id: str
     event_type: PaperLedgerEventType
@@ -237,6 +243,7 @@ class PaperLedgerEvent(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 class PaperLedgerState(BaseModel):
+    model_config = {"arbitrary_types_allowed": True}
     account: PaperAccount
     orders: list[PaperOrder] = Field(default_factory=list)
     fills: list[PaperFill] = Field(default_factory=list)
@@ -268,6 +275,7 @@ class PaperLedgerState(BaseModel):
         }
 
 class PaperRunRequest(BaseModel):
+    model_config = {"arbitrary_types_allowed": True}
     account_id: str
     symbols: list[str]
     strategy_name: str
@@ -280,6 +288,7 @@ class PaperRunRequest(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 class PaperRunResult(BaseModel):
+    model_config = {"arbitrary_types_allowed": True}
     account: PaperAccount
     signals: list[SignalCandidate] = Field(default_factory=list)
     risk_decisions: list[RiskDecision] = Field(default_factory=list)

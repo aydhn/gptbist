@@ -24,7 +24,7 @@ from bist_signal_bot.paper.execution import PaperExecutionSimulator
 from bist_signal_bot.strategies.engine import StrategyEngine
 from bist_signal_bot.risk.engine import RiskEngine
 from bist_signal_bot.portfolio.risk_engine import PortfolioRiskEngine
-from bist_signal_bot.data.market_data import MarketDataService
+from bist_signal_bot.data.data_service import MarketDataService
 
 class PaperTradingEngine:
     def __init__(

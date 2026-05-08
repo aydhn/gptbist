@@ -341,3 +341,21 @@ class PaperExecutionError(PaperTradingError):
 class PaperPositionError(PaperTradingError):
     """Raised when an error occurs managing paper positions."""
     pass
+
+class ScannerError(BistSignalBotError):
+    pass
+
+class ScannerValidationError(ScannerError):
+    pass
+
+class ScannerExecutionError(ScannerError):
+    pass
+
+class ScannerRankingError(ScannerError):
+    pass
+
+class ScannerStorageError(ScannerError):
+    pass
+
+class ScannerReportError(ScannerError):
+    pass

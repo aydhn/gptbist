@@ -765,5 +765,39 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
 
+
+    # SIGNAL SCANNER
+    ENABLE_SIGNAL_SCANNER: bool = Field(default=True)
+    SCANNER_DEFAULT_STRATEGY: str = Field(default="moving_average_trend")
+    SCANNER_DEFAULT_SOURCE: str = Field(default="mock")
+    SCANNER_DEFAULT_TIMEFRAME: str = Field(default="1d")
+    SCANNER_DEFAULT_TOP_N: int = Field(default=10)
+    SCANNER_CONTINUE_ON_ERROR: bool = Field(default=True)
+    SCANNER_SAVE_REPORT: bool = Field(default=False)
+    SCANNER_REPORT_FORMATS: str = Field(default="json,csv,markdown")
+    SCANNER_SEND_TELEGRAM: bool = Field(default=False)
+
+    SCANNER_USE_TRADE_RISK: bool = Field(default=True)
+    SCANNER_USE_PORTFOLIO_RISK: bool = Field(default=True)
+    SCANNER_MIN_SIGNAL_SCORE: float = Field(default=50.0)
+    SCANNER_MIN_CONFIDENCE: float = Field(default=40.0)
+    SCANNER_MIN_FINAL_SCORE: float = Field(default=50.0)
+    SCANNER_INCLUDE_WATCH_ONLY: bool = Field(default=True)
+    SCANNER_INCLUDE_REJECTED_IN_REPORT: bool = Field(default=True)
+
+    SCANNER_SORT_KEY: str = Field(default="FINAL_SCORE")
+    SCANNER_SORT_DESCENDING: bool = Field(default=True)
+    SCANNER_LOW_COST_MAX_BPS: float = Field(default=100.0)
+    SCANNER_LOW_VOLATILITY_MAX_SCORE: float = Field(default=100.0)
+
+    SCANNER_MAX_SYMBOLS_PER_RUN: int = Field(default=100)
+    SCANNER_DEFAULT_WATCHLIST: str = Field(default="default")
+    SCANNER_DEFAULT_GROUP: str = Field(default="LIQUID")
+
+    SCANNER_ALLOW_PAPER_EXECUTION: bool = Field(default=False)
+    SCANNER_USE_PAPER: bool = Field(default=False)
+
+    SCANNER_RESULTS_DIR_NAME: str = Field(default="scans")
+
 settings = Settings()
     # Pattern Detection Features

@@ -36,18 +36,21 @@ class SignalTimeframe(str, Enum):
     MULTI = "MULTI"
 
 class SignalReason(BaseModel):
+    model_config = {"arbitrary_types_allowed": True}
     category: str
     message: str
     score_impact: float = 0.0
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 class RiskNote(BaseModel):
+    model_config = {"arbitrary_types_allowed": True}
     category: str
     message: str
     severity: str = "info"
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 class SignalCandidate(BaseModel):
+    model_config = {"arbitrary_types_allowed": True}
     symbol: str
     strategy_name: str
     direction: SignalDirection
@@ -119,6 +122,7 @@ class SignalCandidate(BaseModel):
         return d
 
 class StrategySignalBatch(BaseModel):
+    model_config = {"arbitrary_types_allowed": True}
     strategy_name: str
     symbol_count: int = 0
     candidates: list[SignalCandidate] = Field(default_factory=list)

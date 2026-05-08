@@ -33,6 +33,7 @@ def get_default_timestamp() -> datetime:
 
 
 class NotificationMessage(BaseModel):
+    model_config = {"arbitrary_types_allowed": True}
     notification_type: NotificationType
     level: NotificationLevel
     title: str = Field(min_length=1)
@@ -52,6 +53,7 @@ class NotificationMessage(BaseModel):
 
 
 class TelegramSendResult(BaseModel):
+    model_config = {"arbitrary_types_allowed": True}
     success: bool
     message_id: str | int | None = None
     error: str | None = None

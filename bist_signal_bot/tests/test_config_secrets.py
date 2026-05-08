@@ -12,6 +12,7 @@ from bist_signal_bot.core.exceptions import TelegramConfigurationError
 
 
 class MockSettings(BaseModel):
+    model_config = {"arbitrary_types_allowed": True}
     TELEGRAM_BOT_TOKEN: str = "secret123"
     TELEGRAM_CHAT_ID: str = "12345"
     ENABLE_TELEGRAM: bool = True
