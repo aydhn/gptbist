@@ -25,7 +25,7 @@ from bist_signal_bot.costs.models import TransactionCostBreakdown
 class PaperExecutionSimulator:
     def __init__(self, cost_engine: Optional[TransactionCostEngine] = None, settings: Optional[Settings] = None):
         self.settings = settings or Settings()
-        self.cost_engine = cost_engine or TransactionCostEngine(self.settings)
+        self.cost_engine = cost_engine or TransactionCostEngine.from_settings(self.settings)
 
     def simulate_fill(
         self,

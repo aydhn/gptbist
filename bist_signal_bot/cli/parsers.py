@@ -38,6 +38,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     return args
 
 def add_backtest_parser(subparsers):
+    add_optimize_parser(subparsers)
     parser_backtest = subparsers.add_parser("backtest", help="Backtest engine operations")
     backtest_subparsers = parser_backtest.add_subparsers(dest="backtest_cmd", required=True)
 
@@ -559,3 +560,63 @@ def add_paper_parser(subparsers: argparse._SubParsersAction) -> None:
     # Config
     config_parser = paper_subparsers.add_parser("config", help="Show paper trading config")
     config_parser.add_argument("--json", action="store_true", help="Output JSON")
+
+def add_optimize_parser(subparsers) -> None:
+    opt_parser = subparsers.add_parser("optimize", help="Strategy Optimizer commands")
+    opt_subparsers = opt_parser.add_subparsers(dest="opt_command", required=True)
+
+    # strategy
+    s_parser = opt_subparsers.add_parser("strategy", help="Optimize strategy parameters")
+    s_parser.add_argument("symbol")
+    s_parser.add_argument("--source", choices=["local", "mock"], default="local")
+    s_parser.add_argument("--strategy", required=True)
+    s_parser.add_argument("--timeframe", default="1d")
+    s_parser.add_argument("--rows", type=int, default=1000)
+    s_parser.add_argument("--method", choices=["GRID_SEARCH", "RANDOM_SEARCH"])
+    s_parser.add_argument("--objective", choices=["COMPOSITE", "SHARPE", "SORTINO", "CALMAR", "TOTAL_RETURN", "PROFIT_FACTOR", "MAX_DRAWDOWN"])
+    s_parser.add_argument("--param-range", action="append", help="e.g. fast_window=10,20,30")
+    s_parser.add_argument("--max-combinations", type=int)
+    s_parser.add_argument("--seed", type=int)
+    s_parser.add_argument("--top", type=int)
+    s_parser.add_argument("--min-trades", type=int)
+    s_parser.add_argument("--max-drawdown", type=float)
+    s_parser.add_argument("--min-profit-factor", type=float)
+    s_parser.add_argument("--require-positive-return", action="store_true")
+    s_parser.add_argument("--compare-benchmark", action="store_true")
+    s_parser.add_argument("--save-report", action="store_true")
+    s_parser.add_argument("--format", default="all")
+    s_parser.add_argument("--output-dir")
+    s_parser.add_argument("--json", action="store_true")
+
+    # walk-forward
+    wf_parser = opt_subparsers.add_parser("walk-forward", help="Walk-forward optimization")
+    wf_parser.add_argument("symbol")
+    wf_parser.add_argument("--source", choices=["local", "mock"], default="local")
+    wf_parser.add_argument("--strategy", required=True)
+    wf_parser.add_argument("--timeframe", default="1d")
+    wf_parser.add_argument("--rows", type=int, default=2000)
+    wf_parser.add_argument("--method", choices=["WALK_FORWARD_GRID", "WALK_FORWARD_RANDOM"])
+    wf_parser.add_argument("--objective", choices=["COMPOSITE", "SHARPE", "SORTINO", "TOTAL_RETURN"])
+    wf_parser.add_argument("--param-range", action="append")
+    wf_parser.add_argument("--max-combinations", type=int)
+    wf_parser.add_argument("--train-window", type=int)
+    wf_parser.add_argument("--test-window", type=int)
+    wf_parser.add_argument("--step", type=int)
+    wf_parser.add_argument("--max-splits", type=int)
+    wf_parser.add_argument("--save-report", action="store_true")
+    wf_parser.add_argument("--format", default="all")
+    wf_parser.add_argument("--json", action="store_true")
+
+    # search-space
+    ss_parser = opt_subparsers.add_parser("search-space", help="Show default search space for a strategy")
+    ss_parser.add_argument("--strategy", required=True)
+    ss_parser.add_argument("--json", action="store_true")
+
+    # recent
+    r_parser = opt_subparsers.add_parser("recent", help="List recent optimizations")
+    r_parser.add_argument("--limit", type=int, default=20)
+    r_parser.add_argument("--json", action="store_true")
+
+    # config
+    c_parser = opt_subparsers.add_parser("config", help="Show optimization config")
+    c_parser.add_argument("--json", action="store_true")

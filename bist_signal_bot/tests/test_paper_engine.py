@@ -3,7 +3,7 @@ import pandas as pd
 from bist_signal_bot.paper.engine import PaperTradingEngine
 from bist_signal_bot.paper.ledger import PaperLedgerStore
 from bist_signal_bot.strategies.engine import StrategyEngine
-from bist_signal_bot.data.market_data import MarketDataService
+from bist_signal_bot.data.data_service import MarketDataService
 from bist_signal_bot.paper.models import PaperRunRequest, PaperExecutionMode
 from bist_signal_bot.config.settings import Settings
 
