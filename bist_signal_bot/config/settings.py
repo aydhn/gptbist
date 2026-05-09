@@ -762,6 +762,48 @@ class Settings(BaseSettings):
     PAPER_NOTIFY_ON_REJECT: bool = Field(default=False)
 
 
+    # OPTIMIZATION
+    ENABLE_OPTIMIZATION: bool = Field(default=True)
+    OPTIMIZATION_DEFAULT_METHOD: str = Field(default="GRID_SEARCH")
+    OPTIMIZATION_DEFAULT_OBJECTIVE: str = Field(default="COMPOSITE")
+    OPTIMIZATION_MAX_COMBINATIONS: int = Field(default=100)
+    OPTIMIZATION_RANDOM_SEED: int = Field(default=42)
+    OPTIMIZATION_TOP_N: int = Field(default=10)
+    OPTIMIZATION_SAVE_REPORT: bool = Field(default=False)
+    OPTIMIZATION_REPORT_FORMATS: str = Field(default="json,csv,markdown")
+    OPTIMIZATION_RESULTS_DIR_NAME: str = Field(default="optimization")
+
+    # Constraints
+    OPTIMIZATION_MIN_TRADES: int = Field(default=3)
+    OPTIMIZATION_MAX_DRAWDOWN_PCT: float = Field(default=40.0)
+    OPTIMIZATION_MIN_PROFIT_FACTOR: float = Field(default=1.0)
+    OPTIMIZATION_MIN_SHARPE: float = Field(default=-10.0)
+    OPTIMIZATION_REQUIRE_POSITIVE_RETURN: bool = Field(default=False)
+    OPTIMIZATION_REJECT_SAME_CLOSE_RESEARCH: bool = Field(default=True)
+    OPTIMIZATION_MAX_COST_PCT_OF_PROFIT: float = Field(default=50.0)
+
+    # Walk-forward
+    OPTIMIZATION_WALK_FORWARD_ENABLED: bool = Field(default=False)
+    OPTIMIZATION_WF_TRAIN_WINDOW_ROWS: int = Field(default=252)
+    OPTIMIZATION_WF_TEST_WINDOW_ROWS: int = Field(default=63)
+    OPTIMIZATION_WF_STEP_ROWS: int = Field(default=63)
+    OPTIMIZATION_WF_EXPANDING: bool = Field(default=False)
+    OPTIMIZATION_WF_MAX_SPLITS: int = Field(default=5)
+
+    # Benchmark
+    OPTIMIZATION_COMPARE_BENCHMARK: bool = Field(default=False)
+    OPTIMIZATION_BENCHMARK_NAME: str = Field(default="buy_and_hold")
+
+    # Scoring
+    OPTIMIZATION_COMPOSITE_RETURN_WEIGHT: float = Field(default=0.25)
+    OPTIMIZATION_COMPOSITE_SHARPE_WEIGHT: float = Field(default=0.20)
+    OPTIMIZATION_COMPOSITE_SORTINO_WEIGHT: float = Field(default=0.15)
+    OPTIMIZATION_COMPOSITE_CALMAR_WEIGHT: float = Field(default=0.15)
+    OPTIMIZATION_COMPOSITE_PROFIT_FACTOR_WEIGHT: float = Field(default=0.10)
+    OPTIMIZATION_COMPOSITE_DRAWDOWN_WEIGHT: float = Field(default=0.10)
+    OPTIMIZATION_COMPOSITE_BENCHMARK_WEIGHT: float = Field(default=0.05)
+
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
 

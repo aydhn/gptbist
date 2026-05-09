@@ -359,3 +359,30 @@ class ScannerStorageError(ScannerError):
 
 class ScannerReportError(ScannerError):
     pass
+
+class OptimizationError(BistSignalBotError):
+    pass
+
+class OptimizationValidationError(OptimizationError):
+    pass
+
+class SearchSpaceError(OptimizationError):
+    pass
+
+class ObjectiveFunctionError(OptimizationError):
+    pass
+
+class GridSearchError(OptimizationError):
+    pass
+
+class RandomSearchError(OptimizationError):
+    pass
+
+class WalkForwardOptimizationError(OptimizationError):
+    pass
+
+class OptimizationReportError(OptimizationError):
+    pass
+
+class OptimizationStorageError(OptimizationError):
+    pass

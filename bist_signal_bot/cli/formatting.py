@@ -281,3 +281,7 @@ def format_divergence_result(result, symbol: str | None = None) -> str:
         f"Elapsed: {safe_float(result.elapsed_seconds, 2)}s"
     ]
     return "\n".join(lines)
+
+def format_optimization_text(result) -> str:
+    from bist_signal_bot.optimization.reporting import format_optimization_text as fmt
+    return fmt(result)

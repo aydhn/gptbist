@@ -122,3 +122,11 @@ def get_scans_dir(settings: Any | None = None) -> Path:
     path = Path(settings.DATA_DIR) / settings.SCANNER_RESULTS_DIR_NAME
     path.mkdir(parents=True, exist_ok=True)
     return path
+
+def get_optimization_dir(settings: "Settings | None" = None) -> Path:
+    from bist_signal_bot.config.settings import Settings
+    if settings is None:
+        settings = Settings()
+    path = get_data_dir(settings) / getattr(settings, "OPTIMIZATION_RESULTS_DIR_NAME", "optimization")
+    path.mkdir(parents=True, exist_ok=True)
+    return path

@@ -455,3 +455,17 @@ python -m bist_signal_bot scan recent
 # View scanner config
 python -m bist_signal_bot scan config
 ```
+
+### Phase 34: Strategy Optimizer v1
+- **Grid and Random Search**: Systematically test or randomly sample parameter combinations to find optimal settings using past data. Random search uses a deterministic seed for reproducibility.
+- **Walk-Forward Optimization**: Automatically generate out-of-sample (OOS) testing windows, training parameters on past data and testing on forward data to reduce the risk of curve fitting. Provides parameter stability scores and overfit warnings.
+- **Objective Metrics & Constraints**: Rank parameters by Total Return, Sharpe, Sortino, Calmar, Profit Factor, Max Drawdown, or a customizable Composite Score. Exclude parameter sets that fall below minimum trade counts, exceed max drawdown thresholds, or fail to achieve positive returns.
+- **Robustness**: Does not mutate original dataframes, enforces offline-only tests, restricts huge grid limits, and exports reports into JSON/CSV/Markdown natively.
+- **Important Disclaimer**: Optimizer output is solely for past-data research. Past optimized parameters do not guarantee future results. This module does not provide investment advice, does not use a broker API, sends no real orders, uses no paid services, and does not provide HTML dashboards or web scraping.
+
+### Phase 34: Strategy Optimizer v1
+- **Grid and Random Search**: Systematically test or randomly sample parameter combinations to find optimal settings using past data. Random search uses a deterministic seed for reproducibility.
+- **Walk-Forward Optimization**: Automatically generate out-of-sample (OOS) testing windows, training parameters on past data and testing on forward data to reduce the risk of curve fitting. Provides parameter stability scores and overfit warnings.
+- **Objective Metrics & Constraints**: Rank parameters by Total Return, Sharpe, Sortino, Calmar, Profit Factor, Max Drawdown, or a customizable Composite Score. Exclude parameter sets that fall below minimum trade counts, exceed max drawdown thresholds, or fail to achieve positive returns.
+- **Robustness**: Does not mutate original dataframes, enforces offline-only tests, restricts huge grid limits, and exports reports into JSON/CSV/Markdown natively.
+- **Important Disclaimer**: Optimizer output is solely for past-data research. Past optimized parameters do not guarantee future results. This module does not provide investment advice, does not use a broker API, sends no real orders, uses no paid services, and does not provide HTML dashboards or web scraping.

@@ -3095,6 +3095,9 @@ def run_portfolio_risk_evaluate(args, ctx):
         from bist_signal_bot.data.yfinance_provider import YFinanceProvider
         provider = YFinanceProvider(settings=settings)
 
+    if not symbols:
+        print("No valid data fetched")
+        return 1
     data_by_sym = {}
     for s in symbols:
         try:
@@ -3204,6 +3207,9 @@ def run_portfolio_risk_correlation(args, ctx):
         from bist_signal_bot.data.yfinance_provider import YFinanceProvider
         provider = YFinanceProvider(settings=ctx.settings)
 
+    if not symbols:
+        print("No valid data fetched")
+        return 1
     data_by_sym = {}
     for s in symbols:
         try:
@@ -3279,4 +3285,151 @@ def cmd_scan(args, app_context: ApplicationContext) -> int:
         print_output({"scanner_enabled": True}, as_json=getattr(args, 'json', False))
     else:
         print_output({"error": "unknown subcommand"}, as_json=getattr(args, 'json', False))
+    return 0
+
+# OPTIMIZATION CLI
+def cmd_optimize(args, app_context: ApplicationContext) -> int:
+    from bist_signal_bot.optimization.engine import OptimizationEngine
+    from bist_signal_bot.optimization.storage import OptimizationResultStore
+    from bist_signal_bot.optimization.models import OptimizationMethod, ObjectiveMetric
+    from bist_signal_bot.optimization.reporting import format_optimization_text
+    import json
+
+    if args.opt_command == "config":
+        safe = {k: v for k, v in app_context.settings.model_dump().items() if "OPTIMIZATION" in k}
+        if getattr(args, "json", False):
+            print(json.dumps(safe, indent=2))
+        else:
+            for k, v in safe.items():
+                print(f"{k}: {v}")
+        return 0
+
+    if args.opt_command == "recent":
+        store = OptimizationResultStore(app_context.settings)
+        recent = store.list_recent_optimizations(limit=getattr(args, 'limit', 20))
+        if getattr(args, "json", False):
+            print(json.dumps(recent, indent=2))
+        else:
+            for r in recent:
+                 print(f"{r['date']} - {r['dir']} - {r['strategy']} - {r['symbol']} - {r['method']} - Score: {r.get('best_score')}")
+        return 0
+
+    if args.opt_command == "search-space":
+        from bist_signal_bot.optimization.search_space import SearchSpaceBuilder
+        space = SearchSpaceBuilder.default_search_space_for_strategy(args.strategy)
+        res = [s.model_dump() if hasattr(s, "model_dump") else s.dict() for s in space]
+        if getattr(args, "json", False):
+            print(json.dumps(res, indent=2))
+        else:
+            print(f"Default Search Space for {args.strategy}:")
+            for s in space:
+                 if s.values: print(f"  {s.name}: {s.values}")
+                 elif s.choices: print(f"  {s.name}: {s.choices}")
+                 else: print(f"  {s.name}: {s.min_value} to {s.max_value} step {s.step}")
+        return 0
+
+    # Strategy / walk-forward
+    if getattr(args, "source", "local") == "mock":
+        from bist_signal_bot.data.mock_provider import MockMarketDataProvider
+        provider = MockMarketDataProvider()
+    else:
+        from bist_signal_bot.data.yfinance_provider import YFinanceProvider
+        provider = YFinanceProvider(settings=app_context.settings)
+
+    try:
+        df = provider.fetch_ohlcv(args.symbol, getattr(args, "timeframe", "1d"), getattr(args, "rows", 1000))
+    except Exception as e:
+        print(f"Failed to fetch data: {e}")
+        return 1
+
+    from bist_signal_bot.backtesting.engine import BacktestEngine
+    engine = OptimizationEngine(
+         backtest_engine=BacktestEngine(
+             strategy_engine=None, cost_engine=None, settings=app_context.settings
+         ),
+         settings=app_context.settings, logger=app_context.logger
+    )
+
+    # Needs real instances here ideally, but engine init handles it
+
+    config = engine.build_default_config()
+
+    if hasattr(args, "method") and args.method:
+        config.method = OptimizationMethod(args.method)
+    elif args.opt_command == "walk-forward":
+        config.method = OptimizationMethod.WALK_FORWARD_GRID
+
+    if hasattr(args, "objective") and args.objective:
+        config.objective = ObjectiveMetric(args.objective)
+
+    if hasattr(args, "max_combinations") and args.max_combinations:
+        config.max_combinations = args.max_combinations
+    if hasattr(args, "seed") and args.seed:
+        config.random_seed = args.seed
+    if hasattr(args, "top") and args.top:
+        config.top_n = args.top
+
+    # constraints
+    if hasattr(args, "min_trades") and args.min_trades is not None:
+         config.constraints.min_trades = args.min_trades
+    if hasattr(args, "max_drawdown") and args.max_drawdown is not None:
+         config.constraints.max_drawdown_pct = args.max_drawdown
+    if hasattr(args, "min_profit_factor") and args.min_profit_factor is not None:
+         config.constraints.min_profit_factor = args.min_profit_factor
+    if hasattr(args, "require_positive_return") and args.require_positive_return:
+         config.constraints.require_positive_return = True
+
+    # walk-forward parameters
+    if hasattr(args, "train_window") and args.train_window:
+         config.train_window_rows = args.train_window
+    if hasattr(args, "test_window") and args.test_window:
+         config.test_window_rows = args.test_window
+    if hasattr(args, "step") and args.step:
+         config.step_rows = args.step
+
+    spaces = engine.parse_cli_search_spaces(getattr(args, "param_range", None), args.strategy)
+
+    result = engine.optimize(args.strategy, args.symbol, df, search_spaces=spaces, config=config)
+
+    if getattr(args, "save_report", False) or getattr(app_context.settings, "OPTIMIZATION_SAVE_REPORT", False):
+         store = OptimizationResultStore(app_context.settings)
+         fmt = getattr(args, "format", "all")
+         if not fmt: fmt = "all"
+         formats = [f.strip() for f in fmt.split(",")]
+         store.save_result(result, formats=formats)
+
+    from bist_signal_bot.core.audit import AuditLogger, AuditEventType
+    from bist_signal_bot.optimization.models import OptimizationResult
+    from bist_signal_bot.notifications.formatter import NotificationFormatter
+    from bist_signal_bot.notifications.manager import NotificationManager
+
+    audit = AuditLogger(app_context.settings)
+    audit.log(
+        AuditEventType("OPTIMIZATION_COMPLETED"),
+        f"Optimization completed for {args.strategy} on {args.symbol}",
+        {
+            "strategy_name": args.strategy, "symbol": args.symbol, "method": config.method.value,
+            "no_real_order_sent": True
+        }
+    )
+
+    if getattr(app_context.settings, "ENABLE_TELEGRAM", False):
+         nm = NotificationManager(app_context.settings)
+         formatter = NotificationFormatter(app_context.settings)
+         if isinstance(result, OptimizationResult):
+              msg = formatter.format_optimization_result(result)
+         else:
+              msg = formatter.format_walk_forward_optimization_result(result)
+         nm.send_message(msg)
+
+    if getattr(args, "json", False):
+         import json
+         from bist_signal_bot.optimization.reporting import optimization_result_to_dict, walk_forward_optimization_to_dict
+         if isinstance(result, OptimizationResult):
+             print(json.dumps(optimization_result_to_dict(result), indent=2, default=str))
+         else:
+             print(json.dumps(walk_forward_optimization_to_dict(result), indent=2, default=str))
+    else:
+         print(format_optimization_text(result))
+
     return 0

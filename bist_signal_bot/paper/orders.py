@@ -39,7 +39,7 @@ class PaperOrderManager:
 
         if risk_decision and risk_decision.status.value != "APPROVED":
              status = PaperOrderStatus.REJECTED
-             reject_reason = f"Risk rejected: {risk_decision.reasons[0] if risk_decision.reasons else 'No reason provided'}"
+             reject_reason = f"Risk rejected: {risk_decision.issues[0] if getattr(risk_decision, 'issues', None) else 'No reason provided'}"
 
         if portfolio_decision and portfolio_decision.status.value != "APPROVED":
              status = PaperOrderStatus.REJECTED
@@ -54,7 +54,7 @@ class PaperOrderManager:
             status=status,
             quantity=quantity,
             requested_price=requested_price,
-            signal_id=signal.signal_id if signal else None,
+            signal_id=getattr(signal, "signal_id", None),
             strategy_name=signal.strategy_name if signal else None,
             risk_decision_summary=risk_decision.model_dump() if risk_decision else {},
             portfolio_decision_summary=portfolio_decision.model_dump() if portfolio_decision else {},

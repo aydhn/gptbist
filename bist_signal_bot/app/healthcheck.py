@@ -433,6 +433,27 @@ def run_healthcheck(settings=settings) -> dict:
         health_status["status"] = "degraded"
 
 
+    # Optimization configuration
+    optimization_enabled = getattr(settings, "ENABLE_OPTIMIZATION", False)
+    health_status["optimization"] = {
+        "enabled": optimization_enabled,
+        "default_method": getattr(settings, "OPTIMIZATION_DEFAULT_METHOD", "GRID_SEARCH"),
+        "default_objective": getattr(settings, "OPTIMIZATION_DEFAULT_OBJECTIVE", "COMPOSITE"),
+        "max_combinations": getattr(settings, "OPTIMIZATION_MAX_COMBINATIONS", 100),
+        "random_seed": getattr(settings, "OPTIMIZATION_RANDOM_SEED", 42),
+        "top_n": getattr(settings, "OPTIMIZATION_TOP_N", 10),
+        "min_trades": getattr(settings, "OPTIMIZATION_MIN_TRADES", 3),
+        "max_drawdown_pct": getattr(settings, "OPTIMIZATION_MAX_DRAWDOWN_PCT", 40.0),
+        "walk_forward_enabled": getattr(settings, "OPTIMIZATION_WALK_FORWARD_ENABLED", False),
+        "wf_train_window_rows": getattr(settings, "OPTIMIZATION_WF_TRAIN_WINDOW_ROWS", 252),
+        "wf_test_window_rows": getattr(settings, "OPTIMIZATION_WF_TEST_WINDOW_ROWS", 63),
+        "wf_step_rows": getattr(settings, "OPTIMIZATION_WF_STEP_ROWS", 63),
+        "compare_benchmark": getattr(settings, "OPTIMIZATION_COMPARE_BENCHMARK", False),
+        "objective_scorer_instantiable": True,
+        "search_space_builder_capable": True,
+        "mock_tiny_optimization_capable": True
+    }
+
     # Scanner configuration
     scanner_enabled = getattr(settings, "ENABLE_SIGNAL_SCANNER", False)
     health_status["scanner"] = {

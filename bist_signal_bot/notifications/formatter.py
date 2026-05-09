@@ -517,3 +517,71 @@ def format_divergence_result(result, symbol: str | None = None) -> str:
     def format_scan_top_candidates(self, report: Any, limit: int = 5) -> str:
         # Alias or similar behavior
         return self.format_scan_report(report)
+
+    def format_optimization_result(self, result: Any) -> str:
+        summary = result.summary()
+        lines = [
+            "<b>BIST Bot Optimization Özeti</b>",
+            "",
+            f"Sembol: {self._escape(result.symbol)}",
+            f"Strateji: {self._escape(result.strategy_name)}",
+            f"Method: {self._escape(result.method.value)}",
+            f"Objective: {self._escape(result.objective.value)}",
+            f"Trial: {result.total_trials_run}",
+            f"Best Score: {summary.get('best_score', 'N/A')}",
+            f"Best Params: {self._escape(str(summary.get('best_params')))}"
+        ]
+
+        if result.best_trial and result.best_trial.performance_report:
+             pr = result.best_trial.performance_report
+             lines.append(f"Best Return: {pr.return_metrics.total_return_pct:.2f}%" if pr.return_metrics.total_return_pct is not None else "Best Return: N/A")
+             lines.append(f"Max DD: {pr.risk_metrics.max_drawdown_pct:.2f}%" if pr.risk_metrics.max_drawdown_pct is not None else "Max DD: N/A")
+             lines.append(f"Sharpe: {pr.risk_adjusted_metrics.sharpe_ratio:.2f}" if pr.risk_adjusted_metrics.sharpe_ratio is not None else "Sharpe: N/A")
+
+        lines.extend([
+            "",
+            "<i>Bu çıktı geçmiş veri optimizasyon araştırmasıdır.</i>",
+            "<i>Gelecek performans garantisi değildir.</i>",
+            "<i>Yatırım tavsiyesi değildir.</i>",
+            "<i>Gerçek emir gönderilmedi.</i>"
+        ])
+
+        text = "\n".join(lines)
+
+        forbidden_phrases = ["kesin al", "kesin sat", "garanti getiri", "risksiz", "yüzde yüz"]
+        for p in forbidden_phrases:
+            if p in text.lower():
+                 return "<b>[WARNING]</b>\nOptimizasyon çıktısında yasaklı ifade saptandı. İçerik gizlendi."
+
+        return text
+
+    def format_walk_forward_optimization_result(self, result: Any) -> str:
+        summary = result.summary()
+        lines = [
+            "<b>BIST Bot WF Optimization Özeti</b>",
+            "",
+            f"Sembol: {self._escape(result.symbol)}",
+            f"Strateji: {self._escape(result.strategy_name)}",
+            f"Splits: {len(result.split_results)}",
+            f"Status: {self._escape(result.status.value)}",
+            f"Stability: {summary.get('parameter_stability_score', 0):.1f}%",
+            f"Mean OOS Return: {summary.get('mean_oos_return_pct')}",
+            f"Positive OOS Pct: {summary.get('positive_oos_split_pct')}",
+        ]
+
+        lines.extend([
+            "",
+            "<i>Bu çıktı geçmiş veri optimizasyon araştırmasıdır.</i>",
+            "<i>Gelecek performans garantisi değildir.</i>",
+            "<i>Yatırım tavsiyesi değildir.</i>",
+            "<i>Gerçek emir gönderilmedi.</i>"
+        ])
+
+        text = "\n".join(lines)
+
+        forbidden_phrases = ["kesin al", "kesin sat", "garanti getiri", "risksiz", "yüzde yüz"]
+        for p in forbidden_phrases:
+            if p in text.lower():
+                 return "<b>[WARNING]</b>\nOptimizasyon çıktısında yasaklı ifade saptandı. İçerik gizlendi."
+
+        return text
