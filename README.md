@@ -479,3 +479,12 @@ python -m bist_signal_bot scan config
 - **Leakage Riskleri ve Guard:** Label kolonlarının feature kolonlarından kesinlikle ayrılması, train/test split sırasında zaman sıralamasının korunması sağlanarak Look-Ahead Bias engellenmiştir.
 - **Preprocessing:** İsteğe bağlı outlier kesme (winsorize) ve eksik değer tamamlama modülleri mevcuttur. Standardizasyon, test verisine bilgi sızdırmamak adına bu fazda varsayılan olarak kapalıdır ve asıl ML eğitim pipeline'ına bırakılması tavsiye edilir.
 - **Yatırım Tavsiyesi ve Broker API:** Kesinlikle hiçbir gerçek emir gönderilmemiştir, HTML scraping veya ücretli servisler kullanılmamaktadır.
+
+## Phase 37 - ML Prediction Filter & Integrations
+This phase introduces a strictly research-only ML Inference filter into the application.
+- **Not investment advice. No order sent.**
+- Integrated safely into StrategyEngine, ScannerEngine, BacktestEngine (using time-series loc capping to prevent look-ahead bias), and PaperTradingEngine.
+- Evaluates model metrics like probability and regression output safely, blending them via configurations (`WEIGHTED_AVERAGE`, `ADDITIVE_BONUS`, `PENALTY_ONLY`).
+- Verifies exact feature schema alignments before passing data. Reject modes guarantee strict shape matching.
+- **Security Warning:** Model artifacts rely on joblib/pickle. Only load local artifacts trusted by your own runtime generation.
+- CLI commands `ml-filter` generated for testing models offline on local or mocked historical data.

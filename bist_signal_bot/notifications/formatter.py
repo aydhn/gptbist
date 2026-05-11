@@ -657,3 +657,15 @@ def format_ml_prediction_result(result) -> str:
     lines.append("")
     lines.append("<i>Bu çıktı ML araştırma çıktısıdır. Tahminler yatırım tavsiyesi değildir. Gerçek emir gönderilmedi.</i>")
     return "\n".join(lines)
+
+def format_ml_inference_result(result) -> str:
+    from bist_signal_bot.ml.inference.reporting import format_ml_inference_text
+    return f"<b>BIST Bot ML Filter Özeti</b>\n\n<pre>{format_ml_inference_text(result)}</pre>"
+
+def format_ml_signal_filter_result(result) -> str:
+    from bist_signal_bot.ml.inference.reporting import format_ml_signal_filter_text
+    return f"<b>BIST Bot ML Filter Özeti</b>\n\n<pre>{format_ml_signal_filter_text(result)}</pre>"
+
+def format_ml_inference_batch_result(batch) -> str:
+    from bist_signal_bot.ml.inference.reporting import format_ml_batch_text
+    return f"<b>BIST Bot ML Filter Özeti</b>\n\n<pre>{format_ml_batch_text(batch)}</pre>"

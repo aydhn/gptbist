@@ -90,6 +90,18 @@ class ScanRanker:
         sig = result.signal
         risk = result.risk_decision
 
+
+        if sort_key.value == "ML_SCORE":
+            if sig and "ml_prediction_score" in sig.metadata:
+                return float(sig.metadata["ml_prediction_score"])
+            return 0.0
+
+        if sort_key.value == "ML_PROBABILITY":
+            if sig and "ml_probability_positive" in sig.metadata:
+                val = sig.metadata["ml_probability_positive"]
+                return float(val) if val is not None else 0.0
+            return 0.0
+
         if sort_key == ScanSortKey.FINAL_SCORE:
             if risk and risk.final_score is not None: return risk.final_score
             if sig and sig.score is not None: return sig.score

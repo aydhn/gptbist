@@ -429,3 +429,21 @@ class MLModelRegistryError(MLTrainingError):
 
 class MLModelStorageError(MLTrainingError):
     pass
+
+class MLInferenceError(BistSignalBotError):
+    pass
+
+class MLFeatureAlignmentError(MLInferenceError):
+    pass
+
+class MLFilterError(MLInferenceError):
+    pass
+
+class MLScoreError(MLInferenceError):
+    pass
+
+class MLSignalIntegrationError(MLInferenceError):
+    pass
+
+class MLModelMismatchError(MLInferenceError):
+    pass
