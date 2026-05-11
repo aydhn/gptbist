@@ -2,7 +2,7 @@ from typing import Any
 from pathlib import Path
 
 from bist_signal_bot.config.settings import Settings
-from bist_signal_bot.config.settings import settings as default_settings
+from bist_signal_bot.config.settings import Settings, settings as default_settings
 from bist_signal_bot.data.models import DataVendor, Timeframe
 from bist_signal_bot.data.symbol_utils import ensure_valid_internal_symbol
 
@@ -134,9 +134,20 @@ def get_optimization_dir(settings: "Settings | None" = None) -> Path:
 def get_ml_feature_store_dir(settings=None) -> Path:
     """Gets the path to the ML feature store directory."""
     if settings is None:
-        from bist_signal_bot.config.settings import settings as default_settings
+        from bist_signal_bot.config.settings import Settings, settings as default_settings
         settings = default_settings
 
     store_dir = get_data_dir(settings) / getattr(settings, "ML_FEATURE_STORE_DIR_NAME", "ml/features")
     store_dir.mkdir(parents=True, exist_ok=True)
     return store_dir
+
+
+def get_ml_models_dir(settings: Settings | None = None) -> Path:
+    from bist_signal_bot.config.settings import Settings, settings as default_settings
+    settings = settings or default_settings
+    return get_data_dir() / settings.ML_MODELS_DIR_NAME
+
+def get_ml_training_dir(settings: Settings | None = None) -> Path:
+    from bist_signal_bot.config.settings import Settings, settings as default_settings
+    settings = settings or default_settings
+    return get_data_dir() / settings.ML_TRAINING_DIR_NAME
