@@ -1,3 +1,5 @@
+from bist_signal_bot.config.settings import Settings
+from typing import Any
 import platform
 import sys
 import tempfile
@@ -477,3 +479,61 @@ def run_healthcheck(settings=settings) -> dict:
         "report_store_instantiable": True
     }
     return health_status
+
+def check_ml_dataset(settings: Settings) -> dict[str, Any]:
+    from bist_signal_bot.ml.feature_builder import MLFeatureBuilder
+    from bist_signal_bot.ml.dataset_builder import MLDatasetBuilder
+    from bist_signal_bot.data.data_service import MarketDataService
+    import pandas as pd
+
+    ml_status = {
+        "enabled": getattr(settings, "ENABLE_ML_DATASET", False),
+        "default_task_type": getattr(settings, "ML_DEFAULT_TASK_TYPE", "CLASSIFICATION"),
+        "default_feature_level": getattr(settings, "ML_DEFAULT_FEATURE_LEVEL", "FULL"),
+        "dataset_builder_instantiable": False,
+        "label_builder_capable": False,
+        "leakage_guard_capable": False,
+        "mock_tiny_dataset_build_capable": False,
+    }
+
+    if not ml_status["enabled"]:
+        return ml_status
+
+    try:
+        data_service = MarketDataService(settings=settings)
+        builder = MLDatasetBuilder(data_service=data_service, settings=settings)
+        ml_status["dataset_builder_instantiable"] = True
+    except Exception as e:
+        ml_status["error"] = f"Failed to instantiate MLDatasetBuilder: {e}"
+        return ml_status
+
+    try:
+        from bist_signal_bot.ml.labels import LabelBuilder
+        from bist_signal_bot.ml.models import LabelConfig, LabelType
+        label_builder = LabelBuilder(settings=settings)
+        test_df = pd.DataFrame({"close": [10, 11, 12, 13, 14]})
+        lbl_config = LabelConfig(label_type=LabelType.FORWARD_RETURN, horizon_bars=1)
+        res_df = label_builder.add_labels(test_df, lbl_config)
+        ml_status["label_builder_capable"] = "label_fwd_return_1" in res_df.columns
+    except Exception:
+        ml_status["label_builder_capable"] = False
+
+    try:
+        from bist_signal_bot.ml.leakage import MLLeakageGuard
+        guard = MLLeakageGuard()
+        guard.validate_no_future_feature_columns(pd.DataFrame(), ["feat_1", "feat_2"])
+        ml_status["leakage_guard_capable"] = True
+    except Exception:
+        ml_status["leakage_guard_capable"] = False
+
+    try:
+        req = MLDatasetBuilder.build_default_request(["MOCK"])
+        req.rows = 20
+        req.source = "mock"
+        req.save = False
+        res = builder.build_dataset(req)
+        ml_status["mock_tiny_dataset_build_capable"] = res.status.value in ["SUCCESS", "PARTIAL_SUCCESS"]
+    except Exception:
+        ml_status["mock_tiny_dataset_build_capable"] = False
+
+    return ml_status

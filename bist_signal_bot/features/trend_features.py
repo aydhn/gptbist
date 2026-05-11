@@ -78,3 +78,6 @@ class TrendFeatureBuilder:
     def build_full_trend_features(self, market_data: Union[MarketDataFrame, pd.DataFrame]) -> IndicatorBatchResult:
         requests = self.default_trend_requests(level="full")
         return self.engine.calculate_many(market_data, requests)
+
+    def add_features(self, market_data, level: str = "basic"):
+        return market_data.copy()

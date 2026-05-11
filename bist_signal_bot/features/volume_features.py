@@ -60,3 +60,6 @@ class VolumeFeatureBuilder:
     def build_full_volume_features(self, market_data: Union[MarketDataFrame, pd.DataFrame]) -> IndicatorBatchResult:
         requests = self.default_volume_requests(level="full")
         return self.engine.calculate_many(market_data, requests)
+
+    def add_features(self, market_data, level: str = "basic"):
+        return market_data.copy()

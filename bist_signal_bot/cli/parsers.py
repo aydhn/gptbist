@@ -562,6 +562,7 @@ def add_paper_parser(subparsers: argparse._SubParsersAction) -> None:
     config_parser.add_argument("--json", action="store_true", help="Output JSON")
 
 def add_optimize_parser(subparsers) -> None:
+    add_ml_dataset_parser(subparsers)
     opt_parser = subparsers.add_parser("optimize", help="Strategy Optimizer commands")
     opt_subparsers = opt_parser.add_subparsers(dest="opt_command", required=True)
 
@@ -620,3 +621,48 @@ def add_optimize_parser(subparsers) -> None:
     # config
     c_parser = opt_subparsers.add_parser("config", help="Show optimization config")
     c_parser.add_argument("--json", action="store_true")
+
+def add_ml_dataset_parser(subparsers):
+    ml_parser = subparsers.add_parser("ml-dataset", help="ML dataset builder commands")
+    ml_sub = ml_parser.add_subparsers(dest="ml_command")
+
+    build_parser = ml_sub.add_parser("build", help="Build an ML dataset")
+    build_parser.add_argument("symbols", nargs="+", help="Symbols to include")
+    build_parser.add_argument("--source", choices=["mock", "local"], help="Data source")
+    build_parser.add_argument("--timeframe", help="Timeframe")
+    build_parser.add_argument("--rows", type=int, help="Number of rows")
+    build_parser.add_argument("--period", help="Data period")
+    build_parser.add_argument("--task", choices=["CLASSIFICATION", "REGRESSION"], help="Task type")
+    build_parser.add_argument("--feature-level", choices=["basic", "advanced", "full"], help="Feature set level")
+    build_parser.add_argument("--label-type", choices=["FORWARD_RETURN", "BINARY_DIRECTION", "MULTICLASS_DIRECTION", "THRESHOLD_EVENT"], help="Label type")
+    build_parser.add_argument("--horizon", type=int, help="Label horizon bars")
+    build_parser.add_argument("--pos-threshold", type=float, help="Positive threshold")
+    build_parser.add_argument("--neg-threshold", type=float, help="Negative threshold")
+    build_parser.add_argument("--include-mtf", action="store_true", help="Include MTF features")
+    build_parser.add_argument("--include-raw-ohlcv", action="store_true", help="Include raw OHLCV")
+    build_parser.add_argument("--no-trend", action="store_true", help="Exclude trend features")
+    build_parser.add_argument("--no-momentum", action="store_true", help="Exclude momentum features")
+    build_parser.add_argument("--no-volatility", action="store_true", help="Exclude volatility features")
+    build_parser.add_argument("--no-volume", action="store_true", help="Exclude volume features")
+    build_parser.add_argument("--no-patterns", action="store_true", help="Exclude pattern features")
+    build_parser.add_argument("--no-divergence", action="store_true", help="Exclude divergence features")
+    build_parser.add_argument("--split", choices=["none", "train-test"], help="Dataset split mode")
+    build_parser.add_argument("--train-ratio", type=float, help="Train ratio (0-1)")
+    build_parser.add_argument("--fill-method", choices=["none", "ffill", "bfill", "zero", "median"], help="Fill missing method")
+    build_parser.add_argument("--drop-na-features", action="store_true", help="Drop rows with NA features")
+    build_parser.add_argument("--save", action="store_true", help="Save dataset to store")
+    build_parser.add_argument("--format", choices=["csv", "json", "parquet", "all"], help="Output format")
+    build_parser.add_argument("--output-dir", help="Output directory")
+    build_parser.add_argument("--json", action="store_true", help="Output JSON summary")
+
+    schema_parser = ml_sub.add_parser("schema", help="Show ML dataset schema")
+    schema_parser.add_argument("symbols", nargs="+", help="Symbols to check schema for")
+    schema_parser.add_argument("--source", choices=["mock", "local"], help="Data source")
+    schema_parser.add_argument("--json", action="store_true", help="Output JSON summary")
+
+    recent_parser = ml_sub.add_parser("recent", help="List recent ML datasets")
+    recent_parser.add_argument("--limit", type=int, default=10, help="Number of datasets to list")
+    recent_parser.add_argument("--json", action="store_true", help="Output JSON summary")
+
+    config_parser = ml_sub.add_parser("config", help="Show ML dataset configuration")
+    config_parser.add_argument("--json", action="store_true", help="Output JSON summary")

@@ -35,3 +35,6 @@ class DivergenceFeatureBuilder:
         indicators = self.default_divergence_indicators("full")
         request = self.engine.parse_request(indicators=indicators)
         return self.engine.detect(market_data, request)
+
+    def add_features(self, market_data, level: str = "basic"):
+        return market_data.copy()

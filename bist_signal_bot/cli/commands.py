@@ -3433,3 +3433,137 @@ def cmd_optimize(args, app_context: ApplicationContext) -> int:
          print(format_optimization_text(result))
 
     return 0
+
+import json
+
+def handle_ml_dataset_command(args, settings):
+    from bist_signal_bot.ml.dataset_builder import MLDatasetBuilder
+    from bist_signal_bot.ml.models import MLDatasetRequest, FeatureStoreFormat, DatasetSplitMode
+    from bist_signal_bot.ml.feature_store import FeatureStore
+    from bist_signal_bot.ml.reporting import format_ml_dataset_text
+
+    if args.ml_command == "build":
+        return _handle_ml_build(args, settings)
+    elif args.ml_command == "schema":
+        return _handle_ml_schema(args, settings)
+    elif args.ml_command == "recent":
+        return _handle_ml_recent(args, settings)
+    elif args.ml_command == "config":
+        return _handle_ml_config(args, settings)
+
+def _get_formats(format_str):
+    from bist_signal_bot.ml.models import FeatureStoreFormat
+    if not format_str:
+        return []
+    if format_str == "all":
+        return [FeatureStoreFormat.CSV, FeatureStoreFormat.JSON, FeatureStoreFormat.PARQUET]
+    return [FeatureStoreFormat(f.upper()) for f in format_str.split(",")]
+
+def _handle_ml_build(args, settings):
+    from bist_signal_bot.data.data_service import MarketDataService
+    from bist_signal_bot.ml.dataset_builder import MLDatasetBuilder
+    from bist_signal_bot.ml.models import DatasetSplitMode
+    from bist_signal_bot.ml.reporting import format_ml_dataset_text
+
+    from bist_signal_bot.data.mock_provider import MockMarketDataProvider
+    data_service = MarketDataService(provider=MockMarketDataProvider())
+    builder = MLDatasetBuilder(data_service=data_service, settings=settings)
+
+    request = MLDatasetBuilder.build_default_request(args.symbols)
+
+    if getattr(args, "source", None): request.source = args.source
+    if getattr(args, "timeframe", None): request.timeframe = args.timeframe
+    if getattr(args, "rows", None): request.rows = args.rows
+    if getattr(args, "period", None): request.period = args.period
+
+    if getattr(args, "task", None): request.task_type = args.task
+    if getattr(args, "feature_level", None): request.feature_config.feature_set_level = args.feature_level.upper()
+    if getattr(args, "label_type", None): request.label_config.label_type = args.label_type.upper()
+    if getattr(args, "horizon", None): request.label_config.horizon_bars = args.horizon
+    if getattr(args, "pos_threshold", None): request.label_config.positive_threshold = args.pos_threshold
+    if getattr(args, "neg_threshold", None): request.label_config.negative_threshold = args.neg_threshold
+
+    if getattr(args, "include_mtf", False): request.feature_config.include_mtf = True
+    if getattr(args, "include_raw_ohlcv", False): request.feature_config.include_raw_ohlcv = True
+    if getattr(args, "no_trend", False): request.feature_config.include_trend = False
+    if getattr(args, "no_momentum", False): request.feature_config.include_momentum = False
+    if getattr(args, "no_volatility", False): request.feature_config.include_volatility = False
+    if getattr(args, "no_volume", False): request.feature_config.include_volume = False
+    if getattr(args, "no_patterns", False): request.feature_config.include_patterns = False
+    if getattr(args, "no_divergence", False): request.feature_config.include_divergence = False
+
+    if getattr(args, "split", None):
+        if args.split == "none": request.split_mode = DatasetSplitMode.NONE
+        elif args.split == "train-test": request.split_mode = DatasetSplitMode.TRAIN_TEST
+    if getattr(args, "train_ratio", None): request.train_ratio = args.train_ratio
+    if getattr(args, "fill_method", None): request.preprocessing_config.fill_method = args.fill_method
+    if getattr(args, "drop_na_features", False): request.preprocessing_config.drop_na_features = True
+
+    if getattr(args, "save", False): request.save = True
+    if getattr(args, "format", None): request.formats = _get_formats(args.format)
+
+    result = builder.build_dataset(request)
+
+    if getattr(args, "json", False):
+        import json
+        print(json.dumps(result.summary(), indent=2))
+    else:
+        print(format_ml_dataset_text(result))
+    return 0
+
+def _handle_ml_schema(args, settings):
+    from bist_signal_bot.data.data_service import MarketDataService
+    from bist_signal_bot.ml.dataset_builder import MLDatasetBuilder
+
+    from bist_signal_bot.data.mock_provider import MockMarketDataProvider
+    data_service = MarketDataService(provider=MockMarketDataProvider())
+    builder = MLDatasetBuilder(data_service=data_service, settings=settings)
+
+    request = MLDatasetBuilder.build_default_request(args.symbols)
+    if getattr(args, "source", None): request.source = args.source
+    request.save = False
+
+    result = builder.build_dataset(request)
+    if getattr(args, "json", False):
+        import json
+        print(json.dumps(result.schema_.summary(), indent=2))
+    else:
+        import json
+        print("Schema Summary:")
+        print(json.dumps(result.schema_.summary(), indent=2))
+    return 0
+
+def _handle_ml_recent(args, settings):
+    from bist_signal_bot.ml.feature_store import FeatureStore
+    store = FeatureStore(settings)
+    recent = store.list_recent_datasets(limit=getattr(args, "limit", 10))
+    if getattr(args, "json", False):
+        import json
+        print(json.dumps(recent, indent=2))
+    else:
+        print(f"Recent Datasets (up to {getattr(args, 'limit', 10)}):")
+        for ds in recent:
+            print(f"- {ds.get('id', 'Unknown')}: {ds.get('symbols', 0)} symbols, {ds.get('row_count', 0)} rows")
+    return 0
+
+def _handle_ml_config(args, settings):
+    from bist_signal_bot.ml.dataset_builder import MLDatasetBuilder
+    req = MLDatasetBuilder.build_default_request(["MOCK"])
+    if getattr(args, "json", False):
+        import json
+        data = {
+            "task_type": req.task_type.value,
+            "feature_config": req.feature_config.model_dump(),
+            "label_config": req.label_config.model_dump(),
+            "preprocessing_config": req.preprocessing_config.model_dump(),
+            "split_mode": req.split_mode.value,
+            "train_ratio": req.train_ratio
+        }
+        print(json.dumps(data, indent=2))
+    else:
+        print("ML Dataset Default Config:")
+        print(f"Task Type: {req.task_type.value}")
+        print(f"Feature Level: {req.feature_config.feature_set_level.value}")
+        print(f"Label Type: {req.label_config.label_type.value} (Horizon: {req.label_config.horizon_bars})")
+        print(f"Split Mode: {req.split_mode.value} (Train Ratio: {req.train_ratio})")
+    return 0

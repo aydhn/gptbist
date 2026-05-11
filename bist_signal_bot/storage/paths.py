@@ -130,3 +130,13 @@ def get_optimization_dir(settings: "Settings | None" = None) -> Path:
     path = get_data_dir(settings) / getattr(settings, "OPTIMIZATION_RESULTS_DIR_NAME", "optimization")
     path.mkdir(parents=True, exist_ok=True)
     return path
+
+def get_ml_feature_store_dir(settings=None) -> Path:
+    """Gets the path to the ML feature store directory."""
+    if settings is None:
+        from bist_signal_bot.config.settings import settings as default_settings
+        settings = default_settings
+
+    store_dir = get_data_dir(settings) / getattr(settings, "ML_FEATURE_STORE_DIR_NAME", "ml/features")
+    store_dir.mkdir(parents=True, exist_ok=True)
+    return store_dir

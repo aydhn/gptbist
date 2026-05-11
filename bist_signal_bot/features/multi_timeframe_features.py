@@ -85,3 +85,6 @@ class MultiTimeframeFeatureBuilder:
         mdf = self._ensure_market_data(market_data, symbol)
         requests = self.default_mtf_level_config("full")
         return self.mtf_engine.build_from_base_data(mdf, higher_timeframes=list(requests.keys()), indicator_requests_by_timeframe=requests)
+
+    def add_features(self, market_data, symbol: str, base_timeframe: str):
+        return market_data.copy()

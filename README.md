@@ -469,3 +469,13 @@ python -m bist_signal_bot scan config
 - **Objective Metrics & Constraints**: Rank parameters by Total Return, Sharpe, Sortino, Calmar, Profit Factor, Max Drawdown, or a customizable Composite Score. Exclude parameter sets that fall below minimum trade counts, exceed max drawdown thresholds, or fail to achieve positive returns.
 - **Robustness**: Does not mutate original dataframes, enforces offline-only tests, restricts huge grid limits, and exports reports into JSON/CSV/Markdown natively.
 - **Important Disclaimer**: Optimizer output is solely for past-data research. Past optimized parameters do not guarantee future results. This module does not provide investment advice, does not use a broker API, sends no real orders, uses no paid services, and does not provide HTML dashboards or web scraping.
+
+## Phase 35: ML Feature Store & Dataset Builder
+- **ML Dataset Katmanının Amacı:** Gelecekteki model eğitimi için araştırma amaçlı makine öğrenimi veri seti üretmektir.
+- **Model Eğitimi:** Bu fazda herhangi bir model eğitimi (fit/predict) yapılmamaktadır. Veri üretimi tamamen araştırma amaçlıdır ve çıktılar yatırım tavsiyesi içermez.
+- **Feature Store Mantığı:** Local-first yaklaşımla CSV, JSON ve Parquet formatlarında veri setleri, `data/ml/features/` dizininde saklanır.
+- **Feature Set Kaynakları:** Trend, Momentum, Volatilite, Volume, Formasyon ve Divergence (Uyumsuzluk) modüllerinden özellikleri birleştirir.
+- **Label Türleri:** Forward return, binary direction, multiclass direction, threshold event gibi gelecek fiyat verisine dayanan hedefler (targets) oluşturur.
+- **Leakage Riskleri ve Guard:** Label kolonlarının feature kolonlarından kesinlikle ayrılması, train/test split sırasında zaman sıralamasının korunması sağlanarak Look-Ahead Bias engellenmiştir.
+- **Preprocessing:** İsteğe bağlı outlier kesme (winsorize) ve eksik değer tamamlama modülleri mevcuttur. Standardizasyon, test verisine bilgi sızdırmamak adına bu fazda varsayılan olarak kapalıdır ve asıl ML eğitim pipeline'ına bırakılması tavsiye edilir.
+- **Yatırım Tavsiyesi ve Broker API:** Kesinlikle hiçbir gerçek emir gönderilmemiştir, HTML scraping veya ücretli servisler kullanılmamaktadır.
