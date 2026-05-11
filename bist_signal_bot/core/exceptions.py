@@ -386,3 +386,24 @@ class OptimizationReportError(OptimizationError):
 
 class OptimizationStorageError(OptimizationError):
     pass
+
+class MLDataError(BistSignalBotError):
+    pass
+
+class MLDatasetError(BistSignalBotError):
+    pass
+
+class MLLabelError(BistSignalBotError):
+    pass
+
+class MLFeatureStoreError(BistSignalBotError):
+    pass
+
+class MLPreprocessingError(BistSignalBotError):
+    pass
+
+class MLLeakageError(BistSignalBotError):
+    pass
+
+class MLSchemaError(BistSignalBotError):
+    pass

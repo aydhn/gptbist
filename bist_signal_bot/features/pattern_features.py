@@ -62,3 +62,6 @@ class PatternFeatureBuilder:
     def build_full_pattern_features(self, market_data: Any) -> PatternBatchResult:
         requests = self.default_pattern_requests("full")
         return self.engine.detect_many(market_data, requests)
+
+    def add_features(self, market_data, level: str = "basic"):
+        return market_data.copy()

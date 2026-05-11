@@ -585,3 +585,25 @@ def format_divergence_result(result, symbol: str | None = None) -> str:
                  return "<b>[WARNING]</b>\nOptimizasyon çıktısında yasaklı ifade saptandı. İçerik gizlendi."
 
         return text
+
+def format_ml_dataset_result(result) -> str:
+    lines = [
+        "BIST Bot ML Dataset Özeti",
+        "",
+        f"Sembol: {', '.join(result.request.symbols) if len(result.request.symbols) <= 5 else f'{len(result.request.symbols)} sembol'}",
+        f"Satır: {result.row_count}",
+        f"Feature: {result.feature_count}",
+        f"Label: {result.label_count}",
+        f"Task: {result.request.task_type.value}",
+        f"Label Horizon: {result.request.label_config.horizon_bars}",
+    ]
+    if result.train_data is not None and result.test_data is not None:
+        lines.append(f"Train/Test: {len(result.train_data)} / {len(result.test_data)}")
+
+    lines.extend([
+        "",
+        "Bu çıktı ML veri seti araştırma çıktısıdır.",
+        "Yatırım tavsiyesi değildir.",
+        "Gerçek emir gönderilmedi."
+    ])
+    return "\n".join(lines)

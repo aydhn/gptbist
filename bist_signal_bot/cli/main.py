@@ -137,7 +137,13 @@ def run_cli(argv: list[str] | None = None) -> int:
         "backtest": dispatch_backtest,
         "validate-backtest": dispatch_validate_backtest,
         "risk": dispatch_risk,
+
+
         "optimize": lambda a, c: __import__("bist_signal_bot.cli.commands", fromlist=["cmd_optimize"]).cmd_optimize(a, c),
+        "ml-dataset": lambda a, c: __import__("bist_signal_bot.cli.commands", fromlist=["handle_ml_dataset_command"]).handle_ml_dataset_command(a, c.settings),
+
+        "ml-dataset": lambda a, c: __import__("bist_signal_bot.cli.commands", fromlist=["handle_ml_dataset_command"]).handle_ml_dataset_command(a, c.settings),
+
 
     }
 
