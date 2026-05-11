@@ -100,3 +100,28 @@ class RiskFilterEngine:
             warnings=warnings,
             score_adjustment=adj
         )
+
+class MLScoreFilter(RiskFilter):
+    def evaluate(self, candidate: SignalCandidate) -> FilterResult:
+        use_ml = getattr(self.settings, "RISK_USE_ML_FILTER", False)
+        if not use_ml:
+            return FilterResult(passed=True)
+
+        reject_missing = getattr(self.settings, "RISK_REJECT_IF_ML_MISSING", False)
+
+        if "ml_prediction_score" not in candidate.metadata:
+            if reject_missing:
+                return FilterResult(passed=False, reason="ML score missing but required by risk filter")
+            return FilterResult(passed=True, reason="ML score missing, but not strictly required")
+
+        score = candidate.metadata["ml_prediction_score"]
+        prob = candidate.metadata.get("ml_probability_positive")
+        min_score = getattr(self.settings, "RISK_MIN_ML_SCORE", 50.0)
+        min_prob = getattr(self.settings, "RISK_MIN_ML_PROBABILITY_POSITIVE", 0.55)
+
+        if score < min_score:
+            return FilterResult(passed=False, reason=f"ML Score {score} < {min_score}")
+        if prob is not None and prob < min_prob:
+            return FilterResult(passed=False, reason=f"ML Probability {prob} < {min_prob}")
+
+        return FilterResult(passed=True, reason="ML Risk Filter Passed")

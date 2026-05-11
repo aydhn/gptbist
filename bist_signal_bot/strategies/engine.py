@@ -14,7 +14,10 @@ from bist_signal_bot.strategies.models import (
     StrategyExecutionIssue
 )
 from bist_signal_bot.signals.models import StrategySignalBatch, SignalCandidate
-from bist_signal_bot.strategies.registry import StrategyRegistry, get_registry
+from bist_signal_bot.strategies.registry import StrategyRegistry
+from bist_signal_bot.ml.inference.engine import MLInferenceEngine
+from bist_signal_bot.ml.inference.models import MLInferenceConfig, MLInferenceMode
+from bist_signal_bot.ml.inference.models import MLFilterDecision, get_registry
 from bist_signal_bot.strategies.context import StrategyContext
 
 class StrategyEngine:
@@ -26,7 +29,8 @@ class StrategyEngine:
         settings: Settings | None = None,
         logger: logging.Logger | None = None
     ):
-        self.registry = registry or get_registry()
+        self.registry = registry
+        self.ml_inference_engine = ml_inference_engine or get_registry()
         self.data_service = data_service
         self.indicator_engine = indicator_engine
         self.settings = settings or Settings()

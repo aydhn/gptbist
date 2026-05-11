@@ -868,6 +868,40 @@ class Settings(BaseSettings):
             raise ValueError("learning_rate must be positive")
         return v
 
+
+    # ML INFERENCE
+    ENABLE_ML_INFERENCE: bool = Field(default=True)
+    ML_INFERENCE_DEFAULT_MODEL_ID: str = Field(default="")
+    ML_INFERENCE_MODE: str = Field(default="SCORE_AND_FILTER")
+    ML_SCORE_BLEND_MODE: str = Field(default="WEIGHTED_AVERAGE")
+    ML_SCORE_WEIGHT: float = Field(default=0.35)
+    ML_STRATEGY_SCORE_WEIGHT: float = Field(default=0.65)
+    ML_MIN_PROBABILITY_POSITIVE: float = Field(default=0.55)
+    ML_MAX_PROBABILITY_NEGATIVE: float = Field(default=0.60)
+    ML_MIN_PREDICTION_SCORE: float = Field(default=50.0)
+    ML_REJECT_ON_MISSING_FEATURES: bool = Field(default=True)
+    ML_ALLOW_EXTRA_FEATURES: bool = Field(default=True)
+    ML_LATEST_ONLY: bool = Field(default=True)
+
+    STRATEGY_USE_ML_FILTER: bool = Field(default=False)
+    STRATEGY_ML_MODEL_ID: str = Field(default="")
+
+    SCANNER_USE_ML_FILTER: bool = Field(default=False)
+    SCANNER_ML_MODEL_ID: str = Field(default="")
+    SCANNER_MIN_ML_SCORE: float = Field(default=50.0)
+    SCANNER_MIN_ML_PROBABILITY: float = Field(default=0.55)
+
+    RISK_USE_ML_FILTER: bool = Field(default=False)
+    RISK_MIN_ML_SCORE: float = Field(default=50.0)
+    RISK_MIN_ML_PROBABILITY_POSITIVE: float = Field(default=0.55)
+    RISK_REJECT_IF_ML_MISSING: bool = Field(default=False)
+
+    BACKTEST_USE_ML_FILTER: bool = Field(default=False)
+    BACKTEST_ML_MODEL_ID: str = Field(default="")
+
+    PAPER_USE_ML_FILTER: bool = Field(default=False)
+    PAPER_ML_MODEL_ID: str = Field(default="")
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
 

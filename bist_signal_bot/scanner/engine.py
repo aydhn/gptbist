@@ -8,6 +8,8 @@ from bist_signal_bot.core.exceptions import ScannerValidationError, ScannerExecu
 from bist_signal_bot.data.data_service import MarketDataService
 from bist_signal_bot.data.symbol_universe import SymbolUniverse
 from bist_signal_bot.strategies.engine import StrategyEngine
+from bist_signal_bot.ml.inference.engine import MLInferenceEngine
+from bist_signal_bot.ml.inference.models import MLInferenceConfig, MLFilterDecision
 from bist_signal_bot.risk.engine import RiskEngine
 from bist_signal_bot.portfolio.risk_engine import PortfolioRiskEngine
 from bist_signal_bot.paper.engine import PaperTradingEngine
@@ -38,6 +40,7 @@ class SignalScannerEngine:
         self.logger = logger or logging.getLogger(__name__)
         self.data_service = data_service
         self.strategy_engine = strategy_engine
+        self.ml_inference_engine = ml_inference_engine
         self.risk_engine = risk_engine or RiskEngine(self.settings)
         self.portfolio_risk_engine = portfolio_risk_engine or PortfolioRiskEngine(self.settings)
         self.paper_engine = paper_engine

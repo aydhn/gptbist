@@ -39,6 +39,8 @@ class ScanSortKey(str, Enum):
     TREND = "TREND"
     LOW_COST = "LOW_COST"
     LOW_VOLATILITY = "LOW_VOLATILITY"
+    ML_SCORE = "ML_SCORE"
+    ML_PROBABILITY = "ML_PROBABILITY"
 
 class ScanRequest(BaseModel):
     model_config = {"arbitrary_types_allowed": True}
