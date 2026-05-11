@@ -607,3 +607,53 @@ def format_ml_dataset_result(result) -> str:
         "Gerçek emir gönderilmedi."
     ])
     return "\n".join(lines)
+
+
+def format_ml_train_result(result) -> str:
+    from bist_signal_bot.ml.training.models import MLTrainResult
+    res: MLTrainResult = result
+    lines = [
+        "🤖 <b>BIST Signal Bot ML Training</b>",
+        f"<b>Status:</b> {res.status.value}",
+        f"<b>Model:</b> {res.config.model_type.value}",
+        f"<b>Task:</b> {res.config.task_type.value}",
+        f"<b>Target:</b> {res.config.target_col}",
+        f"<b>Train/Test:</b> {res.prepared_data_summary.get('train_rows', 0)} / {res.prepared_data_summary.get('test_rows', 0)}"
+    ]
+    if res.classification_metrics:
+        m = res.classification_metrics
+        lines.append(f"<b>Accuracy:</b> {m.accuracy:.4f}" if m.accuracy else "<b>Accuracy:</b> N/A")
+        lines.append(f"<b>F1:</b> {m.f1:.4f}" if m.f1 else "<b>F1:</b> N/A")
+        lines.append(f"<b>ROC AUC:</b> {m.roc_auc:.4f}" if m.roc_auc else "<b>ROC AUC:</b> N/A")
+    elif res.regression_metrics:
+        m = res.regression_metrics
+        lines.append(f"<b>MAE:</b> {m.mae:.4f}" if m.mae else "<b>MAE:</b> N/A")
+        lines.append(f"<b>R2:</b> {m.r2:.4f}" if m.r2 else "<b>R2:</b> N/A")
+
+    if res.artifact and res.artifact.model_id:
+        lines.append(f"<b>Model ID:</b> {res.artifact.model_id}")
+
+    lines.append("")
+    lines.append("<i>Bu çıktı ML araştırma çıktısıdır. Tahminler yatırım tavsiyesi değildir. Gerçek emir gönderilmedi.</i>")
+    return "\n".join(lines)
+
+def format_ml_prediction_result(result) -> str:
+    from bist_signal_bot.ml.training.models import MLPredictionResult
+    res: MLPredictionResult = result
+    lines = [
+        "🤖 <b>BIST Signal Bot ML Prediction</b>",
+        f"<b>Model ID:</b> {res.model_id}",
+        f"<b>Predictions:</b> {res.row_count}",
+        f"<b>Generated:</b> {res.generated_at.strftime('%Y-%m-%d %H:%M:%S')} UTC"
+    ]
+    if res.predictions:
+        lines.append("")
+        for p in res.predictions[:10]:
+            val = f"{p.predicted_value:.4f}" if isinstance(p.predicted_value, float) else str(p.predicted_value)
+            lines.append(f"• <b>{p.symbol}</b>: {val}")
+        if len(res.predictions) > 10:
+            lines.append(f"... ve {len(res.predictions) - 10} sembol daha")
+
+    lines.append("")
+    lines.append("<i>Bu çıktı ML araştırma çıktısıdır. Tahminler yatırım tavsiyesi değildir. Gerçek emir gönderilmedi.</i>")
+    return "\n".join(lines)

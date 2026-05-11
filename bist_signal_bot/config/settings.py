@@ -1,4 +1,4 @@
-from pydantic import Field, model_validator
+from pydantic import Field, model_validator, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from bist_signal_bot.config import validation
@@ -803,6 +803,70 @@ class Settings(BaseSettings):
     OPTIMIZATION_COMPOSITE_DRAWDOWN_WEIGHT: float = Field(default=0.10)
     OPTIMIZATION_COMPOSITE_BENCHMARK_WEIGHT: float = Field(default=0.05)
 
+
+
+    # ML TRAINING
+    ENABLE_ML_TRAINING: bool = Field(default=True)
+    ML_TRAIN_DEFAULT_MODEL_TYPE: str = Field(default="RANDOM_FOREST_CLASSIFIER")
+    ML_TRAIN_DEFAULT_TASK_TYPE: str = Field(default="CLASSIFICATION")
+    ML_TRAIN_TARGET_COL: str = Field(default="label_direction_binary_5")
+    ML_TRAIN_SCALER: str = Field(default="NONE")
+    ML_TRAIN_IMPUTER: str = Field(default="MEDIAN")
+    ML_TRAIN_RATIO: float = Field(default=0.70)
+    ML_TRAIN_RANDOM_SEED: int = Field(default=42)
+    ML_TRAIN_MAX_TRAIN_ROWS: int = Field(default=0)
+    ML_TRAIN_SAVE_MODEL: bool = Field(default=True)
+    ML_TRAIN_SAVE_REPORT: bool = Field(default=False)
+    ML_TRAIN_REPORT_FORMATS: str = Field(default="json,markdown,csv")
+
+    ML_RF_N_ESTIMATORS: int = Field(default=100)
+    ML_RF_MAX_DEPTH: int | None = Field(default=5)
+    ML_RF_MIN_SAMPLES_LEAF: int = Field(default=5)
+    ML_GB_N_ESTIMATORS: int = Field(default=100)
+    ML_GB_LEARNING_RATE: float = Field(default=0.05)
+    ML_GB_MAX_DEPTH: int = Field(default=3)
+    ML_LOGISTIC_MAX_ITER: int = Field(default=1000)
+    ML_CLASS_WEIGHT: str = Field(default="")
+
+    ML_MODELS_DIR_NAME: str = Field(default="ml/models")
+    ML_TRAINING_DIR_NAME: str = Field(default="ml/training")
+    ML_PREDICTION_LATEST_ONLY: bool = Field(default=True)
+    ML_PREDICTION_MAX_ROWS: int = Field(default=50)
+
+    @field_validator("ML_TRAIN_RATIO")
+    @classmethod
+    def validate_ml_train_ratio(cls, v: float) -> float:
+        if not 0.0 <= v <= 1.0:
+            raise ValueError("ML_TRAIN_RATIO must be between 0 and 1")
+        return v
+
+    @field_validator("ML_TRAIN_MAX_TRAIN_ROWS")
+    @classmethod
+    def validate_ml_train_max_rows(cls, v: int) -> int:
+        if v < 0:
+            raise ValueError("ML_TRAIN_MAX_TRAIN_ROWS cannot be negative")
+        return v
+
+    @field_validator("ML_RF_N_ESTIMATORS", "ML_GB_N_ESTIMATORS")
+    @classmethod
+    def validate_n_estimators(cls, v: int) -> int:
+        if v <= 0:
+            raise ValueError("n_estimators must be positive")
+        return v
+
+    @field_validator("ML_RF_MAX_DEPTH")
+    @classmethod
+    def validate_max_depth(cls, v: int | None) -> int | None:
+        if v is not None and v <= 0:
+            raise ValueError("max_depth must be positive")
+        return v
+
+    @field_validator("ML_GB_LEARNING_RATE")
+    @classmethod
+    def validate_learning_rate(cls, v: float) -> float:
+        if v <= 0:
+            raise ValueError("learning_rate must be positive")
+        return v
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 

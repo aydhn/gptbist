@@ -407,3 +407,25 @@ class MLLeakageError(BistSignalBotError):
 
 class MLSchemaError(BistSignalBotError):
     pass
+
+
+class MLTrainingError(BistSignalBotError):
+    pass
+
+class MLTrainingValidationError(MLTrainingError):
+    pass
+
+class MLEstimatorError(MLTrainingError):
+    pass
+
+class MLEvaluationError(MLTrainingError):
+    pass
+
+class MLPredictionError(MLTrainingError):
+    pass
+
+class MLModelRegistryError(MLTrainingError):
+    pass
+
+class MLModelStorageError(MLTrainingError):
+    pass

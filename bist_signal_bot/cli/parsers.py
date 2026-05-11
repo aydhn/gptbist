@@ -666,3 +666,60 @@ def add_ml_dataset_parser(subparsers):
 
     config_parser = ml_sub.add_parser("config", help="Show ML dataset configuration")
     config_parser.add_argument("--json", action="store_true", help="Output JSON summary")
+
+
+def setup_ml_train_parser(subparsers):
+    ml_train_parser = subparsers.add_parser("ml-train", help="Train and evaluate ML models or generate predictions")
+    ml_train_subparsers = ml_train_parser.add_subparsers(dest="ml_train_command", required=True)
+
+    # train command
+    train_parser = ml_train_subparsers.add_parser("train", help="Train an ML model")
+    train_parser.add_argument("--dataset", type=str, help="Path to a pre-built feature dataset (CSV/Parquet)")
+    train_parser.add_argument("--symbols", nargs="+", help="Symbols to build dataset for (if --dataset not provided)")
+    train_parser.add_argument("--source", type=str, default="local", choices=["mock", "local"], help="Data source")
+    train_parser.add_argument("--rows", type=int, help="Number of rows per symbol")
+    train_parser.add_argument("--timeframe", type=str, default="1d", help="Timeframe")
+    train_parser.add_argument("--task", type=str, default="CLASSIFICATION", choices=["CLASSIFICATION", "REGRESSION"], help="ML task type")
+    train_parser.add_argument("--model", type=str, help="Model type (e.g. RANDOM_FOREST_CLASSIFIER, LOGISTIC_REGRESSION, etc.)")
+    train_parser.add_argument("--target", type=str, help="Target column name")
+    train_parser.add_argument("--scaler", type=str, choices=["NONE", "STANDARD", "ROBUST", "MINMAX"], help="Scaler type")
+    train_parser.add_argument("--imputer", type=str, choices=["NONE", "MEDIAN", "MEAN", "ZERO"], help="Imputer type")
+    train_parser.add_argument("--train-ratio", type=float, help="Train/test split ratio (e.g. 0.7)")
+    train_parser.add_argument("--seed", type=int, help="Random seed")
+    train_parser.add_argument("--max-train-rows", type=int, help="Maximum number of train rows")
+    train_parser.add_argument("--model-param", action="append", help="Model hyperparameter (key=value)")
+    train_parser.add_argument("--save-model", action="store_true", help="Save the trained model to the registry")
+    train_parser.add_argument("--save-report", action="store_true", help="Save the training report")
+    train_parser.add_argument("--format", type=str, help="Report formats (json,markdown,csv,all)")
+    train_parser.add_argument("--json", action="store_true", help="Output JSON to stdout")
+
+    # predict command
+    predict_parser = ml_train_subparsers.add_parser("predict", help="Generate predictions using a saved model")
+    predict_parser.add_argument("--model-id", type=str, help="Model ID from the registry")
+    predict_parser.add_argument("--model-path", type=str, help="Direct path to the model directory")
+    predict_parser.add_argument("--dataset", type=str, help="Path to a pre-built feature dataset")
+    predict_parser.add_argument("--symbols", nargs="+", help="Symbols to predict (fetches data dynamically)")
+    predict_parser.add_argument("--source", type=str, default="local", choices=["mock", "local"], help="Data source")
+    predict_parser.add_argument("--rows", type=int, help="Number of rows per symbol")
+    predict_parser.add_argument("--timeframe", type=str, default="1d", help="Timeframe")
+    predict_parser.add_argument("--all-rows", action="store_true", help="Predict for all rows instead of only the latest")
+    predict_parser.add_argument("--json", action="store_true", help="Output JSON to stdout")
+
+    # models command
+    models_parser = ml_train_subparsers.add_parser("models", help="List saved ML models")
+    models_parser.add_argument("--limit", type=int, default=20, help="Max number of models to list")
+    models_parser.add_argument("--json", action="store_true", help="Output JSON to stdout")
+
+    # show command
+    show_parser = ml_train_subparsers.add_parser("show", help="Show details of a saved ML model")
+    show_parser.add_argument("model_id", type=str, help="Model ID")
+    show_parser.add_argument("--json", action="store_true", help="Output JSON to stdout")
+
+    # delete command
+    delete_parser = ml_train_subparsers.add_parser("delete", help="Delete a saved ML model")
+    delete_parser.add_argument("model_id", type=str, help="Model ID")
+    delete_parser.add_argument("--confirm", action="store_true", help="Confirm deletion", required=True)
+
+    # config command
+    config_parser = ml_train_subparsers.add_parser("config", help="Show ML training configuration")
+    config_parser.add_argument("--json", action="store_true", help="Output JSON to stdout")

@@ -285,3 +285,12 @@ def format_divergence_result(result, symbol: str | None = None) -> str:
 def format_optimization_text(result) -> str:
     from bist_signal_bot.optimization.reporting import format_optimization_text as fmt
     return fmt(result)
+
+
+def print_ml_train_result(result):
+    from bist_signal_bot.ml.training.reporting import format_ml_train_text
+    print(format_ml_train_text(result))
+
+def print_ml_prediction_result(result):
+    from bist_signal_bot.ml.training.reporting import format_ml_prediction_text
+    print(format_ml_prediction_text(result))
