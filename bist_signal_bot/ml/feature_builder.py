@@ -12,6 +12,8 @@ from bist_signal_bot.features.volume_features import VolumeFeatureBuilder
 from bist_signal_bot.features.pattern_features import PatternFeatureBuilder
 from bist_signal_bot.features.divergence_features import DivergenceFeatureBuilder
 from bist_signal_bot.features.multi_timeframe_features import MultiTimeframeFeatureBuilder
+from bist_signal_bot.regime.engine import RegimeEngine
+from bist_signal_bot.regime.models import RegimeConfig
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +26,7 @@ class MLFeatureBuilder:
                  pattern_builder: PatternFeatureBuilder | None = None,
                  divergence_builder: DivergenceFeatureBuilder | None = None,
                  mtf_builder: MultiTimeframeFeatureBuilder | None = None,
+                 regime_engine: RegimeEngine | None = None,
                  settings: Settings | None = None):
         self.settings = settings or Settings()
         self.trend_builder = trend_builder or TrendFeatureBuilder(settings=self.settings)
@@ -33,6 +36,7 @@ class MLFeatureBuilder:
         self.pattern_builder = pattern_builder or PatternFeatureBuilder(settings=self.settings)
         self.divergence_builder = divergence_builder or DivergenceFeatureBuilder(settings=self.settings)
         self.mtf_builder = mtf_builder or MultiTimeframeFeatureBuilder(settings=self.settings)
+        self.regime_engine = regime_engine or RegimeEngine(settings=self.settings)
 
     def build_features(self, data: pd.DataFrame, config: FeatureConfig, symbol: str, timeframe: str) -> pd.DataFrame:
         df = data.copy()
@@ -83,6 +87,17 @@ class MLFeatureBuilder:
                 df = self.mtf_builder.add_features(df, symbol=symbol, base_timeframe=timeframe)
             except Exception as e:
                 logger.warning(f"Failed to add MTF features: {e}")
+
+        if getattr(config, "include_regime", False):
+            try:
+                regime_config = RegimeConfig()
+                regime_df = self.regime_engine.add_regime_features(df, regime_config)
+                rename_cols = {col: f"feat_{col}" for col in regime_df.columns if col.startswith("regime_")}
+                regime_df.rename(columns=rename_cols, inplace=True)
+                cols_to_keep = [c for c in regime_df.columns if c not in df.columns]
+                df = pd.concat([df, regime_df[cols_to_keep]], axis=1)
+            except Exception as e:
+                logger.warning(f"Failed to add regime features: {e}")
 
         # ensure standard names
         df = self.standardize_feature_column_names(df)
@@ -160,4 +175,5 @@ class MLFeatureBuilder:
         if config.include_patterns: parts.append("pat")
         if config.include_divergence: parts.append("div")
         if config.include_mtf: parts.append("mtf")
+        if getattr(config, "include_regime", False): parts.append("reg")
         return "_".join(parts)

@@ -447,3 +447,16 @@ class MLSignalIntegrationError(MLInferenceError):
 
 class MLModelMismatchError(MLInferenceError):
     pass
+
+class RegimeError(BistSignalBotError):
+    pass
+class RegimeValidationError(RegimeError):
+    pass
+class RegimeFeatureError(RegimeError):
+    pass
+class RegimeClassificationError(RegimeError):
+    pass
+class RegimeFilterError(RegimeError):
+    pass
+class RegimeUniverseError(RegimeError):
+    pass

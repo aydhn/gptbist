@@ -902,6 +902,31 @@ class Settings(BaseSettings):
     PAPER_USE_ML_FILTER: bool = Field(default=False)
     PAPER_ML_MODEL_ID: str = Field(default="")
 
+
+    # Market Regime Configuration
+    ENABLE_REGIME_ENGINE: bool = Field(default=True)
+    REGIME_TREND_WINDOW: int = Field(default=50, gt=0)
+    REGIME_VOLATILITY_WINDOW: int = Field(default=20, gt=0)
+    REGIME_MOMENTUM_WINDOW: int = Field(default=20, gt=0)
+    REGIME_LIQUIDITY_WINDOW: int = Field(default=20, gt=0)
+    REGIME_CORRELATION_WINDOW: int = Field(default=60, gt=0)
+    REGIME_USE_MTF: bool = Field(default=False)
+    REGIME_USE_BENCHMARK_RELATIVE: bool = Field(default=False)
+    REGIME_SCORE_MODE: str = Field(default="FILTER_AND_SCORE")
+    REGIME_MIN_SCORE: float = Field(default=40.0, ge=0.0, le=100.0)
+    REGIME_REJECT_STRESS: bool = Field(default=False)
+    REGIME_REDUCE_IN_STRESS: bool = Field(default=True)
+    REGIME_STRESS_REDUCTION_FACTOR: float = Field(default=0.50, ge=0.0, le=1.0)
+    STRATEGY_USE_REGIME_FILTER: bool = Field(default=False)
+    SCANNER_USE_REGIME_FILTER: bool = Field(default=False)
+    SCANNER_MIN_REGIME_SCORE: float = Field(default=40.0)
+    RISK_USE_REGIME_FILTER: bool = Field(default=False)
+    RISK_REJECT_STRESS_REGIME: bool = Field(default=False)
+    RISK_REDUCE_IN_STRESS_REGIME: bool = Field(default=True)
+    BACKTEST_USE_REGIME_FILTER: bool = Field(default=False)
+    PAPER_USE_REGIME_FILTER: bool = Field(default=False)
+    ML_INCLUDE_REGIME: bool = Field(default=True)
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
 
