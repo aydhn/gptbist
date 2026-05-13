@@ -151,3 +151,11 @@ def get_ml_training_dir(settings: Settings | None = None) -> Path:
     from bist_signal_bot.config.settings import Settings, settings as default_settings
     settings = settings or default_settings
     return get_data_dir() / settings.ML_TRAINING_DIR_NAME
+
+
+def get_runtime_dir(settings=None) -> Path:
+    base = Path("data") if not settings else Path(settings.DATA_DIR)
+    return base / "runtime"
+
+def get_runtime_runs_dir(settings=None) -> Path:
+    return get_runtime_dir(settings) / "runs"

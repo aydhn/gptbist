@@ -571,3 +571,23 @@ def check_ml_dataset(settings: Settings) -> dict[str, Any]:
         ml_status["mock_tiny_dataset_build_capable"] = False
 
     return ml_status
+
+
+def get_runtime_health(settings) -> dict:
+    return {
+        "runtime_enabled": settings.ENABLE_RUNTIME_ORCHESTRATOR,
+        "runtime_mode": settings.RUNTIME_MODE,
+        "default_strategy": settings.RUNTIME_DEFAULT_STRATEGY,
+        "default_source": settings.RUNTIME_DEFAULT_SOURCE,
+        "universe_mode": settings.RUNTIME_UNIVERSE_MODE,
+        "use_trade_risk": settings.RUNTIME_USE_TRADE_RISK,
+        "use_portfolio_risk": settings.RUNTIME_USE_PORTFOLIO_RISK,
+        "use_ml_filter": settings.RUNTIME_USE_ML_FILTER,
+        "use_regime_filter": settings.RUNTIME_USE_REGIME_FILTER,
+        "use_paper": settings.RUNTIME_USE_PAPER,
+        "send_telegram": settings.RUNTIME_SEND_TELEGRAM,
+        "session_policy": settings.RUNTIME_SESSION_POLICY,
+        "scheduler_enabled": settings.RUNTIME_SCHEDULER_ENABLED,
+        "interval_minutes": settings.RUNTIME_INTERVAL_MINUTES,
+        "lock_ttl_seconds": settings.RUNTIME_LOCK_TTL_SECONDS
+    }

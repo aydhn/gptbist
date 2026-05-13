@@ -669,3 +669,26 @@ def format_ml_signal_filter_result(result) -> str:
 def format_ml_inference_batch_result(batch) -> str:
     from bist_signal_bot.ml.inference.reporting import format_ml_batch_text
     return f"<b>BIST Bot ML Filter Özeti</b>\n\n<pre>{format_ml_batch_text(batch)}</pre>"
+
+
+from bist_signal_bot.runtime.models import RuntimePipelineResult, RuntimeJobResult
+
+def format_runtime_pipeline_result(result: RuntimePipelineResult) -> str:
+    lines = [
+        "BIST Bot Runtime Özeti",
+        f"Run ID: {result.run_id}",
+        f"Durum: {result.status.value}",
+        f"Strateji: {result.config.strategy_name}",
+        f"Geçen: {result.elapsed_seconds:.2f}s",
+        f"",
+        "Bu çıktı otomatik araştırma/tarama çıktısıdır.",
+        "Yatırım tavsiyesi değildir.",
+        "Gerçek emir gönderilmedi."
+    ]
+    return "\n".join(lines)
+
+def format_runtime_job_result(result: RuntimeJobResult) -> str:
+    return f"Job {result.job_type.value} -> {result.status.value} in {result.elapsed_seconds:.2f}s"
+
+def format_runtime_failure(result: RuntimePipelineResult) -> str:
+    return f"BIST Bot Runtime FAILED!\nRun ID: {result.run_id}\nStrategy: {result.config.strategy_name}"

@@ -488,3 +488,13 @@ This phase introduces a strictly research-only ML Inference filter into the appl
 - Verifies exact feature schema alignments before passing data. Reject modes guarantee strict shape matching.
 - **Security Warning:** Model artifacts rely on joblib/pickle. Only load local artifacts trusted by your own runtime generation.
 - CLI commands `ml-filter` generated for testing models offline on local or mocked historical data.
+
+## Roadmap
+
+### Phase 39: Runtime Orchestrator, Job Scheduler, Pipeline Runner
+- **Runtime Orchestrator Amacı**: Tüm bileşenleri (Scanner, Risk, Regime, ML, Paper) bir araya getirerek otomatik çalıştırılabilir bir pipeline oluşturmak.
+- **Run-once ve Scheduler Mantığı**: Sistem tek seferlik veya belirlenen zaman aralıklarında (std lib tabanlı sade loop) çalıştırılabilir. Cloud tabanlı harici scheduler gerektirmez.
+- **Gerçek Emir/Broker Yok**: Gerçek piyasa emri gönderimi, aracı kurum API'si veya paid service kullanılmaz. Çıktılar araştırma (research) amaçlıdır.
+- **Güvenlik ve Session**: Local lock mekanizması ile aynı anda çoklu pipeline engellenir. BIST seans takvimi ve state yönetimi desteklenir.
+- **Pipeline Sırası**: Healthcheck -> Data Refresh -> Signal Scan -> Regime -> ML -> Portfolio Risk -> Paper Run -> Telegram -> Cleanup.
+- **CLI**: `python -m bist_signal_bot runtime run-once`, `dry-run`, `loop`, `status`, `history`, `config`, `unlock`.

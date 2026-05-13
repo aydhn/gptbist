@@ -1,3 +1,4 @@
+import click
 
 from bist_signal_bot.data.cleaning import MarketDataCleaner
 from bist_signal_bot.data.models import MissingValuePolicy, InvalidOhlcPolicy, OutlierPolicy, DuplicateTimestampPolicy
@@ -3567,3 +3568,113 @@ def _handle_ml_config(args, settings):
         print(f"Label Type: {req.label_config.label_type.value} (Horizon: {req.label_config.horizon_bars})")
         print(f"Split Mode: {req.split_mode.value} (Train Ratio: {req.train_ratio})")
     return 0
+
+
+
+import json
+from bist_signal_bot.app.runtime_app import (
+    create_runtime_orchestrator,
+    create_runtime_pipeline_config_from_settings,
+    create_runtime_schedule_config_from_settings
+)
+from bist_signal_bot.runtime.models import RuntimeTrigger
+from bist_signal_bot.runtime.scheduler import RuntimeScheduler
+from bist_signal_bot.runtime.reporting import format_runtime_result_text
+
+def cmd_runtime(args, settings):
+    orchestrator = create_runtime_orchestrator(settings)
+
+    if args.runtime_command == 'run-once':
+        config = create_runtime_pipeline_config_from_settings(settings)
+        config.source = args.source
+        config.strategy_name = args.strategy
+        if args.group: config.group_name = args.group
+        if args.symbols: config.symbols = args.symbols
+        config.use_ml_filter = args.ml_filter
+        if args.ml_model_id: config.ml_model_id = args.ml_model_id
+        config.use_regime_filter = args.regime_filter
+        config.use_paper = args.paper
+        config.send_telegram = args.telegram
+
+        res = orchestrator.run_once(config, trigger=RuntimeTrigger.CLI)
+        if args.json:
+            print(res.model_dump_json(indent=2))
+        else:
+            print(format_runtime_result_text(res))
+
+    elif args.runtime_command == 'dry-run':
+        config = create_runtime_pipeline_config_from_settings(settings)
+        config.source = args.source
+        config.strategy_name = args.strategy
+        if args.symbols: config.symbols = args.symbols
+
+        res = orchestrator.dry_run(config)
+        if args.json:
+            print(res.model_dump_json(indent=2))
+        else:
+            print(format_runtime_result_text(res))
+
+    elif args.runtime_command == 'loop':
+        pipe_config = create_runtime_pipeline_config_from_settings(settings)
+        pipe_config.source = args.source
+        pipe_config.strategy_name = args.strategy
+        if args.symbols: pipe_config.symbols = args.symbols
+
+        sched_config = create_runtime_schedule_config_from_settings(settings)
+        sched_config.interval_minutes = args.interval
+        sched_config.max_iterations = args.max_iterations if args.max_iterations > 0 else None
+        sched_config.run_immediately = args.run_immediately
+
+        scheduler = RuntimeScheduler(orchestrator, settings)
+        print(f"Starting loop with interval {args.interval}m...")
+        scheduler.run_loop(sched_config, pipe_config)
+        print("Loop finished.")
+
+    elif args.runtime_command == 'status':
+        st = orchestrator.status()
+        if args.json:
+            print(json.dumps(st, indent=2))
+        else:
+            print(f"Runtime Status: {st}")
+
+    elif args.runtime_command == 'history':
+        runs = orchestrator.report_store.list_recent_runs(args.limit)
+        if args.json:
+            print(json.dumps(runs, indent=2))
+        else:
+            print(f"Found {len(runs)} recent runs.")
+            for r in runs:
+                print(f"- {r.get('run_id')} | {r.get('status')} | Jobs: {r.get('jobs_success')}/{r.get('jobs_total')} | {r.get('elapsed'):.2f}s")
+
+    elif args.runtime_command == 'unlock':
+        manager = orchestrator.lock_manager
+        if args.stale_only:
+            cleared = manager.clear_stale_lock(settings.RUNTIME_LOCK_TTL_SECONDS)
+            if cleared:
+                print("Stale lock cleared (if it existed).")
+            else:
+                print("Lock exists and is not stale yet.")
+        elif args.force and args.confirm:
+            try:
+                manager.lock_file.unlink(missing_ok=True)
+                print("Lock forcefully removed.")
+            except Exception as e:
+                print(f"Error removing lock: {e}")
+        else:
+            print("Please provide --stale-only or --force --confirm")
+
+    elif args.runtime_command == 'reset-state':
+        if not args.confirm:
+            print("Must pass --confirm to reset state.")
+            return
+        orchestrator.reset_state(confirm=True)
+        print("State reset successfully.")
+
+    elif args.runtime_command == 'config':
+        pipe_cfg = create_runtime_pipeline_config_from_settings(settings)
+        if args.json:
+            print(pipe_cfg.model_dump_json(indent=2))
+        else:
+            print("Default Runtime Pipeline Config:")
+            for k, v in pipe_cfg.model_dump().items():
+                print(f"  {k}: {v}")
