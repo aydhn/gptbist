@@ -927,6 +927,61 @@ class Settings(BaseSettings):
     PAPER_USE_REGIME_FILTER: bool = Field(default=False)
     ML_INCLUDE_REGIME: bool = Field(default=True)
 
+
+    # Phase 39 - Runtime Orchestrator
+    ENABLE_RUNTIME_ORCHESTRATOR: bool = True
+    RUNTIME_MODE: str = "RUN_ONCE"
+    RUNTIME_RESULTS_DIR_NAME: str = "runtime"
+    RUNTIME_SAVE_REPORTS: bool = True
+    RUNTIME_REPORT_FORMATS: str = "json,markdown,csv"
+    RUNTIME_CONTINUE_ON_ERROR: bool = True
+    RUNTIME_DRY_RUN: bool = False
+
+    RUNTIME_DEFAULT_STRATEGY: str = "moving_average_trend"
+    RUNTIME_DEFAULT_SOURCE: str = "mock"
+    RUNTIME_DEFAULT_TIMEFRAME: str = "1d"
+    RUNTIME_DEFAULT_TOP_N: int = 10
+    RUNTIME_UNIVERSE_MODE: str = "GROUP"
+    RUNTIME_DEFAULT_GROUP: str = "LIQUID"
+    RUNTIME_DEFAULT_WATCHLIST: str = "default"
+    RUNTIME_SYMBOLS: str = ""
+
+    RUNTIME_USE_TRADE_RISK: bool = True
+    RUNTIME_USE_PORTFOLIO_RISK: bool = True
+    RUNTIME_USE_ML_FILTER: bool = False
+    RUNTIME_ML_MODEL_ID: str = ""
+    RUNTIME_USE_REGIME_FILTER: bool = False
+
+    RUNTIME_USE_PAPER: bool = False
+    RUNTIME_REQUIRE_PAPER_CONFIRM_FLAG: bool = True
+
+    RUNTIME_SEND_TELEGRAM: bool = False
+    RUNTIME_TELEGRAM_ON_SUCCESS: bool = True
+    RUNTIME_TELEGRAM_ON_FAILURE: bool = True
+    RUNTIME_TELEGRAM_TOP_N: int = 5
+
+    RUNTIME_SESSION_POLICY: str = "ONLY_DURING_SESSION"
+    RUNTIME_SKIP_OUTSIDE_SESSION: bool = True
+
+    RUNTIME_LOCK_TTL_SECONDS: int = 3600
+    RUNTIME_CLEAR_STALE_LOCK: bool = True
+    RUNTIME_STATE_FILE_NAME: str = "state.json"
+    RUNTIME_LOCK_FILE_NAME: str = "runtime.lock"
+
+    RUNTIME_SCHEDULER_ENABLED: bool = False
+    RUNTIME_INTERVAL_MINUTES: int = 60
+    RUNTIME_RUN_IMMEDIATELY: bool = False
+    RUNTIME_MAX_ITERATIONS: int = 0
+    RUNTIME_SLEEP_SECONDS: int = 5
+    RUNTIME_STOP_ON_FAILURE: bool = False
+
+    RUNTIME_HEALTHCHECK_BEFORE_RUN: bool = True
+    RUNTIME_DATA_REFRESH_ENABLED: bool = False
+    RUNTIME_CLEANUP_ENABLED: bool = False
+    RUNTIME_JOB_MAX_RETRIES: int = 1
+    RUNTIME_JOB_RETRY_DELAY_SECONDS: int = 5
+    RUNTIME_JOB_TIMEOUT_SECONDS: int = 0
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
 

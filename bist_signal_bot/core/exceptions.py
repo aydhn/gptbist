@@ -460,3 +460,16 @@ class RegimeFilterError(RegimeError):
     pass
 class RegimeUniverseError(RegimeError):
     pass
+
+
+class BistBotError(Exception): pass
+
+class RuntimeErrorBase(BistBotError): pass
+class RuntimeValidationError(RuntimeErrorBase): pass
+class RuntimeLockError(RuntimeErrorBase): pass
+class RuntimeStateError(RuntimeErrorBase): pass
+class RuntimeJobError(RuntimeErrorBase): pass
+class RuntimeSchedulerError(RuntimeErrorBase): pass
+class RuntimePipelineError(RuntimeErrorBase): pass
+class RuntimeStorageError(RuntimeErrorBase): pass
+class RuntimeNotificationError(RuntimeErrorBase): pass

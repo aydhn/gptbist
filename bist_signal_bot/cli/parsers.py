@@ -487,6 +487,57 @@ def build_parser() -> argparse.ArgumentParser:
     scan_config = scan_sub.add_parser("config", help="Show scanner config")
     scan_config.add_argument("--json", action="store_true")
 
+
+    # Runtime Parser
+    parser_runtime = subparsers.add_parser('runtime', help="Runtime orchestrator commands")
+    runtime_subparsers = parser_runtime.add_subparsers(dest='runtime_command', required=True)
+
+    # run-once
+    parser_run_once = runtime_subparsers.add_parser('run-once', help="Run the pipeline once")
+    parser_run_once.add_argument('--source', default='mock', help="Data source")
+    parser_run_once.add_argument('--strategy', default='moving_average_trend', help="Strategy name")
+    parser_run_once.add_argument('--group', help="Universe group")
+    parser_run_once.add_argument('--symbols', nargs='+', help="Specific symbols")
+    parser_run_once.add_argument('--ml-filter', action='store_true', help="Enable ML filter")
+    parser_run_once.add_argument('--ml-model-id', help="ML model ID")
+    parser_run_once.add_argument('--regime-filter', action='store_true', help="Enable regime filter")
+    parser_run_once.add_argument('--paper', action='store_true', help="Enable paper trading")
+    parser_run_once.add_argument('--telegram', action='store_true', help="Send Telegram summary")
+
+    # dry-run
+    parser_dry_run = runtime_subparsers.add_parser('dry-run', help="Dry run the pipeline")
+    parser_dry_run.add_argument('--source', default='mock', help="Data source")
+    parser_dry_run.add_argument('--strategy', default='moving_average_trend', help="Strategy name")
+    parser_dry_run.add_argument('--symbols', nargs='+', help="Specific symbols")
+
+    # loop
+    parser_loop = runtime_subparsers.add_parser('loop', help="Run the pipeline in a loop")
+    parser_loop.add_argument('--interval', type=int, default=60, help="Interval in minutes")
+    parser_loop.add_argument('--max-iterations', type=int, default=0, help="Max iterations")
+    parser_loop.add_argument('--run-immediately', action='store_true', help="Run immediately")
+    parser_loop.add_argument('--source', default='mock', help="Data source")
+    parser_loop.add_argument('--strategy', default='moving_average_trend', help="Strategy name")
+    parser_loop.add_argument('--symbols', nargs='+', help="Specific symbols")
+
+    # status
+    parser_status = runtime_subparsers.add_parser('status', help="Show runtime status")
+
+    # history
+    parser_history = runtime_subparsers.add_parser('history', help="Show run history")
+    parser_history.add_argument('--limit', type=int, default=10, help="Limit")
+
+    # unlock
+    parser_unlock = runtime_subparsers.add_parser('unlock', help="Unlock runtime")
+    parser_unlock.add_argument('--stale-only', action='store_true', help="Only clear stale lock")
+    parser_unlock.add_argument('--force', action='store_true', help="Force clear lock")
+    parser_unlock.add_argument('--confirm', action='store_true', help="Confirm force clear")
+
+    # reset-state
+    parser_reset = runtime_subparsers.add_parser('reset-state', help="Reset runtime state")
+    parser_reset.add_argument('--confirm', action='store_true', help="Confirm reset")
+
+    # config
+    parser_config = runtime_subparsers.add_parser('config', help="Show runtime config")
     return parser
 
 def add_paper_parser(subparsers: argparse._SubParsersAction) -> None:
