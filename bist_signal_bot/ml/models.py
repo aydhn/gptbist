@@ -68,6 +68,7 @@ class FeatureConfig(BaseModel):
     include_mtf: bool = False
     include_raw_ohlcv: bool = False
     include_returns: bool = True
+    include_regime: bool = True
     custom_features: list[str] = Field(default_factory=list)
     metadata: dict[str, Any] = Field(default_factory=dict)
 

@@ -236,3 +236,27 @@ class BacktestPerformanceAnalyzer:
             calmar_ratio=calmar,
             return_over_max_drawdown=romad
         )
+
+def performance_by_regime(result: Any) -> dict[str, Any]:
+    if not hasattr(result, 'trades') or not result.trades:
+        return {}
+    by_regime = {}
+    for trade in result.trades:
+        metadata = trade.entry_order.metadata if trade.entry_order else {}
+        regime = metadata.get("market_regime", "UNKNOWN")
+        if regime not in by_regime:
+            by_regime[regime] = {"trades": 0, "winning_trades": 0, "losing_trades": 0, "total_profit": 0.0, "total_loss": 0.0, "net_profit": 0.0}
+        stats = by_regime[regime]
+        stats["trades"] += 1
+        pnl = getattr(trade, 'net_pnl', 0.0)
+        stats["net_profit"] += pnl
+        if pnl > 0:
+            stats["winning_trades"] += 1
+            stats["total_profit"] += pnl
+        else:
+            stats["losing_trades"] += 1
+            stats["total_loss"] += abs(pnl)
+    for regime, stats in by_regime.items():
+        stats["win_rate"] = (stats["winning_trades"] / stats["trades"] * 100.0) if stats["trades"] > 0 else 0.0
+        stats["profit_factor"] = (stats["total_profit"] / stats["total_loss"]) if stats["total_loss"] > 0 else (float('inf') if stats["total_profit"] > 0 else 0.0)
+    return by_regime

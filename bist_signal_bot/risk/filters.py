@@ -11,6 +11,42 @@ class RiskFilterEngine:
     def __init__(self, settings: Settings | None = None):
         self.settings = settings or Settings()
 
+    def apply_regime_stress_filter(self, decision: RiskDecision) -> RiskDecision:
+        if decision.status == RiskDecisionStatus.REJECTED:
+            return decision
+
+        use_regime = getattr(self.settings, "RISK_USE_REGIME_FILTER", False)
+        if not use_regime:
+            return decision
+
+        metadata = decision.signal.metadata or {}
+        market_regime = metadata.get("market_regime")
+        volatility_regime = metadata.get("volatility_regime")
+
+        if not market_regime or not volatility_regime:
+            return decision
+
+        is_stress = (volatility_regime == "STRESS") or (market_regime == "HIGH_VOLATILITY_STRESS")
+
+        if is_stress:
+            reject_stress = getattr(self.settings, "RISK_REJECT_STRESS_REGIME", False)
+            if reject_stress:
+                decision.status = RiskDecisionStatus.REJECTED
+                decision.reasons.append("Rejected by RegimeStressFilter: Volatility is at STRESS levels.")
+                decision.position_size = 0.0
+                decision.position_value = 0.0
+                return decision
+
+            reduce_stress = getattr(self.settings, "RISK_REDUCE_IN_STRESS_REGIME", True)
+            if reduce_stress:
+                if decision.position_size and decision.position_size > 0:
+                    decision.position_size = max(1.0, decision.position_size * 0.5)
+                    decision.position_value = decision.position_size * decision.signal.price
+                    decision.reasons.append("RegimeStressFilter: Position size reduced by 50% due to STRESS regime.")
+                    decision.status = RiskDecisionStatus.APPROVED
+
+        return decision
+
     def score_adjustment_from_risk(self, warnings: list[str]) -> float:
         return -2.0 * len(warnings)
 
