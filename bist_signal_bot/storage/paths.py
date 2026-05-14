@@ -159,3 +159,10 @@ def get_runtime_dir(settings=None) -> Path:
 
 def get_runtime_runs_dir(settings=None) -> Path:
     return get_runtime_dir(settings) / "runs"
+
+def get_monitoring_dir(settings=None) -> Path:
+    base = Path("data") if not settings else Path(settings.DATA_DIR)
+    dir_name = getattr(settings, "MONITORING_DIR_NAME", "monitoring") if settings else "monitoring"
+    path = base / dir_name
+    path.mkdir(parents=True, exist_ok=True)
+    return path

@@ -538,6 +538,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     # config
     parser_config = runtime_subparsers.add_parser('config', help="Show runtime config")
+    setup_monitor_parser(subparsers)
     return parser
 
 def add_paper_parser(subparsers: argparse._SubParsersAction) -> None:
@@ -720,6 +721,7 @@ def add_ml_dataset_parser(subparsers):
 
 
 def setup_ml_train_parser(subparsers):
+    setup_monitor_parser(subparsers)
     ml_train_parser = subparsers.add_parser("ml-train", help="Train and evaluate ML models or generate predictions")
     ml_train_subparsers = ml_train_parser.add_subparsers(dest="ml_train_command", required=True)
 
@@ -773,4 +775,56 @@ def setup_ml_train_parser(subparsers):
 
     # config command
     config_parser = ml_train_subparsers.add_parser("config", help="Show ML training configuration")
+    config_parser.add_argument("--json", action="store_true", help="Output JSON to stdout")
+
+def setup_monitor_parser(subparsers):
+    monitor_parser = subparsers.add_parser("monitor", help="Monitoring and Self-Healing commands")
+    monitor_subparsers = monitor_parser.add_subparsers(dest="monitor_command", required=True)
+
+    # status command
+    status_parser = monitor_subparsers.add_parser("status", help="Show overall monitoring status")
+    status_parser.add_argument("--json", action="store_true", help="Output JSON to stdout")
+
+    # heartbeat command
+    hb_parser = monitor_subparsers.add_parser("heartbeat", help="Show or send heartbeats")
+    hb_parser.add_argument("--component", type=str, help="Component to record heartbeat for")
+    hb_parser.add_argument("--status", type=str, help="Health status (e.g. HEALTHY)")
+    hb_parser.add_argument("--message", type=str, help="Heartbeat message")
+    hb_parser.add_argument("--json", action="store_true", help="Output JSON to stdout")
+
+    # diagnostics command
+    diag_parser = monitor_subparsers.add_parser("diagnostics", help="Run diagnostic checks")
+    diag_parser.add_argument("--save-report", action="store_true", help="Save the diagnostics report")
+    diag_parser.add_argument("--json", action="store_true", help="Output JSON to stdout")
+
+    # alerts command
+    alerts_parser = monitor_subparsers.add_parser("alerts", help="List recent active alerts")
+    alerts_parser.add_argument("--limit", type=int, default=20, help="Max number of alerts to list")
+    alerts_parser.add_argument("--json", action="store_true", help="Output JSON to stdout")
+
+    # test-alert command
+    test_alert_parser = monitor_subparsers.add_parser("test-alert", help="Generate and optionally send a test alert")
+    test_alert_parser.add_argument("--telegram", action="store_true", help="Actually send via Telegram if configured")
+
+    # metrics command
+    metrics_parser = monitor_subparsers.add_parser("metrics", help="List recent monitoring metrics")
+    metrics_parser.add_argument("--limit", type=int, default=100, help="Max number of metrics to list")
+    metrics_parser.add_argument("--json", action="store_true", help="Output JSON to stdout")
+
+    # repair command
+    repair_parser = monitor_subparsers.add_parser("repair", help="Run self-healing actions")
+    repair_parser.add_argument("--dry-run", action="store_true", help="Show suggested actions without running them")
+    repair_parser.add_argument("--auto-safe", action="store_true", help="Run all safe auto-repair actions")
+    repair_parser.add_argument("--clear-stale-lock", action="store_true", help="Clear stale runtime lock")
+    repair_parser.add_argument("--reset-state", action="store_true", help="Reset stuck runtime state")
+    repair_parser.add_argument("--confirm", action="store_true", help="Confirm destructive actions")
+
+    # cleanup command
+    cleanup_parser = monitor_subparsers.add_parser("cleanup", help="Cleanup old monitoring files")
+    cleanup_parser.add_argument("--retention-days", type=int, default=30, help="Days to keep files")
+    cleanup_parser.add_argument("--dry-run", action="store_true", help="Show what would be deleted")
+    cleanup_parser.add_argument("--confirm", action="store_true", help="Confirm cleanup")
+
+    # config command
+    config_parser = monitor_subparsers.add_parser("config", help="Show monitoring configuration")
     config_parser.add_argument("--json", action="store_true", help="Output JSON to stdout")

@@ -473,3 +473,27 @@ class RuntimeSchedulerError(RuntimeErrorBase): pass
 class RuntimePipelineError(RuntimeErrorBase): pass
 class RuntimeStorageError(RuntimeErrorBase): pass
 class RuntimeNotificationError(RuntimeErrorBase): pass
+
+class MonitoringError(BistSignalBotError):
+    pass
+
+class MonitoringValidationError(MonitoringError):
+    pass
+
+class HeartbeatError(MonitoringError):
+    pass
+
+class MetricsError(MonitoringError):
+    pass
+
+class AlertError(MonitoringError):
+    pass
+
+class DiagnosticsError(MonitoringError):
+    pass
+
+class SelfHealingError(MonitoringError):
+    pass
+
+class MonitoringStorageError(MonitoringError):
+    pass
