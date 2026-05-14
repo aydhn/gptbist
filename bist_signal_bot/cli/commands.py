@@ -3678,3 +3678,169 @@ def cmd_runtime(args, settings):
             print("Default Runtime Pipeline Config:")
             for k, v in pipe_cfg.model_dump().items():
                 print(f"  {k}: {v}")
+
+def cmd_monitor(args, settings):
+    import json
+    from bist_signal_bot.monitoring.storage import MonitoringStore
+    from bist_signal_bot.monitoring.heartbeat import HeartbeatManager
+    from bist_signal_bot.monitoring.metrics import MetricsCollector
+    from bist_signal_bot.monitoring.alerts import AlertManager
+    from bist_signal_bot.monitoring.diagnostics import DiagnosticsRunner
+    from bist_signal_bot.monitoring.self_healing import SelfHealingManager
+    from bist_signal_bot.monitoring.models import MonitoringComponent, HealthLevel, AlertSeverity, MonitoringSnapshot
+    from bist_signal_bot.monitoring.reporting import format_monitoring_snapshot_text, format_self_healing_result_text
+
+    store = MonitoringStore(settings)
+    hb_manager = HeartbeatManager(store, settings)
+
+    if args.monitor_command == "status":
+        diag_runner = DiagnosticsRunner(settings=settings, monitoring_store=store)
+        checks = diag_runner.run_all_checks()
+        overall = diag_runner.overall_health(checks)
+
+        snapshot = MonitoringSnapshot(
+            generated_at=__import__('datetime').datetime.utcnow(),
+            overall_health=overall,
+            heartbeats=store.load_recent_heartbeats(20),
+            metrics=[],
+            active_alerts=[a for a in store.load_recent_alerts(50) if a.status.value in ["NEW", "SENT", "THROTTLED"]],
+            diagnostics=checks,
+            runtime_state_summary={}
+        )
+
+        if args.json:
+            print(json.dumps(snapshot.summary(), indent=2))
+        else:
+            print(format_monitoring_snapshot_text(snapshot))
+
+    elif args.monitor_command == "heartbeat":
+        if getattr(args, "component", None) and getattr(args, "status", None) and getattr(args, "message", None):
+            try:
+                comp = MonitoringComponent(args.component.upper())
+                status = HealthLevel(args.status.upper())
+                record = hb_manager.record(comp, status, args.message)
+                if args.json:
+                    print(json.dumps(record.model_dump(mode="json"), indent=2))
+                else:
+                    print(f"Recorded heartbeat for {comp.value}: {status.value} - {args.message}")
+            except Exception as e:
+                print(f"Error recording heartbeat: {e}")
+        else:
+            summary = hb_manager.heartbeat_summary()
+            if args.json:
+                print(json.dumps(summary, indent=2))
+            else:
+                print("Heartbeat Summary:")
+                for k, v in summary.items():
+                    print(f"  {k}: {v['status']} (Stale: {v['is_stale']}) - {v['message']}")
+
+    elif args.monitor_command == "diagnostics":
+        diag_runner = DiagnosticsRunner(settings=settings, monitoring_store=store)
+        checks = diag_runner.run_all_checks()
+
+        if getattr(args, "save_report", False):
+            store.save_diagnostics(checks)
+            print("Diagnostics report saved.")
+
+        if getattr(args, "json", False):
+            print(json.dumps([c.summary() for c in checks], indent=2))
+        else:
+            print("Diagnostic Checks:")
+            for c in checks:
+                print(f"  [{c.status.value}] {c.check_name}: {c.message}")
+                if c.recommendations:
+                    print(f"       Rec: {', '.join(c.recommendations)}")
+
+    elif args.monitor_command == "alerts":
+        alerts = store.load_recent_alerts(getattr(args, "limit", 20))
+        active = [a for a in alerts if a.status.value in ["NEW", "SENT", "THROTTLED"]]
+
+        if getattr(args, "json", False):
+            print(json.dumps([a.model_dump(mode="json") for a in active], indent=2))
+        else:
+            print(f"Active Alerts ({len(active)} out of last {len(alerts)} logged):")
+            for a in active:
+                print(f"  [{a.severity.value}] {a.title} ({a.count}x, Status: {a.status.value}) - {a.message}")
+
+    elif args.monitor_command == "test-alert":
+        alert_manager = AlertManager(storage=store, settings=settings)
+        if getattr(args, "telegram", False):
+            from bist_signal_bot.app.bootstrap import bootstrap_app
+            app_ctx = bootstrap_app()
+            alert_manager.notifier = app_ctx.notifier
+
+        try:
+            alert = alert_manager.create_alert(
+                MonitoringComponent.UNKNOWN,
+                AlertSeverity.INFO,
+                "Test Alert",
+                "This is a test operational alert from CLI."
+            )
+
+            if getattr(args, "telegram", False):
+                sent = alert_manager.send_alert(alert)
+                print(f"Test alert processed. Final status: {sent.status.value}")
+            else:
+                print(f"Test alert logged to local storage (ID: {alert.alert_id}). Not sent via Telegram.")
+        except Exception as e:
+            print(f"Error creating test alert: {e}")
+
+    elif args.monitor_command == "metrics":
+        metrics = store.load_recent_metrics(getattr(args, "limit", 100))
+        if getattr(args, "json", False):
+            print(json.dumps([m.model_dump(mode="json") for m in metrics], indent=2))
+        else:
+            print(f"Recent Metrics (up to {getattr(args, 'limit', 100)}):")
+            for m in metrics:
+                print(f"  {m.timestamp.isoformat()} | {m.component.value} | {m.name} | {m.value}")
+
+    elif args.monitor_command == "repair":
+        diag_runner = DiagnosticsRunner(settings=settings, monitoring_store=store)
+        sh_manager = SelfHealingManager(settings=settings, monitoring_store=store)
+        checks = diag_runner.run_all_checks()
+
+        if getattr(args, "dry_run", False):
+            suggestions = sh_manager.suggest_actions(checks)
+            print("Suggested Repair Actions (Dry Run):")
+            for s in suggestions:
+                safe_str = "(Safe to auto-run)" if s.safe_to_auto_run else "(Requires confirm)"
+                print(f"  - {s.action_type.value}: {s.description} {safe_str}")
+        elif getattr(args, "auto_safe", False):
+            result = sh_manager.run_safe_auto_healing(checks)
+            print(format_self_healing_result_text(result))
+        elif getattr(args, "clear_stale_lock", False):
+            sh_manager.repair_stale_lock()
+            print("Stale lock cleared.")
+        elif getattr(args, "reset_state", False):
+            if not getattr(args, "confirm", False):
+                print("Error: Must pass --confirm to reset runtime state.")
+            else:
+                sh_manager.reset_runtime_state(confirm=True)
+                print("Runtime state reset.")
+        else:
+            print("Please provide an action: --dry-run, --auto-safe, --clear-stale-lock, --reset-state")
+
+    elif args.monitor_command == "cleanup":
+        if getattr(args, "dry_run", False):
+            print(f"Would delete files older than {args.retention_days} days. Pass --confirm to execute.")
+        elif getattr(args, "confirm", False):
+            res = store.cleanup_old_monitoring_files(args.retention_days)
+            print(f"Cleanup finished. Removed {res.get('removed_files')} files. Errors: {res.get('errors')}")
+        else:
+            print("Pass --dry-run or --confirm to cleanup.")
+
+    elif args.monitor_command == "config":
+        data = {
+            "enabled": getattr(settings, "ENABLE_MONITORING", False),
+            "heartbeat_enabled": getattr(settings, "MONITORING_HEARTBEAT_ENABLED", False),
+            "alerts_enabled": getattr(settings, "MONITORING_ALERTS_ENABLED", False),
+            "diagnostics_enabled": getattr(settings, "MONITORING_DIAGNOSTICS_ENABLED", False),
+            "self_healing_enabled": getattr(settings, "MONITORING_SELF_HEALING_ENABLED", False),
+            "alert_throttle_minutes": getattr(settings, "MONITORING_ALERT_THROTTLE_MINUTES", 30)
+        }
+        if getattr(args, "json", False):
+            print(json.dumps(data, indent=2))
+        else:
+            print("Monitoring Config:")
+            for k, v in data.items():
+                print(f"  {k}: {v}")
