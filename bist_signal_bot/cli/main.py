@@ -69,6 +69,11 @@ def dispatch_security(args, ctx) -> int:
     handle_security_command(args, ctx.settings)
     return 0
 
+def dispatch_quality(args, ctx) -> int:
+    from bist_signal_bot.cli.commands import handle_quality_command
+    handle_quality_command(args, ctx.settings)
+    return 0
+
 def dispatch_benchmarks(args, ctx) -> int:
     from bist_signal_bot.cli.commands import cmd_benchmarks_list, cmd_benchmarks_run, cmd_benchmarks_batch, cmd_benchmarks_default
     if args.benchmarks_cmd == "list":
@@ -142,6 +147,7 @@ def run_cli(argv: list[str] | None = None) -> int:
         "costs": dispatch_costs,
         "backtest": dispatch_backtest,
         "security": dispatch_security,
+        "quality": dispatch_quality,
         "validate-backtest": dispatch_validate_backtest,
         "risk": dispatch_risk,
 

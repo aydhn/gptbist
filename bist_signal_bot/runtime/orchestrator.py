@@ -192,3 +192,34 @@ class RuntimeOrchestrator:
             send_telegram=self.settings.RUNTIME_SEND_TELEGRAM,
             session_policy=SessionPolicy(self.settings.RUNTIME_SESSION_POLICY)
         )
+
+    def run_quality_preflight(self) -> bool:
+        """Run optional quality smoke tests before runtime starts."""
+        if not getattr(self.settings, "RUNTIME_QUALITY_PREFLIGHT_ENABLED", False):
+            return True
+
+        try:
+            from bist_signal_bot.app.quality_app import create_quality_gate_runner, create_quality_config_from_settings
+            from bist_signal_bot.quality.models import QualitySuite
+
+            self.logger.info("Running optional runtime quality preflight...")
+            runner = create_quality_gate_runner(self.settings)
+            config = create_quality_config_from_settings(self.settings)
+
+            suite_str = getattr(self.settings, "RUNTIME_QUALITY_PREFLIGHT_SUITE", "SMOKE")
+            try:
+                config.suite = QualitySuite(suite_str)
+            except ValueError:
+                config.suite = QualitySuite.SMOKE
+
+            result = runner.run(config)
+
+            if not result.passed():
+                self.logger.error(f"Quality preflight failed with status {result.status.value}. Runtime will not start.")
+                return False
+
+            self.logger.info("Quality preflight passed.")
+            return True
+        except Exception as e:
+            self.logger.error(f"Error during quality preflight: {e}")
+            return False

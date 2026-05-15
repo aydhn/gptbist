@@ -42,6 +42,7 @@ class DiagnosticsRunner:
         checks.append(self.check_telegram_config())
         checks.append(self.check_ml_model_config())
         checks.append(self.check_paper_ledger())
+        checks.append(self.check_quality_last_run())
         return checks
 
     def _create_result(self, name: str, comp: MonitoringComponent, status: DiagnosticCheckStatus, sev: AlertSeverity, msg: str, details: dict = None, recs: list = None) -> DiagnosticCheckResult:
@@ -252,3 +253,52 @@ class DiagnosticsRunner:
             res.message = "Security Guard is disabled."
             res.details["security_guard_enabled"] = False
         return res
+
+    def check_quality_last_run(self) -> DiagnosticCheckResult:
+        try:
+            from bist_signal_bot.quality.storage import QualityReportStore
+            from bist_signal_bot.quality.models import QualityGateLevel, QualityCheckStatus
+
+            store = QualityReportStore(settings=self.settings)
+            runs = store.list_recent_quality_runs(limit=1)
+
+            if not runs:
+                return DiagnosticCheckResult(
+                    check_name="quality_last_run",
+                    component=MonitoringComponent.SYSTEM,
+                    status=DiagnosticStatus.INFO,
+                    message="No quality gate runs found yet."
+                )
+
+            last_run = runs[0]
+            status_str = last_run.get("status", "UNKNOWN")
+            gate_level = last_run.get("gate_level", "UNKNOWN")
+            run_id = last_run.get("run_id", "UNKNOWN")
+
+            if status_str in ["PASS", "WARN"]:
+                return DiagnosticCheckResult(
+                    check_name="quality_last_run",
+                    component=MonitoringComponent.SYSTEM,
+                    status=DiagnosticStatus.PASS,
+                    message=f"Last quality run ({run_id}) passed with status {status_str} (Gate: {gate_level})."
+                )
+
+            # Failed or error
+            diag_status = DiagnosticStatus.WARN
+            if gate_level == "RELEASE":
+                diag_status = DiagnosticStatus.FAIL
+
+            return DiagnosticCheckResult(
+                check_name="quality_last_run",
+                component=MonitoringComponent.SYSTEM,
+                status=diag_status,
+                message=f"Last quality run ({run_id}) failed with status {status_str} (Gate: {gate_level}).",
+                recommendations=["Run 'python -m bist_signal_bot quality run' to investigate."]
+            )
+        except Exception as e:
+            return DiagnosticCheckResult(
+                check_name="quality_last_run",
+                component=MonitoringComponent.SYSTEM,
+                status=DiagnosticStatus.WARN,
+                message=f"Could not check last quality run: {e}"
+            )

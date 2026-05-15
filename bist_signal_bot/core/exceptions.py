@@ -514,3 +514,27 @@ class SecurityPreflightError(SecurityError):
     pass
 class ConfigSecurityError(SecurityError):
     pass
+
+class QualityError(BistSignalBotError):
+    pass
+
+class QualityValidationError(QualityError):
+    pass
+
+class QualityToolError(QualityError):
+    pass
+
+class QualityGateError(QualityError):
+    pass
+
+class QualityTestRunnerError(QualityError):
+    pass
+
+class QualityCoverageError(QualityError):
+    pass
+
+class QualityRegressionError(QualityError):
+    pass
+
+class QualityStorageError(QualityError):
+    pass
