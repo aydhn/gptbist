@@ -174,3 +174,28 @@ def get_quality_dir(settings=None) -> Path:
     quality_dir = get_data_dir(s) / quality_dir_name
     quality_dir.mkdir(parents=True, exist_ok=True)
     return quality_dir
+
+
+def get_packaging_dir(settings=None) -> Path:
+    from bist_signal_bot.config.settings import Settings
+    s = settings or Settings()
+    return get_data_dir(s) / s.PACKAGING_DIR_NAME
+
+
+def get_logs_dir(settings=None) -> Path:
+    from bist_signal_bot.config.settings import Settings
+    s = settings or Settings()
+    log_dir = Path(s.LOG_DIR)
+    if not log_dir.is_absolute():
+        log_dir = PROJECT_ROOT / log_dir
+    log_dir.mkdir(parents=True, exist_ok=True)
+    return log_dir
+
+def get_reports_dir(settings=None) -> Path:
+    from bist_signal_bot.config.settings import Settings
+    s = settings or Settings()
+    rep_dir = Path(s.REPORTS_DIR)
+    if not rep_dir.is_absolute():
+        rep_dir = PROJECT_ROOT / rep_dir
+    rep_dir.mkdir(parents=True, exist_ok=True)
+    return rep_dir

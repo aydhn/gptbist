@@ -538,3 +538,25 @@ class QualityRegressionError(QualityError):
 
 class QualityStorageError(QualityError):
     pass
+
+
+class PackagingError(BistSignalBotError):
+    pass
+
+class EnvironmentDoctorError(PackagingError):
+    pass
+
+class DependencyCheckError(PackagingError):
+    pass
+
+class InstallerGenerationError(PackagingError):
+    pass
+
+class ReleaseBundleError(PackagingError):
+    pass
+
+class ManifestError(PackagingError):
+    pass
+
+class PackagingStorageError(PackagingError):
+    pass

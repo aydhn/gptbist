@@ -156,6 +156,7 @@ def run_cli(argv: list[str] | None = None) -> int:
         "ml-dataset": lambda a, c: __import__("bist_signal_bot.cli.commands", fromlist=["handle_ml_dataset_command"]).handle_ml_dataset_command(a, c.settings),
         "runtime": lambda a, c: __import__("bist_signal_bot.cli.commands", fromlist=["cmd_runtime"]).cmd_runtime(a, c.settings),
         "monitor": lambda a, c: __import__("bist_signal_bot.cli.commands", fromlist=["cmd_monitor"]).cmd_monitor(a, c.settings),
+        "package": lambda a, c: __import__("bist_signal_bot.cli.commands", fromlist=["run_package_command"]).run_package_command(a, c.settings),
 
         "ml-dataset": lambda a, c: __import__("bist_signal_bot.cli.commands", fromlist=["handle_ml_dataset_command"]).handle_ml_dataset_command(a, c.settings),
         "runtime": lambda a, c: __import__("bist_signal_bot.cli.commands", fromlist=["cmd_runtime"]).cmd_runtime(a, c.settings),

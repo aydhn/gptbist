@@ -541,6 +541,7 @@ def build_parser() -> argparse.ArgumentParser:
     # config
     parser_config = runtime_subparsers.add_parser('config', help="Show runtime config")
     setup_monitor_parser(subparsers)
+    setup_package_parser(subparsers)
     return parser
 
 def add_paper_parser(subparsers: argparse._SubParsersAction) -> None:
@@ -903,3 +904,47 @@ def add_quality_parser(subparsers):
 
     config_parser = quality_subparsers.add_parser("config", help="Show quality gate configuration")
     config_parser.add_argument("--json", action="store_true", help="Output JSON to stdout")
+
+
+def setup_package_parser(subparsers):
+    package_parser = subparsers.add_parser("package", help="Packaging and release tools")
+    package_subparsers = package_parser.add_subparsers(dest="package_command")
+
+    # doctor
+    doctor_parser = package_subparsers.add_parser("doctor", help="Run environment doctor")
+    doctor_parser.add_argument("--dependencies", action="store_true", help="Include dependency checks")
+    doctor_parser.add_argument("--json", action="store_true", help="Output JSON format")
+
+    # deps
+    deps_parser = package_subparsers.add_parser("deps", help="Check dependencies")
+    deps_parser.add_argument("--dev", action="store_true", help="Check dev dependencies")
+    deps_parser.add_argument("--ml", action="store_true", help="Check ML dependencies")
+    deps_parser.add_argument("--optional", action="store_true", help="Check optional dependencies")
+    deps_parser.add_argument("--json", action="store_true", help="Output JSON format")
+
+    # installers
+    installers_parser = package_subparsers.add_parser("installers", help="Generate installer scripts")
+    installers_parser.add_argument("--output", type=str, help="Output directory")
+    installers_parser.add_argument("--json", action="store_true", help="Output JSON format")
+
+    # manifest
+    manifest_parser = package_subparsers.add_parser("manifest", help="Generate release manifest")
+    manifest_parser.add_argument("--version", type=str, help="Release version")
+    manifest_parser.add_argument("--json", action="store_true", help="Output JSON format")
+
+    # release
+    release_parser = package_subparsers.add_parser("release", help="Build release bundle")
+    release_parser.add_argument("--manifest-only", action="store_true", help="Only build manifest")
+    release_parser.add_argument("--zip", action="store_true", help="Build ZIP bundle")
+    release_parser.add_argument("--version", type=str, help="Release version")
+    release_parser.add_argument("--run-quality", action="store_true", help="Run quality gate before release")
+    release_parser.add_argument("--json", action="store_true", help="Output JSON format")
+
+    # recent
+    recent_parser = package_subparsers.add_parser("recent", help="List recent releases")
+    recent_parser.add_argument("--limit", type=int, default=10, help="Number of releases to list")
+    recent_parser.add_argument("--json", action="store_true", help="Output JSON format")
+
+    # config
+    config_parser = package_subparsers.add_parser("config", help="Show packaging configuration")
+    config_parser.add_argument("--json", action="store_true", help="Output JSON format")

@@ -4099,3 +4099,98 @@ def handle_quality_command(args, settings):
             print("Quality Gate Configuration:")
             for k, v in config.model_dump().items():
                 print(f"  {k}: {v}")
+
+
+def run_package_command(args, settings):
+    from bist_signal_bot.app.packaging_app import create_environment_doctor, create_dependency_checker, create_release_bundle_builder
+    from bist_signal_bot.packaging.reporting import environment_doctor_report_to_dict, format_environment_doctor_text, dependency_results_to_dataframe, release_manifest_to_dict, format_release_manifest_markdown, release_bundle_result_to_dict, format_release_bundle_text
+    from bist_signal_bot.packaging.installers import InstallerGenerator
+    from bist_signal_bot.packaging.storage import PackagingStore
+    from bist_signal_bot.packaging.models import PackagingFormat
+    from pathlib import Path
+    import json
+    import os
+
+    if args.package_command == "doctor":
+        doctor = create_environment_doctor(settings)
+        report = doctor.run_doctor(include_dependencies=args.dependencies)
+
+        if args.json:
+            print(json.dumps(environment_doctor_report_to_dict(report), indent=2))
+        else:
+            print(format_environment_doctor_text(report))
+
+    elif args.package_command == "deps":
+        checker = create_dependency_checker(settings)
+        if args.dev:
+            res = checker.check_dev_dependencies()
+        elif args.ml:
+            res = checker.check_ml_dependencies()
+        elif args.optional:
+            res = checker.check_optional_dependencies()
+        else:
+            res = checker.check_core_dependencies()
+
+        if args.json:
+            print(json.dumps([{"package": r.package_name, "status": r.status.name, "installed": r.installed_version} for r in res], indent=2))
+        else:
+            df = dependency_results_to_dataframe(res)
+            print(df.to_string(index=False))
+
+    elif args.package_command == "installers":
+        out_dir = Path(args.output) if args.output else Path(os.getcwd()) / "scripts" / "generated"
+        generator = InstallerGenerator(Path(os.getcwd()))
+        scripts = generator.generate_all_scripts(out_dir)
+
+        if args.json:
+            print(json.dumps({"scripts": {k: str(v) for k, v in scripts.items()}}, indent=2))
+        else:
+            print("Generated installers:")
+            for k, v in scripts.items():
+                print(f"  {k}: {v}")
+
+    elif args.package_command == "manifest":
+        builder = create_release_bundle_builder(settings).manifest_builder
+        manifest = builder.build_manifest(version=args.version)
+
+        if args.json:
+            print(json.dumps(release_manifest_to_dict(manifest), indent=2))
+        else:
+            print(format_release_manifest_markdown(manifest))
+
+    elif args.package_command == "release":
+        builder = create_release_bundle_builder(settings)
+
+        fmt = PackagingFormat.ZIP if args.zip else PackagingFormat.MANIFEST_ONLY
+        res = builder.build_release_bundle(format=fmt, version=args.version, run_quality=args.run_quality)
+
+        if args.json:
+            print(json.dumps(release_bundle_result_to_dict(res), indent=2))
+        else:
+            print(format_release_bundle_text(res))
+
+    elif args.package_command == "recent":
+        store = PackagingStore(settings)
+        recent = store.list_recent_releases(args.limit)
+
+        if args.json:
+            print(json.dumps(recent, indent=2))
+        else:
+            for r in recent:
+                print(f"Release: {r['release_id']} (v{r['version']}) - {r['created_at']}")
+
+    elif args.package_command == "config":
+        doctor = create_environment_doctor(settings)
+        report = doctor.run_doctor(include_dependencies=False)
+        cfg = {
+            "platform": report.platform.name,
+            "python_version": report.python_version,
+            "environment_type": report.environment_type.name,
+            "overall_status": report.overall_status.name,
+            "disclaimer": report.disclaimer
+        }
+        if args.json:
+            print(json.dumps(cfg, indent=2))
+        else:
+            for k, v in cfg.items():
+                print(f"{k}: {v}")

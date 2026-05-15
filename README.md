@@ -569,3 +569,38 @@ Kalite kontrol testlerini ve ilgili komutları çalıştırmak için `quality` k
     `python -m bist_signal_bot quality recent`
 *   **Geçerli Konfigürasyonu Görüntüle:**
     `python -m bist_signal_bot quality config`
+
+
+## Phase 43: Local Packaging & Distribution
+
+This phase introduces a comprehensive local packaging and distribution layer designed to ensure seamless setup and operation across different environments. It strictly adheres to the core principles: no web scraping, no real order execution, no broker APIs, and no paid services.
+
+### Key Features
+*   **Environment Doctor**: Automatically checks Python version (3.10+ recommended), virtual environment usage, write permissions, and critical configuration files to detect issues early.
+*   **Dependency Checker**: Verifies installed packages against `requirements.txt` and reports missing or mismatched dependencies without automatically forcing installations.
+*   **Release Manifest & Bundle**: Generates a reproducible manifest and ZIP bundle containing all necessary source code, configurations, and scripts while strictly excluding sensitive data (`.env`), model artifacts, and local storage (`data/`, `logs/`, `reports/`).
+*   **Installer Scripts**: Auto-generates safe, non-destructive installer scripts for Windows (PowerShell) and Unix/Linux (Bash) that set up virtual environments and install dependencies.
+*   **Security & Quality Integration**: Integrates with the Security Preflight (to prevent secret leaks) and Quality Gate (to ensure tests pass) before generating a release bundle.
+
+### Usage
+
+Use the new `package` CLI command to manage your local setup and generate releases:
+
+```bash
+# Run the Environment Doctor
+python -m bist_signal_bot package doctor
+
+# Check Dependencies
+python -m bist_signal_bot package deps
+
+# Generate Installer Scripts (creates scripts in scripts/generated)
+python -m bist_signal_bot package installers
+
+# Build a Release Bundle (Manifest only by default)
+python -m bist_signal_bot package release
+
+# Build a ZIP Release Bundle and run Quality Checks
+python -m bist_signal_bot package release --zip --run-quality
+```
+
+*Disclaimer: This system generates research-only signals. It does not send real market orders.*

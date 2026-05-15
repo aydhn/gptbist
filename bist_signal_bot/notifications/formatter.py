@@ -758,3 +758,27 @@ def format_quality_failure(result) -> str:
     for check in result.failed_checks():
         lines.append(f"- {check.check_name}: {check.message}")
     return "\n".join(lines)
+
+def format_environment_doctor_report(report) -> str:
+    lines = [
+        "BIST Bot Environment Summary",
+        f"Platform: {report.platform.name}",
+        f"Python: {report.python_version}",
+        f"Environment: {report.environment_type.name}",
+        f"Status: {report.overall_status.name}",
+        "",
+        report.disclaimer
+    ]
+    return "\n".join(lines)
+
+def format_release_bundle_result(result) -> str:
+    lines = [
+        "BIST Bot Release Summary",
+        f"Release ID: {result.release_id}",
+        f"Status: {result.status.name}",
+        f"Format: {result.format.name}",
+        f"Elapsed: {result.elapsed_seconds:.2f}s",
+        "",
+        result.disclaimer
+    ]
+    return "\n".join(lines)

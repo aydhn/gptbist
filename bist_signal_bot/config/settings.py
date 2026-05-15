@@ -6,6 +6,33 @@ from bist_signal_bot.config.profiles import get_profile
 from bist_signal_bot.config.secrets import settings_safe_dump
 
 class Settings(BaseSettings):
+
+    # Packaging Settings
+    ENABLE_PACKAGING: bool = True
+    PACKAGING_DIR_NAME: str = "packaging"
+    PACKAGING_MIN_PYTHON_VERSION: str = "3.10"
+    PACKAGING_PROJECT_NAME: str = "bist-signal-bot"
+    PACKAGING_DEFAULT_FORMAT: str = "MANIFEST_ONLY"
+    PACKAGING_RUN_QUALITY_BY_DEFAULT: bool = False
+    PACKAGING_RUN_SECURITY_BY_DEFAULT: bool = True
+    PACKAGING_INCLUDE_INSTALLERS: bool = True
+    PACKAGING_INCLUDE_ENVIRONMENT_REPORT: bool = True
+    PACKAGING_INCLUDE_DEPENDENCY_REPORT: bool = True
+
+    # Release Settings
+    PACKAGING_RELEASE_VERSION: str = "0.1.0"
+    PACKAGING_CREATE_ZIP: bool = False
+    PACKAGING_MAX_FILE_SIZE_MB: int = 10
+    PACKAGING_EXCLUDE_DATA_DIR: bool = True
+    PACKAGING_EXCLUDE_LOGS_DIR: bool = True
+    PACKAGING_EXCLUDE_REPORTS_DIR: bool = True
+    PACKAGING_EXCLUDE_ENV_FILE: bool = True
+    PACKAGING_EXCLUDE_MODEL_ARTIFACTS: bool = True
+
+    # Environment Check Settings
+    PACKAGING_WARN_IF_NOT_VENV: bool = True
+    PACKAGING_CHECK_WRITE_PERMISSIONS: bool = True
+    PACKAGING_CHECK_OPTIONAL_DEPENDENCIES: bool = True
     # Pattern Detection Features
     # DIVERGENCE ENGINE
     ENABLE_DIVERGENCE_ENGINE: bool = Field(default=True)
@@ -1058,7 +1085,7 @@ class Settings(BaseSettings):
     SECURITY_WARN_IF_RUNTIME_TELEGRAM_ACTIVE: bool = Field(default=False)
     SECURITY_WARN_IF_SCANNER_PAPER_ENABLED: bool = Field(default=True)
     SECURITY_WARN_IF_SAME_CLOSE_DEFAULT: bool = Field(default=True)
-settings = Settings()
+
 
     # Quality Gate Settings
 ENABLE_QUALITY_GATE: bool = True
@@ -1092,3 +1119,12 @@ QUALITY_SMOKE_INCLUDE_PAPER: bool = False
 
 RUNTIME_QUALITY_PREFLIGHT_ENABLED: bool = False
 RUNTIME_QUALITY_PREFLIGHT_SUITE: str = "SMOKE"
+
+
+def get_settings() -> Settings:
+    global settings
+    if settings is None:
+        settings = Settings()
+    return settings
+
+settings = Settings()
