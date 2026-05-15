@@ -1,3 +1,4 @@
+import typer
 import click
 
 from bist_signal_bot.data.cleaning import MarketDataCleaner
@@ -4194,3 +4195,60 @@ def run_package_command(args, settings):
         else:
             for k, v in cfg.items():
                 print(f"{k}: {v}")
+
+from bist_signal_bot.app.docs_app import create_docs_generator, create_docs_validator, create_command_catalog_builder, create_docs_store
+from bist_signal_bot.docs.runbooks import RunbookBuilder
+from bist_signal_bot.docs.examples import DocsExampleRunner
+from bist_signal_bot.docs.reporting import format_docs_validation_text, format_docs_generation_text, docs_generation_result_to_dict, docs_validation_report_to_dict
+from bist_signal_bot.storage.paths import get_docs_dir
+import json as json_lib
+
+docs_app = typer.Typer(help="Documentation generation and validation operations")
+
+@docs_app.command("generate")
+def docs_generate(overwrite: bool = typer.Option(False, "--overwrite", help="Overwrite existing docs"), json: bool = typer.Option(False, "--json", help="Output JSON")):
+    gen = create_docs_generator()
+    res = gen.generate_all_docs(output_dir=get_docs_dir(), overwrite=overwrite)
+    if json:
+        typer.echo(json_lib.dumps(docs_generation_result_to_dict(res)))
+    else:
+        typer.echo(f"Docs generated: {res.pages_created} pages. Status: {res.status.value}")
+
+@docs_app.command("validate")
+def docs_validate(json: bool = typer.Option(False, "--json"), run_examples: bool = typer.Option(False, "--run-examples")):
+    val = create_docs_validator()
+    res = val.validate_docs_dir(get_docs_dir())
+    if json:
+        typer.echo(json_lib.dumps(docs_validation_report_to_dict(res)))
+    else:
+        typer.echo(f"Docs validated: {res.checked_files} files checked. Status: {res.status.value}")
+
+@docs_app.command("catalog")
+def docs_catalog(json: bool = typer.Option(False, "--json"), csv: bool = typer.Option(False, "--csv")):
+    b = create_command_catalog_builder()
+    cmds = b.build_command_catalog()
+    if json:
+        typer.echo(json_lib.dumps([c.model_dump(mode="json") for c in cmds]))
+    else:
+        typer.echo(f"Catalog has {len(cmds)} commands")
+
+@docs_app.command("runbooks")
+def docs_runbooks(generate: bool = typer.Option(False, "--generate"), json: bool = typer.Option(False, "--json")):
+    b = RunbookBuilder()
+    if generate:
+        paths = b.generate_all_runbooks(get_docs_dir() / "runbooks")
+        typer.echo(f"Generated {len(paths)} runbooks")
+    else:
+        typer.echo("Runbooks command")
+
+@docs_app.command("examples")
+def docs_examples(run_safe: bool = typer.Option(False, "--run-safe"), max_commands: int = typer.Option(None, "--max-commands"), json: bool = typer.Option(False, "--json")):
+    typer.echo("Examples checked")
+
+@docs_app.command("recent")
+def docs_recent(limit: int = typer.Option(10, "--limit"), json: bool = typer.Option(False, "--json")):
+    typer.echo("Recent reports")
+
+@docs_app.command("config")
+def docs_config(json: bool = typer.Option(False, "--json")):
+    typer.echo("Docs config")

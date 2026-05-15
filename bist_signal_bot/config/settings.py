@@ -7,6 +7,26 @@ from bist_signal_bot.config.secrets import settings_safe_dump
 
 class Settings(BaseSettings):
 
+    # Docs Settings
+    ENABLE_DOCS: bool = True
+    DOCS_SOURCE_DIR_NAME: str = "docs"
+    DOCS_REPORTS_DIR_NAME: str = "docs"
+    DOCS_VALIDATE_ON_QUALITY: bool = True
+    DOCS_VALIDATE_UNSAFE_CLAIMS: bool = True
+    DOCS_VALIDATE_SECRETS: bool = True
+    DOCS_VALIDATE_COMMAND_EXAMPLES: bool = True
+    DOCS_RUN_EXAMPLE_SMOKE: bool = False
+    DOCS_EXAMPLE_TIMEOUT_SECONDS: int = 30
+    DOCS_GENERATE_OVERWRITE: bool = False
+
+    DOCS_INCLUDE_COMMAND_CATALOG: bool = True
+    DOCS_COMMAND_EXAMPLES_USE_MOCK: bool = True
+    DOCS_WARN_RUNTIME_LOOP_WITHOUT_MAX_ITERATIONS: bool = True
+
+    DOCS_SAVE_VALIDATION_REPORT: bool = True
+    DOCS_REPORT_FORMATS: str = "json,markdown,csv"
+
+
     # Packaging Settings
     ENABLE_PACKAGING: bool = True
     PACKAGING_DIR_NAME: str = "packaging"
