@@ -782,3 +782,20 @@ def format_release_bundle_result(result) -> str:
         result.disclaimer
     ]
     return "\n".join(lines)
+    def format_docs_validation_report(self, report: Any) -> str:
+        msg = "BIST Bot Docs Validation Özeti\n\n"
+        msg += f"Status: {report.status.value}\n"
+        msg += f"Checked Files: {report.checked_files}\n"
+        msg += f"Findings: {len(report.findings)}\n"
+        msg += f"Unsafe Claims: {report.unsafe_claims_found}\n"
+        msg += f"Secrets: {report.secrets_found}\n"
+        msg += f"Missing Pages: {len(report.missing_pages)}\n\n"
+        msg += "Bu çıktı dokümantasyon doğrulama raporudur.\nYatırım tavsiyesi değildir.\nGerçek emir gönderilmedi."
+        return msg
+
+    def format_docs_generation_result(self, result: Any) -> str:
+        msg = "BIST Bot Docs Generation Özeti\n\n"
+        msg += f"Status: {result.status.value}\n"
+        msg += f"Pages Created: {result.pages_created}\n\n"
+        msg += "Bu çıktı dokümantasyon oluşturma raporudur.\nYatırım tavsiyesi değildir.\nGerçek emir gönderilmedi."
+        return msg

@@ -560,3 +560,24 @@ class ManifestError(PackagingError):
 
 class PackagingStorageError(PackagingError):
     pass
+
+class DocsError(BistSignalBotError):
+    pass
+
+class DocsValidationError(DocsError):
+    pass
+
+class DocsGenerationError(DocsError):
+    pass
+
+class DocsCatalogError(DocsError):
+    pass
+
+class DocsRunbookError(DocsError):
+    pass
+
+class DocsExampleError(DocsError):
+    pass
+
+class DocsStorageError(DocsError):
+    pass

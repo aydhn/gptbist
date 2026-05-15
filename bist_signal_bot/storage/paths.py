@@ -199,3 +199,13 @@ def get_reports_dir(settings=None) -> Path:
         rep_dir = PROJECT_ROOT / rep_dir
     rep_dir.mkdir(parents=True, exist_ok=True)
     return rep_dir
+
+def get_docs_dir(settings: Settings | None = None) -> Path:
+    from bist_signal_bot.config.settings import get_settings
+    s = settings or get_settings()
+    return Path(s.DOCS_SOURCE_DIR_NAME)
+
+def get_docs_reports_dir(settings: Settings | None = None) -> Path:
+    from bist_signal_bot.config.settings import get_settings
+    s = settings or get_settings()
+    return get_data_dir(s) / s.DOCS_REPORTS_DIR_NAME

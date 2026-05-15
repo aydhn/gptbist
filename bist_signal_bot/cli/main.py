@@ -93,6 +93,16 @@ def dispatch_risk(args, ctx) -> int:
     return handle_risk_commands(args, ctx)
 
 def run_cli(argv: list[str] | None = None) -> int:
+    import sys
+    args_to_parse = argv if argv is not None else sys.argv[1:]
+
+    if args_to_parse and args_to_parse[0] == 'docs':
+        from bist_signal_bot.cli.commands import docs_app
+        import sys
+        sys.argv = [sys.argv[0]] + args_to_parse[1:]
+        docs_app()
+        return 0
+
     args = parse_args(argv)
 
     try:
@@ -157,6 +167,8 @@ def run_cli(argv: list[str] | None = None) -> int:
         "runtime": lambda a, c: __import__("bist_signal_bot.cli.commands", fromlist=["cmd_runtime"]).cmd_runtime(a, c.settings),
         "monitor": lambda a, c: __import__("bist_signal_bot.cli.commands", fromlist=["cmd_monitor"]).cmd_monitor(a, c.settings),
         "package": lambda a, c: __import__("bist_signal_bot.cli.commands", fromlist=["run_package_command"]).run_package_command(a, c.settings),
+        "docs": lambda a, c: __import__("typer").run(__import__("bist_signal_bot.cli.commands", fromlist=["docs_app"]).docs_app(), sys.argv[2:]),
+
 
         "ml-dataset": lambda a, c: __import__("bist_signal_bot.cli.commands", fromlist=["handle_ml_dataset_command"]).handle_ml_dataset_command(a, c.settings),
         "runtime": lambda a, c: __import__("bist_signal_bot.cli.commands", fromlist=["cmd_runtime"]).cmd_runtime(a, c.settings),
