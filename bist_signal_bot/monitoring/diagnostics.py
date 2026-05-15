@@ -9,6 +9,10 @@ from bist_signal_bot.monitoring.models import (
     AlertSeverity, HealthLevel
 )
 from bist_signal_bot.monitoring.storage import MonitoringStore
+from bist_signal_bot.security.kill_switch import KillSwitchManager
+from bist_signal_bot.security.models import KillSwitchScope
+from bist_signal_bot.security.config_audit import ConfigSecurityAuditor
+
 
 from bist_signal_bot.storage.paths import get_data_dir
 
@@ -25,6 +29,7 @@ class DiagnosticsRunner:
         self.runtime_state_store = runtime_state_store
         self.lock_manager = lock_manager
         self.monitoring_store = monitoring_store or MonitoringStore(self.settings)
+        self.kill_switch = KillSwitchManager(self.settings, get_data_dir(self.settings))
         self.logger = logger or logging.getLogger(__name__)
 
     def run_all_checks(self) -> List[DiagnosticCheckResult]:
@@ -219,3 +224,31 @@ class DiagnosticsRunner:
             return HealthLevel.DEGRADED
 
         return HealthLevel.HEALTHY
+
+    def _check_security(self) -> DiagnosticCheckResult:
+        res = DiagnosticCheckResult(
+            check_name="security_health",
+            component=MonitoringComponent.SECURITY,
+            status=DiagnosticCheckStatus.PASS,
+            message="Security configuration is optimal.",
+            details={}
+        )
+        if getattr(self.settings, "ENABLE_SECURITY_GUARD", True):
+            auditor = ConfigSecurityAuditor(self.kill_switch)
+            report = auditor.audit_settings(self.settings)
+            res.details["overall_score"] = report.overall_score
+            res.details["kill_switch_active"] = report.kill_switch_state.enabled
+            if report.status.value == "FAIL":
+                res.status = DiagnosticCheckStatus.FAIL
+                res.message = "Critical security issues found."
+            elif report.status.value == "WARN":
+                res.status = DiagnosticCheckStatus.WARN
+                res.message = "Security warnings detected."
+            if report.kill_switch_state.enabled:
+                res.status = DiagnosticCheckStatus.WARN
+                res.message += " Kill switch is ACTIVE."
+        else:
+            res.status = DiagnosticCheckStatus.WARN
+            res.message = "Security Guard is disabled."
+            res.details["security_guard_enabled"] = False
+        return res

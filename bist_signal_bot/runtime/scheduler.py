@@ -7,12 +7,16 @@ from bist_signal_bot.config.settings import Settings
 from bist_signal_bot.runtime.models import (
     RuntimeScheduleConfig, RuntimePipelineConfig, RuntimePipelineResult, RuntimePipelineStatus
 )
+from bist_signal_bot.security.kill_switch import KillSwitchManager
+from bist_signal_bot.security.models import KillSwitchScope
+from bist_signal_bot.storage.paths import get_data_dir
 
 class RuntimeScheduler:
     def __init__(self, orchestrator, settings: Optional[Settings] = None, logger: Optional[logging.Logger] = None):
         self.orchestrator = orchestrator
         self.settings = settings or Settings()
         self.logger = logger or logging.getLogger(__name__)
+        self.kill_switch = KillSwitchManager(self.settings, get_data_dir(self.settings))
 
     def run_loop(self, config: RuntimeScheduleConfig, pipeline_config: RuntimePipelineConfig) -> List[RuntimePipelineResult]:
         results = []
@@ -32,6 +36,11 @@ class RuntimeScheduler:
                 return results
 
         while True:
+            if self.kill_switch.is_active(KillSwitchScope.SCHEDULER):
+                self.logger.warning("Kill switch active for SCHEDULER. Pausing loop.")
+                time.sleep(10)
+                continue
+
             if config.max_iterations and iterations >= config.max_iterations:
                 self.logger.info(f"Reached max iterations ({config.max_iterations}). Exiting loop.")
                 break

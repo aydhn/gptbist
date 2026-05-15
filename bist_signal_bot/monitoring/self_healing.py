@@ -9,6 +9,10 @@ from bist_signal_bot.monitoring.models import (
     DiagnosticCheckResult, DiagnosticCheckStatus, MonitoringComponent
 )
 from bist_signal_bot.monitoring.storage import MonitoringStore
+from bist_signal_bot.security.kill_switch import KillSwitchManager
+from bist_signal_bot.security.models import KillSwitchScope
+from bist_signal_bot.storage.paths import get_data_dir
+
 from bist_signal_bot.runtime.state import RuntimeStateStore
 from bist_signal_bot.runtime.locks import RuntimeLockManager
 from bist_signal_bot.storage.paths import ensure_directories_exist
@@ -26,6 +30,7 @@ class SelfHealingManager:
         self.lock_manager = lock_manager or RuntimeLockManager(self.settings)
         self.state_store = state_store or RuntimeStateStore(self.settings)
         self.monitoring_store = monitoring_store or MonitoringStore(self.settings)
+        self.kill_switch = KillSwitchManager(self.settings, get_data_dir(self.settings))
         self.logger = logger or logging.getLogger(__name__)
 
     def _create_action(self, atype: SelfHealingActionType, comp: MonitoringComponent, desc: str, req_conf: bool, safe_auto: bool) -> SelfHealingAction:
@@ -68,6 +73,9 @@ class SelfHealingManager:
         return actions
 
     def execute_action(self, action: SelfHealingAction, confirm: bool = False) -> SelfHealingAction:
+        if self.kill_switch.is_active(KillSwitchScope.SELF_HEALING):
+            return SelfHealingResult(action=action, success=False, message="Kill switch active for SELF_HEALING")
+
         if action.executed:
             return action
 

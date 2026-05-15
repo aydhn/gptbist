@@ -498,3 +498,21 @@ This phase introduces a strictly research-only ML Inference filter into the appl
 - **Güvenlik ve Session**: Local lock mekanizması ile aynı anda çoklu pipeline engellenir. BIST seans takvimi ve state yönetimi desteklenir.
 - **Pipeline Sırası**: Healthcheck -> Data Refresh -> Signal Scan -> Regime -> ML -> Portfolio Risk -> Paper Run -> Telegram -> Cleanup.
 - **CLI**: `python -m bist_signal_bot runtime run-once`, `dry-run`, `loop`, `status`, `history`, `config`, `unlock`.
+
+### Phase 41: Security Guard & Operational Kill Switch (V1)
+- **Security Guard Amacı:** Merkezi ve tüm süreçleri kapsayan, riskli aksiyonları donanımsal mantıkta yasaklayan altyapı.
+- **Secret Redaction:** `.env`, konfigürasyon, API key, Chat ID gibi hassas bilgilerin maskelenmesi (`SecretRedactor`). Telegram mesajlarında, raporlarda ve loglarda (Log formatter) hiçbir gizli bilgi sızmasına izin verilmez.
+- **Secret Hygiene Scan:** Payload veya ayarlar gönderilmeden önce açık metin sızıntılarını test eder.
+- **Forbidden Action Guard:** Web scraping, broker API bağlantısı, ücretli veri/API servisleri ve gerçek emir gönderimini (live trade) engelleyen statik ve dinamik koruma katmanı.
+- **Unsafe Claim Guard:** "Yatırım tavsiyesidir", "kesin al", "garanti kazanç" gibi ifadeleri süzerek ve düzelterek paylaşımlarda yasal koruma sağlar.
+- **Path Guard:** Local dosya yolu dizinlerinin dışına çıkılmasını (path traversal) ve güvenlik dışı (`ML` vb.) kaynaklardan veri yüklenmesini (Joblib/pickle loading guards) önler.
+- **Kill-switch Mantığı:** Acil durumlarda `PAPER`, `SCANNER`, `RUNTIME` veya `ALL` gibi kapsamlarla sistemin çalışmasını merkezi JSON denetimiyle güvenli bir şekilde dondurur (`kill-switch.json`). Self-healing gibi yıkıcı aksiyonlar bu durumdayken işlemez.
+- **Runtime & Notification Preflight:** Orşestratör döngüsünden veya dış bildirim (Telegram vs.) aşamasından önce `SecurityPreflightRunner` çalışarak, ayarları denetler, veri temizliği kontrolü yapar ve gerekiyorsa çalışmayı durdurur.
+- **Config Audit:** Aşırı agresif risk sınırları, aktif paper modları gibi ayarlar taranarak `SecurityAuditReport` sunulur. Monitoring/security diagnostics ile entegredir.
+- **CLI Entegrasyonu:**
+  `python -m bist_signal_bot security audit`
+  `python -m bist_signal_bot security preflight`
+  `python -m bist_signal_bot security kill-switch activate --scope ALL --reason "manual stop"`
+  `python -m bist_signal_bot security kill-switch deactivate --confirm`
+  `python -m bist_signal_bot security scan-source --path bist_signal_bot`
+- **Tavsiye Değildir:** Tüm sonuçlar backtest/araştırma (research) amaçlıdır; borsa/broker bağlantısı veya gerçek emir gönderimi yoktur.

@@ -1019,5 +1019,43 @@ class Settings(BaseSettings):
 
     SCANNER_RESULTS_DIR_NAME: str = Field(default="scans")
 
-settings = Settings()
+
     # Pattern Detection Features
+
+    # SECURITY GUARD
+    ENABLE_SECURITY_GUARD: bool = Field(default=True)
+    SECURITY_LEVEL: str = Field(default="HIGH")
+    SECURITY_FAIL_ON_SECRET_LEAK: bool = Field(default=True)
+    SECURITY_REDACT_LOGS: bool = Field(default=True)
+    SECURITY_REDACT_AUDIT: bool = Field(default=True)
+    SECURITY_REDACT_REPORTS: bool = Field(default=True)
+    SECURITY_REDACT_NOTIFICATIONS: bool = Field(default=True)
+
+    SECURITY_BLOCK_REAL_ORDER_ACTIONS: bool = Field(default=True)
+    SECURITY_BLOCK_BROKER_API: bool = Field(default=True)
+    SECURITY_BLOCK_HTML_SCRAPING: bool = Field(default=True)
+    SECURITY_BLOCK_PAID_API: bool = Field(default=True)
+    SECURITY_SCAN_SOURCE_FOR_FORBIDDEN_ACTIONS: bool = Field(default=False)
+
+    SECURITY_BLOCK_UNSAFE_CLAIMS: bool = Field(default=True)
+    SECURITY_SANITIZE_UNSAFE_CLAIMS: bool = Field(default=True)
+
+    SECURITY_ENFORCE_SAFE_PATHS: bool = Field(default=True)
+    SECURITY_ALLOW_EXTERNAL_MODEL_PATH: bool = Field(default=False)
+
+    SECURITY_KILL_SWITCH_ENABLED: bool = Field(default=True)
+    SECURITY_KILL_SWITCH_FILE_NAME: str = Field(default="kill_switch.json")
+    SECURITY_DEFAULT_KILL_SWITCH_SCOPE: str = Field(default="ALL")
+
+    SECURITY_RUNTIME_PREFLIGHT_ENABLED: bool = Field(default=True)
+    SECURITY_NOTIFICATION_PREFLIGHT_ENABLED: bool = Field(default=True)
+    SECURITY_REPORT_PREFLIGHT_ENABLED: bool = Field(default=True)
+    SECURITY_MODEL_LOAD_PREFLIGHT_ENABLED: bool = Field(default=True)
+    SECURITY_CLI_PREFLIGHT_ENABLED: bool = Field(default=True)
+
+    SECURITY_CONFIG_AUDIT_ENABLED: bool = Field(default=True)
+    SECURITY_WARN_IF_PAPER_DEFAULT_ACTIVE: bool = Field(default=True)
+    SECURITY_WARN_IF_RUNTIME_TELEGRAM_ACTIVE: bool = Field(default=False)
+    SECURITY_WARN_IF_SCANNER_PAPER_ENABLED: bool = Field(default=True)
+    SECURITY_WARN_IF_SAME_CLOSE_DEFAULT: bool = Field(default=True)
+settings = Settings()

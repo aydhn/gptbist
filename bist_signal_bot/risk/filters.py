@@ -3,8 +3,8 @@ from typing import Any
 from bist_signal_bot.config.settings import Settings
 from bist_signal_bot.signals.models import SignalCandidate
 from .models import (
-    RiskContext, StopTargetReference, PositionSizeResult, RiskFilterResult,
-    RiskDecisionStatus, RiskRejectReason, RiskSide
+    RiskContext, StopTargetReference, PositionSizeResult,
+    RiskDecisionStatus, RiskRejectReason, RiskSide, RiskDecision
 )
 
 class RiskFilterEngine:

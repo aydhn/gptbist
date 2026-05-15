@@ -2,6 +2,9 @@ import html
 from typing import Any
 
 from bist_signal_bot.notifications.models import NotificationMessage
+from bist_signal_bot.security.claims_guard import UnsafeClaimGuard
+from bist_signal_bot.security.redaction import SecretRedactor
+from bist_signal_bot.config.settings import settings as default_settings
 
 
 
@@ -692,3 +695,19 @@ def format_runtime_job_result(result: RuntimeJobResult) -> str:
 
 def format_runtime_failure(result: RuntimePipelineResult) -> str:
     return f"BIST Bot Runtime FAILED!\nRun ID: {result.run_id}\nStrategy: {result.config.strategy_name}"
+
+# Wrapper to intercept and sanitize format function outputs
+def _sanitize_output(text: str) -> str:
+    if default_settings.SECURITY_SANITIZE_UNSAFE_CLAIMS:
+        text = UnsafeClaimGuard.sanitize_text(text)
+    if default_settings.SECURITY_REDACT_NOTIFICATIONS:
+        text = SecretRedactor.redact_text(text)
+    return text
+
+_original_format_transaction_cost_breakdown = format_transaction_cost_breakdown
+def format_transaction_cost_breakdown(cost: Any) -> str:
+    return _sanitize_output(_original_format_transaction_cost_breakdown(cost))
+
+_original_format_round_trip_cost_breakdown = format_round_trip_cost_breakdown
+def format_round_trip_cost_breakdown(cost: Any) -> str:
+    return _sanitize_output(_original_format_round_trip_cost_breakdown(cost))

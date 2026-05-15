@@ -14,11 +14,18 @@ from bist_signal_bot.runtime.state import RuntimeStateStore
 from bist_signal_bot.runtime.jobs import RuntimeJobRunner
 from bist_signal_bot.runtime.pipelines import RuntimePipelineBuilder
 from bist_signal_bot.runtime.storage import RuntimeReportStore
+from bist_signal_bot.security.preflight import SecurityPreflightRunner
+from bist_signal_bot.security.kill_switch import KillSwitchManager
+from bist_signal_bot.security.models import KillSwitchScope
+from bist_signal_bot.core.exceptions import KillSwitchActiveError, SecurityPreflightError
+from bist_signal_bot.storage.paths import get_data_dir
 
 # For auditing, we normally import from core.audit, handled inside methods
 class RuntimeOrchestrator:
     def __init__(
         self,
+        security_preflight: Optional[SecurityPreflightRunner] = None,
+        kill_switch: Optional[KillSwitchManager] = None,
         scanner_engine: Optional[Any] = None,
         paper_engine: Optional[Any] = None,
         regime_engine: Optional[Any] = None,
@@ -46,8 +53,12 @@ class RuntimeOrchestrator:
         self.state_store = state_store or RuntimeStateStore(self.settings)
         self.job_runner = job_runner or RuntimeJobRunner(self.settings, self.logger)
         self.report_store = report_store or RuntimeReportStore(self.settings)
+        self.kill_switch = kill_switch or KillSwitchManager(self.settings, get_data_dir(self.settings))
+        self.security_preflight = security_preflight or SecurityPreflightRunner(self.settings, kill_switch=self.kill_switch)
 
     def run_once(self, config: RuntimePipelineConfig, trigger: RuntimeTrigger = RuntimeTrigger.CLI) -> RuntimePipelineResult:
+        security_preflight: Optional[SecurityPreflightRunner] = None,
+        kill_switch: Optional[KillSwitchManager] = None,
         run_id = str(uuid.uuid4())
         started_at = datetime.utcnow()
 
@@ -140,6 +151,8 @@ class RuntimeOrchestrator:
         return result
 
     def dry_run(self, config: RuntimePipelineConfig) -> RuntimePipelineResult:
+        security_preflight: Optional[SecurityPreflightRunner] = None,
+        kill_switch: Optional[KillSwitchManager] = None,
         config.dry_run = True
         return self.run_once(config, RuntimeTrigger.TEST)
 
@@ -147,11 +160,15 @@ class RuntimeOrchestrator:
         return self.state_store.load().summary()
 
     def reset_state(self, confirm: bool = False) -> RuntimeState:
+        security_preflight: Optional[SecurityPreflightRunner] = None,
+        kill_switch: Optional[KillSwitchManager] = None,
         if not confirm:
             raise RuntimeValidationError("You must confirm reset_state by passing confirm=True")
         return self.state_store.reset_state()
 
     def send_summary(self, result: RuntimePipelineResult) -> RuntimeJobResult:
+        security_preflight: Optional[SecurityPreflightRunner] = None,
+        kill_switch: Optional[KillSwitchManager] = None,
         def send_func():
             from bist_signal_bot.notifications.formatter import format_runtime_pipeline_result
             msg = format_runtime_pipeline_result(result)

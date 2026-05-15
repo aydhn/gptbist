@@ -10,6 +10,11 @@ from bist_signal_bot.data.symbol_universe import SymbolUniverse
 from bist_signal_bot.strategies.engine import StrategyEngine
 from bist_signal_bot.ml.inference.engine import MLInferenceEngine
 from bist_signal_bot.ml.inference.models import MLInferenceConfig, MLFilterDecision
+from bist_signal_bot.security.kill_switch import KillSwitchManager
+from bist_signal_bot.security.models import KillSwitchScope
+from bist_signal_bot.security.preflight import SecurityPreflightRunner
+from bist_signal_bot.storage.paths import get_data_dir
+
 from bist_signal_bot.risk.engine import RiskEngine
 from bist_signal_bot.portfolio.risk_engine import PortfolioRiskEngine
 from bist_signal_bot.paper.engine import PaperTradingEngine
@@ -40,6 +45,8 @@ class SignalScannerEngine:
         self.logger = logger or logging.getLogger(__name__)
         self.data_service = data_service
         self.strategy_engine = strategy_engine
+        self.kill_switch = KillSwitchManager(self.settings, get_data_dir(self.settings))
+        self.security_preflight = SecurityPreflightRunner(self.settings, kill_switch=self.kill_switch)
         self.ml_inference_engine = ml_inference_engine
         self.risk_engine = risk_engine or RiskEngine(self.settings)
         self.portfolio_risk_engine = portfolio_risk_engine or PortfolioRiskEngine(self.settings)
@@ -153,6 +160,9 @@ class SignalScannerEngine:
             )
 
     def scan(self, request: ScanRequest) -> ScanReport:
+        if self.kill_switch.is_active(KillSwitchScope.SCANNER):
+            self.logger.warning("SCANNER kill switch is active. Scan aborted.")
+            return ScanReport(request=request, status=ScanStatus.FAILED, error="Kill Switch Active")
         started_at = datetime.utcnow()
         start_time = time.time()
 

@@ -71,6 +71,12 @@ class TelegramNotifier:
         )
 
     def send(self, message: NotificationMessage) -> TelegramSendResult:
+        if getattr(self.settings, "SECURITY_FAIL_ON_SECRET_LEAK", True):
+            from bist_signal_bot.security.secrets import SecretHygieneScanner
+            SecretHygieneScanner.validate_no_secret_leak(message.body, context="Telegram Notification")
+        if getattr(self.settings, "SECURITY_REDACT_NOTIFICATIONS", True):
+            from bist_signal_bot.security.redaction import SecretRedactor
+            message.body = SecretRedactor.redact_text(message.body)
         if not self.is_configured():
             logger.debug("Telegram notification skipped: Not configured or disabled.")
             return TelegramSendResult(success=False, error="Telegram is not configured or disabled.")

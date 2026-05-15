@@ -26,6 +26,11 @@ from bist_signal_bot.risk.engine import RiskEngine
 from bist_signal_bot.portfolio.risk_engine import PortfolioRiskEngine
 from bist_signal_bot.ml.inference.engine import MLInferenceEngine
 from bist_signal_bot.ml.inference.models import MLInferenceConfig, MLFilterDecision
+from bist_signal_bot.security.kill_switch import KillSwitchManager
+from bist_signal_bot.security.models import KillSwitchScope
+from bist_signal_bot.storage.paths import get_data_dir
+from bist_signal_bot.core.exceptions import KillSwitchActiveError
+
 from bist_signal_bot.data.data_service import MarketDataService
 
 class PaperTradingEngine:
@@ -93,6 +98,9 @@ class PaperTradingEngine:
         return self.ledger_store.load(account_id)
 
     def run_once(self, request: PaperRunRequest) -> PaperRunResult:
+        if self.kill_switch.is_active(KillSwitchScope.PAPER):
+            self.logger.warning("PAPER kill switch is active. Paper Engine run aborted.")
+            return PaperRunResult(request=request, status=PaperAccountStatus.ERROR, error="Kill Switch Active")
         start_time = datetime.now()
 
         # 1. Load state

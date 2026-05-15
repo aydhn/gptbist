@@ -8,6 +8,8 @@ import joblib
 from bist_signal_bot.config.settings import Settings
 from bist_signal_bot.storage.paths import get_ml_models_dir
 from bist_signal_bot.ml.training.models import MLModelArtifact, MLModelType, MLTaskType, MLFeatureImportance, MLTrainResult
+from bist_signal_bot.security.path_guard import PathGuard
+
 from bist_signal_bot.core.exceptions import MLModelRegistryError
 
 logger = logging.getLogger(__name__)
@@ -17,6 +19,7 @@ class MLModelRegistry:
         self.settings = settings
         self.base_dir = base_dir or get_ml_models_dir(settings)
         self.base_dir.mkdir(parents=True, exist_ok=True)
+        self.path_guard = PathGuard([self.base_dir])
 
     def get_models_dir(self) -> Path:
         return self.base_dir
@@ -52,6 +55,8 @@ class MLModelRegistry:
             raise MLModelRegistryError(f"Failed to save model {artifact.model_id}: {e}")
 
     def load_model(self, model_id: str) -> tuple[Any, Any, MLModelArtifact]:
+        model_dir = self.base_dir / model_id
+        self.path_guard.validate_model_path(model_dir, allow_external=getattr(self.settings, "SECURITY_ALLOW_EXTERNAL_MODEL_PATH", False))
         model_dir = self.base_dir / model_id
         if not model_dir.exists():
             raise MLModelRegistryError(f"Model directory not found: {model_dir}")

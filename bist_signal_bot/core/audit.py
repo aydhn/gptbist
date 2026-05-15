@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from bist_signal_bot.config.settings import Settings
-from bist_signal_bot.core.logging_setup import sanitize_for_logging
+from bist_signal_bot.security.redaction import SecretRedactor
 
 
 class AuditEventType(str, Enum):
@@ -50,6 +50,18 @@ class AuditEventType(str, Enum):
     SCAN_TELEGRAM_SENT = "SCAN_TELEGRAM_SENT"
     SCAN_PAPER_SIMULATION_REQUESTED = "SCAN_PAPER_SIMULATION_REQUESTED"
 
+
+    SECURITY_AUDIT_RUN = "SECURITY_AUDIT_RUN"
+    SECURITY_PREFLIGHT_RUN = "SECURITY_PREFLIGHT_RUN"
+    SECURITY_PREFLIGHT_FAILED = "SECURITY_PREFLIGHT_FAILED"
+    SECRET_REDACTION_APPLIED = "SECRET_REDACTION_APPLIED"
+    SECRET_LEAK_BLOCKED = "SECRET_LEAK_BLOCKED"
+    FORBIDDEN_ACTION_BLOCKED = "FORBIDDEN_ACTION_BLOCKED"
+    UNSAFE_CLAIM_SANITIZED = "UNSAFE_CLAIM_SANITIZED"
+    KILL_SWITCH_ACTIVATED = "KILL_SWITCH_ACTIVATED"
+    KILL_SWITCH_DEACTIVATED = "KILL_SWITCH_DEACTIVATED"
+    KILL_SWITCH_BLOCKED_ACTION = "KILL_SWITCH_BLOCKED_ACTION"
+    PATH_SECURITY_BLOCKED = "PATH_SECURITY_BLOCKED"
 
     PORTFOLIO_SIGNAL_APPROVED = "PORTFOLIO_SIGNAL_APPROVED"
 
@@ -156,7 +168,10 @@ class AuditLogger:
             return
 
         try:
-            sanitized_metadata = sanitize_for_logging(event.metadata, mask_secrets=self.settings.MASK_SECRETS_IN_LOGS)
+            sanitized_metadata = event.metadata
+            if self.settings.SECURITY_REDACT_AUDIT:
+                from bist_signal_bot.security.redaction import SecretRedactor
+                sanitized_metadata = SecretRedactor.redact_dict(event.metadata)
 
             event_dict = {
                 "timestamp": event.timestamp.isoformat(),

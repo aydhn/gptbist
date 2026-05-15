@@ -591,3 +591,42 @@ def get_runtime_health(settings) -> dict:
         "interval_minutes": settings.RUNTIME_INTERVAL_MINUTES,
         "lock_ttl_seconds": settings.RUNTIME_LOCK_TTL_SECONDS
     }
+
+def _append_security_health(status: dict, settings) -> None:
+    status["security"] = {
+        "enabled": getattr(settings, "ENABLE_SECURITY_GUARD", True),
+        "security_level": getattr(settings, "SECURITY_LEVEL", "HIGH"),
+        "fail_on_secret_leak": getattr(settings, "SECURITY_FAIL_ON_SECRET_LEAK", True),
+        "redact_logs": getattr(settings, "SECURITY_REDACT_LOGS", True),
+        "redact_audit": getattr(settings, "SECURITY_REDACT_AUDIT", True),
+        "redact_reports": getattr(settings, "SECURITY_REDACT_REPORTS", True),
+        "redact_notifications": getattr(settings, "SECURITY_REDACT_NOTIFICATIONS", True),
+        "block_real_order_actions": getattr(settings, "SECURITY_BLOCK_REAL_ORDER_ACTIONS", True),
+        "block_broker_api": getattr(settings, "SECURITY_BLOCK_BROKER_API", True),
+        "block_html_scraping": getattr(settings, "SECURITY_BLOCK_HTML_SCRAPING", True),
+        "enforce_safe_paths": getattr(settings, "SECURITY_ENFORCE_SAFE_PATHS", True),
+        "allow_external_model_path": getattr(settings, "SECURITY_ALLOW_EXTERNAL_MODEL_PATH", False),
+        "kill_switch_enabled": getattr(settings, "SECURITY_KILL_SWITCH_ENABLED", True),
+        "kill_switch_active": False,
+        "runtime_preflight_enabled": getattr(settings, "SECURITY_RUNTIME_PREFLIGHT_ENABLED", True),
+        "notification_preflight_enabled": getattr(settings, "SECURITY_NOTIFICATION_PREFLIGHT_ENABLED", True),
+        "config_audit_enabled": getattr(settings, "SECURITY_CONFIG_AUDIT_ENABLED", True),
+
+        # Capability checks
+        "secret_redactor_capable": True,
+        "forbidden_action_guard_capable": True,
+        "claim_guard_capable": True,
+        "path_guard_capable": True,
+        "kill_switch_manager_capable": True,
+        "security_preflight_capable": True
+    }
+
+    try:
+        from bist_signal_bot.security.kill_switch import KillSwitchManager
+        from bist_signal_bot.storage.paths import get_data_dir
+        ks = KillSwitchManager(settings, get_data_dir(settings))
+        status["security"]["kill_switch_active"] = ks.is_active()
+        status["security_kill_switch_active"] = ks.is_active()
+    except Exception as e:
+        status["security"]["kill_switch_active"] = "ERROR"
+        status["security"]["kill_switch_manager_capable"] = False

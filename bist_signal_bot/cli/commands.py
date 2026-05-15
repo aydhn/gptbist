@@ -3844,3 +3844,114 @@ def cmd_monitor(args, settings):
             print("Monitoring Config:")
             for k, v in data.items():
                 print(f"  {k}: {v}")
+
+def handle_security_command(args, settings):
+    from bist_signal_bot.security.config_audit import ConfigSecurityAuditor
+    from bist_signal_bot.security.preflight import SecurityPreflightRunner
+    from bist_signal_bot.security.kill_switch import KillSwitchManager
+    from bist_signal_bot.security.models import KillSwitchScope
+    from bist_signal_bot.security.redaction import SecretRedactor
+    from bist_signal_bot.security.secrets import SecretHygieneScanner
+    from bist_signal_bot.security.forbidden_actions import ForbiddenActionGuard
+    from bist_signal_bot.storage.paths import get_data_dir
+    from bist_signal_bot.security.reporting import (
+        security_audit_report_to_dict, format_security_audit_text, format_security_audit_markdown,
+        format_kill_switch_status
+    )
+    from pathlib import Path
+
+    cmd = args.security_command
+    ks = KillSwitchManager(settings, get_data_dir(settings))
+
+    if cmd == "audit":
+        auditor = ConfigSecurityAuditor(ks)
+        report = auditor.audit_settings(settings)
+        if getattr(args, "json", False):
+            print_output(security_audit_report_to_dict(report), as_json=True)
+        elif getattr(args, "markdown", False):
+            print_output(format_security_audit_markdown(report))
+        else:
+            print_output(format_security_audit_text(report))
+
+    elif cmd == "preflight":
+        runner = SecurityPreflightRunner(settings, kill_switch=ks)
+        if getattr(args, "notification", False):
+            try:
+                runner.run_notification_preflight({"test": "data"})
+                print_output("Notification preflight passed.")
+            except Exception as e:
+                print_output(f"Notification preflight failed: {e}")
+                sys.exit(1)
+        else:
+            try:
+                report = runner.run_cli_preflight("cli_test", payload={})
+                if getattr(args, "json", False):
+                    print_output(security_audit_report_to_dict(report), as_json=True)
+                else:
+                    print_output(format_success("Runtime/CLI preflight passed."))
+            except Exception as e:
+                print_output(format_error(f"Preflight failed: {e}"))
+                sys.exit(1)
+
+    elif cmd == "redact":
+        text = args.text
+        redacted = SecretRedactor.redact_text(text)
+        if getattr(args, "json", False):
+            print_output({"original_length": len(text), "redacted_text": redacted}, as_json=True)
+        else:
+            print_output(f"Redacted Text:\n{redacted}")
+
+    elif cmd == "kill-switch":
+        kscmd = args.ks_command
+        if kscmd == "status":
+            state = ks.load_state()
+            print_output(format_kill_switch_status(state))
+        elif kscmd == "activate":
+            try:
+                scope = KillSwitchScope(args.scope)
+            except ValueError:
+                scope = KillSwitchScope.ALL
+            state = ks.activate([scope], args.reason, "cli_user")
+            print_output(format_success(f"Kill switch activated for scope: {scope.value}"))
+        elif kscmd == "deactivate":
+            if not args.confirm:
+                print_output(format_error("Deactivation requires --confirm flag."))
+                sys.exit(1)
+            state = ks.deactivate(confirm=True)
+            print_output(format_success("Kill switch deactivated."))
+
+    elif cmd == "scan-source":
+        path = Path(args.path)
+        if not path.exists():
+            print_output(format_error("Path does not exist."))
+            sys.exit(1)
+        all_findings = []
+        if path.is_file():
+            try:
+                text = path.read_text(encoding="utf-8")
+                all_findings.extend(ForbiddenActionGuard.scan_source_text(text, str(path)))
+            except Exception:
+                pass
+        else:
+            for p in path.rglob("*.py"):
+                try:
+                    text = p.read_text(encoding="utf-8")
+                    all_findings.extend(ForbiddenActionGuard.scan_source_text(text, str(p)))
+                except Exception:
+                    pass
+        if getattr(args, "json", False):
+            print_output([f.__dict__ for f in all_findings], as_json=True)
+        else:
+            if not all_findings:
+                print_output(format_success("No forbidden actions found."))
+            else:
+                for f in all_findings:
+                    print_output(format_warning(f"[{f.location}] {f.action_type.value}: {f.message}"))
+
+    elif cmd == "config":
+        data = SecretHygieneScanner.safe_settings_summary(settings)
+        if getattr(args, "json", False):
+            print_output(data, as_json=True)
+        else:
+            for k, v in data.items():
+                print_output(f"{k}: {v}")
