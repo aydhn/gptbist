@@ -88,3 +88,7 @@ class SecurityPreflightRunner:
             self.secret_scanner.validate_no_secret_leak(payload, context=f"CLI Command: {command_name}")
 
         return self.run_runtime_preflight()
+
+    def run_optional_quality_checks(self):
+        # Allow integration of quality reports if needed in preflight flow
+        pass

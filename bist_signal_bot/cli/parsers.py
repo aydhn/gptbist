@@ -445,6 +445,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     add_costs_parser(subparsers)
     add_security_parser(subparsers)
+    add_quality_parser(subparsers)
 
     add_validate_backtest_parser(subparsers)
     add_backtest_parser(subparsers)
@@ -865,3 +866,40 @@ def add_security_parser(subparsers):
 
     config_parser = security_subparsers.add_parser("config", help="Dump safely redacted config.")
     config_parser.add_argument("--json", action="store_true", help="Output as JSON.")
+
+def add_quality_parser(subparsers):
+    quality_parser = subparsers.add_parser("quality", help="Run Quality Gate checks")
+    quality_subparsers = quality_parser.add_subparsers(dest="quality_command", required=True)
+
+    run_parser = quality_subparsers.add_parser("run", help="Run the full Quality Gate")
+    run_parser.add_argument("--suite", type=str, help="QualitySuite to run (ALL, SMOKE, UNIT, SECURITY, FAST, etc.)")
+    run_parser.add_argument("--gate", type=str, help="QualityGateLevel (RELAXED, STANDARD, STRICT, RELEASE)")
+    run_parser.add_argument("--coverage", action="store_true", help="Force coverage run")
+    run_parser.add_argument("--static", action="store_true", help="Force static analysis run")
+    run_parser.add_argument("--type-check", action="store_true", help="Force type checking run")
+    run_parser.add_argument("--regression-smoke", action="store_true", help="Force regression smoke test run")
+    run_parser.add_argument("--save-report", action="store_true", help="Force saving report")
+    run_parser.add_argument("--json", action="store_true", help="Output JSON to stdout")
+
+    smoke_parser = quality_subparsers.add_parser("smoke", help="Run only smoke checks")
+    smoke_parser.add_argument("--json", action="store_true", help="Output JSON to stdout")
+
+    security_parser = quality_subparsers.add_parser("security", help="Run only security checks")
+    security_parser.add_argument("--json", action="store_true", help="Output JSON to stdout")
+
+    imports_parser = quality_subparsers.add_parser("imports", help="Run only import checks")
+    imports_parser.add_argument("--json", action="store_true", help="Output JSON to stdout")
+
+    coverage_parser = quality_subparsers.add_parser("coverage", help="Run only coverage checks")
+    coverage_parser.add_argument("--threshold", type=float, help="Coverage threshold pct")
+    coverage_parser.add_argument("--json", action="store_true", help="Output JSON to stdout")
+
+    regression_parser = quality_subparsers.add_parser("regression", help="Run only regression checks")
+    regression_parser.add_argument("--json", action="store_true", help="Output JSON to stdout")
+
+    recent_parser = quality_subparsers.add_parser("recent", help="List recent quality runs")
+    recent_parser.add_argument("--limit", type=int, default=20, help="Max runs to show")
+    recent_parser.add_argument("--json", action="store_true", help="Output JSON to stdout")
+
+    config_parser = quality_subparsers.add_parser("config", help="Show quality gate configuration")
+    config_parser.add_argument("--json", action="store_true", help="Output JSON to stdout")

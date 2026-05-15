@@ -3955,3 +3955,147 @@ def handle_security_command(args, settings):
         else:
             for k, v in data.items():
                 print_output(f"{k}: {v}")
+
+def handle_quality_command(args, settings):
+    import json
+    import sys
+    from bist_signal_bot.app.quality_app import create_quality_gate_runner, create_quality_config_from_settings, create_smoke_quality_config
+    from bist_signal_bot.quality.models import QualitySuite, QualityGateLevel
+    from bist_signal_bot.quality.reporting import quality_run_result_to_dict, format_quality_result_text
+
+    cmd = args.quality_command
+    runner = create_quality_gate_runner(settings)
+
+    if cmd == "run":
+        config = create_quality_config_from_settings(settings)
+        if hasattr(args, "suite") and args.suite:
+            config.suite = QualitySuite(args.suite)
+        if hasattr(args, "gate") and args.gate:
+            config.gate_level = QualityGateLevel(args.gate)
+
+        # Overrides
+        if hasattr(args, "coverage") and args.coverage:
+            config.run_coverage = True
+        if hasattr(args, "static") and args.static:
+            config.run_static = True
+        if hasattr(args, "type_check") and args.type_check:
+            config.run_type_check = True
+        if hasattr(args, "regression_smoke") and args.regression_smoke:
+            config.run_regression_smoke = True
+        if hasattr(args, "save_report") and args.save_report:
+            config.save_report = True
+
+        result = runner.run(config)
+
+        if getattr(args, "json", False):
+            print(json.dumps(quality_run_result_to_dict(result), indent=2))
+        else:
+            print(format_quality_result_text(result))
+            if not result.passed():
+                 sys.exit(1)
+
+    elif cmd == "smoke":
+        config = create_smoke_quality_config(settings)
+        result = runner.run(config)
+        if getattr(args, "json", False):
+            print(json.dumps(quality_run_result_to_dict(result), indent=2))
+        else:
+            print(format_quality_result_text(result))
+            if not result.passed():
+                 sys.exit(1)
+
+    elif cmd == "security":
+        config = create_quality_config_from_settings(settings)
+        config.suite = QualitySuite.SECURITY
+        # Disable all others
+        config.run_tests = True
+        config.run_coverage = False
+        config.run_static = False
+        config.run_type_check = False
+        config.run_import_checks = False
+        config.run_security_checks = True
+        config.run_regression_smoke = False
+
+        result = runner.run(config)
+        if getattr(args, "json", False):
+            print(json.dumps(quality_run_result_to_dict(result), indent=2))
+        else:
+            print(format_quality_result_text(result))
+            if not result.passed():
+                 sys.exit(1)
+
+    elif cmd == "imports":
+        config = create_quality_config_from_settings(settings)
+        config.suite = QualitySuite.FAST
+        config.run_tests = False
+        config.run_coverage = False
+        config.run_static = False
+        config.run_type_check = False
+        config.run_import_checks = True
+        config.run_security_checks = False
+        config.run_regression_smoke = False
+
+        result = runner.run(config)
+        if getattr(args, "json", False):
+            print(json.dumps(quality_run_result_to_dict(result), indent=2))
+        else:
+            print(format_quality_result_text(result))
+            if not result.passed():
+                 sys.exit(1)
+
+    elif cmd == "coverage":
+        config = create_quality_config_from_settings(settings)
+        config.run_tests = False
+        config.run_coverage = True
+        config.run_static = False
+        config.run_type_check = False
+        config.run_import_checks = False
+        config.run_security_checks = False
+        config.run_regression_smoke = False
+        if hasattr(args, "threshold") and args.threshold is not None:
+             config.coverage_threshold_pct = float(args.threshold)
+
+        result = runner.run(config)
+        if getattr(args, "json", False):
+            print(json.dumps(quality_run_result_to_dict(result), indent=2))
+        else:
+            print(format_quality_result_text(result))
+            if not result.passed():
+                 sys.exit(1)
+
+    elif cmd == "regression":
+        config = create_quality_config_from_settings(settings)
+        config.run_tests = False
+        config.run_coverage = False
+        config.run_static = False
+        config.run_type_check = False
+        config.run_import_checks = False
+        config.run_security_checks = False
+        config.run_regression_smoke = True
+
+        result = runner.run(config)
+        if getattr(args, "json", False):
+            print(json.dumps(quality_run_result_to_dict(result), indent=2))
+        else:
+            print(format_quality_result_text(result))
+            if not result.passed():
+                 sys.exit(1)
+
+    elif cmd == "recent":
+        limit = getattr(args, "limit", 20)
+        runs = runner.storage.list_recent_quality_runs(limit)
+        if getattr(args, "json", False):
+            print(json.dumps(runs, indent=2))
+        else:
+            print(f"Recent Quality Runs ({len(runs)}):")
+            for r in runs:
+                 print(f"  [{r.get('status', 'UNKNOWN')}] {r.get('run_id', '?')} - Gate: {r.get('gate_level', '?')} | Suite: {r.get('suite', '?')} | Checks: {r.get('checks_total', 0)}")
+
+    elif cmd == "config":
+        config = create_quality_config_from_settings(settings)
+        if getattr(args, "json", False):
+            print(config.model_dump_json(indent=2))
+        else:
+            print("Quality Gate Configuration:")
+            for k, v in config.model_dump().items():
+                print(f"  {k}: {v}")

@@ -516,3 +516,56 @@ This phase introduces a strictly research-only ML Inference filter into the appl
   `python -m bist_signal_bot security kill-switch deactivate --confirm`
   `python -m bist_signal_bot security scan-source --path bist_signal_bot`
 - **Tavsiye Değildir:** Tüm sonuçlar backtest/araştırma (research) amaçlıdır; borsa/broker bağlantısı veya gerçek emir gönderimi yoktur.
+
+## Phase 42: Quality Gate, Test Orchestrator, Static Analysis, Coverage, Regression Guard and Release-Readiness Layer V1
+
+Bu fazda, proje büyüdükçe sistemin bozulmadan ilerlemesini sağlamak için merkezi bir Quality Gate katmanı kurulmuştur. Bu katman testleri, coverage ölçümünü, static analysis kontrollerini, type-check opsiyonlarını, security guard doğrulamalarını, import bağımlılık kontrolünü, regression smoke testlerini ve release-readiness raporunu tek CLI altında çalıştırır.
+
+### Özellikler
+*   **Merkezi Test Orkestrasyonu:** Testleri tek noktadan yönetir (Unit, Integration, Smoke, Security, Runtime, vs.). `pytest` ana test runner olarak kullanılır.
+*   **Coverage Ölçümü:** Kod kapsama oranını (coverage) ölçer.
+*   **Static Analysis & Type Checking:** Ruff, Black ve Mypy gibi ücretsiz local statik analiz ve tip kontrol araçlarını (eğer kurulu iseler) çalıştırır.
+*   **Import Checks:** Paket içe aktarmalarının sorunsuz gerçekleşip gerçekleşmediğini ve basit döngüsel bağımlılıkları (circular imports) kontrol eder.
+*   **Security Checks:** Security guard sonuçlarını kalite değerlendirme sürecinin bir parçası yapar (Secret Redaction Smoke, Config Security Audit, vs.).
+*   **Regression Smoke Commands:** Önceden tanımlanmış CLI komutlarını (örneğin, tarama, backtest, ML veri seti oluşturma) test eder. Gerçek internet veya broker çağrısı yapılmaz.
+*   **Gate Levels (Değerlendirme Seviyeleri):**
+    *   `RELAXED`: Eksik araçlar (missing tools) SKIP olarak kabul edilir.
+    *   `STANDARD`: Standart test kontrollerini gerçekleştirir.
+    *   `STRICT`: Mypy/Ruff/Black SKIP durumundaysa uyarı (WARN) veya hata (FAIL) verebilir.
+    *   `RELEASE`: Coverage threshold (kapsama eşiği), security checks (güvenlik kontrolleri), regression smoke (regresyon duman testleri) ve import checks (içe aktarma kontrolleri) zorunludur.
+*   **Local-First Kalite Raporu:** Raporlar Markdown, JSON ve CSV formatlarında yerel olarak kaydedilir. Raporlar hassas bilgi (secret) içermez.
+*   **Tool Missing Davranışı:** Kullanılması istenen bir araç kurulu değilse, sistem kontrollü olarak uyarı verir (WARN) veya atlar (SKIP), böylece uygulama çökmez.
+*   **Runtime Preflight Entegrasyonu:** Runtime başlamadan önce opsiyonel olarak quality preflight çalıştırılabilir (default olarak ağır testleri çalıştırmaz).
+
+### Tasarım Sınırları ve Güvenlik
+*   Quality Gate yatırım tavsiyesi **üretmez**.
+*   **Gerçek emir göndermez** ve **Broker API çağırmaz**.
+*   Ücretli bir servis veya harici cloud CI/CD zorunlu değildir.
+*   Web paneli veya Dashboard **yapılmamaktadır**. HTML scraping (kazıma) **kullanılmaz**.
+
+### Komutlar (CLI)
+Kalite kontrol testlerini ve ilgili komutları çalıştırmak için `quality` komut grubu kullanılır:
+
+*   **Tüm Kalite Kontrolünü Çalıştır:**
+    `python -m bist_signal_bot quality run`
+*   **Belirli Bir Suite Çalıştır:**
+    `python -m bist_signal_bot quality run --suite FAST`
+    `python -m bist_signal_bot quality run --suite SECURITY`
+    `python -m bist_signal_bot quality run --suite SCANNER`
+    `python -m bist_signal_bot quality run --suite BACKTEST`
+*   **Gate Seviyesini Belirle:**
+    `python -m bist_signal_bot quality run --gate STRICT`
+*   **Sadece Smoke Testleri:**
+    `python -m bist_signal_bot quality smoke`
+*   **Sadece Güvenlik Kontrolleri:**
+    `python -m bist_signal_bot quality security`
+*   **Sadece İçe Aktarma Kontrolleri:**
+    `python -m bist_signal_bot quality imports`
+*   **Kapsama (Coverage) Eşiği Belirleyerek Çalıştır:**
+    `python -m bist_signal_bot quality coverage --threshold 70`
+*   **Regresyon (Regression) Çalıştır:**
+    `python -m bist_signal_bot quality regression`
+*   **Son Çalıştırmaları Görüntüle:**
+    `python -m bist_signal_bot quality recent`
+*   **Geçerli Konfigürasyonu Görüntüle:**
+    `python -m bist_signal_bot quality config`

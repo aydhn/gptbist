@@ -711,3 +711,50 @@ def format_transaction_cost_breakdown(cost: Any) -> str:
 _original_format_round_trip_cost_breakdown = format_round_trip_cost_breakdown
 def format_round_trip_cost_breakdown(cost: Any) -> str:
     return _sanitize_output(_original_format_round_trip_cost_breakdown(cost))
+
+def format_quality_run_result(result) -> str:
+    from bist_signal_bot.quality.models import QualityRunResult, QualityCheckStatus
+    if not isinstance(result, QualityRunResult):
+        return str(result)
+
+    summary = result.summary()
+
+    lines = [
+        "**BIST Bot Quality Gate Özeti**",
+        "",
+        f"**Status:** {result.status.value}",
+        f"**Suite:** {result.config.suite.value}",
+        f"**Gate:** {result.config.gate_level.value}",
+        f"**Checks:** {summary['checks_total']}",
+        f"**Failed:** {summary['checks_failed']}",
+        f"**Warnings:** {summary['checks_warn']}",
+    ]
+
+    if result.coverage_summary:
+        if result.coverage_summary.measured:
+            lines.append(f"**Coverage:** {result.coverage_summary.total_coverage_pct}%")
+        else:
+            lines.append("**Coverage:** skipped")
+    else:
+        lines.append("**Coverage:** skipped")
+
+    lines.extend([
+        "",
+        "Bu çıktı kalite kontrol raporudur.",
+        "Yatırım tavsiyesi değildir.",
+        "Gerçek emir gönderilmedi."
+    ])
+
+    return "\n".join(lines)
+
+def format_quality_failure(result) -> str:
+    lines = [
+        "🚨 **BIST Bot Quality Gate FAILED** 🚨",
+        "",
+        format_quality_run_result(result),
+        "",
+        "**Failed Checks:**"
+    ]
+    for check in result.failed_checks():
+        lines.append(f"- {check.check_name}: {check.message}")
+    return "\n".join(lines)

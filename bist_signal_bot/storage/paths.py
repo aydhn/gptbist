@@ -166,3 +166,11 @@ def get_monitoring_dir(settings=None) -> Path:
     path = base / dir_name
     path.mkdir(parents=True, exist_ok=True)
     return path
+
+def get_quality_dir(settings=None) -> Path:
+    from bist_signal_bot.config.settings import Settings
+    s = settings or Settings()
+    quality_dir_name = getattr(s, "QUALITY_RESULTS_DIR_NAME", "quality")
+    quality_dir = get_data_dir(s) / quality_dir_name
+    quality_dir.mkdir(parents=True, exist_ok=True)
+    return quality_dir
