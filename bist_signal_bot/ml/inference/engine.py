@@ -14,6 +14,8 @@ from bist_signal_bot.ml.inference.models import (
 )
 from bist_signal_bot.ml.inference.feature_alignment import MLFeatureAligner
 from bist_signal_bot.ml.inference.scoring import MLPredictionScorer
+from bist_signal_bot.security.path_guard import PathGuard
+
 from bist_signal_bot.ml.inference.filtering import MLSignalFilter
 from bist_signal_bot.signals.models import SignalCandidate
 from bist_signal_bot.core.exceptions import MLInferenceError
@@ -31,6 +33,7 @@ class MLInferenceEngine:
                  settings: Settings | None = None,
                  logger: logging.Logger | None = None):
         self.model_registry = model_registry
+        self.path_guard = PathGuard([model_registry.base_dir])
         self.dataset_builder = dataset_builder
         self.feature_builder = feature_builder
         self.aligner = aligner or MLFeatureAligner()

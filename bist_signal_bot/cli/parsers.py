@@ -444,6 +444,7 @@ def build_parser() -> argparse.ArgumentParser:
     risk_cfg_parser.add_argument("--json", action="store_true", help="Output JSON")
 
     add_costs_parser(subparsers)
+    add_security_parser(subparsers)
 
     add_validate_backtest_parser(subparsers)
     add_backtest_parser(subparsers)
@@ -828,3 +829,39 @@ def setup_monitor_parser(subparsers):
     # config command
     config_parser = monitor_subparsers.add_parser("config", help="Show monitoring configuration")
     config_parser.add_argument("--json", action="store_true", help="Output JSON to stdout")
+
+def add_security_parser(subparsers):
+    security_parser = subparsers.add_parser("security", help="Manage security, secret hygiene, and kill-switches.")
+    security_subparsers = security_parser.add_subparsers(dest="security_command", required=True)
+
+    audit_parser = security_subparsers.add_parser("audit", help="Run a security configuration audit.")
+    audit_parser.add_argument("--json", action="store_true", help="Output as JSON.")
+    audit_parser.add_argument("--markdown", action="store_true", help="Output as Markdown.")
+
+    preflight_parser = security_subparsers.add_parser("preflight", help="Run security preflight checks.")
+    preflight_parser.add_argument("--runtime", action="store_true", help="Run runtime preflight.")
+    preflight_parser.add_argument("--notification", action="store_true", help="Run notification preflight (dummy payload).")
+    preflight_parser.add_argument("--json", action="store_true", help="Output as JSON.")
+
+    redact_parser = security_subparsers.add_parser("redact", help="Test secret redaction on text.")
+    redact_parser.add_argument("--text", required=True, type=str, help="Text to redact.")
+    redact_parser.add_argument("--json", action="store_true", help="Output as JSON.")
+
+    ks_parser = security_subparsers.add_parser("kill-switch", help="Manage operational kill switch.")
+    ks_sub = ks_parser.add_subparsers(dest="ks_command", required=True)
+
+    ks_sub.add_parser("status", help="Show kill switch status.")
+
+    activate_parser = ks_sub.add_parser("activate", help="Activate the kill switch.")
+    activate_parser.add_argument("--scope", type=str, default="ALL", help="Scope of the kill switch (e.g. ALL, RUNTIME, PAPER).")
+    activate_parser.add_argument("--reason", type=str, required=True, help="Reason for activation.")
+
+    deactivate_parser = ks_sub.add_parser("deactivate", help="Deactivate the kill switch.")
+    deactivate_parser.add_argument("--confirm", action="store_true", help="Confirm deactivation.")
+
+    scan_parser = security_subparsers.add_parser("scan-source", help="Scan source files for forbidden actions.")
+    scan_parser.add_argument("--path", type=str, required=True, help="Path to scan.")
+    scan_parser.add_argument("--json", action="store_true", help="Output as JSON.")
+
+    config_parser = security_subparsers.add_parser("config", help="Dump safely redacted config.")
+    config_parser.add_argument("--json", action="store_true", help="Output as JSON.")

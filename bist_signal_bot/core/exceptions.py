@@ -497,3 +497,20 @@ class SelfHealingError(MonitoringError):
 
 class MonitoringStorageError(MonitoringError):
     pass
+
+class SecurityError(BistSignalBotError):
+    pass
+class SecretLeakError(SecurityError):
+    pass
+class ForbiddenActionError(SecurityError):
+    pass
+class UnsafeClaimError(SecurityError):
+    pass
+class PathSecurityError(SecurityError):
+    pass
+class KillSwitchActiveError(SecurityError):
+    pass
+class SecurityPreflightError(SecurityError):
+    pass
+class ConfigSecurityError(SecurityError):
+    pass

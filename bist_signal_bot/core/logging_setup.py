@@ -3,24 +3,30 @@ import logging
 from pathlib import Path
 from typing import Any
 
-from bist_signal_bot.config.secrets import mask_secret, sanitize_config_dict
 from bist_signal_bot.config.settings import Settings
 
 # For backward compatibility
-mask_sensitive_value = mask_secret
+def mask_sensitive_value(value: str) -> str:
+    from bist_signal_bot.security.redaction import SecretRedactor
+    return SecretRedactor.mask_value(value)
 
 def sanitize_for_logging(data: Any, mask_secrets: bool = True) -> Any:
     """Recursively sanitizes a dictionary or list, masking sensitive values."""
     if not mask_secrets:
         return data
 
-    if isinstance(data, dict):
-        return sanitize_config_dict(data)
-    elif isinstance(data, list):
-        return [sanitize_for_logging(item, mask_secrets) for item in data]
-    elif isinstance(data, str) and "token" in data.lower():
-         # Basic string check for simple string cases if it resembles a token
-         pass
+    try:
+        from bist_signal_bot.security.redaction import SecretRedactor
+        if isinstance(data, dict):
+            return SecretRedactor.redact_dict(data)
+        elif isinstance(data, list):
+            return SecretRedactor.redact_list(data)
+        elif isinstance(data, str):
+            return SecretRedactor.redact_text(data)
+    except ImportError:
+        # Fallback if security module not available
+        pass
+
     return data
 
 def setup_logging(settings: Settings) -> logging.Logger:
@@ -30,7 +36,6 @@ def setup_logging(settings: Settings) -> logging.Logger:
     """
     logger = logging.getLogger("bist_signal_bot")
 
-    # Avoid adding multiple handlers if already set up
     if not logger.handlers:
         level_name = settings.LOG_LEVEL.upper()
         level = getattr(logging, level_name, logging.INFO)
@@ -63,15 +68,11 @@ def setup_logging(settings: Settings) -> logging.Logger:
     return logger
 
 def get_logger(name: str | None = None) -> logging.Logger:
-    """
-    Returns a logger for the given name in the project namespace.
-    """
     if name and not name.startswith("bist_signal_bot.") and name != "bist_signal_bot":
         name = f"bist_signal_bot.{name}"
     return logging.getLogger(name or "bist_signal_bot")
 
 def safe_log_dict(logger: logging.Logger, level: int, message: str, data: Any, mask_secrets: bool = True):
-    """Logs a sanitized dictionary."""
     sanitized_data = sanitize_for_logging(data, mask_secrets)
     if isinstance(sanitized_data, dict) or isinstance(sanitized_data, list):
          try:
@@ -83,5 +84,4 @@ def safe_log_dict(logger: logging.Logger, level: int, message: str, data: Any, m
 
     logger.log(level, f"{message}: {data_str}")
 
-# For backward compatibility with existing usage like `logger = setup_logger(__name__)`
 setup_logger = get_logger
