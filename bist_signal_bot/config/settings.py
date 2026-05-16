@@ -1320,6 +1320,55 @@ class Settings(BaseSettings):
 
     SCANNER_USE_ADAPTIVE_PARAMS: bool = False
 
+
+    # Research Settings (Phase 47)
+    ENABLE_RESEARCH_LEDGER: bool = True
+    RESEARCH_DIR_NAME: str = "research"
+    RESEARCH_LEDGER_APPEND_ONLY: bool = True
+    RESEARCH_SAVE_REPORTS: bool = True
+    RESEARCH_REPORT_FORMATS: str = "json,markdown,csv"
+    RESEARCH_REQUIRE_CONFIRM_FOR_EDITS: bool = True
+    RESEARCH_REQUIRE_CONFIRM_FOR_TAG_EDIT: bool = False
+    RESEARCH_MAX_RECENT_ENTRIES: int = 100
+
+    RESEARCH_AUTO_LOG_BACKTEST: bool = True
+    RESEARCH_AUTO_LOG_OPTIMIZATION: bool = True
+    RESEARCH_AUTO_LOG_SCAN: bool = True
+    RESEARCH_AUTO_LOG_PAPER: bool = True
+    RESEARCH_AUTO_LOG_ML_TRAINING: bool = True
+    RESEARCH_AUTO_LOG_ML_INFERENCE: bool = False
+    RESEARCH_AUTO_LOG_REGIME: bool = False
+    RESEARCH_AUTO_LOG_RUNTIME: bool = True
+    RESEARCH_AUTO_LOG_ADAPTIVE: bool = True
+    RESEARCH_AUTO_LOG_MONITORING: bool = False
+
+    RESEARCH_SIGNAL_JOURNAL_ENABLED: bool = True
+    RESEARCH_JOURNAL_TRACK_OUTCOMES: bool = False
+    RESEARCH_JOURNAL_DEFAULT_OUTCOME_HORIZON_BARS: int = 5
+    RESEARCH_JOURNAL_REQUIRE_CONFIRM_FOR_OUTCOME_UPDATE: bool = True
+
+    RESEARCH_DEFAULT_COMPARE_METRIC: str = "sharpe"
+    RESEARCH_DEFAULT_ATTRIBUTION_GROUP_BY: str = "SYMBOL"
+
+    RESEARCH_REDACT_PAYLOADS: bool = True
+    RESEARCH_VALIDATE_NOTES: bool = True
+    RESEARCH_VALIDATE_TAGS: bool = True
+    RESEARCH_BLOCK_UNSAFE_CLAIMS: bool = True
+
+    def check_research_settings(self) -> 'Settings':
+        if self.RESEARCH_MAX_RECENT_ENTRIES <= 0:
+            raise ValueError("RESEARCH_MAX_RECENT_ENTRIES must be positive")
+        if self.RESEARCH_JOURNAL_DEFAULT_OUTCOME_HORIZON_BARS <= 0:
+            raise ValueError("RESEARCH_JOURNAL_DEFAULT_OUTCOME_HORIZON_BARS must be positive")
+        valid_formats = ["json", "markdown", "csv", "all"]
+        for f in self.RESEARCH_REPORT_FORMATS.split(","):
+            if f.strip().lower() not in valid_formats:
+                raise ValueError(f"Invalid format {f} in RESEARCH_REPORT_FORMATS")
+        valid_attribution_groups = ["SYMBOL", "STRATEGY", "PARAMETER_SET", "REGIME", "ML_SCORE_BUCKET", "RISK_DECISION", "PORTFOLIO_DECISION", "TIMEFRAME", "RUN_TYPE"]
+        if self.RESEARCH_DEFAULT_ATTRIBUTION_GROUP_BY not in valid_attribution_groups:
+             raise ValueError("Invalid RESEARCH_DEFAULT_ATTRIBUTION_GROUP_BY")
+        return self
+
 def get_settings() -> Settings:
     global settings
     if settings is None:

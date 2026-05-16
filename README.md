@@ -604,3 +604,11 @@ python -m bist_signal_bot package release --zip --run-quality
 ```
 
 *Disclaimer: This system generates research-only signals. It does not send real market orders.*
+
+### Phase 47: Research Ledger & Attribution
+
+A centralized, offline experiment tracking engine to keep records of backtests, paper trades, ML training runs, signal journal and performance attribution.
+* **Append-Only Research Ledger:** Saves all operations securely to local JSONL files without web UI dashboards or external dependencies.
+* **Signal Journal:** A dedicated tracker for `SignalCandidate` outcomes (Pending, Positive, Negative).
+* **Research Attribution & Lineage:** Group performance by strategy, ML score, regime; track the sequence from optimization to runtime.
+* **Safe CLI Access:** Analyze results entirely from the CLI.

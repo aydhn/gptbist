@@ -17,7 +17,7 @@ from bist_signal_bot.signals.models import StrategySignalBatch, SignalCandidate
 from bist_signal_bot.strategies.registry import StrategyRegistry
 from bist_signal_bot.ml.inference.engine import MLInferenceEngine
 from bist_signal_bot.ml.inference.models import MLInferenceConfig, MLInferenceMode
-from bist_signal_bot.ml.inference.models import MLFilterDecision, get_registry
+from bist_signal_bot.ml.inference.models import MLFilterDecision
 from bist_signal_bot.strategies.context import StrategyContext
 
 class StrategyEngine:

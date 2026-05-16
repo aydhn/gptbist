@@ -256,7 +256,20 @@ class PaperTradingEngine:
         if self.settings.PAPER_SEND_TELEGRAM_SUMMARY:
             self.send_paper_summary(result)
 
+
+        # Phase 47: Research Logging
+        if self.settings.ENABLE_RESEARCH_LEDGER and self.settings.RESEARCH_AUTO_LOG_PAPER:
+            try:
+                from ..app.research_app import create_research_event_builder, create_research_ledger, create_signal_journal
+                ledger = create_research_ledger(self.settings)
+                builder = create_research_event_builder(self.settings)
+                run_obj = builder.from_paper_run_result(result)
+                ledger.append_run(run_obj)
+            except Exception as e:
+                self.logger.warning(f"Failed to log paper run to research ledger: {e}")
+
         return result
+
 
     def close_position(self, account_id: str, symbol: str, execution_mode: PaperExecutionMode = PaperExecutionMode.LATEST_CLOSE_RESEARCH, data: Optional[pd.DataFrame] = None, manual_price: Optional[float] = None) -> PaperRunResult:
         state = self.load_state(account_id)

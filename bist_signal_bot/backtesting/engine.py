@@ -157,7 +157,21 @@ class BacktestEngine:
         if not eq_df.empty: eq_df.set_index("timestamp", inplace=True)
 
         res = BacktestResult(strategy_name=strategy_name, symbol=symbol, mode=BacktestMode.SINGLE_SYMBOL, config=config, trades=portfolio.trades, fills=portfolio.fills, portfolio_snapshots=portfolio.snapshots, orders=orders, equity_curve=eq_df, started_at=started_at, finished_at=finished_at, elapsed_seconds=elapsed, issues=issues)
-        return res
+
+
+        # Phase 47: Research Logging
+        if self.settings.ENABLE_RESEARCH_LEDGER and self.settings.RESEARCH_AUTO_LOG_BACKTEST:
+            try:
+                from ..app.research_app import create_research_ledger, create_research_event_builder
+                ledger = create_research_ledger(self.settings)
+                builder = create_research_event_builder(self.settings)
+                run_obj = builder.from_backtest_result(res)
+                ledger.append_run(run_obj)
+            except Exception as e:
+                self.logger.warning(f"Failed to log backtest to research ledger: {e}")
+
+return res
+
 
     def run_batch_symbols(self, strategy_name: str, symbols_data: dict[str, MarketDataFrame | pd.DataFrame], params: dict[str, Any] | None = None, config: BacktestConfig | None = None) -> dict[str, BacktestResult]:
         results = {}

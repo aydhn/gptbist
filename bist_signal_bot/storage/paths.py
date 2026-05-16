@@ -224,3 +224,22 @@ def get_adaptive_dir(settings: 'Settings | None' = None) -> Path:
     adaptive_dir = data_dir / settings.ADAPTIVE_DIR_NAME
     adaptive_dir.mkdir(parents=True, exist_ok=True)
     return adaptive_dir
+
+def get_research_dir(settings: Settings | None = None) -> Path:
+    """Gets the base research directory."""
+    s = settings or get_settings()
+    path = get_data_dir(s) / s.RESEARCH_DIR_NAME
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+def get_research_ledger_dir(settings: Settings | None = None) -> Path:
+    """Gets the research ledger directory."""
+    path = get_research_dir(settings) / "ledger"
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+def get_research_reports_dir(settings: Settings | None = None) -> Path:
+    """Gets the research reports directory."""
+    path = get_research_dir(settings) / "reports"
+    path.mkdir(parents=True, exist_ok=True)
+    return path

@@ -1007,7 +1007,14 @@ def add_performance_parser(subparsers) -> None:
     config_parser.add_argument("--json", action="store_true", help="Output in JSON format")
 
 
+
+def add_research_parser(subparsers) -> None:
+    # Research commands
+    research_parser = subparsers.add_parser("research", help="Manage research ledger, journals, comparisons, and attributions.")
+    research_parser.add_argument("args", nargs=argparse.REMAINDER)
+
 def add_adaptive_parser(subparsers) -> None:
+    add_research_parser(subparsers)
     # Adaptive Commands
     adaptive_parser = subparsers.add_parser("adaptive", help="Adaptive Strategy Selection & Self-Tuning (Phase 46)")
     adaptive_subparsers = adaptive_parser.add_subparsers(dest="adaptive_command", help="Adaptive commands")
