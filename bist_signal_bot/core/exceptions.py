@@ -607,3 +607,29 @@ class DocsExampleError(DocsError):
 
 class DocsStorageError(DocsError):
     pass
+class AdaptiveError(BistSignalBotError):
+    pass
+
+class AdaptiveValidationError(AdaptiveError):
+    pass
+
+class AdaptivePolicyError(AdaptiveError):
+    pass
+
+class AdaptiveEvidenceError(AdaptiveError):
+    pass
+
+class AdaptiveScoringError(AdaptiveError):
+    pass
+
+class AdaptiveSelectionError(AdaptiveError):
+    pass
+
+class AdaptiveParameterStoreError(AdaptiveError):
+    pass
+
+class AdaptiveRefreshError(AdaptiveError):
+    pass
+
+class AdaptiveStorageError(AdaptiveError):
+    pass

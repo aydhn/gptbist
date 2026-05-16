@@ -57,6 +57,17 @@ class RuntimeOrchestrator:
         self.security_preflight = security_preflight or SecurityPreflightRunner(self.settings, kill_switch=self.kill_switch)
 
     def run_once(self, config: RuntimePipelineConfig, trigger: RuntimeTrigger = RuntimeTrigger.CLI) -> RuntimePipelineResult:
+
+        if config and getattr(config, 'use_adaptive', False) and self.adaptive_engine:
+            try:
+                # Fallbacks in case config lacks symbols/strategies
+                syms = config.symbols if hasattr(config, 'symbols') and config.symbols else []
+                strats = [j.strategy_name for j in config.jobs if j.strategy_name]
+                adaptive_config = self.adaptive_engine.build_runtime_strategy_config(syms, strats)
+                if not config.metadata: config.metadata = {}
+                config.metadata["adaptive_config"] = adaptive_config
+            except Exception as e:
+                self.logger.warning(f"Adaptive integration failed: {e}")
         security_preflight: Optional[SecurityPreflightRunner] = None,
         kill_switch: Optional[KillSwitchManager] = None,
         run_id = str(uuid.uuid4())

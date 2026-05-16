@@ -543,6 +543,7 @@ def build_parser() -> argparse.ArgumentParser:
     setup_monitor_parser(subparsers)
     setup_package_parser(subparsers)
     add_performance_parser(subparsers)
+    add_adaptive_parser(subparsers)
     return parser
 
 def add_paper_parser(subparsers: argparse._SubParsersAction) -> None:
@@ -1004,3 +1005,55 @@ def add_performance_parser(subparsers) -> None:
     # config
     config_parser = perf_subs.add_parser("config", help="View current performance configurations")
     config_parser.add_argument("--json", action="store_true", help="Output in JSON format")
+
+
+def add_adaptive_parser(subparsers) -> None:
+    # Adaptive Commands
+    adaptive_parser = subparsers.add_parser("adaptive", help="Adaptive Strategy Selection & Self-Tuning (Phase 46)")
+    adaptive_subparsers = adaptive_parser.add_subparsers(dest="adaptive_command", help="Adaptive commands")
+
+    # Recommend
+    rec_parser = adaptive_subparsers.add_parser("recommend", help="Generate strategy recommendations")
+    rec_parser.add_argument("--symbols", nargs="+", help="Symbols to analyze")
+    rec_parser.add_argument("--strategies", nargs="+", help="Strategies to analyze")
+    rec_parser.add_argument("--top", type=int, help="Number of top candidates to return")
+    rec_parser.add_argument("--save-report", action="store_true", help="Save the recommendation report")
+    rec_parser.add_argument("--json", action="store_true", help="Output in JSON format")
+
+    # Symbol
+    sym_parser = adaptive_subparsers.add_parser("symbol", help="Get recommendation for a specific symbol")
+    sym_parser.add_argument("symbol", help="Symbol to analyze")
+    sym_parser.add_argument("--strategies", nargs="+", help="Strategies to analyze")
+    sym_parser.add_argument("--json", action="store_true", help="Output in JSON format")
+
+    # Refresh Plan
+    ref_parser = adaptive_subparsers.add_parser("refresh-plan", help="Generate refresh plan")
+    ref_parser.add_argument("--symbols", nargs="+", help="Symbols to analyze")
+    ref_parser.add_argument("--json", action="store_true", help="Output in JSON format")
+
+    # Model Refresh
+    mr_parser = adaptive_subparsers.add_parser("model-refresh", help="Generate model refresh recommendations")
+    mr_parser.add_argument("--json", action="store_true", help="Output in JSON format")
+
+    # Params
+    params_parser = adaptive_subparsers.add_parser("params", help="Manage active parameters")
+    params_parser.add_argument("--strategy", help="Filter by strategy")
+    params_parser.add_argument("--json", action="store_true", help="Output in JSON format")
+
+    # Apply Params
+    ap_parser = adaptive_subparsers.add_parser("apply-params", help="Apply adaptive parameter updates")
+    ap_parser.add_argument("--from-latest", action="store_true", help="Apply from latest recommendation")
+    ap_parser.add_argument("--confirm", action="store_true", help="Confirm update")
+
+    # Policy
+    pol_parser = adaptive_subparsers.add_parser("policy", help="Show current adaptive policy")
+    pol_parser.add_argument("--json", action="store_true", help="Output in JSON format")
+
+    # Recent
+    recent_parser = adaptive_subparsers.add_parser("recent", help="List recent recommendations")
+    recent_parser.add_argument("--limit", type=int, default=10, help="Number of recent records to show")
+    recent_parser.add_argument("--json", action="store_true", help="Output in JSON format")
+
+    # Config
+    cfg_parser = adaptive_subparsers.add_parser("config", help="Show adaptive engine config")
+    cfg_parser.add_argument("--json", action="store_true", help="Output in JSON format")

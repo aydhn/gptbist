@@ -150,9 +150,9 @@ def run_cli(argv: list[str] | None = None) -> int:
         "volatility-features": cmd_volatility_features,
         "volume-features": cmd_volume_features,
         "patterns": lambda a, c: cmd_patterns_list(a, c) if a.patterns_command == 'list' else cmd_patterns_detect(a, c),
-                "pattern-features": cmd_pattern_features,
+        "pattern-features": cmd_pattern_features,
         "divergence": lambda a, c: cmd_divergence_detect(a, c) if getattr(a, "subcommand", None) == "detect" else 1,
-                "strategies": dispatch_strategies,
+        "strategies": dispatch_strategies,
         "benchmarks": dispatch_benchmarks,
         "costs": dispatch_costs,
         "backtest": dispatch_backtest,
@@ -160,8 +160,6 @@ def run_cli(argv: list[str] | None = None) -> int:
         "quality": dispatch_quality,
         "validate-backtest": dispatch_validate_backtest,
         "risk": dispatch_risk,
-
-
         "optimize": lambda a, c: __import__("bist_signal_bot.cli.commands", fromlist=["cmd_optimize"]).cmd_optimize(a, c),
         "ml-dataset": lambda a, c: __import__("bist_signal_bot.cli.commands", fromlist=["handle_ml_dataset_command"]).handle_ml_dataset_command(a, c.settings),
         "runtime": lambda a, c: __import__("bist_signal_bot.cli.commands", fromlist=["cmd_runtime"]).cmd_runtime(a, c.settings),
@@ -169,12 +167,7 @@ def run_cli(argv: list[str] | None = None) -> int:
         "package": lambda a, c: __import__("bist_signal_bot.cli.commands", fromlist=["run_package_command"]).run_package_command(a, c.settings),
         "performance": lambda a, c: __import__("bist_signal_bot.cli.commands", fromlist=["handle_performance_command"]).handle_performance_command(a, c.settings),
         "docs": lambda a, c: __import__("typer").run(__import__("bist_signal_bot.cli.commands", fromlist=["docs_app"]).docs_app(), sys.argv[2:]),
-
-
-        "ml-dataset": lambda a, c: __import__("bist_signal_bot.cli.commands", fromlist=["handle_ml_dataset_command"]).handle_ml_dataset_command(a, c.settings),
-        "runtime": lambda a, c: __import__("bist_signal_bot.cli.commands", fromlist=["cmd_runtime"]).cmd_runtime(a, c.settings),
-
-
+        "adaptive": lambda a, c: __import__("bist_signal_bot.cli.adaptive_commands", fromlist=["handle_adaptive_commands"]).handle_adaptive_commands(a)
     }
 
     cmd_func = commands.get(args.command)
