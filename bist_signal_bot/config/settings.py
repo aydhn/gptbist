@@ -1029,6 +1029,49 @@ class Settings(BaseSettings):
     RUNTIME_JOB_RETRY_DELAY_SECONDS: int = 5
     RUNTIME_JOB_TIMEOUT_SECONDS: int = 0
 
+    # Research Reports
+    ENABLE_REPORTS: bool = True
+    REPORTS_DIR_NAME: str = "reports"
+    REPORT_DEFAULT_TYPE: str = "DAILY"
+    REPORT_DEFAULT_AUDIENCE: str = "PERSONAL"
+    REPORT_DEFAULT_FORMATS: str = "markdown,json,csv"
+    REPORT_SAVE_BY_DEFAULT: bool = True
+    REPORT_TOP_N: int = 10
+
+    REPORT_INCLUDE_EXECUTIVE_SUMMARY: bool = True
+    REPORT_INCLUDE_MARKET_REGIME: bool = True
+    REPORT_INCLUDE_SCANNER: bool = True
+    REPORT_INCLUDE_RISK: bool = True
+    REPORT_INCLUDE_PORTFOLIO_RISK: bool = True
+    REPORT_INCLUDE_ML: bool = True
+    REPORT_INCLUDE_ADAPTIVE: bool = True
+    REPORT_INCLUDE_PAPER: bool = True
+    REPORT_INCLUDE_BACKTEST: bool = True
+    REPORT_INCLUDE_OPTIMIZATION: bool = True
+    REPORT_INCLUDE_RESEARCH_LEDGER: bool = True
+    REPORT_INCLUDE_SIGNAL_JOURNAL: bool = True
+    REPORT_INCLUDE_ATTRIBUTION: bool = True
+    REPORT_INCLUDE_RUNTIME: bool = True
+    REPORT_INCLUDE_MONITORING: bool = True
+    REPORT_INCLUDE_SECURITY: bool = True
+    REPORT_INCLUDE_QUALITY: bool = True
+    REPORT_INCLUDE_PERFORMANCE: bool = True
+
+    REPORT_TELEGRAM_DIGEST_ENABLED: bool = False
+    REPORT_TELEGRAM_REQUIRE_CONFIRM: bool = True
+    REPORT_DIGEST_TOP_N: int = 5
+    REPORT_DIGEST_MAX_CHARS: int = 3500
+
+    RUNTIME_GENERATE_REPORT: bool = False
+    RUNTIME_REPORT_TYPE: str = "RUNTIME_SUMMARY"
+    RUNTIME_SEND_REPORT_DIGEST: bool = False
+
+    REPORT_EXPORT_HTML: bool = True
+    REPORT_EXPORT_PDF: bool = False
+    REPORT_PDF_REQUIRE_OPTIONAL_DEPENDENCY: bool = True
+
+    RESEARCH_AUTO_LOG_REPORTS: bool = False
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
 

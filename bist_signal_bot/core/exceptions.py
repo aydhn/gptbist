@@ -666,3 +666,27 @@ class ResearchQueryError(ResearchError):
 
 class ResearchStorageError(ResearchError):
     pass
+
+class ReportError(BistSignalBotError):
+    pass
+
+class ReportValidationError(ReportError):
+    pass
+
+class ReportCollectionError(ReportError):
+    pass
+
+class ReportTemplateError(ReportError):
+    pass
+
+class ReportGenerationError(ReportError):
+    pass
+
+class ReportExportError(ReportError):
+    pass
+
+class ReportDigestError(ReportError):
+    pass
+
+class ReportStorageError(ReportError):
+    pass

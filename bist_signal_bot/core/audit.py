@@ -11,6 +11,16 @@ from bist_signal_bot.security.redaction import SecretRedactor
 
 
 class AuditEventType(str, Enum):
+
+    REPORT_GENERATION_STARTED = "report_generation_started"
+    REPORT_GENERATION_COMPLETED = "report_generation_completed"
+    REPORT_GENERATION_FAILED = "report_generation_failed"
+    REPORT_EXPORTED = "report_exported"
+    REPORT_DIGEST_CREATED = "report_digest_created"
+    REPORT_DIGEST_SENT = "report_digest_sent"
+    REPORT_DIGEST_FAILED = "report_digest_failed"
+    REPORT_SECURITY_BLOCKED = "report_security_blocked"
+    REPORT_SAVED = "report_saved"
     PERFORMANCE_RESOURCE_SNAPSHOT = "PERFORMANCE_RESOURCE_SNAPSHOT"
     PERFORMANCE_PROFILE_STARTED = "PERFORMANCE_PROFILE_STARTED"
     PERFORMANCE_PROFILE_COMPLETED = "PERFORMANCE_PROFILE_COMPLETED"
