@@ -214,3 +214,13 @@ def get_performance_dir(settings: Settings | None = None) -> Path:
     from bist_signal_bot.config.settings import Settings
     s = settings or Settings()
     return get_data_dir(s) / s.PERFORMANCE_DIR_NAME
+def get_adaptive_dir(settings: 'Settings | None' = None) -> Path:
+    """Returns the path to the adaptive directory."""
+    if settings is None:
+        from bist_signal_bot.config.settings import get_settings
+        settings = get_settings()
+
+    data_dir = get_data_dir(settings)
+    adaptive_dir = data_dir / settings.ADAPTIVE_DIR_NAME
+    adaptive_dir.mkdir(parents=True, exist_ok=True)
+    return adaptive_dir
