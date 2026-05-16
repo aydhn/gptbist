@@ -96,6 +96,16 @@ def run_cli(argv: list[str] | None = None) -> int:
     import sys
     args_to_parse = argv if argv is not None else sys.argv[1:]
 
+
+
+    if args_to_parse and args_to_parse[0] == 'scenario':
+        from bist_signal_bot.cli.commands_scenarios import scenario_cli
+        import sys
+        sys.argv = [sys.argv[0]] + args_to_parse[1:]
+        scenario_cli()
+        return 0
+
+
     if args_to_parse and args_to_parse[0] == 'docs':
         from bist_signal_bot.cli.commands import docs_app
         import sys
@@ -169,6 +179,9 @@ def run_cli(argv: list[str] | None = None) -> int:
         "docs": lambda a, c: __import__("typer").run(__import__("bist_signal_bot.cli.commands", fromlist=["docs_app"]).docs_app(), sys.argv[2:]),
         "adaptive": lambda a, c: __import__("bist_signal_bot.cli.adaptive_commands", fromlist=["handle_adaptive_commands"]).handle_adaptive_commands(a),
         "scan": lambda a, c: __import__("bist_signal_bot.cli.commands", fromlist=["cmd_scan"]).cmd_scan(a, c.settings),
+
+        "scenario": lambda a, c: __import__("bist_signal_bot.cli.commands").cli(sys.argv[1:], prog_name="bist_signal_bot"),
+
 
         "research": lambda a, c: __import__("bist_signal_bot.cli.commands_research", fromlist=["handle_research_commands"]).handle_research_commands(a, c.settings),
 

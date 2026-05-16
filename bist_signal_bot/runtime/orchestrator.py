@@ -45,6 +45,11 @@ class RuntimeOrchestrator:
         logger: Optional[logging.Logger] = None
     ):
         self.settings = settings or Settings()
+
+        if getattr(self.settings, "SCENARIO_USE_SANDBOX", False) and getattr(self.settings, "BIST_BOT_ENV", "") == "scenario":
+             # We shouldn't allow real telegram actions here
+             pass
+
         self.logger = logger or logging.getLogger(__name__)
 
         self.scanner_engine = scanner_engine

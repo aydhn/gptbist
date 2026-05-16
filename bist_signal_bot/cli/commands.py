@@ -1,3 +1,4 @@
+from bist_signal_bot.cli.commands_scenarios import scenario_cli
 
 from bist_signal_bot.app.reports_app import create_report_generator, create_report_store, create_digest_builder
 from bist_signal_bot.reports.models import ReportOutputFormat, ReportType
@@ -4477,3 +4478,10 @@ def handle_report(args: argparse.Namespace) -> None:
             print(f"Reports Enabled: {settings.ENABLE_REPORTS}")
     else:
         print("Unknown report command.")
+
+
+@click.group(name="bist-signal-bot")
+def cli():
+    pass
+
+cli.add_command(scenario_cli)

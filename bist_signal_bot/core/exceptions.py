@@ -690,3 +690,24 @@ class ReportDigestError(ReportError):
 
 class ReportStorageError(ReportError):
     pass
+
+class ScenarioError(BistSignalBotError):
+    pass
+
+class ScenarioValidationError(ScenarioError):
+    pass
+
+class ScenarioFixtureError(ScenarioError):
+    pass
+
+class ScenarioStepError(ScenarioError):
+    pass
+
+class ScenarioRunnerError(ScenarioError):
+    pass
+
+class GoldenRegressionError(ScenarioError):
+    pass
+
+class ScenarioStorageError(ScenarioError):
+    pass

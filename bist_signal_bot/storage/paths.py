@@ -253,3 +253,23 @@ def get_reports_dir(settings: Settings | None = None) -> Path:
     reports_dir = get_data_dir(settings) / settings.REPORTS_DIR_NAME
     reports_dir.mkdir(parents=True, exist_ok=True)
     return reports_dir
+import os
+from pathlib import Path
+
+def get_scenarios_dir(settings=None) -> Path:
+    from bist_signal_bot.storage.paths import get_data_dir
+    base = get_data_dir(settings)
+    dir_name = getattr(settings, "SCENARIOS_DIR_NAME", "scenarios") if settings else "scenarios"
+    p = base / dir_name
+    p.mkdir(parents=True, exist_ok=True)
+    return p
+
+def get_scenario_runs_dir(settings=None) -> Path:
+    p = get_scenarios_dir(settings) / "runs"
+    p.mkdir(parents=True, exist_ok=True)
+    return p
+
+def get_scenario_golden_dir(settings=None) -> Path:
+    p = get_scenarios_dir(settings) / "golden"
+    p.mkdir(parents=True, exist_ok=True)
+    return p
