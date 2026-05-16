@@ -209,3 +209,8 @@ def get_docs_reports_dir(settings: Settings | None = None) -> Path:
     from bist_signal_bot.config.settings import get_settings
     s = settings or get_settings()
     return get_data_dir(s) / s.DOCS_REPORTS_DIR_NAME
+
+def get_performance_dir(settings: Settings | None = None) -> Path:
+    from bist_signal_bot.config.settings import Settings
+    s = settings or Settings()
+    return get_data_dir(s) / s.PERFORMANCE_DIR_NAME

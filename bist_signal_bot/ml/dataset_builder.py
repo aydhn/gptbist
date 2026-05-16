@@ -179,6 +179,19 @@ class MLDatasetBuilder:
                 issues.append(f"Failed to save dataset: {e}")
                 result.status = MLDatasetStatus.PARTIAL_SUCCESS
 
+
+        if getattr(self.settings, 'ENABLE_PERFORMANCE_TOOLS', False):
+            try:
+                from bist_signal_bot.app.performance_app import create_resource_monitor
+                monitor = create_resource_monitor(self.settings)
+                snap = monitor.snapshot()
+                result.metadata["resource_after"] = snap.summary()
+                # Estimate memory footprint safely
+                if not df.empty:
+                    result.metadata["memory_estimate_mb"] = df.memory_usage(deep=True).sum() / (1024 * 1024)
+            except Exception:
+                pass
+
         return result
 
     def split_dataset(self, data: pd.DataFrame, request: MLDatasetRequest) -> tuple[pd.DataFrame | None, pd.DataFrame | None]:

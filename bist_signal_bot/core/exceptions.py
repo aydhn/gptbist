@@ -462,6 +462,32 @@ class RegimeUniverseError(RegimeError):
     pass
 
 
+
+
+class PerformanceError(BistSignalBotError):
+    pass
+
+class PerformanceValidationError(PerformanceError):
+    pass
+
+class ProfilingError(PerformanceError):
+    pass
+
+class ResourceMonitorError(PerformanceError):
+    pass
+
+class CacheOptimizationError(PerformanceError):
+    pass
+
+class BatchTuningError(PerformanceError):
+    pass
+
+class PerformanceBenchmarkError(PerformanceError):
+    pass
+
+class PerformanceStorageError(PerformanceError):
+    pass
+
 class BistBotError(Exception): pass
 
 class RuntimeErrorBase(BistBotError): pass

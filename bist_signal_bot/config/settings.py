@@ -1108,37 +1108,177 @@ class Settings(BaseSettings):
 
 
     # Quality Gate Settings
-ENABLE_QUALITY_GATE: bool = True
-QUALITY_RESULTS_DIR_NAME: str = "quality"
-QUALITY_DEFAULT_SUITE: str = "FAST"
-QUALITY_GATE_LEVEL: str = "STANDARD"
-QUALITY_SAVE_REPORT: bool = True
-QUALITY_REPORT_FORMATS: str = "json,markdown,csv"
+    ENABLE_QUALITY_GATE: bool = True
+    QUALITY_RESULTS_DIR_NAME: str = "quality"
+    QUALITY_DEFAULT_SUITE: str = "FAST"
+    QUALITY_GATE_LEVEL: str = "STANDARD"
+    QUALITY_SAVE_REPORT: bool = True
+    QUALITY_REPORT_FORMATS: str = "json,markdown,csv"
 
-QUALITY_RUN_TESTS: bool = True
-QUALITY_RUN_COVERAGE: bool = False
-QUALITY_RUN_STATIC: bool = True
-QUALITY_RUN_TYPE_CHECK: bool = False
-QUALITY_RUN_IMPORT_CHECKS: bool = True
-QUALITY_RUN_SECURITY_CHECKS: bool = True
-QUALITY_RUN_REGRESSION_SMOKE: bool = False
-QUALITY_FAIL_ON_WARNING: bool = False
+    QUALITY_RUN_TESTS: bool = True
+    QUALITY_RUN_COVERAGE: bool = False
+    QUALITY_RUN_STATIC: bool = True
+    QUALITY_RUN_TYPE_CHECK: bool = False
+    QUALITY_RUN_IMPORT_CHECKS: bool = True
+    QUALITY_RUN_SECURITY_CHECKS: bool = True
+    QUALITY_RUN_REGRESSION_SMOKE: bool = False
+    QUALITY_FAIL_ON_WARNING: bool = False
 
-QUALITY_COVERAGE_THRESHOLD_PCT: float = 60.0
-QUALITY_TIMEOUT_SECONDS: int = 300
-QUALITY_SMOKE_COMMAND_TIMEOUT_SECONDS: int = 60
+    QUALITY_COVERAGE_THRESHOLD_PCT: float = 60.0
+    QUALITY_TIMEOUT_SECONDS: int = 300
+    QUALITY_SMOKE_COMMAND_TIMEOUT_SECONDS: int = 60
 
-QUALITY_WARN_IF_TOOL_MISSING: bool = True
-QUALITY_STRICT_FAIL_IF_TOOL_MISSING: bool = False
+    QUALITY_WARN_IF_TOOL_MISSING: bool = True
+    QUALITY_STRICT_FAIL_IF_TOOL_MISSING: bool = False
 
-QUALITY_SMOKE_INCLUDE_BACKTEST: bool = True
-QUALITY_SMOKE_INCLUDE_SCANNER: bool = True
-QUALITY_SMOKE_INCLUDE_ML_DATASET: bool = True
-QUALITY_SMOKE_INCLUDE_RUNTIME_DRY_RUN: bool = True
-QUALITY_SMOKE_INCLUDE_PAPER: bool = False
+    QUALITY_SMOKE_INCLUDE_BACKTEST: bool = True
+    QUALITY_SMOKE_INCLUDE_SCANNER: bool = True
+    QUALITY_SMOKE_INCLUDE_ML_DATASET: bool = True
+    QUALITY_SMOKE_INCLUDE_RUNTIME_DRY_RUN: bool = True
+    QUALITY_SMOKE_INCLUDE_PAPER: bool = False
 
-RUNTIME_QUALITY_PREFLIGHT_ENABLED: bool = False
-RUNTIME_QUALITY_PREFLIGHT_SUITE: str = "SMOKE"
+    RUNTIME_QUALITY_PREFLIGHT_ENABLED: bool = False
+    RUNTIME_QUALITY_PREFLIGHT_SUITE: str = 'SMOKE'
+
+    # Performance Settings (Phase 45)
+    ENABLE_PERFORMANCE_TOOLS: bool = True
+    PERFORMANCE_DIR_NAME: str = 'performance'
+    PERFORMANCE_SAVE_REPORTS: bool = True
+    PERFORMANCE_REPORT_FORMATS: str = 'json,markdown,csv'
+
+    PERFORMANCE_USE_PSUTIL_IF_AVAILABLE: bool = True
+    PERFORMANCE_CHECK_GPU: bool = True
+    PERFORMANCE_GPU_CHECK_TIMEOUT_SECONDS: int = 3
+    PERFORMANCE_MEMORY_WARN_PCT: float = 80.0
+    PERFORMANCE_MEMORY_CRITICAL_PCT: float = 92.0
+    PERFORMANCE_DISK_WARN_PCT: float = 85.0
+    PERFORMANCE_DISK_CRITICAL_PCT: float = 95.0
+
+    PERFORMANCE_PROFILE_ENABLED: bool = False
+    PERFORMANCE_PROFILE_TOP_N: int = 20
+    PERFORMANCE_PROFILE_TIMEOUT_SECONDS: int = 300
+
+    PERFORMANCE_CONCURRENCY_MODE: str = 'SERIAL'
+    PERFORMANCE_MAX_WORKERS: int = 1
+    PERFORMANCE_DEFAULT_BATCH_SIZE: int = 10
+    PERFORMANCE_MAX_BATCH_SIZE: int = 50
+    PERFORMANCE_SCANNER_SLOW_SYMBOL_SECONDS: float = 5.0
+
+    PERFORMANCE_CACHE_POLICY: str = 'DRY_RUN_ONLY'
+    PERFORMANCE_CACHE_MAX_AGE_DAYS: int = 30
+    PERFORMANCE_CACHE_MAX_TOTAL_SIZE_MB: float = 2048.0
+    PERFORMANCE_CACHE_CLEANUP_DRY_RUN: bool = True
+    PERFORMANCE_CACHE_CLEANUP_REQUIRE_CONFIRM: bool = True
+    PERFORMANCE_PROTECT_MODEL_ARTIFACTS: bool = True
+    PERFORMANCE_PROTECT_PAPER_LEDGER: bool = True
+    PERFORMANCE_PROTECT_RUNTIME_STATE: bool = True
+    PERFORMANCE_PROTECT_AUDIT_LOGS: bool = True
+
+    PERFORMANCE_BENCHMARK_ITERATIONS: int = 3
+    PERFORMANCE_BENCHMARK_USE_MOCK: bool = True
+    PERFORMANCE_BENCHMARK_SYMBOLS: str = 'ASELS,THYAO,GARAN'
+    PERFORMANCE_BENCHMARK_STRATEGY: str = 'moving_average_trend'
+
+    RUNTIME_USE_PERFORMANCE_METRICS: bool = True
+
+    def check_performance_settings(self) -> 'Settings':
+        if not (0 <= self.PERFORMANCE_MEMORY_WARN_PCT <= 100):
+            raise ValueError('Invalid')
+        if not (0 <= self.PERFORMANCE_MEMORY_CRITICAL_PCT <= 100):
+            raise ValueError('Invalid')
+        if not (0 <= self.PERFORMANCE_DISK_WARN_PCT <= 100):
+            raise ValueError('Invalid')
+        if not (0 <= self.PERFORMANCE_DISK_CRITICAL_PCT <= 100):
+            raise ValueError('Invalid')
+        if self.PERFORMANCE_PROFILE_TIMEOUT_SECONDS <= 0:
+            raise ValueError('Must be > 0')
+        if self.PERFORMANCE_MAX_WORKERS <= 0:
+            raise ValueError('Must be > 0')
+        if self.PERFORMANCE_DEFAULT_BATCH_SIZE <= 0:
+            raise ValueError('Must be > 0')
+        if self.PERFORMANCE_MAX_BATCH_SIZE < self.PERFORMANCE_DEFAULT_BATCH_SIZE:
+            raise ValueError('Invalid max batch')
+        if self.PERFORMANCE_CACHE_MAX_AGE_DAYS <= 0:
+            raise ValueError('Must be > 0')
+        if self.PERFORMANCE_CACHE_MAX_TOTAL_SIZE_MB <= 0:
+            raise ValueError('Must be > 0')
+        if self.PERFORMANCE_CONCURRENCY_MODE not in ('SERIAL', 'THREADS', 'PROCESSES', 'AUTO'):
+            raise ValueError('Invalid')
+        if self.PERFORMANCE_CACHE_POLICY not in ('KEEP_ALL', 'CLEAN_OLD', 'CLEAN_LARGE', 'CLEAN_TEMP_ONLY', 'DRY_RUN_ONLY'):
+            raise ValueError('Invalid')
+        return self
+
+
+    RUNTIME_QUALITY_PREFLIGHT_ENABLED: bool = False
+    RUNTIME_QUALITY_PREFLIGHT_SUITE: str = "SMOKE"
+
+    # Performance Settings (Phase 45)
+    ENABLE_PERFORMANCE_TOOLS: bool = True
+    PERFORMANCE_DIR_NAME: str = "performance"
+    PERFORMANCE_SAVE_REPORTS: bool = True
+    PERFORMANCE_REPORT_FORMATS: str = "json,markdown,csv"
+
+    PERFORMANCE_USE_PSUTIL_IF_AVAILABLE: bool = True
+    PERFORMANCE_CHECK_GPU: bool = True
+    PERFORMANCE_GPU_CHECK_TIMEOUT_SECONDS: int = 3
+    PERFORMANCE_MEMORY_WARN_PCT: float = 80.0
+    PERFORMANCE_MEMORY_CRITICAL_PCT: float = 92.0
+    PERFORMANCE_DISK_WARN_PCT: float = 85.0
+    PERFORMANCE_DISK_CRITICAL_PCT: float = 95.0
+
+    PERFORMANCE_PROFILE_ENABLED: bool = False
+    PERFORMANCE_PROFILE_TOP_N: int = 20
+    PERFORMANCE_PROFILE_TIMEOUT_SECONDS: int = 300
+
+    PERFORMANCE_CONCURRENCY_MODE: str = "SERIAL"
+    PERFORMANCE_MAX_WORKERS: int = 1
+    PERFORMANCE_DEFAULT_BATCH_SIZE: int = 10
+    PERFORMANCE_MAX_BATCH_SIZE: int = 50
+    PERFORMANCE_SCANNER_SLOW_SYMBOL_SECONDS: float = 5.0
+
+    PERFORMANCE_CACHE_POLICY: str = "DRY_RUN_ONLY"
+    PERFORMANCE_CACHE_MAX_AGE_DAYS: int = 30
+    PERFORMANCE_CACHE_MAX_TOTAL_SIZE_MB: float = 2048.0
+    PERFORMANCE_CACHE_CLEANUP_DRY_RUN: bool = True
+    PERFORMANCE_CACHE_CLEANUP_REQUIRE_CONFIRM: bool = True
+    PERFORMANCE_PROTECT_MODEL_ARTIFACTS: bool = True
+    PERFORMANCE_PROTECT_PAPER_LEDGER: bool = True
+    PERFORMANCE_PROTECT_RUNTIME_STATE: bool = True
+    PERFORMANCE_PROTECT_AUDIT_LOGS: bool = True
+
+    PERFORMANCE_BENCHMARK_ITERATIONS: int = 3
+    PERFORMANCE_BENCHMARK_USE_MOCK: bool = True
+    PERFORMANCE_BENCHMARK_SYMBOLS: str = "ASELS,THYAO,GARAN"
+    PERFORMANCE_BENCHMARK_STRATEGY: str = "moving_average_trend"
+
+    RUNTIME_USE_PERFORMANCE_METRICS: bool = True
+
+    def check_performance_settings(self) -> 'Settings':
+        if not (0 <= self.PERFORMANCE_MEMORY_WARN_PCT <= 100):
+            raise ValueError("PERFORMANCE_MEMORY_WARN_PCT must be between 0 and 100")
+        if not (0 <= self.PERFORMANCE_MEMORY_CRITICAL_PCT <= 100):
+            raise ValueError("PERFORMANCE_MEMORY_CRITICAL_PCT must be between 0 and 100")
+        if not (0 <= self.PERFORMANCE_DISK_WARN_PCT <= 100):
+            raise ValueError("PERFORMANCE_DISK_WARN_PCT must be between 0 and 100")
+        if not (0 <= self.PERFORMANCE_DISK_CRITICAL_PCT <= 100):
+            raise ValueError("PERFORMANCE_DISK_CRITICAL_PCT must be between 0 and 100")
+        if self.PERFORMANCE_PROFILE_TIMEOUT_SECONDS <= 0:
+            raise ValueError("PERFORMANCE_PROFILE_TIMEOUT_SECONDS must be positive")
+        if self.PERFORMANCE_MAX_WORKERS <= 0:
+            raise ValueError("PERFORMANCE_MAX_WORKERS must be positive")
+        if self.PERFORMANCE_DEFAULT_BATCH_SIZE <= 0:
+            raise ValueError("PERFORMANCE_DEFAULT_BATCH_SIZE must be positive")
+        if self.PERFORMANCE_MAX_BATCH_SIZE < self.PERFORMANCE_DEFAULT_BATCH_SIZE:
+            raise ValueError("PERFORMANCE_MAX_BATCH_SIZE must be >= PERFORMANCE_DEFAULT_BATCH_SIZE")
+        if self.PERFORMANCE_CACHE_MAX_AGE_DAYS <= 0:
+            raise ValueError("PERFORMANCE_CACHE_MAX_AGE_DAYS must be positive")
+        if self.PERFORMANCE_CACHE_MAX_TOTAL_SIZE_MB <= 0:
+            raise ValueError("PERFORMANCE_CACHE_MAX_TOTAL_SIZE_MB must be positive")
+        if self.PERFORMANCE_CONCURRENCY_MODE not in ("SERIAL", "THREADS", "PROCESSES", "AUTO"):
+            raise ValueError("Invalid PERFORMANCE_CONCURRENCY_MODE")
+        if self.PERFORMANCE_CACHE_POLICY not in ("KEEP_ALL", "CLEAN_OLD", "CLEAN_LARGE", "CLEAN_TEMP_ONLY", "DRY_RUN_ONLY"):
+            raise ValueError("Invalid PERFORMANCE_CACHE_POLICY")
+        return self
 
 
 def get_settings() -> Settings:
