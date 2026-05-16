@@ -1,3 +1,4 @@
+from ..research.models import ResearchRun, ResearchComparisonReport, AttributionReport, SignalJournalEntry
 import html
 from typing import Any
 
@@ -799,3 +800,43 @@ def format_release_bundle_result(result) -> str:
         msg += f"Pages Created: {result.pages_created}\n\n"
         msg += "Bu çıktı dokümantasyon oluşturma raporudur.\nYatırım tavsiyesi değildir.\nGerçek emir gönderilmedi."
         return msg
+
+
+def format_research_run(run: ResearchRun) -> str:
+    lines = [
+        "BIST Bot Research Ledger Özeti",
+        "",
+        f"Run Type: {run.run_type.value}",
+        f"Strategy: {run.strategy_name or 'N/A'}",
+        f"Symbols: {','.join(run.symbols) if run.symbols else 'N/A'}",
+        f"Status: {run.status.value}",
+        f"Metrics: {', '.join(f'{k}={v}' for k,v in run.metrics.items())}",
+        f"Artifacts: {len(run.artifacts)}",
+        "",
+        "Bu çıktı araştırma kayıt özetidir.",
+        "Yatırım tavsiyesi değildir.",
+        "Gerçek emir gönderilmedi."
+    ]
+    return "\n".join(lines)
+
+def format_research_comparison(report: ResearchComparisonReport) -> str:
+    lines = ["BIST Bot Research Comparison", "", f"Title: {report.title}", ""]
+    for i in report.items[:5]:
+        lines.append(f"{i.rank}. {i.label} -> {i.score}")
+    lines.append("", "Yatırım tavsiyesi değildir. Gerçek emir gönderilmedi.")
+    return "\n".join(lines)
+
+def format_research_attribution(report: AttributionReport) -> str:
+    lines = ["BIST Bot Research Attribution", "", f"Group By: {report.group_by.value}", ""]
+    for b in report.buckets[:5]:
+        wr = f"{b.win_rate:.1f}%" if b.win_rate else "N/A"
+        lines.append(f"{b.group_key} -> Count: {b.count}, WinRate: {wr}")
+    lines.append("", "Yatırım tavsiyesi değildir. Gerçek emir gönderilmedi.")
+    return "\n".join(lines)
+
+def format_signal_journal_summary(entries: list[SignalJournalEntry]) -> str:
+    lines = ["BIST Bot Signal Journal Summary", ""]
+    for e in entries[:5]:
+        lines.append(f"{e.symbol} | {e.strategy_name} | {e.direction} -> {e.outcome.value}")
+    lines.append("", "Yatırım tavsiyesi değildir. Gerçek emir gönderilmedi.")
+    return "\n".join(lines)

@@ -633,3 +633,36 @@ class AdaptiveRefreshError(AdaptiveError):
 
 class AdaptiveStorageError(AdaptiveError):
     pass
+
+class ResearchError(BistSignalBotError):
+    pass
+
+class ResearchValidationError(ResearchError):
+    pass
+
+class ResearchLedgerError(ResearchError):
+    pass
+
+class ResearchEventError(ResearchError):
+    pass
+
+class ResearchLineageError(ResearchError):
+    pass
+
+class SignalJournalError(ResearchError):
+    pass
+
+class ResearchComparisonError(ResearchError):
+    pass
+
+class ResearchAttributionError(ResearchError):
+    pass
+
+class ResearchNoteError(ResearchError):
+    pass
+
+class ResearchQueryError(ResearchError):
+    pass
+
+class ResearchStorageError(ResearchError):
+    pass

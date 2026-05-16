@@ -278,7 +278,24 @@ class SignalScannerEngine:
         # Audit
 
 
+
+        # Phase 47: Research Logging
+        if self.settings.ENABLE_RESEARCH_LEDGER and self.settings.RESEARCH_AUTO_LOG_SCAN:
+            try:
+                from ..app.research_app import create_research_event_builder, create_research_ledger, create_signal_journal
+                ledger = create_research_ledger(self.settings)
+                builder = create_research_event_builder(self.settings)
+                run_obj = builder.from_scan_report(report)
+                ledger.append_run(run_obj)
+
+                if self.settings.RESEARCH_SIGNAL_JOURNAL_ENABLED:
+                    journal = create_signal_journal(self.settings)
+                    journal.from_scan_report(report)
+            except Exception as e:
+                self.logger.warning(f"Failed to log scan to research ledger/journal: {e}")
+
         return report
+
 
     def build_default_request(self, strategy_name: str, **kwargs) -> ScanRequest:
         req = ScanRequest(
