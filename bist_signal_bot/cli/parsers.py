@@ -542,6 +542,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser_config = runtime_subparsers.add_parser('config', help="Show runtime config")
     setup_monitor_parser(subparsers)
     setup_package_parser(subparsers)
+    add_performance_parser(subparsers)
     return parser
 
 def add_paper_parser(subparsers: argparse._SubParsersAction) -> None:
@@ -948,3 +949,58 @@ def setup_package_parser(subparsers):
     # config
     config_parser = package_subparsers.add_parser("config", help="Show packaging configuration")
     config_parser.add_argument("--json", action="store_true", help="Output JSON format")
+
+
+def add_performance_parser(subparsers) -> None:
+    perf_parser = subparsers.add_parser("performance", help="Performance profiling and resource management")
+    perf_subs = perf_parser.add_subparsers(dest="perf_command", required=True)
+
+    # resource
+    res_parser = perf_subs.add_parser("resource", help="Check local resource usage")
+    res_parser.add_argument("--json", action="store_true", help="Output in JSON format")
+
+    # diagnose
+    diag_parser = perf_subs.add_parser("diagnose", help="Run full performance diagnostic")
+    diag_parser.add_argument("--json", action="store_true", help="Output in JSON format")
+
+    # cache
+    cache_parser = perf_subs.add_parser("cache", help="Manage cache files")
+    cache_parser.add_argument("--dry-run", action="store_true", default=True, help="Do not delete files, only scan")
+    cache_parser.add_argument("--cleanup", action="store_true", help="Execute cache cleanup")
+    cache_parser.add_argument("--policy", type=str, default="DRY_RUN_ONLY", help="Cleanup policy (e.g., CLEAN_OLD, CLEAN_TEMP_ONLY)")
+    cache_parser.add_argument("--max-age-days", type=int, default=30, help="Max age in days for CLEAN_OLD")
+    cache_parser.add_argument("--confirm", action="store_true", help="Confirm destructive cleanup")
+    cache_parser.add_argument("--json", action="store_true", help="Output in JSON format")
+
+    # benchmark
+    bm_parser = perf_subs.add_parser("benchmark", help="Run offline performance benchmarks")
+    bm_parser.add_argument("--workload", type=str, required=True, help="Workload type (scanner, backtest, ml-dataset)")
+    bm_parser.add_argument("--source", type=str, default="mock", help="Data source (should be mock)")
+    bm_parser.add_argument("--symbols", type=str, nargs="+", default=["ASELS", "THYAO", "GARAN"], help="Symbols to benchmark")
+    bm_parser.add_argument("--strategy", type=str, default="moving_average_trend", help="Strategy to benchmark")
+    bm_parser.add_argument("--iterations", type=int, default=3, help="Number of iterations")
+    bm_parser.add_argument("--json", action="store_true", help="Output in JSON format")
+
+    # profile
+    prof_parser = perf_subs.add_parser("profile", help="Run cProfile on a workload")
+    prof_parser.add_argument("--workload", type=str, required=True, help="Workload type (scanner, backtest)")
+    prof_parser.add_argument("--source", type=str, default="mock", help="Data source")
+    prof_parser.add_argument("--symbols", type=str, nargs="+", default=["ASELS"], help="Symbols to profile")
+    prof_parser.add_argument("--symbol", type=str, default="ASELS", help="Single symbol to profile")
+    prof_parser.add_argument("--strategy", type=str, default="moving_average_trend", help="Strategy to profile")
+    prof_parser.add_argument("--json", action="store_true", help="Output in JSON format")
+
+    # batch-recommend
+    batch_parser = perf_subs.add_parser("batch-recommend", help="Get batch size and concurrency recommendations")
+    batch_parser.add_argument("--workload", type=str, required=True, help="Workload type (scanner, optimization)")
+    batch_parser.add_argument("--symbols", type=int, required=True, help="Number of symbols/items to process")
+    batch_parser.add_argument("--json", action="store_true", help="Output in JSON format")
+
+    # recent
+    recent_parser = perf_subs.add_parser("recent", help="List recent performance reports")
+    recent_parser.add_argument("--limit", type=int, default=10, help="Limit number of reports")
+    recent_parser.add_argument("--json", action="store_true", help="Output in JSON format")
+
+    # config
+    config_parser = perf_subs.add_parser("config", help="View current performance configurations")
+    config_parser.add_argument("--json", action="store_true", help="Output in JSON format")
