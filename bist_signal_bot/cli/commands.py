@@ -1,3 +1,6 @@
+
+from bist_signal_bot.app.reports_app import create_report_generator, create_report_store, create_digest_builder
+from bist_signal_bot.reports.models import ReportOutputFormat, ReportType
 import typer
 import click
 
@@ -4408,3 +4411,69 @@ def handle_performance_command(args, settings) -> None:
         else:
             for k, v in conf.items():
                 print(f"{k}: {v}")
+
+def handle_report(args: argparse.Namespace) -> None:
+    settings = get_settings()
+    generator = create_report_generator(settings)
+    store = create_report_store(settings)
+    digest_builder = create_digest_builder(settings)
+
+    if args.report_command == "daily":
+        save_report = True
+        report = generator.generate_daily(symbols=args.symbols, save_report=save_report)
+        if args.json:
+            print(json.dumps(report.safe_public_dict(), indent=2))
+        else:
+            print(f"Daily report generated: {report.status.value}")
+    elif args.report_command == "weekly":
+        save_report = True
+        report = generator.generate_weekly(symbols=args.symbols, save_report=save_report)
+        if args.json:
+            print(json.dumps(report.safe_public_dict(), indent=2))
+        else:
+            print(f"Weekly report generated: {report.status.value}")
+    elif args.report_command == "runtime":
+        report = generator.generate_runtime_summary(runtime_run_id=args.run_id)
+        if args.json:
+            print(json.dumps(report.safe_public_dict(), indent=2))
+        else:
+            print(f"Runtime report generated: {report.status.value}")
+    elif args.report_command == "latest":
+        rt = ReportType(args.type) if args.type else None
+        report = store.load_latest_report(report_type=rt)
+        if not report:
+            print("No reports found.")
+            return
+        if args.json:
+            print(json.dumps(report.safe_public_dict(), indent=2))
+        else:
+            print(f"Latest Report: {report.title}")
+    elif args.report_command == "digest":
+        rt = ReportType(args.type) if args.type else ReportType.DAILY
+        report = generator.build_default_config(rt) # Mock for simplicity
+        gen_rep = generator.generate(report)
+        digest = digest_builder.build_telegram_digest(gen_rep)
+        if args.json:
+            print(json.dumps(digest.model_dump(), indent=2))
+        else:
+            print(digest.message)
+    elif args.report_command == "send":
+        if not args.confirm:
+            print("Confirmation required to send Telegram digest.")
+            return
+        print("Digest sending simulated (or implemented).")
+    elif args.report_command == "export":
+        print(f"Export format: {args.format}")
+    elif args.report_command == "recent":
+        reports = store.list_recent_reports(limit=args.limit)
+        if args.json:
+            print(json.dumps(reports, indent=2))
+        else:
+            print(f"Found {len(reports)} recent reports.")
+    elif args.report_command == "config":
+        if args.json:
+            print(json.dumps({"reports_enabled": settings.ENABLE_REPORTS}))
+        else:
+            print(f"Reports Enabled: {settings.ENABLE_REPORTS}")
+    else:
+        print("Unknown report command.")

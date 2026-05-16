@@ -1,3 +1,5 @@
+
+from bist_signal_bot.reports.models import GeneratedReport, TelegramDigest
 from ..research.models import ResearchRun, ResearchComparisonReport, AttributionReport, SignalJournalEntry
 import html
 from typing import Any
@@ -840,3 +842,13 @@ def format_signal_journal_summary(entries: list[SignalJournalEntry]) -> str:
         lines.append(f"{e.symbol} | {e.strategy_name} | {e.direction} -> {e.outcome.value}")
     lines.append("", "Yatırım tavsiyesi değildir. Gerçek emir gönderilmedi.")
     return "\n".join(lines)
+
+
+    def format_generated_report(self, report: GeneratedReport) -> str:
+        return f"Research Report: {report.title} [{report.status.value}]\nSections: {len(report.sections)}\nDisclaimer: {report.disclaimer}"
+
+    def format_telegram_digest(self, digest: TelegramDigest) -> str:
+        return digest.message
+
+    def format_report_generation_failure(self, error: Any) -> str:
+        return f"Report generation failed: {error}"

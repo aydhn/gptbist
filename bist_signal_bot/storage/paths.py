@@ -243,3 +243,13 @@ def get_research_reports_dir(settings: Settings | None = None) -> Path:
     path = get_research_dir(settings) / "reports"
     path.mkdir(parents=True, exist_ok=True)
     return path
+
+def get_reports_dir(settings: Settings | None = None) -> Path:
+    """Gets the path to the reports directory."""
+    if settings is None:
+        from bist_signal_bot.config.settings import get_settings
+        settings = get_settings()
+
+    reports_dir = get_data_dir(settings) / settings.REPORTS_DIR_NAME
+    reports_dir.mkdir(parents=True, exist_ok=True)
+    return reports_dir

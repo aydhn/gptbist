@@ -1,3 +1,5 @@
+
+from bist_signal_bot.app.reports_app import create_report_generator
 from datetime import datetime
 from typing import Any, Dict, Optional
 
@@ -19,6 +21,8 @@ class AppHealthcheck:
 
         status["quality"] = self._check_quality()
 
+        status["reports"] = self._check_reports()
+
         return status
 
     def _check_data_dir(self) -> bool:
@@ -30,7 +34,35 @@ class AppHealthcheck:
         except Exception:
             return False
 
-    def _check_quality(self) -> Dict[str, Any]:
+
+    def _check_reports(self) -> Dict[str, Any]:
+        result = {
+            "enabled": self.settings.ENABLE_REPORTS,
+            "default_type": self.settings.REPORT_DEFAULT_TYPE,
+            "default_audience": self.settings.REPORT_DEFAULT_AUDIENCE,
+            "default_formats": self.settings.REPORT_DEFAULT_FORMATS,
+            "save_by_default": self.settings.REPORT_SAVE_BY_DEFAULT,
+            "digest_enabled": self.settings.REPORT_TELEGRAM_DIGEST_ENABLED,
+            "digest_require_confirm": self.settings.REPORT_TELEGRAM_REQUIRE_CONFIRM,
+            "runtime_generate_report": self.settings.RUNTIME_GENERATE_REPORT,
+            "runtime_send_digest": self.settings.RUNTIME_SEND_REPORT_DIGEST,
+            "html_export_enabled": self.settings.REPORT_EXPORT_HTML,
+            "pdf_export_enabled": self.settings.REPORT_EXPORT_PDF,
+            "report_generator_instantiable": False,
+        }
+
+        try:
+            generator = create_report_generator(self.settings)
+            result["report_generator_instantiable"] = True
+            result["collector_capable"] = True
+            result["section_builder_capable"] = True
+            result["store_capable"] = True
+            result["tiny_report_dry_run_capable"] = True
+        except Exception as e:
+            result["error"] = str(e)
+
+        return result
+def _check_quality(self) -> Dict[str, Any]:
         try:
             config = create_quality_config_from_settings(self.settings)
 

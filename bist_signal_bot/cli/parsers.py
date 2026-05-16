@@ -544,6 +544,56 @@ def build_parser() -> argparse.ArgumentParser:
     setup_package_parser(subparsers)
     add_performance_parser(subparsers)
     add_adaptive_parser(subparsers)
+    # Report parser
+    parser_report = subparsers.add_parser("report", help="Manage research reports")
+    report_subparsers = parser_report.add_subparsers(dest="report_command")
+
+    # daily
+    parser_daily = report_subparsers.add_parser("daily", help="Generate daily report")
+    parser_daily.add_argument("--symbols", nargs="+", help="Symbols to include")
+    parser_daily.add_argument("--format", help="Export format (e.g., markdown, json, all)")
+    parser_daily.add_argument("--json", action="store_true", help="Output JSON directly")
+
+    # weekly
+    parser_weekly = report_subparsers.add_parser("weekly", help="Generate weekly report")
+    parser_weekly.add_argument("--symbols", nargs="+", help="Symbols to include")
+    parser_weekly.add_argument("--json", action="store_true", help="Output JSON directly")
+
+    # runtime
+    parser_runtime = report_subparsers.add_parser("runtime", help="Generate runtime report")
+    parser_runtime.add_argument("--run-id", help="Specific runtime run ID")
+    parser_runtime.add_argument("--json", action="store_true", help="Output JSON directly")
+
+    # latest
+    parser_latest = report_subparsers.add_parser("latest", help="Show latest report")
+    parser_latest.add_argument("--type", help="Filter by report type (e.g., DAILY)")
+    parser_latest.add_argument("--json", action="store_true", help="Output JSON directly")
+
+    # digest
+    parser_digest = report_subparsers.add_parser("digest", help="Generate report digest")
+    parser_digest.add_argument("--type", help="Filter by report type")
+    parser_digest.add_argument("--json", action="store_true", help="Output JSON directly")
+
+    # send
+    parser_send = report_subparsers.add_parser("send", help="Send report digest via Telegram")
+    parser_send.add_argument("--latest", action="store_true", help="Send latest digest")
+    parser_send.add_argument("--type", help="Filter by report type")
+    parser_send.add_argument("--confirm", action="store_true", help="Confirm sending")
+
+    # export
+    parser_export = report_subparsers.add_parser("export", help="Export latest report")
+    parser_export.add_argument("--latest", action="store_true", help="Export latest report")
+    parser_export.add_argument("--format", required=True, help="Export format (html, pdf, markdown)")
+
+    # recent
+    parser_recent = report_subparsers.add_parser("recent", help="List recent reports")
+    parser_recent.add_argument("--limit", type=int, default=10, help="Number of reports")
+    parser_recent.add_argument("--json", action="store_true", help="Output JSON directly")
+
+    # config
+    parser_report_config = report_subparsers.add_parser("config", help="Show report config")
+    parser_report_config.add_argument("--json", action="store_true", help="Output JSON directly")
+
     return parser
 
 def add_paper_parser(subparsers: argparse._SubParsersAction) -> None:

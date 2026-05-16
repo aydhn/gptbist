@@ -612,3 +612,6 @@ A centralized, offline experiment tracking engine to keep records of backtests, 
 * **Signal Journal:** A dedicated tracker for `SignalCandidate` outcomes (Pending, Positive, Negative).
 * **Research Attribution & Lineage:** Group performance by strategy, ML score, regime; track the sequence from optimization to runtime.
 * **Safe CLI Access:** Analyze results entirely from the CLI.
+
+## Phase 48: Research Reports
+Aggregates bot outputs into safe, daily and weekly research reports in multiple formats (Markdown, JSON, CSV, HTML) without containing financial advice or real orders. Includes optional Telegram digests.
