@@ -860,3 +860,51 @@ def format_signal_journal_summary(entries: list[SignalJournalEntry]) -> str:
 
     def format_report_generation_failure(self, error: Any) -> str:
         return f"Report generation failed: {error}"
+
+
+def format_release_readiness_report(report) -> str:
+    lines = [
+        "🚀 *BIST Bot Release Readiness*",
+        f"Version: {report.config.version}",
+        f"Stage: {report.config.stage.value}",
+        f"Status: {report.status.value}",
+        f"Score: {report.readiness_score:.1f}",
+        f"Blockers: {len(report.blockers)}",
+        f"Warnings: {report.warning_count}",
+        "",
+        "Bu çıktı release hazırlık raporudur.",
+        "Yatırım tavsiyesi değildir.",
+        "Gerçek emir gönderilmedi."
+    ]
+    return "\n".join(lines)
+
+def format_safe_launch_rehearsal(result) -> str:
+    lines = [
+        "🧪 *Safe Launch Rehearsal*",
+        f"Profile: {result.profile.value}",
+        f"Status: {result.status.value}",
+        f"Steps: {len(result.steps)}",
+        "",
+        "Gerçek işlem yapılmadı."
+    ]
+    return "\n".join(lines)
+
+def format_release_candidate_manifest(manifest) -> str:
+    lines = [
+        "📦 *Release Candidate Built*",
+        f"Version: {manifest.version}",
+        f"Stage: {manifest.stage.value}",
+        f"Safe: {manifest.no_real_order_sent}",
+        "",
+        "Gerçek emir gönderilmedi."
+    ]
+    return "\n".join(lines)
+
+def format_release_notes(notes) -> str:
+    lines = [
+        f"📄 *Release Notes: {notes.version}*",
+        notes.summary,
+        "",
+        "Gerçek işlem yapılmadı."
+    ]
+    return "\n".join(lines)

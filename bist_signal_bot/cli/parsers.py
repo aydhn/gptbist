@@ -1,3 +1,223 @@
+
+def add_release_parser(subparsers):
+    release_parser = subparsers.add_parser("release", help="Release Manager commands")
+    release_subparsers = release_parser.add_subparsers(dest="release_command", help="Release sub-commands")
+
+    check_parser = release_subparsers.add_parser("check", help="Run basic release checks")
+    check_parser.add_argument("--profile", type=str, help="Release profile")
+    check_parser.add_argument("--no-scenarios", action="store_true", help="Skip scenarios")
+    check_parser.add_argument("--json", action="store_true", help="Output JSON")
+
+    readiness_parser = release_subparsers.add_parser("readiness", help="Evaluate release readiness")
+    readiness_parser.add_argument("--version", type=str, help="Target version")
+    readiness_parser.add_argument("--require-acceptance", action="store_true", help="Require acceptance pass")
+    readiness_parser.add_argument("--json", action="store_true", help="Output JSON")
+
+    rehearse_parser = release_subparsers.add_parser("rehearse", help="Run safe launch rehearsal")
+    rehearse_parser.add_argument("--profile", type=str, help="Release profile")
+    rehearse_parser.add_argument("--json", action="store_true", help="Output JSON")
+
+    candidate_parser = release_subparsers.add_parser("candidate", help="Build release candidate")
+    candidate_parser.add_argument("--version", type=str, help="Target version")
+    candidate_parser.add_argument("--run-rehearsal", action="store_true", help="Run rehearsal before building")
+    candidate_parser.add_argument("--package", action="store_true", help="Build package")
+    candidate_parser.add_argument("--confirm", action="store_true", help="Confirm destructive actions")
+    candidate_parser.add_argument("--json", action="store_true", help="Output JSON")
+
+    notes_parser = release_subparsers.add_parser("notes", help="Generate release notes")
+    notes_parser.add_argument("--version", type=str, help="Target version")
+    notes_parser.add_argument("--markdown", action="store_true", help="Output Markdown")
+    notes_parser.add_argument("--json", action="store_true", help="Output JSON")
+
+    compat_parser = release_subparsers.add_parser("compatibility", help="Run compatibility checks")
+    compat_parser.add_argument("--json", action="store_true", help="Output JSON")
+
+    recent_parser = release_subparsers.add_parser("recent", help="List recent release runs")
+    recent_parser.add_argument("--limit", type=int, default=10, help="Max number of runs to list")
+    recent_parser.add_argument("--json", action="store_true", help="Output JSON")
+
+    status_parser = release_subparsers.add_parser("status", help="Show current release status")
+    status_parser.add_argument("--json", action="store_true", help="Output JSON")
+
+    config_parser = release_subparsers.add_parser("config", help="Show release configuration")
+    config_parser.add_argument("--json", action="store_true", help="Output JSON")
+
+
+def add_release_parser(subparsers):
+    release_parser = subparsers.add_parser("release", help="Release Manager commands")
+    release_subparsers = release_parser.add_subparsers(dest="release_command", help="Release sub-commands")
+
+    check_parser = release_subparsers.add_parser("check", help="Run basic release checks")
+    check_parser.add_argument("--profile", type=str, help="Release profile")
+    check_parser.add_argument("--no-scenarios", action="store_true", help="Skip scenarios")
+    check_parser.add_argument("--json", action="store_true", help="Output JSON")
+
+    readiness_parser = release_subparsers.add_parser("readiness", help="Evaluate release readiness")
+    readiness_parser.add_argument("--version", type=str, help="Target version")
+    readiness_parser.add_argument("--require-acceptance", action="store_true", help="Require acceptance pass")
+    readiness_parser.add_argument("--json", action="store_true", help="Output JSON")
+
+    rehearse_parser = release_subparsers.add_parser("rehearse", help="Run safe launch rehearsal")
+    rehearse_parser.add_argument("--profile", type=str, help="Release profile")
+    rehearse_parser.add_argument("--json", action="store_true", help="Output JSON")
+
+    candidate_parser = release_subparsers.add_parser("candidate", help="Build release candidate")
+    candidate_parser.add_argument("--version", type=str, help="Target version")
+    candidate_parser.add_argument("--run-rehearsal", action="store_true", help="Run rehearsal before building")
+    candidate_parser.add_argument("--package", action="store_true", help="Build package")
+    candidate_parser.add_argument("--confirm", action="store_true", help="Confirm destructive actions")
+    candidate_parser.add_argument("--json", action="store_true", help="Output JSON")
+
+    notes_parser = release_subparsers.add_parser("notes", help="Generate release notes")
+    notes_parser.add_argument("--version", type=str, help="Target version")
+    notes_parser.add_argument("--markdown", action="store_true", help="Output Markdown")
+    notes_parser.add_argument("--json", action="store_true", help="Output JSON")
+
+    compat_parser = release_subparsers.add_parser("compatibility", help="Run compatibility checks")
+    compat_parser.add_argument("--json", action="store_true", help="Output JSON")
+
+    recent_parser = release_subparsers.add_parser("recent", help="List recent release runs")
+    recent_parser.add_argument("--limit", type=int, default=10, help="Max number of runs to list")
+    recent_parser.add_argument("--json", action="store_true", help="Output JSON")
+
+    status_parser = release_subparsers.add_parser("status", help="Show current release status")
+    status_parser.add_argument("--json", action="store_true", help="Output JSON")
+
+    config_parser = release_subparsers.add_parser("config", help="Show release configuration")
+    config_parser.add_argument("--json", action="store_true", help="Output JSON")
+
+
+def add_release_parser(subparsers):
+    release_parser = subparsers.add_parser("release", help="Release Manager commands")
+    release_subparsers = release_parser.add_subparsers(dest="release_command", help="Release sub-commands")
+
+    check_parser = release_subparsers.add_parser("check", help="Run basic release checks")
+    check_parser.add_argument("--profile", type=str, help="Release profile")
+    check_parser.add_argument("--no-scenarios", action="store_true", help="Skip scenarios")
+    check_parser.add_argument("--json", action="store_true", help="Output JSON")
+
+    readiness_parser = release_subparsers.add_parser("readiness", help="Evaluate release readiness")
+    readiness_parser.add_argument("--version", type=str, help="Target version")
+    readiness_parser.add_argument("--require-acceptance", action="store_true", help="Require acceptance pass")
+    readiness_parser.add_argument("--json", action="store_true", help="Output JSON")
+
+    rehearse_parser = release_subparsers.add_parser("rehearse", help="Run safe launch rehearsal")
+    rehearse_parser.add_argument("--profile", type=str, help="Release profile")
+    rehearse_parser.add_argument("--json", action="store_true", help="Output JSON")
+
+    candidate_parser = release_subparsers.add_parser("candidate", help="Build release candidate")
+    candidate_parser.add_argument("--version", type=str, help="Target version")
+    candidate_parser.add_argument("--run-rehearsal", action="store_true", help="Run rehearsal before building")
+    candidate_parser.add_argument("--package", action="store_true", help="Build package")
+    candidate_parser.add_argument("--confirm", action="store_true", help="Confirm destructive actions")
+    candidate_parser.add_argument("--json", action="store_true", help="Output JSON")
+
+    notes_parser = release_subparsers.add_parser("notes", help="Generate release notes")
+    notes_parser.add_argument("--version", type=str, help="Target version")
+    notes_parser.add_argument("--markdown", action="store_true", help="Output Markdown")
+    notes_parser.add_argument("--json", action="store_true", help="Output JSON")
+
+    compat_parser = release_subparsers.add_parser("compatibility", help="Run compatibility checks")
+    compat_parser.add_argument("--json", action="store_true", help="Output JSON")
+
+    recent_parser = release_subparsers.add_parser("recent", help="List recent release runs")
+    recent_parser.add_argument("--limit", type=int, default=10, help="Max number of runs to list")
+    recent_parser.add_argument("--json", action="store_true", help="Output JSON")
+
+    status_parser = release_subparsers.add_parser("status", help="Show current release status")
+    status_parser.add_argument("--json", action="store_true", help="Output JSON")
+
+    config_parser = release_subparsers.add_parser("config", help="Show release configuration")
+    config_parser.add_argument("--json", action="store_true", help="Output JSON")
+
+
+def add_release_parser(subparsers):
+    release_parser = subparsers.add_parser("release", help="Release Manager commands")
+    release_subparsers = release_parser.add_subparsers(dest="release_command", help="Release sub-commands")
+
+    check_parser = release_subparsers.add_parser("check", help="Run basic release checks")
+    check_parser.add_argument("--profile", type=str, help="Release profile")
+    check_parser.add_argument("--no-scenarios", action="store_true", help="Skip scenarios")
+    check_parser.add_argument("--json", action="store_true", help="Output JSON")
+
+    readiness_parser = release_subparsers.add_parser("readiness", help="Evaluate release readiness")
+    readiness_parser.add_argument("--version", type=str, help="Target version")
+    readiness_parser.add_argument("--require-acceptance", action="store_true", help="Require acceptance pass")
+    readiness_parser.add_argument("--json", action="store_true", help="Output JSON")
+
+    rehearse_parser = release_subparsers.add_parser("rehearse", help="Run safe launch rehearsal")
+    rehearse_parser.add_argument("--profile", type=str, help="Release profile")
+    rehearse_parser.add_argument("--json", action="store_true", help="Output JSON")
+
+    candidate_parser = release_subparsers.add_parser("candidate", help="Build release candidate")
+    candidate_parser.add_argument("--version", type=str, help="Target version")
+    candidate_parser.add_argument("--run-rehearsal", action="store_true", help="Run rehearsal before building")
+    candidate_parser.add_argument("--package", action="store_true", help="Build package")
+    candidate_parser.add_argument("--confirm", action="store_true", help="Confirm destructive actions")
+    candidate_parser.add_argument("--json", action="store_true", help="Output JSON")
+
+    notes_parser = release_subparsers.add_parser("notes", help="Generate release notes")
+    notes_parser.add_argument("--version", type=str, help="Target version")
+    notes_parser.add_argument("--markdown", action="store_true", help="Output Markdown")
+    notes_parser.add_argument("--json", action="store_true", help="Output JSON")
+
+    compat_parser = release_subparsers.add_parser("compatibility", help="Run compatibility checks")
+    compat_parser.add_argument("--json", action="store_true", help="Output JSON")
+
+    recent_parser = release_subparsers.add_parser("recent", help="List recent release runs")
+    recent_parser.add_argument("--limit", type=int, default=10, help="Max number of runs to list")
+    recent_parser.add_argument("--json", action="store_true", help="Output JSON")
+
+    status_parser = release_subparsers.add_parser("status", help="Show current release status")
+    status_parser.add_argument("--json", action="store_true", help="Output JSON")
+
+    config_parser = release_subparsers.add_parser("config", help="Show release configuration")
+    config_parser.add_argument("--json", action="store_true", help="Output JSON")
+
+
+def add_release_parser(subparsers):
+    release_parser = subparsers.add_parser("release", help="Release Manager commands")
+    release_subparsers = release_parser.add_subparsers(dest="release_command", help="Release sub-commands")
+
+    check_parser = release_subparsers.add_parser("check", help="Run basic release checks")
+    check_parser.add_argument("--profile", type=str, help="Release profile")
+    check_parser.add_argument("--no-scenarios", action="store_true", help="Skip scenarios")
+    check_parser.add_argument("--json", action="store_true", help="Output JSON")
+
+    readiness_parser = release_subparsers.add_parser("readiness", help="Evaluate release readiness")
+    readiness_parser.add_argument("--version", type=str, help="Target version")
+    readiness_parser.add_argument("--require-acceptance", action="store_true", help="Require acceptance pass")
+    readiness_parser.add_argument("--json", action="store_true", help="Output JSON")
+
+    rehearse_parser = release_subparsers.add_parser("rehearse", help="Run safe launch rehearsal")
+    rehearse_parser.add_argument("--profile", type=str, help="Release profile")
+    rehearse_parser.add_argument("--json", action="store_true", help="Output JSON")
+
+    candidate_parser = release_subparsers.add_parser("candidate", help="Build release candidate")
+    candidate_parser.add_argument("--version", type=str, help="Target version")
+    candidate_parser.add_argument("--run-rehearsal", action="store_true", help="Run rehearsal before building")
+    candidate_parser.add_argument("--package", action="store_true", help="Build package")
+    candidate_parser.add_argument("--confirm", action="store_true", help="Confirm destructive actions")
+    candidate_parser.add_argument("--json", action="store_true", help="Output JSON")
+
+    notes_parser = release_subparsers.add_parser("notes", help="Generate release notes")
+    notes_parser.add_argument("--version", type=str, help="Target version")
+    notes_parser.add_argument("--markdown", action="store_true", help="Output Markdown")
+    notes_parser.add_argument("--json", action="store_true", help="Output JSON")
+
+    compat_parser = release_subparsers.add_parser("compatibility", help="Run compatibility checks")
+    compat_parser.add_argument("--json", action="store_true", help="Output JSON")
+
+    recent_parser = release_subparsers.add_parser("recent", help="List recent release runs")
+    recent_parser.add_argument("--limit", type=int, default=10, help="Max number of runs to list")
+    recent_parser.add_argument("--json", action="store_true", help="Output JSON")
+
+    status_parser = release_subparsers.add_parser("status", help="Show current release status")
+    status_parser.add_argument("--json", action="store_true", help="Output JSON")
+
+    config_parser = release_subparsers.add_parser("config", help="Show release configuration")
+    config_parser.add_argument("--json", action="store_true", help="Output JSON")
+
 import argparse
 
 def add_costs_parser(subparsers):
@@ -594,6 +814,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser_report_config = report_subparsers.add_parser("config", help="Show report config")
     parser_report_config.add_argument("--json", action="store_true", help="Output JSON directly")
 
+    add_release_parser(subparsers)
     return parser
 
 def add_paper_parser(subparsers: argparse._SubParsersAction) -> None:
@@ -1114,3 +1335,56 @@ def add_adaptive_parser(subparsers) -> None:
     # Config
     cfg_parser = adaptive_subparsers.add_parser("config", help="Show adaptive engine config")
     cfg_parser.add_argument("--json", action="store_true", help="Output in JSON format")
+
+
+def add_release_parser(subparsers):
+    release_parser = subparsers.add_parser("release", help="Release Manager commands")
+    release_subparsers = release_parser.add_subparsers(dest="release_command", help="Release sub-commands")
+
+    # release check
+    check_parser = release_subparsers.add_parser("check", help="Run basic release checks")
+    check_parser.add_argument("--profile", type=str, help="Release profile")
+    check_parser.add_argument("--no-scenarios", action="store_true", help="Skip scenarios")
+    check_parser.add_argument("--json", action="store_true", help="Output JSON")
+
+    # release readiness
+    readiness_parser = release_subparsers.add_parser("readiness", help="Evaluate release readiness")
+    readiness_parser.add_argument("--version", type=str, help="Target version")
+    readiness_parser.add_argument("--require-acceptance", action="store_true", help="Require acceptance pass")
+    readiness_parser.add_argument("--json", action="store_true", help="Output JSON")
+
+    # release rehearse
+    rehearse_parser = release_subparsers.add_parser("rehearse", help="Run safe launch rehearsal")
+    rehearse_parser.add_argument("--profile", type=str, help="Release profile")
+    rehearse_parser.add_argument("--json", action="store_true", help="Output JSON")
+
+    # release candidate
+    candidate_parser = release_subparsers.add_parser("candidate", help="Build release candidate")
+    candidate_parser.add_argument("--version", type=str, help="Target version")
+    candidate_parser.add_argument("--run-rehearsal", action="store_true", help="Run rehearsal before building")
+    candidate_parser.add_argument("--package", action="store_true", help="Build package")
+    candidate_parser.add_argument("--confirm", action="store_true", help="Confirm destructive actions (e.g. creating files)")
+    candidate_parser.add_argument("--json", action="store_true", help="Output JSON")
+
+    # release notes
+    notes_parser = release_subparsers.add_parser("notes", help="Generate release notes")
+    notes_parser.add_argument("--version", type=str, help="Target version")
+    notes_parser.add_argument("--markdown", action="store_true", help="Output Markdown")
+    notes_parser.add_argument("--json", action="store_true", help="Output JSON")
+
+    # release compatibility
+    compat_parser = release_subparsers.add_parser("compatibility", help="Run compatibility checks")
+    compat_parser.add_argument("--json", action="store_true", help="Output JSON")
+
+    # release recent
+    recent_parser = release_subparsers.add_parser("recent", help="List recent release runs")
+    recent_parser.add_argument("--limit", type=int, default=10, help="Max number of runs to list")
+    recent_parser.add_argument("--json", action="store_true", help="Output JSON")
+
+    # release status
+    status_parser = release_subparsers.add_parser("status", help="Show current release status")
+    status_parser.add_argument("--json", action="store_true", help="Output JSON")
+
+    # release config
+    config_parser = release_subparsers.add_parser("config", help="Show release configuration")
+    config_parser.add_argument("--json", action="store_true", help="Output JSON")
