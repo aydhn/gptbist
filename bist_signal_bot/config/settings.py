@@ -1224,6 +1224,70 @@ class Settings(BaseSettings):
 
     RUNTIME_USE_PERFORMANCE_METRICS: bool = True
 
+
+    # Release Manager (Phase 50)
+    ENABLE_RELEASE_MANAGER: bool = True
+    RELEASE_DIR_NAME: str = "release"
+    RELEASE_STAGE: str = "RELEASE_CANDIDATE"
+    RELEASE_VERSION: str = "0.1.0"
+    RELEASE_PROFILE: str = "FULL_SAFE_LOCAL"
+    RELEASE_SAVE_REPORTS: bool = True
+    RELEASE_REPORT_FORMATS: str = "json,markdown,csv"
+
+    # Readiness
+    RELEASE_RUN_HEALTHCHECK: bool = True
+    RELEASE_RUN_SECURITY: bool = True
+    RELEASE_RUN_QUALITY: bool = True
+    RELEASE_RUN_SCENARIOS: bool = True
+    RELEASE_RUN_PACKAGING: bool = True
+    RELEASE_RUN_DOCS_VALIDATION: bool = True
+    RELEASE_RUN_PERFORMANCE_CHECK: bool = True
+    RELEASE_RUN_RUNTIME_DRY_RUN: bool = True
+    RELEASE_RUN_REPORT_GENERATION: bool = True
+
+    # Requirements
+    RELEASE_REQUIRE_NO_BLOCKERS: bool = True
+    RELEASE_REQUIRE_QUALITY_PASS: bool = True
+    RELEASE_REQUIRE_SECURITY_PASS: bool = True
+    RELEASE_REQUIRE_ACCEPTANCE_PASS: bool = False
+    RELEASE_MIN_READY_SCORE: float = 85.0
+    RELEASE_MIN_PARTIAL_SCORE: float = 65.0
+
+    # Scenario
+    RELEASE_SCENARIO_IDS: str = "smoke,acceptance"
+    RELEASE_COMPARE_GOLDEN: bool = False
+
+    # Packaging
+    RELEASE_BUILD_PACKAGE: bool = True
+    RELEASE_BUILD_ZIP: bool = False
+    RELEASE_RUN_SAFE_LAUNCH_REHEARSAL: bool = True
+
+    # Safety
+    RELEASE_BLOCK_ON_SECRET_LEAK: bool = True
+    RELEASE_BLOCK_ON_FORBIDDEN_ACTION: bool = True
+    RELEASE_BLOCK_ON_UNSAFE_CLAIM: bool = True
+    RELEASE_BLOCK_ON_BROKER_API: bool = True
+    RELEASE_BLOCK_ON_HTML_SCRAPING: bool = True
+    RELEASE_BLOCK_ON_REAL_ORDER_LANGUAGE: bool = True
+
+    RESEARCH_AUTO_LOG_RELEASE: bool = False
+
+    def check_release_settings(self) -> 'Settings':
+        if not self.RELEASE_VERSION:
+            raise ValueError("RELEASE_VERSION cannot be empty")
+        if not (0 <= self.RELEASE_MIN_READY_SCORE <= 100):
+            raise ValueError("RELEASE_MIN_READY_SCORE must be between 0 and 100")
+        if not (0 <= self.RELEASE_MIN_PARTIAL_SCORE <= 100):
+            raise ValueError("RELEASE_MIN_PARTIAL_SCORE must be between 0 and 100")
+        valid_formats = ["json", "markdown", "csv", "all"]
+        for f in self.RELEASE_REPORT_FORMATS.split(","):
+            if f.strip().lower() not in valid_formats:
+                raise ValueError(f"Invalid format {f} in RELEASE_REPORT_FORMATS")
+
+        # In a real setup, we might also import the Enums and validate stage/profile here,
+        # but to avoid circular imports we trust the pydantic/dataclass parsing.
+        return self
+
     def check_performance_settings(self) -> 'Settings':
         if not (0 <= self.PERFORMANCE_MEMORY_WARN_PCT <= 100):
             raise ValueError('Invalid')

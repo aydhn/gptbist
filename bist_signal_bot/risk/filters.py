@@ -1,4 +1,6 @@
 import pandas as pd
+from .models import RiskFilterResult
+from typing import Any
 from typing import Any
 from bist_signal_bot.config.settings import Settings
 from bist_signal_bot.signals.models import SignalCandidate
@@ -137,8 +139,8 @@ class RiskFilterEngine:
             score_adjustment=adj
         )
 
-class MLScoreFilter(RiskFilter):
-    def evaluate(self, candidate: SignalCandidate) -> FilterResult:
+class MLScoreFilter:
+    def evaluate(self, candidate) -> Any:
         use_ml = getattr(self.settings, "RISK_USE_ML_FILTER", False)
         if not use_ml:
             return FilterResult(passed=True)

@@ -28,6 +28,21 @@ class AppHealthcheck:
         from bist_signal_bot.app.healthcheck_scenarios import check_scenarios
         return check_scenarios(self.settings)
 
+
+        # Release Integration (Phase 50)
+        try:
+            from bist_signal_bot.app.release_app import create_release_readiness_evaluator
+            evaluator = create_release_readiness_evaluator(self.settings)
+            status["release_manager"] = {
+                "enabled": getattr(self.settings, "ENABLE_RELEASE_MANAGER", False),
+                "stage": getattr(self.settings, "RELEASE_STAGE", "UNKNOWN"),
+                "version": getattr(self.settings, "RELEASE_VERSION", "UNKNOWN"),
+                "profile": getattr(self.settings, "RELEASE_PROFILE", "UNKNOWN"),
+                "capable": True
+            }
+        except Exception as e:
+            status["release_manager"] = {"capable": False, "error": str(e)}
+
         return status
 
     def _check_data_dir(self) -> bool:

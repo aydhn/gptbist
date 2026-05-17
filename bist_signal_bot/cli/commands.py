@@ -4485,3 +4485,132 @@ def cli():
     pass
 
 cli.add_command(scenario_cli)
+
+
+def handle_release_command(args, settings):
+    cmd = args.release_command
+    if not cmd:
+        print("Please specify a release sub-command. Try: release --help")
+        return
+
+    try:
+        if cmd == "check":
+            from bist_signal_bot.app.release_app import create_release_check_runner
+            runner = create_release_check_runner(settings)
+            res = runner.run_all_basic_checks()
+            if args.json:
+                import json
+                print(json.dumps([c.summary() for c in res], indent=2))
+            else:
+                for c in res:
+                    print(f"[{c.status.value}] {c.name}: {c.message}")
+
+        elif cmd == "readiness":
+            from bist_signal_bot.app.release_app import create_release_readiness_evaluator
+            evaluator = create_release_readiness_evaluator(settings)
+            cfg = evaluator.default_config()
+            if args.version:
+                cfg.version = args.version
+            if args.require_acceptance:
+                cfg.require_acceptance_pass = True
+            report = evaluator.evaluate(cfg)
+            if args.json:
+                import json
+                from bist_signal_bot.release.reporting import readiness_report_to_dict
+                print(json.dumps(readiness_report_to_dict(report), indent=2))
+            else:
+                from bist_signal_bot.release.reporting import format_readiness_text
+                print(format_readiness_text(report))
+
+        elif cmd == "rehearse":
+            from bist_signal_bot.app.release_app import create_safe_launch_rehearsal_runner
+            from bist_signal_bot.release.models import ReleaseProfile
+            runner = create_safe_launch_rehearsal_runner(settings)
+            profile = ReleaseProfile(args.profile) if getattr(args, "profile", None) else ReleaseProfile.FULL_SAFE_LOCAL
+            res = runner.run_rehearsal(profile)
+            if getattr(args, "json", False):
+                import json
+                from bist_signal_bot.release.reporting import rehearsal_result_to_dict
+                print(json.dumps(rehearsal_result_to_dict(res), indent=2))
+            else:
+                from bist_signal_bot.release.reporting import format_rehearsal_text
+                print(format_rehearsal_text(res))
+
+        elif cmd == "candidate":
+            from bist_signal_bot.app.release_app import create_release_candidate_builder
+            from bist_signal_bot.release.models import ReleaseStage
+            builder = create_release_candidate_builder(settings)
+            manifest = builder.build_candidate(
+                version=args.version,
+                run_rehearsal=args.run_rehearsal,
+                run_package=args.package,
+                confirm=args.confirm
+            )
+            if getattr(args, "json", False):
+                import json
+                from bist_signal_bot.release.reporting import candidate_manifest_to_dict
+                print(json.dumps(candidate_manifest_to_dict(manifest), indent=2))
+            else:
+                from bist_signal_bot.release.reporting import format_candidate_manifest_text
+                print(format_candidate_manifest_text(manifest))
+
+        elif cmd == "notes":
+            from bist_signal_bot.release.notes import ReleaseNotesBuilder
+            from bist_signal_bot.release.models import ReleaseStage
+            builder = ReleaseNotesBuilder()
+            ver = args.version or getattr(settings, "RELEASE_VERSION", "0.1.0")
+            notes = builder.build_notes(ver, ReleaseStage.RELEASE_CANDIDATE)
+            if getattr(args, "json", False):
+                import json
+                from bist_signal_bot.release.reporting import release_notes_to_dict
+                print(json.dumps(release_notes_to_dict(notes), indent=2))
+            elif getattr(args, "markdown", False):
+                print(builder.render_markdown(notes))
+            else:
+                print(builder.render_text(notes))
+
+        elif cmd == "compatibility":
+            from bist_signal_bot.release.compatibility import CompatibilityChecker
+            checker = CompatibilityChecker(settings)
+            res = checker.run_all()
+            if getattr(args, "json", False):
+                import json
+                print(json.dumps([c.summary() for c in res], indent=2))
+            else:
+                for c in res:
+                    print(f"[{c.status.value}] {c.name}: {c.message}")
+
+        elif cmd == "recent":
+            from bist_signal_bot.app.release_app import create_release_store
+            store = create_release_store(settings)
+            runs = store.list_recent_release_runs(limit=args.limit)
+            if getattr(args, "json", False):
+                import json
+                print(json.dumps(runs, indent=2))
+            else:
+                if not runs:
+                    print("No recent release runs found.")
+                for r in runs:
+                    print(r)
+
+        elif cmd == "status":
+            from bist_signal_bot.monitoring.diagnostics import SystemDiagnostics
+            diag = SystemDiagnostics(settings)
+            status = getattr(diag, "get_release_status", lambda: {"error": "not implemented"})()
+            if getattr(args, "json", False):
+                import json
+                print(json.dumps(status, indent=2))
+            else:
+                print(status)
+
+        elif cmd == "config":
+            cfg = {k: v for k, v in settings.__dict__.items() if k.startswith("RELEASE_")}
+            if getattr(args, "json", False):
+                import json
+                print(json.dumps(cfg, indent=2))
+            else:
+                for k, v in cfg.items():
+                    print(f"{k} = {v}")
+
+    except Exception as e:
+        print(f"Error executing release {cmd}: {e}")

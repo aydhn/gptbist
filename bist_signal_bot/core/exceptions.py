@@ -711,3 +711,36 @@ class GoldenRegressionError(ScenarioError):
 
 class ScenarioStorageError(ScenarioError):
     pass
+
+
+class ReleaseError(BistSignalBotError):
+    """Base exception for Release Manager errors."""
+    pass
+
+class ReleaseValidationError(ReleaseError):
+    """Raised when release configuration or model validation fails."""
+    pass
+
+class ReleaseCheckError(ReleaseError):
+    """Raised when a release check fails to execute properly."""
+    pass
+
+class ReleaseReadinessError(ReleaseError):
+    """Raised when release readiness evaluation fails."""
+    pass
+
+class ReleaseRehearsalError(ReleaseError):
+    """Raised when safe launch rehearsal fails."""
+    pass
+
+class ReleaseCandidateError(ReleaseError):
+    """Raised when release candidate building fails."""
+    pass
+
+class ReleaseNotesError(ReleaseError):
+    """Raised when release notes generation fails."""
+    pass
+
+class ReleaseStorageError(ReleaseError):
+    """Raised when storing release artifacts fails."""
+    pass

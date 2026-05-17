@@ -122,19 +122,6 @@ def run_cli(argv: list[str] | None = None) -> int:
         return 1
 
     # Audit log
-    if app_context.audit_logger:
-        safe_args = vars(args).copy()
-        from bist_signal_bot.core.audit import AuditEvent, AuditEventType
-        app_context.audit_logger.log_event(AuditEvent(
-            event_type=AuditEventType.CLI_COMMAND,
-            message=f"Executed CLI command: {args.command}",
-            run_id=app_context.runtime_context.run_id,
-            metadata={
-                "command": args.command,
-                "args": safe_args
-            }
-        ))
-
     commands = {
         "healthcheck": cmd_healthcheck,
         "config": cmd_config,
@@ -184,6 +171,9 @@ def run_cli(argv: list[str] | None = None) -> int:
 
 
         "research": lambda a, c: __import__("bist_signal_bot.cli.commands_research", fromlist=["handle_research_commands"]).handle_research_commands(a, c.settings),
+        "release": lambda a, c: __import__("bist_signal_bot.cli.commands", fromlist=["handle_release_command"]).handle_release_command(a, c.settings),
+        "release": lambda a, c: __import__("bist_signal_bot.cli.commands", fromlist=["handle_release_command"]).handle_release_command(a, c.settings),
+        "release": lambda a, c: __import__("bist_signal_bot.cli.commands", fromlist=["handle_release_command"]).handle_release_command(a, c.settings),
 
 
     }

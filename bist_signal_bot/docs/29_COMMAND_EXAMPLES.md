@@ -1,71 +1,38 @@
+# Command Examples
 
-## Phase 48: Reports
+Here are common CLI operations you can perform with the BIST Signal Bot.
+
+## Release Readiness
 
 ```bash
-# Generate daily report
-python -m bist_signal_bot report daily
+# Check basic imports and safe configs
+python -m bist_signal_bot release check
 
-# Generate daily report for specific symbols
-python -m bist_signal_bot report daily --symbols ASELS THYAO GARAN
+# Full readiness score and blockers
+python -m bist_signal_bot release readiness
 
-# Generate report and output JSON
-python -m bist_signal_bot report daily --json
+# Run safe launch rehearsal (mock scenarios)
+python -m bist_signal_bot release rehearse
 
-# Generate weekly report
-python -m bist_signal_bot report weekly
-
-# Generate runtime report
-python -m bist_signal_bot report runtime
-
-# Send digest
-python -m bist_signal_bot report send --latest --confirm
-
-# Export html
-python -m bist_signal_bot report export --latest --format html
-
-# View config
-python -m bist_signal_bot report config
+# Build manifest and release notes
+python -m bist_signal_bot release candidate --version 0.1.0 --confirm
 ```
 
-## Phase 49: End-to-End Scenario Runner
+## Scenario Runner
 
 ```bash
-# List available scenarios
-python -m bist_signal_bot scenario list
-python -m bist_signal_bot scenario list --json
-
-# Show details of a specific scenario
-python -m bist_signal_bot scenario show smoke
-python -m bist_signal_bot scenario show acceptance --json
-
-# Run a specific scenario
+# Run the smoke test scenario
 python -m bist_signal_bot scenario run smoke
-python -m bist_signal_bot scenario run acceptance
-python -m bist_signal_bot scenario run e2e-research
-python -m bist_signal_bot scenario run e2e-ml
-python -m bist_signal_bot scenario run security-failsafe
-python -m bist_signal_bot scenario run monitoring-recovery
-python -m bist_signal_bot scenario run performance-smoke
 
-# Compare or update golden snapshots during run
-python -m bist_signal_bot scenario run acceptance --compare-golden
-python -m bist_signal_bot scenario run acceptance --update-golden --confirm
+# Run acceptance scenario with golden comparison
+python -m bist_signal_bot scenario run acceptance --compare
+```
 
-# Run all scenarios
-python -m bist_signal_bot scenario run-all --type SMOKE
-python -m bist_signal_bot scenario run-all --stop-on-failure
+## Data and ML
+```bash
+# Download data (offline mock by default, configured via settings)
+python -m bist_signal_bot data download
 
-# Replay a specific scenario run
-python -m bist_signal_bot scenario replay RUN_ID
-
-# Manage Golden Snapshots
-python -m bist_signal_bot scenario golden compare acceptance
-python -m bist_signal_bot scenario golden update acceptance --confirm
-
-# List recent runs and clean up sandboxes
-python -m bist_signal_bot scenario recent
-python -m bist_signal_bot scenario cleanup RUN_ID --confirm
-
-# Show scenario configuration
-python -m bist_signal_bot scenario config
+# Train basic strategy models
+python -m bist_signal_bot ml train
 ```

@@ -622,3 +622,37 @@ A deterministic end-to-end testing suite to orchestrate chained events (`scanner
 - `python -m bist_signal_bot scenario list`
 - `python -m bist_signal_bot scenario run smoke`
 - `python -m bist_signal_bot scenario run acceptance --compare-golden`
+
+
+## Phase 50: MVP Release Candidate
+
+This phase prepares the application for a stable, local-only release. It provides a robust suite of readiness and safety checks, ensuring no actual market execution or data leakage occurs by default.
+
+### Key Features
+
+* **Release Readiness Score**: Evaluates if the local codebase is ready for use, grading based on missing tools, broken integrations, and unsafe configs.
+* **Safe Launch Rehearsal**: Dry-runs mock scenarios to ensure the environment is healthy before producing a release candidate.
+* **No Real Orders**: Any integration that attempts real execution is blocked by the security preflight.
+* **Compatibility Checker**: Asserts that Python >=3.10 and necessary directory structures exist.
+
+### Using the Release Manager
+
+Evaluate readiness:
+```bash
+python -m bist_signal_bot release readiness
+```
+
+Run a safe launch rehearsal:
+```bash
+python -m bist_signal_bot release rehearse
+```
+
+Build a release candidate manifest:
+```bash
+python -m bist_signal_bot release candidate --version 0.1.0
+```
+
+Generate release notes:
+```bash
+python -m bist_signal_bot release notes --markdown
+```

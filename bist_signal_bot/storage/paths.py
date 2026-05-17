@@ -273,3 +273,11 @@ def get_scenario_golden_dir(settings=None) -> Path:
     p = get_scenarios_dir(settings) / "golden"
     p.mkdir(parents=True, exist_ok=True)
     return p
+
+
+def get_release_dir(settings=None) -> Path:
+    from bist_signal_bot.config.settings import Settings
+    s = settings or Settings()
+    release_dir = get_data_dir(s) / getattr(s, "RELEASE_DIR_NAME", "release")
+    release_dir.mkdir(parents=True, exist_ok=True)
+    return release_dir
