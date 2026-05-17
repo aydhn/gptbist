@@ -615,3 +615,10 @@ A centralized, offline experiment tracking engine to keep records of backtests, 
 
 ## Phase 48: Research Reports
 Aggregates bot outputs into safe, daily and weekly research reports in multiple formats (Markdown, JSON, CSV, HTML) without containing financial advice or real orders. Includes optional Telegram digests.
+
+### Scenario Runner & Acceptance Workflow (Phase 49)
+A deterministic end-to-end testing suite to orchestrate chained events (`scanner -> ML -> backtest -> reports`) and run automated golden regressions against output artifacts.
+
+- `python -m bist_signal_bot scenario list`
+- `python -m bist_signal_bot scenario run smoke`
+- `python -m bist_signal_bot scenario run acceptance --compare-golden`

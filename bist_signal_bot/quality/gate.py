@@ -184,7 +184,6 @@ class QualityGateRunner:
     def evaluate_gate(self, checks: list[QualityCheckResult], config: QualityRunConfig) -> QualityCheckStatus:
         if not checks:
             return QualityCheckStatus.PASS
-
         statuses = [c.status for c in checks]
 
         if QualityCheckStatus.ERROR in statuses:
@@ -228,4 +227,10 @@ class QualityGateRunner:
                      return QualityCheckStatus.WARN # or FAIL based on precise requirements
 
         # All passed or skipped (and relaxed)
+        # Scenario integration check
+        if getattr(config, "run_regression_smoke", False):
+            for check in checks:
+                if check.check_type == QualityCheckType.REGRESSION_SMOKE:
+                     if isinstance(check.details, dict) and check.details.get("scenario_smoke") == "FAILED":
+                         return QualityCheckStatus.FAIL
         return QualityCheckStatus.PASS

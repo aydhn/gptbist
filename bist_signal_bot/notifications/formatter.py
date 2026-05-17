@@ -377,6 +377,14 @@ def format_divergence_result(result, symbol: str | None = None) -> str:
     ]
     return "\n".join(lines)
 
+    def format_scenario_result(self, result: 'ScenarioResult') -> str:
+        from bist_signal_bot.scenarios.reporting import format_scenario_result_text
+        return format_scenario_result_text(result)
+
+    def format_golden_comparison(self, result: 'GoldenComparisonResult') -> str:
+        from bist_signal_bot.scenarios.reporting import format_golden_comparison_text
+        return format_golden_comparison_text(result)
+
     def format_benchmark_result(self, result: Any) -> str:
         """Formats a BenchmarkExecutionResult into a Telegram message."""
         lines = [

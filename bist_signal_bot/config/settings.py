@@ -1365,6 +1365,28 @@ class Settings(BaseSettings):
 
 
     # Research Settings (Phase 47)
+    # Scenario Runner
+    ENABLE_SCENARIO_RUNNER: bool = True
+    SCENARIOS_DIR_NAME: str = "scenarios"
+    SCENARIO_DEFAULT_SYMBOLS: str = "ASELS,THYAO,GARAN"
+    SCENARIO_DEFAULT_STRATEGY: str = "moving_average_trend"
+    SCENARIO_DEFAULT_SOURCE: str = "mock"
+    SCENARIO_DEFAULT_TIMEFRAME: str = "1d"
+    SCENARIO_DEFAULT_ROWS: int = 250
+    SCENARIO_USE_SANDBOX: bool = True
+    SCENARIO_SAVE_OUTPUTS: bool = True
+    SCENARIO_COMPARE_GOLDEN: bool = False
+    SCENARIO_UPDATE_GOLDEN_REQUIRES_CONFIRM: bool = True
+
+    SCENARIO_DEFAULT_STEP_TIMEOUT_SECONDS: int = 60
+    SCENARIO_DEFAULT_TOTAL_TIMEOUT_SECONDS: int = 600
+    SCENARIO_SLOW_STEP_SECONDS: float = 15.0
+
+    SCENARIO_DISABLE_TELEGRAM: bool = True
+    SCENARIO_FORCE_MOCK_SOURCE: bool = True
+    SCENARIO_BLOCK_REAL_ORDER_LANGUAGE: bool = True
+    SCENARIO_VALIDATE_OUTPUTS: bool = True
+    SCENARIO_CLEANUP_REQUIRES_CONFIRM: bool = True
     ENABLE_RESEARCH_LEDGER: bool = True
     RESEARCH_DIR_NAME: str = "research"
     RESEARCH_LEDGER_APPEND_ONLY: bool = True
@@ -1399,6 +1421,15 @@ class Settings(BaseSettings):
     RESEARCH_BLOCK_UNSAFE_CLAIMS: bool = True
 
     def check_research_settings(self) -> 'Settings':
+        # Additional validations
+        if self.SCENARIO_DEFAULT_ROWS <= 0:
+            raise ValueError("SCENARIO_DEFAULT_ROWS must be positive")
+        if self.SCENARIO_DEFAULT_STEP_TIMEOUT_SECONDS <= 0:
+             raise ValueError("SCENARIO_DEFAULT_STEP_TIMEOUT_SECONDS must be positive")
+        if self.SCENARIO_DEFAULT_TOTAL_TIMEOUT_SECONDS <= 0:
+             raise ValueError("SCENARIO_DEFAULT_TOTAL_TIMEOUT_SECONDS must be positive")
+        if self.SCENARIO_DEFAULT_SOURCE not in ["mock", "local"]:
+             raise ValueError("SCENARIO_DEFAULT_SOURCE must be mock or local")
         if self.RESEARCH_MAX_RECENT_ENTRIES <= 0:
             raise ValueError("RESEARCH_MAX_RECENT_ENTRIES must be positive")
         if self.RESEARCH_JOURNAL_DEFAULT_OUTCOME_HORIZON_BARS <= 0:
@@ -1457,3 +1488,6 @@ RUNTIME_ADAPTIVE_MODE: str = "METADATA_ONLY"
 RUNTIME_ADAPTIVE_TOP_N: int = 5
 
 SCANNER_USE_ADAPTIVE_PARAMS: bool = False
+RESEARCH_AUTO_LOG_SCENARIOS: bool = False
+QUALITY_RUN_SCENARIOS: bool = False
+QUALITY_SCENARIO_IDS: str = "smoke"

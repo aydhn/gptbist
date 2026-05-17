@@ -22,6 +22,11 @@ class AppHealthcheck:
         status["quality"] = self._check_quality()
 
         status["reports"] = self._check_reports()
+        status["scenarios"] = self._check_scenarios()
+
+    def _check_scenarios(self) -> Dict[str, Any]:
+        from bist_signal_bot.app.healthcheck_scenarios import check_scenarios
+        return check_scenarios(self.settings)
 
         return status
 
