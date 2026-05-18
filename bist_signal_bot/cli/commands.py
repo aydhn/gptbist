@@ -4614,3 +4614,90 @@ def handle_release_command(args, settings):
 
     except Exception as e:
         print(f"Error executing release {cmd}: {e}")
+
+def handle_data_v2_command(args, settings):
+    import json
+    from bist_signal_bot.data.data_service import MarketDataService
+    from bist_signal_bot.data.mock_provider import MockMarketDataProvider
+    from bist_signal_bot.data.providers_v2.models import ProviderRequest, ImportRequest, ProviderType
+
+    ds = MarketDataService(provider=MockMarketDataProvider())
+
+    if args.data_command == "import":
+        req = ImportRequest(
+            input_path=args.file,
+            symbol=args.symbol,
+            timeframe=args.timeframe,
+            format=args.file.split('.')[-1],
+            delimiter=args.delimiter,
+            overwrite=args.overwrite
+        )
+        res = ds.import_market_data(req)
+        if getattr(args, "json", False):
+            print(res.model_dump_json())
+        else:
+            print(f"Import {res.status.value} for {res.symbol} ({res.rows_imported} rows).")
+            if res.warnings: print(f"Warnings: {res.warnings}")
+            if res.errors: print(f"Errors: {res.errors}")
+
+    elif args.data_command == "update":
+        syms = getattr(args, "symbols", []) or []
+        res = ds.update_incremental(symbols=syms, timeframe=args.timeframe, provider_order=getattr(args, "provider_order", None))
+        if getattr(args, "json", False):
+            print(res.model_dump_json())
+        else:
+            print(f"Update {res.status.value}: requested {len(res.request.symbols)}, returned {len(res.data_by_symbol)}")
+            if res.warnings: print(f"Warnings: {res.warnings}")
+
+    elif args.data_command == "fetch-v2":
+        order = [ProviderType(p.upper()) for p in getattr(args, "provider_order", [])] if getattr(args, "provider_order", None) else []
+        if getattr(args, "source", None):
+             order = [ProviderType(args.source.upper())]
+        req = ProviderRequest(symbols=args.symbols, timeframe=args.timeframe, provider_order=order, allow_network=True)
+        res = ds.fetch_v2(req)
+        if getattr(args, "json", False):
+            print(res.model_dump_json())
+        else:
+            print(f"Fetch {getattr(res.status, "value", res.status)}: returned {len(getattr(res, "data_by_symbol", []))} symbols.")
+            if res.warnings: print(f"Warnings: {res.warnings}")
+            if res.errors: print(f"Errors: {res.errors}")
+
+    elif args.data_command == "freshness":
+        syms = getattr(args, "symbols", []) or []
+        res = ds.freshness_report(syms, args.timeframe, getattr(args, "max_age_hours", 48.0) or 48.0)
+        if getattr(args, "json", False):
+            print(res.model_dump_json())
+        else:
+            print(f"Freshness: {len(res.fresh_symbols)} fresh, {len(res.stale_symbols)} stale, {len(res.missing_symbols)} missing.")
+
+    elif args.data_command == "lineage":
+        res = ds.lineage_summary(getattr(args, "symbol", None))
+        if getattr(args, "json", False):
+            print(json.dumps(res))
+        else:
+            print(f"Lineage Summary: {res}")
+
+    elif args.data_command == "provider-health":
+        from bist_signal_bot.data.providers_v2.health import ProviderHealthTracker
+        tracker = ProviderHealthTracker()
+        res = tracker.summarize_health()
+        if getattr(args, "json", False):
+            print(json.dumps(res))
+        else:
+            print(f"Health Summary: {json.dumps(res, indent=2)}")
+
+    elif args.data_command == "compare":
+        res = ds.compare_sources(args.symbol, args.timeframe, args.left, args.right)
+        if getattr(args, "json", False):
+            print(res.model_dump_json())
+        else:
+            print(f"Compare {args.symbol}: {res.status}. Price Diff: {res.price_diff_count}, Vol Diff: {res.volume_diff_count}")
+
+    elif args.data_command == "config":
+        from bist_signal_bot.config.secrets import settings_safe_dump
+        safe = settings_safe_dump(settings)
+        data_keys = {k: v for k, v in safe.items() if "DATA" in k}
+        if getattr(args, "json", False):
+            print(json.dumps(data_keys, indent=2))
+        else:
+            print(json.dumps(data_keys, indent=2))

@@ -43,6 +43,7 @@ class DiagnosticsRunner:
         checks.append(self.check_ml_model_config())
         checks.append(self.check_paper_ledger())
         checks.append(self.check_quality_last_run())
+        checks.append(self.check_data_provider_v2())
         return checks
 
     def _create_result(self, name: str, comp: MonitoringComponent, status: DiagnosticCheckStatus, sev: AlertSeverity, msg: str, details: dict = None, recs: list = None) -> DiagnosticCheckResult:
@@ -302,3 +303,15 @@ class DiagnosticsRunner:
                 status=DiagnosticStatus.WARN,
                 message=f"Could not check last quality run: {e}"
             )
+
+    def check_data_provider_v2(self) -> DiagnosticCheckResult:
+        try:
+            from bist_signal_bot.data.providers_v2.health import ProviderHealthTracker
+            tracker = ProviderHealthTracker(self.settings)
+            summary = tracker.summarize_health()
+            degraded = [k for k, v in summary.items() if v.get("status") != "HEALTHY"]
+            if degraded:
+                return self._create_result("Data Provider V2 Health", MonitoringComponent.DATA_PROVIDER, DiagnosticCheckStatus.WARN, AlertSeverity.WARNING, f"Providers degraded: {degraded}", details=summary)
+            return self._create_result("Data Provider V2 Health", MonitoringComponent.DATA_PROVIDER, DiagnosticCheckStatus.PASS, AlertSeverity.INFO, "Data providers healthy", details=summary)
+        except Exception as e:
+            return self._create_result("Data Provider V2 Health", MonitoringComponent.DATA_PROVIDER, DiagnosticCheckStatus.ERROR, AlertSeverity.HIGH, f"Failed to check data provider health: {e}", details={})

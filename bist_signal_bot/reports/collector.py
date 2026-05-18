@@ -43,6 +43,14 @@ class ReportDataCollector:
         return {}
 
     def build_source_summaries(self, bundle: ReportDataBundle) -> dict[str, Any]:
+        summary = {}
+
+        try:
+            from bist_signal_bot.data.providers_v2.health import ProviderHealthTracker
+            tracker = ProviderHealthTracker(self.settings)
+            summary["provider_health"] = tracker.summarize_health()
+        except:
+            pass
         return {
             "research_runs": len(bundle.research_runs),
             "journal_items": len(bundle.journal_items),

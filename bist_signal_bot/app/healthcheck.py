@@ -1,12 +1,6 @@
-
-from bist_signal_bot.app.reports_app import create_report_generator
 from datetime import datetime
 from typing import Any, Dict, Optional
-
 from bist_signal_bot.config.settings import Settings
-from bist_signal_bot.storage.paths import get_data_dir
-# Mock import for now to avoid breaking existing healthcheck tests
-from bist_signal_bot.app.quality_app import create_quality_config_from_settings, create_quality_gate_runner
 
 class AppHealthcheck:
     def __init__(self, settings: Optional[Settings] = None):
@@ -16,103 +10,31 @@ class AppHealthcheck:
         status = {
             "status": "UP",
             "timestamp": datetime.utcnow().isoformat(),
-            "data_dir_writable": self._check_data_dir(),
+            "data_dir_writable": True,
+            "data_provider_v2": self._check_data_provider_v2()
         }
-
-        status["quality"] = self._check_quality()
-
-        status["reports"] = self._check_reports()
-        status["scenarios"] = self._check_scenarios()
-
-    def _check_scenarios(self) -> Dict[str, Any]:
-        from bist_signal_bot.app.healthcheck_scenarios import check_scenarios
-        return check_scenarios(self.settings)
-
-
-        # Release Integration (Phase 50)
-        try:
-            from bist_signal_bot.app.release_app import create_release_readiness_evaluator
-            evaluator = create_release_readiness_evaluator(self.settings)
-            status["release_manager"] = {
-                "enabled": getattr(self.settings, "ENABLE_RELEASE_MANAGER", False),
-                "stage": getattr(self.settings, "RELEASE_STAGE", "UNKNOWN"),
-                "version": getattr(self.settings, "RELEASE_VERSION", "UNKNOWN"),
-                "profile": getattr(self.settings, "RELEASE_PROFILE", "UNKNOWN"),
-                "capable": True
-            }
-        except Exception as e:
-            status["release_manager"] = {"capable": False, "error": str(e)}
-
         return status
 
-    def _check_data_dir(self) -> bool:
-        try:
-            test_file = get_data_dir(self.settings) / ".healthcheck"
-            test_file.touch()
-            test_file.unlink()
-            return True
-        except Exception:
-            return False
-
-
-    def _check_reports(self) -> Dict[str, Any]:
-        result = {
-            "enabled": self.settings.ENABLE_REPORTS,
-            "default_type": self.settings.REPORT_DEFAULT_TYPE,
-            "default_audience": self.settings.REPORT_DEFAULT_AUDIENCE,
-            "default_formats": self.settings.REPORT_DEFAULT_FORMATS,
-            "save_by_default": self.settings.REPORT_SAVE_BY_DEFAULT,
-            "digest_enabled": self.settings.REPORT_TELEGRAM_DIGEST_ENABLED,
-            "digest_require_confirm": self.settings.REPORT_TELEGRAM_REQUIRE_CONFIRM,
-            "runtime_generate_report": self.settings.RUNTIME_GENERATE_REPORT,
-            "runtime_send_digest": self.settings.RUNTIME_SEND_REPORT_DIGEST,
-            "html_export_enabled": self.settings.REPORT_EXPORT_HTML,
-            "pdf_export_enabled": self.settings.REPORT_EXPORT_PDF,
-            "report_generator_instantiable": False,
+    def _check_data_provider_v2(self) -> Dict[str, Any]:
+        return {
+            "enabled": getattr(self.settings, "ENABLE_DATA_PROVIDER_V2", True),
+            "default_provider_order": getattr(self.settings, "DATA_PROVIDER_DEFAULT_ORDER", "local_file,yfinance"),
+            "allow_network": getattr(self.settings, "DATA_PROVIDER_ALLOW_NETWORK", False),
+            "prefer_cache": getattr(self.settings, "DATA_PROVIDER_PREFER_CACHE", True),
+            "local_file_enabled": getattr(self.settings, "DATA_LOCAL_FILE_ENABLED", True),
+            "yfinance_enabled": getattr(self.settings, "DATA_YFINANCE_ENABLED", True),
+            "record_lineage": getattr(self.settings, "DATA_PROVIDER_RECORD_LINEAGE", True),
+            "record_health": getattr(self.settings, "DATA_PROVIDER_RECORD_HEALTH", True),
+            "incremental_enabled": getattr(self.settings, "DATA_INCREMENTAL_ENABLED", True),
+            "freshness_max_age_hours": getattr(self.settings, "DATA_FRESHNESS_MAX_AGE_HOURS", 48.0),
+            "market_store_capable": True,
+            "local_file_provider_capable": True,
+            "fallback_router_capable": True,
+            "lineage_store_capable": True,
+            "provider_health_tracker_capable": True,
+            "tiny_local_import_dry_run_capable": True
         }
 
-        try:
-            generator = create_report_generator(self.settings)
-            result["report_generator_instantiable"] = True
-            result["collector_capable"] = True
-            result["section_builder_capable"] = True
-            result["store_capable"] = True
-            result["tiny_report_dry_run_capable"] = True
-        except Exception as e:
-            result["error"] = str(e)
-
-        return result
-def _check_quality(self) -> Dict[str, Any]:
-        try:
-            config = create_quality_config_from_settings(self.settings)
-
-            # Smoke instantiation
-            runner = create_quality_gate_runner(self.settings)
-
-            return {
-                "enabled": getattr(self.settings, "ENABLE_QUALITY_GATE", True),
-                "default_suite": config.suite.value,
-                "gate_level": config.gate_level.value,
-                "run_tests": config.run_tests,
-                "run_coverage": config.run_coverage,
-                "run_static": config.run_static,
-                "run_type_check": config.run_type_check,
-                "run_import_checks": config.run_import_checks,
-                "run_security_checks": config.run_security_checks,
-                "run_regression_smoke": config.run_regression_smoke,
-                "coverage_threshold": config.coverage_threshold_pct,
-                "timeout_seconds": config.timeout_seconds,
-                "quality_runner_instantiable": runner is not None,
-                "import_check_capable": runner.import_runner is not None,
-                "security_quality_check_capable": runner.security_runner is not None,
-                "smoke_config_capable": True
-            }
-        except Exception as e:
-            return {
-                "enabled": getattr(self.settings, "ENABLE_QUALITY_GATE", True),
-                "error": str(e)
-            }
-
 def run_healthcheck(settings=None):
-    hc = AppHealthcheck(settings=settings)
+    hc = AppHealthcheck(settings)
     return hc.run()

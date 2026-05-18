@@ -1,5 +1,58 @@
 
+
+def add_data_v2_parser(subparsers):
+    data_parser = subparsers.add_parser("data", help="Manage data import, update, freshness, lineage, and health.")
+    data_subs = data_parser.add_subparsers(dest="data_command", required=True)
+
+    import_parser = data_subs.add_parser("import", help="Import data from CSV or Parquet")
+    import_parser.add_argument("--file", type=str, required=True, help="Path to file")
+    import_parser.add_argument("--symbol", type=str, help="Symbol name")
+    import_parser.add_argument("--timeframe", type=str, default="1d", help="Timeframe")
+    import_parser.add_argument("--delimiter", type=str, help="CSV delimiter")
+    import_parser.add_argument("--overwrite", action="store_true", help="Overwrite existing data")
+    import_parser.add_argument("--json", action="store_true", help="Output JSON")
+
+    update_parser = data_subs.add_parser("update", help="Perform incremental data update")
+    update_parser.add_argument("--symbols", type=str, nargs="+", help="Symbols to update")
+    update_parser.add_argument("--group", type=str, help="Symbol group to update")
+    update_parser.add_argument("--timeframe", type=str, default="1d", help="Timeframe")
+    update_parser.add_argument("--provider-order", type=str, nargs="+", help="Provider order")
+    update_parser.add_argument("--json", action="store_true", help="Output JSON")
+
+    fetch_parser = data_subs.add_parser("fetch-v2", help="Fetch data using V2 router")
+    fetch_parser.add_argument("--symbols", type=str, nargs="+", required=True, help="Symbols to fetch")
+    fetch_parser.add_argument("--timeframe", type=str, default="1d", help="Timeframe")
+    fetch_parser.add_argument("--source", type=str, help="Specific provider source")
+    fetch_parser.add_argument("--provider-order", type=str, nargs="+", help="Provider order")
+    fetch_parser.add_argument("--json", action="store_true", help="Output JSON")
+
+    fresh_parser = data_subs.add_parser("freshness", help="Check data freshness")
+    fresh_parser.add_argument("--symbols", type=str, nargs="+", help="Symbols to check")
+    fresh_parser.add_argument("--group", type=str, help="Symbol group to check")
+    fresh_parser.add_argument("--timeframe", type=str, default="1d", help="Timeframe")
+    fresh_parser.add_argument("--max-age-hours", type=float, help="Max allowed age in hours")
+    fresh_parser.add_argument("--json", action="store_true", help="Output JSON")
+
+    lin_parser = data_subs.add_parser("lineage", help="View data lineage")
+    lin_parser.add_argument("--symbol", type=str, help="Filter by symbol")
+    lin_parser.add_argument("--json", action="store_true", help="Output JSON")
+
+    ph_parser = data_subs.add_parser("provider-health", help="View provider health")
+    ph_parser.add_argument("--json", action="store_true", help="Output JSON")
+
+    comp_parser = data_subs.add_parser("compare", help="Compare data")
+    comp_parser.add_argument("symbol", type=str, help="Symbol")
+    comp_parser.add_argument("--left", type=str, required=True, help="Left")
+    comp_parser.add_argument("--right", type=str, required=True, help="Right")
+    comp_parser.add_argument("--timeframe", type=str, default="1d", help="Timeframe")
+    comp_parser.add_argument("--json", action="store_true", help="Output JSON")
+
+    cfg_parser = data_subs.add_parser("config", help="Show config")
+    cfg_parser.add_argument("--json", action="store_true", help="Output JSON")
+
 def add_release_parser(subparsers):
+    add_data_v2_parser(subparsers)
+
     release_parser = subparsers.add_parser("release", help="Release Manager commands")
     release_subparsers = release_parser.add_subparsers(dest="release_command", help="Release sub-commands")
 
@@ -44,6 +97,7 @@ def add_release_parser(subparsers):
 
 
 def add_release_parser(subparsers):
+    add_data_v2_parser(subparsers)
     release_parser = subparsers.add_parser("release", help="Release Manager commands")
     release_subparsers = release_parser.add_subparsers(dest="release_command", help="Release sub-commands")
 
@@ -88,6 +142,7 @@ def add_release_parser(subparsers):
 
 
 def add_release_parser(subparsers):
+    add_data_v2_parser(subparsers)
     release_parser = subparsers.add_parser("release", help="Release Manager commands")
     release_subparsers = release_parser.add_subparsers(dest="release_command", help="Release sub-commands")
 
@@ -132,6 +187,7 @@ def add_release_parser(subparsers):
 
 
 def add_release_parser(subparsers):
+    add_data_v2_parser(subparsers)
     release_parser = subparsers.add_parser("release", help="Release Manager commands")
     release_subparsers = release_parser.add_subparsers(dest="release_command", help="Release sub-commands")
 
@@ -176,6 +232,7 @@ def add_release_parser(subparsers):
 
 
 def add_release_parser(subparsers):
+    add_data_v2_parser(subparsers)
     release_parser = subparsers.add_parser("release", help="Release Manager commands")
     release_subparsers = release_parser.add_subparsers(dest="release_command", help="Release sub-commands")
 
@@ -815,6 +872,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser_report_config.add_argument("--json", action="store_true", help="Output JSON directly")
 
     add_release_parser(subparsers)
+    add_data_v2_parser(subparsers)
+    add_data_v2_parser(subparsers)
     return parser
 
 def add_paper_parser(subparsers: argparse._SubParsersAction) -> None:
@@ -1338,6 +1397,7 @@ def add_adaptive_parser(subparsers) -> None:
 
 
 def add_release_parser(subparsers):
+    add_data_v2_parser(subparsers)
     release_parser = subparsers.add_parser("release", help="Release Manager commands")
     release_subparsers = release_parser.add_subparsers(dest="release_command", help="Release sub-commands")
 

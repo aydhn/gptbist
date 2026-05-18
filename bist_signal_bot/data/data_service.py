@@ -222,3 +222,209 @@ class MarketDataService:
             "prefer_local": self.prefer_local,
             "data_dir": data_dir
         }
+
+    # --- Phase 51: Data Provider V2 Methods ---
+
+    def fetch_v2(self, request: 'ProviderRequest') -> 'ProviderResponse':
+        """Fetch data using the V2 architecture with fallback routing."""
+        from bist_signal_bot.data.providers_v2.fallback import FallbackProviderRouter
+        from bist_signal_bot.data.providers_v2.local_file import LocalFileProvider
+        from bist_signal_bot.data.providers_v2.yfinance_provider import YFinanceProviderV2
+        from bist_signal_bot.data.providers_v2.lineage import DataLineageStore
+        from bist_signal_bot.data.providers_v2.health import ProviderHealthTracker
+        from bist_signal_bot.storage.market_store import MarketStore
+
+        providers = [LocalFileProvider()]
+
+        # Only add yfinance if network is allowed by config and request
+        if getattr(self.settings, "DATA_YFINANCE_ENABLED", True):
+             providers.append(YFinanceProviderV2())
+
+        router = FallbackProviderRouter(providers, self.settings)
+
+        # Fire audit event
+        from bist_signal_bot.core.audit import AuditEvent, AuditEventType
+        if getattr(self, "audit_logger", None):
+            event = AuditEvent(event_type=AuditEventType("DATA_PROVIDER_V2_FETCH_STARTED"), message="system", metadata={"request": request.model_dump()})
+            self.audit_logger.log(event)
+
+        response = router.fetch(request)
+
+        # Save to store and lineage if fetched
+        if getattr(self.settings, "SAVE_FETCHED_DATA", True):
+             store = MarketStore(self.settings)
+             lineage_store = DataLineageStore(self.settings) if getattr(self.settings, "DATA_PROVIDER_RECORD_LINEAGE", True) else None
+
+             for symbol, data in response.data_by_symbol.items():
+                 # Find lineage
+                 lin = next((l for l in response.lineage if l.symbol == symbol), None)
+
+                 # Only save if we actually fetched from network (to avoid re-saving local reads)
+                 # Or if explicitly overwriting cache. For simplicity, just save network reads.
+                 if lin and lin.provider_type != getattr(self, "ProviderType", None) and lin.provider_name != "Local File Provider":
+                      store.save_ohlcv(symbol, request.timeframe, data)
+                      if lineage_store:
+                          lineage_store.append(lin)
+
+        # Record Health
+        if getattr(self.settings, "DATA_PROVIDER_RECORD_HEALTH", True):
+             health_tracker = ProviderHealthTracker(self.settings)
+             for snap in router.healthcheck_all():
+                  health_tracker.record_snapshot(snap)
+
+        if getattr(self, "audit_logger", None):
+            event = AuditEvent(event_type=AuditEventType("DATA_PROVIDER_V2_FETCH_COMPLETED"), message="system", metadata={"status": response.status.value})
+            self.audit_logger.log(event)
+
+        return response
+
+    def update_incremental(self, symbols: list[str], timeframe: str, provider_order: list[str] | None = None) -> 'ProviderResponse':
+        from bist_signal_bot.data.incremental import IncrementalUpdatePlanner
+        from bist_signal_bot.data.providers_v2.models import ProviderRequest, ProviderType
+        from bist_signal_bot.storage.market_store import MarketStore
+        from bist_signal_bot.data.providers_v2.lineage import DataLineageStore
+
+        store = MarketStore(self.settings)
+        planner = IncrementalUpdatePlanner()
+        order = [ProviderType(p.strip().upper()) for p in provider_order] if provider_order else []
+
+        # We need to construct sub-requests based on what's missing
+        all_data = {}
+        all_lineage = []
+
+        from bist_signal_bot.core.audit import AuditEvent, AuditEventType
+        if getattr(self, "audit_logger", None):
+            event = AuditEvent(event_type=AuditEventType("DATA_INCREMENTAL_UPDATE_PLANNED"), message="system", metadata={"symbols": symbols})
+            self.audit_logger.log(event)
+
+        for sym in symbols:
+            local_data = store.load_ohlcv(sym, timeframe)
+            plan = planner.plan_update(sym, timeframe, local_data)
+
+            if plan["action"] == "SKIP":
+                all_data[sym] = local_data
+                continue
+
+            req = ProviderRequest(
+                symbols=[sym],
+                timeframe=timeframe,
+                start_date=plan["start_date"],
+                end_date=plan["end_date"],
+                allow_network=True,
+                provider_order=order
+            )
+
+            res = self.fetch_v2(req)
+            if sym in res.data_by_symbol:
+                new_data = res.data_by_symbol[sym]
+                merged = planner.merge_incremental_data(local_data, new_data)
+                all_data[sym] = merged
+
+                # Update store
+                lineage = next((l for l in res.lineage if l.symbol == sym), None)
+                if lineage:
+                    all_lineage.append(lineage)
+                    store.save_ohlcv(sym, timeframe, merged, lineage)
+                    if getattr(self.settings, "DATA_PROVIDER_RECORD_LINEAGE", True):
+                         DataLineageStore(self.settings).append(lineage)
+
+        if getattr(self, "audit_logger", None):
+            event = AuditEvent(event_type=AuditEventType("DATA_INCREMENTAL_UPDATE_COMPLETED"), message="system")
+            self.audit_logger.log(event)
+
+        from bist_signal_bot.data.providers_v2.models import ProviderResponse, DataFetchStatus
+        return ProviderResponse(
+            request=ProviderRequest(symbols=symbols, timeframe=timeframe),
+            status=DataFetchStatus.SUCCESS,
+            data_by_symbol=all_data,
+            lineage=all_lineage
+        )
+
+    def import_market_data(self, request: 'ImportRequest') -> 'ImportResult':
+        from bist_signal_bot.data.providers_v2.models import ImportResult, DataImportStatus
+        from bist_signal_bot.storage.market_store import MarketStore
+        from bist_signal_bot.data.providers_v2.lineage import DataLineageStore
+
+        path = str(request.input_path).lower()
+        if path.endswith('.csv'):
+             from bist_signal_bot.data.importers.csv_importer import CSVMarketDataImporter
+             importer = CSVMarketDataImporter()
+        elif path.endswith('.parquet'):
+             from bist_signal_bot.data.importers.parquet_importer import ParquetMarketDataImporter
+             importer = ParquetMarketDataImporter()
+        else:
+             return ImportResult(request=request, status=DataImportStatus.FAILED, symbol=request.symbol or "UNKNOWN", timeframe=request.timeframe, errors=["Unsupported file format."])
+
+        from bist_signal_bot.core.audit import AuditEvent, AuditEventType
+        if getattr(self, "audit_logger", None):
+            event = AuditEvent(event_type=AuditEventType("DATA_IMPORT_STARTED"), message="system", metadata={"path": request.input_path})
+            self.audit_logger.log(event)
+
+        res = importer.import_file(request)
+
+        if res.status == DataImportStatus.IMPORTED and request.save_to_cache:
+            df = res.metadata.get("_parsed_df")
+            if df is not None:
+                store = MarketStore(self.settings)
+                out_path = store.save_ohlcv(res.symbol, res.timeframe, df, res.lineage)
+                res.output_path = str(out_path)
+
+                if res.lineage and getattr(self.settings, "DATA_PROVIDER_RECORD_LINEAGE", True):
+                     DataLineageStore(self.settings).append(res.lineage)
+
+        if getattr(self, "audit_logger", None):
+            event_type = AuditEventType("DATA_IMPORT_COMPLETED") if res.status == DataImportStatus.IMPORTED else AuditEventType("DATA_IMPORT_FAILED")
+            event = AuditEvent(event_type=event_type, message="system", metadata={"status": res.status.value})
+            self.audit_logger.log(event)
+
+        # Cleanup metadata before returning
+        if "_parsed_df" in res.metadata:
+            del res.metadata["_parsed_df"]
+
+        return res
+
+    def freshness_report(self, symbols: list[str], timeframe: str, max_age_hours: float) -> 'FreshnessReport':
+        from bist_signal_bot.data.freshness import DataFreshnessChecker
+        from bist_signal_bot.core.audit import AuditEvent, AuditEventType
+
+        if getattr(self, "audit_logger", None):
+            event = AuditEvent(event_type=AuditEventType("DATA_FRESHNESS_CHECKED"), message="system", metadata={"symbols": len(symbols)})
+            self.audit_logger.log(event)
+
+        checker = DataFreshnessChecker()
+        return checker.check_symbols(symbols, timeframe, max_age_hours)
+
+    def compare_sources(self, symbol: str, timeframe: str, left_source: str, right_source: str) -> 'DataComparisonReport':
+        from bist_signal_bot.data.comparison import MarketDataComparator
+        from bist_signal_bot.data.providers_v2.models import ProviderRequest, ProviderType
+
+        # Helper to fetch data for comparison
+        def get_source_data(src: str):
+             req = ProviderRequest(symbols=[symbol], timeframe=timeframe, provider_order=[ProviderType(src.upper())])
+             res = self.fetch_v2(req)
+             return res.data_by_symbol.get(symbol)
+
+        left_df = get_source_data(left_source)
+        right_df = get_source_data(right_source)
+
+        from bist_signal_bot.core.audit import AuditEvent, AuditEventType
+        if getattr(self, "audit_logger", None):
+            event = AuditEvent(event_type=AuditEventType("DATA_SOURCE_COMPARED"), message="system", metadata={"symbol": symbol})
+            self.audit_logger.log(event)
+
+        comp = MarketDataComparator()
+        return comp.compare(
+            symbol=symbol,
+            timeframe=timeframe,
+            left=left_df,
+            right=right_df,
+            left_source=left_source,
+            right_source=right_source,
+            close_tolerance_pct=getattr(self.settings, "DATA_COMPARE_CLOSE_TOLERANCE_PCT", 0.10),
+            volume_tolerance_pct=getattr(self.settings, "DATA_COMPARE_VOLUME_TOLERANCE_PCT", 5.0)
+        )
+
+    def lineage_summary(self, symbol: str | None = None) -> dict[str, Any]:
+        from bist_signal_bot.data.providers_v2.lineage import DataLineageStore
+        store = DataLineageStore(self.settings)
+        return store.lineage_summary(symbol)
