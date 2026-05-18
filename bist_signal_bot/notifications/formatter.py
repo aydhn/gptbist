@@ -908,3 +908,34 @@ def format_release_notes(notes) -> str:
         "Gerçek işlem yapılmadı."
     ]
     return "\n".join(lines)
+
+def format_provider_response(response: Any) -> str:
+    msg = f"Data Fetch: {response.status.value}\n"
+    msg += f"Requested: {len(response.request.symbols)}, Fetched: {len(response.data_by_symbol)}\n"
+    if response.warnings:
+        msg += f"Warnings: {len(response.warnings)}\n"
+    if response.errors:
+        msg += f"Errors: {len(response.errors)}\n"
+    return msg
+
+def format_import_result(result: Any) -> str:
+    msg = f"Data Import: {result.status.value}\n"
+    msg += f"Symbol: {result.symbol}, Rows: {result.rows_imported}\n"
+    if result.errors:
+        msg += f"Errors: {result.errors}\n"
+    return msg
+
+def format_freshness_report(report: Any) -> str:
+    msg = f"Data Freshness Check\n"
+    msg += f"Fresh: {len(report.fresh_symbols)}, Stale: {len(report.stale_symbols)}, Missing: {len(report.missing_symbols)}\n"
+    if report.warnings:
+        msg += f"Warnings: {len(report.warnings)}\n"
+    return msg
+
+def format_data_comparison_report(report: Any) -> str:
+    msg = f"Data Comparison: {report.symbol} ({report.status})\n"
+    msg += f"Price Diffs: {report.price_diff_count}, Vol Diffs: {report.volume_diff_count}\n"
+    if report.warnings:
+         for w in report.warnings:
+             msg += f"- {w}\n"
+    return msg

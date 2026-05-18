@@ -24,6 +24,13 @@ class ResearchEventBuilder:
         )
 
     def from_backtest_result(self, result: Any, title: str | None = None) -> ResearchRun:
+        lineage = getattr(result, "data_lineage_checksum", None)
+        data_source = getattr(result, "data_source", None)
+        metadata = getattr(result, "metadata", {})
+        if lineage:
+            metadata["data_lineage_checksum"] = lineage
+        if data_source:
+            metadata["data_source"] = data_source
         # Assuming result has some common fields. Handle getattr gracefully
         symbol = getattr(result, "symbol", "UNKNOWN")
         strategy_name = getattr(result, "strategy_name", getattr(result, "strategy", "UNKNOWN"))

@@ -126,6 +126,32 @@ class Settings(BaseSettings):
     DEFAULT_HISTORY_PERIOD: str = Field(default="2y")
     DATA_PROVIDER_TIMEOUT_SECONDS: int = Field(default=30)
     DATA_PROVIDER_MAX_RETRIES: int = Field(default=2)
+    ENABLE_DATA_PROVIDER_V2: bool = True
+    DATA_PROVIDER_DEFAULT_ORDER: str = "local_file,yfinance"
+    DATA_PROVIDER_ALLOW_NETWORK: bool = False
+    DATA_PROVIDER_PREFER_CACHE: bool = True
+    DATA_PROVIDER_RECORD_LINEAGE: bool = True
+    DATA_PROVIDER_RECORD_HEALTH: bool = True
+    DATA_LOCAL_FILE_ENABLED: bool = True
+    DATA_IMPORTS_DIR_NAME: str = "imports"
+    DATA_MARKET_DATA_DIR_NAME: str = "market_data"
+    DATA_IMPORT_ALLOW_OVERWRITE: bool = False
+    DATA_YFINANCE_ENABLED: bool = True
+    DATA_YFINANCE_SUFFIX: str = ".IS"
+    DATA_YFINANCE_TIMEOUT_SECONDS: int = 30
+    DATA_YFINANCE_MAX_RETRIES: int = 1
+    DATA_INCREMENTAL_ENABLED: bool = True
+    DATA_INCREMENTAL_MAX_AGE_HOURS: float = 48.0
+    DATA_INCREMENTAL_LOOKBACK_BARS: int = 5
+    DATA_INCREMENTAL_REPAIR_GAPS: bool = True
+    DATA_FRESHNESS_MAX_AGE_HOURS: float = 48.0
+    DATA_FRESHNESS_WARN_IF_STALE: bool = True
+    DATA_COMPARE_CLOSE_TOLERANCE_PCT: float = 0.10
+    DATA_COMPARE_VOLUME_TOLERANCE_PCT: float = 5.0
+    DATA_SAVE_PARQUET_IF_AVAILABLE: bool = True
+    DATA_FALLBACK_TO_CSV: bool = True
+    DATA_LINEAGE_DIR_NAME: str = "lineage"
+    DATA_PROVIDER_HEALTH_DIR_NAME: str = "provider_health"
 
     # STORAGE
     STORAGE_FORMAT: str = Field(default="csv")

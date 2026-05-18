@@ -281,3 +281,24 @@ def get_release_dir(settings=None) -> Path:
     release_dir = get_data_dir(s) / getattr(s, "RELEASE_DIR_NAME", "release")
     release_dir.mkdir(parents=True, exist_ok=True)
     return release_dir
+
+def get_imports_dir(settings=None) -> Path:
+    from bist_signal_bot.config.settings import Settings
+    s = settings or Settings()
+    path = get_data_dir(s) / getattr(s, "DATA_IMPORTS_DIR_NAME", "imports")
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+def get_lineage_dir(settings=None) -> Path:
+    from bist_signal_bot.config.settings import Settings
+    s = settings or Settings()
+    path = get_data_dir(s) / getattr(s, "DATA_LINEAGE_DIR_NAME", "lineage")
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+def get_provider_health_dir(settings=None) -> Path:
+    from bist_signal_bot.config.settings import Settings
+    s = settings or Settings()
+    path = get_data_dir(s) / getattr(s, "DATA_PROVIDER_HEALTH_DIR_NAME", "provider_health")
+    path.mkdir(parents=True, exist_ok=True)
+    return path

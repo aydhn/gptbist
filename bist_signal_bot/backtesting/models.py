@@ -126,6 +126,10 @@ class BacktestResult:
     started_at: datetime
     finished_at: datetime
     elapsed_seconds: float
+    data_source: Optional[str] = None
+    data_lineage_checksum: Optional[str] = None
+    data_row_count: Optional[int] = None
+    data_import_timestamp: Optional[datetime] = None
     issues: list[str]
     symbol: str | None = None
     equity_curve: pd.DataFrame = field(default_factory=pd.DataFrame)

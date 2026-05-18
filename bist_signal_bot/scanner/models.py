@@ -86,6 +86,10 @@ class SymbolScanResult(BaseModel):
     rank: Optional[int] = None
     reasons: List[str] = Field(default_factory=list)
     warnings: List[str] = Field(default_factory=list)
+    data_provider: Optional[str] = None
+    data_lineage_source_id: Optional[str] = None
+    data_freshness_age_hours: Optional[float] = None
+    data_quality_warnings: List[str] = Field(default_factory=list)
     issues: List[SymbolScanIssue] = Field(default_factory=list)
     elapsed_seconds: float = 0.0
     metadata: Dict[str, Any] = Field(default_factory=dict)

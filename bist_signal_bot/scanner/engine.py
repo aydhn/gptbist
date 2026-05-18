@@ -103,9 +103,17 @@ class SignalScannerEngine:
             # 1. Fetch data
             data = self.data_service.get_history(symbol, timeframe=request.timeframe, rows=request.rows or 200, source=request.source)
             if data is None or data.empty:
-                issues.append(SymbolScanIssue(symbol=symbol, stage="DATA", message="No data returned"))
+                issues.append(SymbolScanIssue(symbol=symbol,
+                data_provider=self.settings.DEFAULT_DATA_PROVIDER,
+                data_lineage_source_id="UNKNOWN",
+                data_freshness_age_hours=0.0,
+                data_quality_warnings=[], stage="DATA", message="No data returned"))
                 return SymbolScanResult(
-                    symbol=symbol, status=ScanCandidateStatus.ERROR, issues=issues,
+                    symbol=symbol,
+                data_provider=self.settings.DEFAULT_DATA_PROVIDER,
+                data_lineage_source_id="UNKNOWN",
+                data_freshness_age_hours=0.0,
+                data_quality_warnings=[], status=ScanCandidateStatus.ERROR, issues=issues,
                     elapsed_seconds=time.time() - start_time
                 )
 
@@ -113,6 +121,10 @@ class SignalScannerEngine:
             strat_result = self.strategy_engine.run_strategy_on_data(
                 strategy_name=request.strategy_name,
                 symbol=symbol,
+                data_provider=self.settings.DEFAULT_DATA_PROVIDER,
+                data_lineage_source_id="UNKNOWN",
+                data_freshness_age_hours=0.0,
+                data_quality_warnings=[],
                 data=data,
                 params=request.params,
                 run_mode=StrategyRunMode.RESEARCH,
@@ -120,16 +132,32 @@ class SignalScannerEngine:
             )
 
             if strat_result.status == "error":
-                issues.append(SymbolScanIssue(symbol=symbol, stage="STRATEGY", message=strat_result.issues[0].message if strat_result.issues else "Unknown strategy error"))
+                issues.append(SymbolScanIssue(symbol=symbol,
+                data_provider=self.settings.DEFAULT_DATA_PROVIDER,
+                data_lineage_source_id="UNKNOWN",
+                data_freshness_age_hours=0.0,
+                data_quality_warnings=[], stage="STRATEGY", message=strat_result.issues[0].message if strat_result.issues else "Unknown strategy error"))
                 return SymbolScanResult(
-                    symbol=symbol, status=ScanCandidateStatus.ERROR, issues=issues,
+                    symbol=symbol,
+                data_provider=self.settings.DEFAULT_DATA_PROVIDER,
+                data_lineage_source_id="UNKNOWN",
+                data_freshness_age_hours=0.0,
+                data_quality_warnings=[], status=ScanCandidateStatus.ERROR, issues=issues,
                     elapsed_seconds=time.time() - start_time
                 )
 
             if not strat_result.candidate and not strat_result.signals:
-                issues.append(SymbolScanIssue(symbol=symbol, stage="STRATEGY", message="No signals returned", severity="INFO"))
+                issues.append(SymbolScanIssue(symbol=symbol,
+                data_provider=self.settings.DEFAULT_DATA_PROVIDER,
+                data_lineage_source_id="UNKNOWN",
+                data_freshness_age_hours=0.0,
+                data_quality_warnings=[], stage="STRATEGY", message="No signals returned", severity="INFO"))
                 return SymbolScanResult(
-                    symbol=symbol, status=ScanCandidateStatus.FILTERED, issues=issues,
+                    symbol=symbol,
+                data_provider=self.settings.DEFAULT_DATA_PROVIDER,
+                data_lineage_source_id="UNKNOWN",
+                data_freshness_age_hours=0.0,
+                data_quality_warnings=[], status=ScanCandidateStatus.FILTERED, issues=issues,
                     reasons=["No signals returned"],
                     elapsed_seconds=time.time() - start_time
                 )
@@ -144,6 +172,10 @@ class SignalScannerEngine:
 
             return SymbolScanResult(
                 symbol=symbol,
+                data_provider=self.settings.DEFAULT_DATA_PROVIDER,
+                data_lineage_source_id="UNKNOWN",
+                data_freshness_age_hours=0.0,
+                data_quality_warnings=[],
                 status=ScanCandidateStatus.PASSED, # Will be filtered later
                 signal=signal,
                 risk_decision=risk_decision,
@@ -153,9 +185,17 @@ class SignalScannerEngine:
 
         except Exception as e:
             self.logger.error(f"Error scanning symbol {symbol}: {e}")
-            issues.append(SymbolScanIssue(symbol=symbol, stage="EXECUTION", message=str(e)))
+            issues.append(SymbolScanIssue(symbol=symbol,
+                data_provider=self.settings.DEFAULT_DATA_PROVIDER,
+                data_lineage_source_id="UNKNOWN",
+                data_freshness_age_hours=0.0,
+                data_quality_warnings=[], stage="EXECUTION", message=str(e)))
             return SymbolScanResult(
-                symbol=symbol, status=ScanCandidateStatus.ERROR, issues=issues,
+                symbol=symbol,
+                data_provider=self.settings.DEFAULT_DATA_PROVIDER,
+                data_lineage_source_id="UNKNOWN",
+                data_freshness_age_hours=0.0,
+                data_quality_warnings=[], status=ScanCandidateStatus.ERROR, issues=issues,
                 elapsed_seconds=time.time() - start_time
             )
 

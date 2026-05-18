@@ -156,7 +156,9 @@ class BacktestEngine:
         eq_df = pd.DataFrame([{"timestamp": s.timestamp, "cash": s.cash, "position_value": s.position_value, "equity": s.equity, "gross_exposure": s.gross_exposure, "net_exposure": s.net_exposure, "open_positions": s.open_positions} for s in portfolio.snapshots])
         if not eq_df.empty: eq_df.set_index("timestamp", inplace=True)
 
-        res = BacktestResult(strategy_name=strategy_name, symbol=symbol, mode=BacktestMode.SINGLE_SYMBOL, config=config, trades=portfolio.trades, fills=portfolio.fills, portfolio_snapshots=portfolio.snapshots, orders=orders, equity_curve=eq_df, started_at=started_at, finished_at=finished_at, elapsed_seconds=elapsed, issues=issues)
+        res = BacktestResult(strategy_name=strategy_name, symbol=symbol, mode=BacktestMode.SINGLE_SYMBOL, config=config, trades=portfolio.trades, fills=portfolio.fills, portfolio_snapshots=portfolio.snapshots, orders=orders, equity_curve=eq_df, started_at=started_at, finished_at=finished_at, elapsed_seconds=elapsed,
+            data_source=data.source.value if hasattr(data, "source") else "UNKNOWN",
+            data_row_count=len(df), issues=issues)
 
 
         # Phase 47: Research Logging

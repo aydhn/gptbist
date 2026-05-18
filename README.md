@@ -6,6 +6,12 @@ Borsa İstanbul (BIST) evreninde çalışacak, ücretsiz araçlara dayalı, yere
 ## Yasal ve Finansal Uyarı
 **DİKKAT:** Bu sistem herhangi bir "yatırım tavsiyesi" vermediğini açıkça beyan eder. Üretilen tüm çıktılar yalnızca "algoritmik sinyal" ve "araştırma çıktısı" niteliğindedir. Alım-satım kararlarınızı kendi risk profilinize ve değerlendirmelerinize göre veriniz. Geçmiş performans gelecekteki sonuçların garantisi değildir.
 
+## Veri Sağlayıcı (Data Provider V2)
+- **Yerel Öncelikli (Local-First):** Veriler öncelikle yerel Parquet/CSV dosyalarından okunur.
+- **Güvenli Yedekleme (Fallback):** Yerel veri eksikse belirlenen sıraya göre (ör. YFinance) diğer sağlayıcılara geçilir.
+- **İzlenebilirlik (Lineage):** Her verinin kaynağı, indirilme zamanı ve bütünlüğü metadata olarak saklanır.
+- **Manuel İçe Aktarma:** Kendi CSV veya Parquet dosyalarınızı sisteme kolayca entegre edebilirsiniz.
+
 ## Ne Değildir?
 - **HFT (Yüksek Frekanslı İşlem) Değildir:** Saniyede onlarca işlem hedeflenmez.
 - **Garanti Kazanç Sistemi Değildir:** Piyasada hiçbir sistem garanti kazanç sunamaz.

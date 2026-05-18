@@ -67,6 +67,16 @@ class RuntimeOrchestrator:
         self.security_preflight = security_preflight or SecurityPreflightRunner(self.settings, kill_switch=self.kill_switch)
 
     def run_once(self, config: RuntimePipelineConfig, trigger: RuntimeTrigger = RuntimeTrigger.CLI) -> RuntimePipelineResult:
+        if getattr(self.settings, "RUNTIME_REQUIRE_FRESH_DATA", False):
+            try:
+                from bist_signal_bot.data.data_service import MarketDataService
+                from bist_signal_bot.data.mock_provider import MockMarketDataProvider
+                ds = MarketDataService(provider=MockMarketDataProvider())
+                fr = ds.freshness_report(config.symbols, config.timeframe, getattr(self.settings, "DATA_FRESHNESS_MAX_AGE_HOURS", 48))
+                if fr.stale_symbols or fr.missing_symbols:
+                    self.logger.warning(f"Runtime data freshness check failed. Stale: {fr.stale_symbols}, Missing: {fr.missing_symbols}")
+            except Exception as e:
+                self.logger.warning(f"Failed to check data freshness: {e}")
 
         if config and getattr(config, 'use_adaptive', False) and self.adaptive_engine:
             try:

@@ -744,3 +744,27 @@ class ReleaseNotesError(ReleaseError):
 class ReleaseStorageError(ReleaseError):
     """Raised when storing release artifacts fails."""
     pass
+
+class DataProviderV2Error(BistSignalBotError):
+    pass
+
+class DataImportError(BistSignalBotError):
+    pass
+
+class DataLineageError(BistSignalBotError):
+    pass
+
+class DataFreshnessError(BistSignalBotError):
+    pass
+
+class IncrementalUpdateError(BistSignalBotError):
+    pass
+
+class ProviderFallbackError(BistSignalBotError):
+    pass
+
+class ProviderHealthError(BistSignalBotError):
+    pass
+
+class DataComparisonError(BistSignalBotError):
+    pass
