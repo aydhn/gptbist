@@ -662,3 +662,6 @@ Generate release notes:
 ```bash
 python -m bist_signal_bot release notes --markdown
 ```
+
+## Market Breadth & Relative Strength
+The breadth engine calculates market breadth, relative strength, sector rotation, cross-sectional ranking and breadth regime. It generates local snapshots and metadata used for scanners and research. No real orders are sent. No broker APIs are used.

@@ -779,3 +779,30 @@ class FundamentalFactorError(FundamentalError): pass
 class CorporateEventError(FundamentalError): pass
 class FundamentalFilterError(FundamentalError): pass
 class FundamentalLookaheadError(FundamentalError): pass
+
+class BreadthError(BistSignalBotError):
+    pass
+
+class BreadthValidationError(BreadthError):
+    pass
+
+class BreadthCalculationError(BreadthError):
+    pass
+
+class RelativeStrengthError(BreadthError):
+    pass
+
+class SectorRotationError(BreadthError):
+    pass
+
+class CrossSectionalRankingError(BreadthError):
+    pass
+
+class BreadthRegimeError(BreadthError):
+    pass
+
+class BreadthStorageError(BreadthError):
+    pass
+
+class BreadthLookaheadError(BreadthError):
+    pass

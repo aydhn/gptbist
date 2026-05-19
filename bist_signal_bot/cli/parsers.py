@@ -51,7 +51,7 @@ def add_data_v2_parser(subparsers):
     cfg_parser.add_argument("--json", action="store_true", help="Output JSON")
 
 def add_release_parser(subparsers):
-    add_data_v2_parser(subparsers)
+
 
     release_parser = subparsers.add_parser("release", help="Release Manager commands")
     release_subparsers = release_parser.add_subparsers(dest="release_command", help="Release sub-commands")
@@ -97,7 +97,7 @@ def add_release_parser(subparsers):
 
 
 def add_release_parser(subparsers):
-    add_data_v2_parser(subparsers)
+
     release_parser = subparsers.add_parser("release", help="Release Manager commands")
     release_subparsers = release_parser.add_subparsers(dest="release_command", help="Release sub-commands")
 
@@ -142,7 +142,7 @@ def add_release_parser(subparsers):
 
 
 def add_release_parser(subparsers):
-    add_data_v2_parser(subparsers)
+
     release_parser = subparsers.add_parser("release", help="Release Manager commands")
     release_subparsers = release_parser.add_subparsers(dest="release_command", help="Release sub-commands")
 
@@ -187,7 +187,7 @@ def add_release_parser(subparsers):
 
 
 def add_release_parser(subparsers):
-    add_data_v2_parser(subparsers)
+
     release_parser = subparsers.add_parser("release", help="Release Manager commands")
     release_subparsers = release_parser.add_subparsers(dest="release_command", help="Release sub-commands")
 
@@ -232,7 +232,7 @@ def add_release_parser(subparsers):
 
 
 def add_release_parser(subparsers):
-    add_data_v2_parser(subparsers)
+
     release_parser = subparsers.add_parser("release", help="Release Manager commands")
     release_subparsers = release_parser.add_subparsers(dest="release_command", help="Release sub-commands")
 
@@ -872,8 +872,66 @@ def build_parser() -> argparse.ArgumentParser:
     parser_report_config.add_argument("--json", action="store_true", help="Output JSON directly")
 
     add_release_parser(subparsers)
-    add_data_v2_parser(subparsers)
-    add_data_v2_parser(subparsers)
+
+
+    # Breadth commands
+    breadth_parser = subparsers.add_parser("breadth", help="Market breadth and relative strength tools")
+    breadth_subs = breadth_parser.add_subparsers(dest="breadth_command")
+
+    # breadth snapshot
+    b_snap = breadth_subs.add_parser("snapshot", help="Generate market breadth snapshot")
+    b_snap.add_argument("--symbols", nargs="+", help="Symbols to analyze")
+    b_snap.add_argument("--group", help="Universe group (e.g. LIQUID)")
+    b_snap.add_argument("--benchmark", help="Benchmark symbol")
+    b_snap.add_argument("--source", default="local_file", help="Data source")
+    b_snap.add_argument("--save", action="store_true", help="Save snapshot")
+    b_snap.add_argument("--json", action="store_true", help="Output JSON")
+
+    # breadth relative-strength
+    b_rs = breadth_subs.add_parser("relative-strength", help="Calculate relative strength")
+    b_rs.add_argument("--symbols", nargs="+", help="Symbols to analyze")
+    b_rs.add_argument("--group", help="Universe group")
+    b_rs.add_argument("--benchmark", help="Benchmark symbol")
+    b_rs.add_argument("--top", type=int, help="Top N")
+    b_rs.add_argument("--json", action="store_true", help="Output JSON")
+
+    # breadth sector-rotation
+    b_sr = breadth_subs.add_parser("sector-rotation", help="Calculate sector rotation")
+    b_sr.add_argument("--group", help="Universe group")
+    b_sr.add_argument("--top", type=int, help="Top N")
+    b_sr.add_argument("--json", action="store_true", help="Output JSON")
+
+    # breadth rank
+    b_rank = breadth_subs.add_parser("rank", help="Cross-sectional ranking")
+    b_rank.add_argument("--symbols", nargs="+", help="Symbols")
+    b_rank.add_argument("--group", help="Universe group")
+    b_rank.add_argument("--top", type=int, help="Top N")
+    b_rank.add_argument("--json", action="store_true", help="Output JSON")
+
+    # breadth leaders
+    b_lead = breadth_subs.add_parser("leaders", help="Show leaders")
+    b_lead.add_argument("--top", type=int, default=20, help="Top N")
+    b_lead.add_argument("--json", action="store_true", help="Output JSON")
+
+    # breadth laggards
+    b_lag = breadth_subs.add_parser("laggards", help="Show laggards")
+    b_lag.add_argument("--bottom", type=int, default=20, help="Bottom N")
+    b_lag.add_argument("--json", action="store_true", help="Output JSON")
+
+    # breadth regime
+    b_reg = breadth_subs.add_parser("regime", help="Show breadth regime")
+    b_reg.add_argument("--group", help="Universe group")
+    b_reg.add_argument("--json", action="store_true", help="Output JSON")
+
+    # breadth recent
+    b_rec = breadth_subs.add_parser("recent", help="List recent snapshots")
+    b_rec.add_argument("--limit", type=int, default=10, help="Limit")
+    b_rec.add_argument("--json", action="store_true", help="Output JSON")
+
+    # breadth config
+    b_conf = breadth_subs.add_parser("config", help="Show breadth config")
+    b_conf.add_argument("--json", action="store_true", help="Output JSON")
+
     return parser
 
 def add_paper_parser(subparsers: argparse._SubParsersAction) -> None:
@@ -1397,7 +1455,7 @@ def add_adaptive_parser(subparsers) -> None:
 
 
 def add_release_parser(subparsers):
-    add_data_v2_parser(subparsers)
+
     release_parser = subparsers.add_parser("release", help="Release Manager commands")
     release_subparsers = release_parser.add_subparsers(dest="release_command", help="Release sub-commands")
 

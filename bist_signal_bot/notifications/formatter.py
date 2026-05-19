@@ -939,3 +939,22 @@ def format_data_comparison_report(report: Any) -> str:
          for w in report.warnings:
              msg += f"- {w}\n"
     return msg
+
+def format_breadth_snapshot(snapshot) -> str:
+    return f"""BIST Bot Breadth Özeti
+Universe: {snapshot.universe_name}
+Breadth Status: {snapshot.status.value}
+Composite Score: {snapshot.composite_score:.1f}
+
+Bu çıktı piyasa genişliği araştırma özetidir.
+Yatırım tavsiyesi değildir.
+Gerçek emir gönderilmedi."""
+
+def format_breadth_analysis_result(result) -> str:
+    return format_breadth_snapshot(result.snapshot)
+
+def format_sector_rotation(scores) -> str:
+    return "Sector Rotation calculated."
+
+def format_relative_strength_leaders(scores) -> str:
+    return "Relative Strength Leaders calculated."
