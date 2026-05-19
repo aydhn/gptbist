@@ -171,6 +171,7 @@ def run_cli(argv: list[str] | None = None) -> int:
 
 
         "research": lambda a, c: __import__("bist_signal_bot.cli.commands_research", fromlist=["handle_research_commands"]).handle_research_commands(a, c.settings),
+        "breadth": lambda a, c: __import__("bist_signal_bot.cli.commands_breadth", fromlist=["handle_breadth_commands"]).handle_breadth_commands(a, c.settings),
         "release": lambda a, c: __import__("bist_signal_bot.cli.commands", fromlist=["handle_release_command"]).handle_release_command(a, c.settings),
         "release": lambda a, c: __import__("bist_signal_bot.cli.commands", fromlist=["handle_release_command"]).handle_release_command(a, c.settings),
         "release": lambda a, c: __import__("bist_signal_bot.cli.commands", fromlist=["handle_release_command"]).handle_release_command(a, c.settings),

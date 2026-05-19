@@ -6,6 +6,45 @@ from bist_signal_bot.config.profiles import get_profile
 from bist_signal_bot.config.secrets import settings_safe_dump
 
 class Settings(BaseSettings):
+    # --- Breadth / Relative Strength ---
+    ENABLE_BREADTH_ENGINE: bool = True
+    BREADTH_DIR_NAME: str = "breadth"
+    BREADTH_DEFAULT_UNIVERSE: str = "LIQUID"
+    BREADTH_DEFAULT_BENCHMARK: str = "XU100"
+    BREADTH_DEFAULT_SOURCE: str = "local_file"
+    BREADTH_DEFAULT_TIMEFRAME: str = "1d"
+    BREADTH_LOOKBACK_DAYS: int = 260
+    BREADTH_SAVE_SNAPSHOTS: bool = True
+    BREADTH_MA_WINDOWS: str = "20,50,100,200"
+    BREADTH_HIGH_LOW_WINDOWS: str = "20,252"
+    BREADTH_STRONG_THRESHOLD: float = 75.0
+    BREADTH_HEALTHY_THRESHOLD: float = 60.0
+    BREADTH_NEUTRAL_THRESHOLD: float = 45.0
+    BREADTH_WEAK_THRESHOLD: float = 30.0
+    BREADTH_ENABLE_RELATIVE_STRENGTH: bool = True
+    BREADTH_RS_WINDOWS: str = "20,50,100,200"
+    BREADTH_RS_BENCHMARK_FALLBACK_TO_UNIVERSE: bool = True
+    BREADTH_ENABLE_SECTOR_ROTATION: bool = True
+    BREADTH_SECTOR_TOP_N: int = 10
+    BREADTH_ENABLE_CROSS_SECTIONAL_RANKING: bool = True
+    BREADTH_RANK_TOP_N: int = 20
+    BREADTH_WEIGHT_RELATIVE_STRENGTH: float = 0.45
+    BREADTH_WEIGHT_ABSOLUTE_MOMENTUM: float = 0.20
+    BREADTH_WEIGHT_BREADTH_ALIGNMENT: float = 0.15
+    BREADTH_WEIGHT_FUNDAMENTAL: float = 0.10
+    BREADTH_WEIGHT_LIQUIDITY: float = 0.10
+    SCANNER_USE_BREADTH_FILTER: bool = False
+    SCANNER_BREADTH_MODE: str = "metadata_only"
+    SCANNER_MIN_BREADTH_SCORE: float = 40.0
+    SCANNER_MIN_RELATIVE_STRENGTH_SCORE: float = 40.0
+    BACKTEST_USE_BREADTH: bool = False
+    BACKTEST_BREADTH_LAG_BARS: int = 1
+    ML_INCLUDE_BREADTH: bool = False
+    RUNTIME_USE_BREADTH: bool = False
+    RUNTIME_REFRESH_BREADTH_BEFORE_SCAN: bool = False
+    REPORT_INCLUDE_BREADTH: bool = True
+    REPORT_INCLUDE_RELATIVE_STRENGTH: bool = True
+    REPORT_INCLUDE_SECTOR_ROTATION: bool = True
 
     ENABLE_FUNDAMENTALS: bool = True
     FUNDAMENTALS_DIR_NAME: str = "fundamentals"
