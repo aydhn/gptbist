@@ -768,3 +768,14 @@ class ProviderHealthError(BistSignalBotError):
 
 class DataComparisonError(BistSignalBotError):
     pass
+
+
+class FundamentalError(BistSignalBotError): pass
+class FundamentalValidationError(FundamentalError): pass
+class FundamentalImportError(FundamentalError): pass
+class FundamentalStorageError(FundamentalError): pass
+class FundamentalRatioError(FundamentalError): pass
+class FundamentalFactorError(FundamentalError): pass
+class CorporateEventError(FundamentalError): pass
+class FundamentalFilterError(FundamentalError): pass
+class FundamentalLookaheadError(FundamentalError): pass
