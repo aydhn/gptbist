@@ -155,3 +155,223 @@ class StrategySignalBatch(BaseModel):
             "elapsed_seconds": round(self.elapsed_seconds, 2),
             "generated_at": self.generated_at.isoformat()
         }
+
+class SignalLifecycleState(str, Enum):
+    NEW = "NEW"
+    ACTIVE = "ACTIVE"
+    WATCHING = "WATCHING"
+    MUTED = "MUTED"
+    COOLDOWN = "COOLDOWN"
+    EXPIRED = "EXPIRED"
+    INVALIDATED = "INVALIDATED"
+    COMPLETED = "COMPLETED"
+    ARCHIVED = "ARCHIVED"
+    ERROR = "ERROR"
+
+class SignalLifecycleEventType(str, Enum):
+    CREATED = "CREATED"
+    UPDATED = "UPDATED"
+    ALERT_SENT = "ALERT_SENT"
+    ALERT_MUTED = "ALERT_MUTED"
+    COOLDOWN_STARTED = "COOLDOWN_STARTED"
+    COOLDOWN_ENDED = "COOLDOWN_ENDED"
+    WATCHLIST_ADDED = "WATCHLIST_ADDED"
+    WATCHLIST_REMOVED = "WATCHLIST_REMOVED"
+    EXPIRED = "EXPIRED"
+    INVALIDATED = "INVALIDATED"
+    OUTCOME_UPDATED = "OUTCOME_UPDATED"
+    EXIT_SIMULATED = "EXIT_SIMULATED"
+    ARCHIVED = "ARCHIVED"
+    MANUAL_NOTE = "MANUAL_NOTE"
+    ERROR = "ERROR"
+
+class SignalAlertDecision(str, Enum):
+    SEND = "SEND"
+    MUTE_DUPLICATE = "MUTE_DUPLICATE"
+    MUTE_COOLDOWN = "MUTE_COOLDOWN"
+    MUTE_LOW_PRIORITY = "MUTE_LOW_PRIORITY"
+    MUTE_UNCHANGED = "MUTE_UNCHANGED"
+    SEND_DIGEST_ONLY = "SEND_DIGEST_ONLY"
+    BLOCK_SECURITY = "BLOCK_SECURITY"
+    SKIP = "SKIP"
+
+class SignalPriority(str, Enum):
+    LOW = "LOW"
+    NORMAL = "NORMAL"
+    HIGH = "HIGH"
+    CRITICAL = "CRITICAL"
+    UNKNOWN = "UNKNOWN"
+
+class SignalOutcomeState(str, Enum):
+    NOT_TRACKED = "NOT_TRACKED"
+    PENDING = "PENDING"
+    HIT_RESEARCH_TARGET = "HIT_RESEARCH_TARGET"
+    HIT_RESEARCH_STOP = "HIT_RESEARCH_STOP"
+    TIME_EXPIRED = "TIME_EXPIRED"
+    INVALIDATED_BY_RISK = "INVALIDATED_BY_RISK"
+    INVALIDATED_BY_REGIME = "INVALIDATED_BY_REGIME"
+    INVALIDATED_BY_BREADTH = "INVALIDATED_BY_BREADTH"
+    INVALIDATED_BY_DATA = "INVALIDATED_BY_DATA"
+    MANUAL_CLOSED = "MANUAL_CLOSED"
+    UNKNOWN = "UNKNOWN"
+
+class ResearchExitRuleType(str, Enum):
+    FIXED_PERCENT_TARGET = "FIXED_PERCENT_TARGET"
+    FIXED_PERCENT_STOP = "FIXED_PERCENT_STOP"
+    ATR_MULTIPLE_TARGET = "ATR_MULTIPLE_TARGET"
+    ATR_MULTIPLE_STOP = "ATR_MULTIPLE_STOP"
+    TRAILING_PERCENT = "TRAILING_PERCENT"
+    TIME_STOP = "TIME_STOP"
+    SIGNAL_REVERSAL = "SIGNAL_REVERSAL"
+    REGIME_INVALIDATION = "REGIME_INVALIDATION"
+    RISK_INVALIDATION = "RISK_INVALIDATION"
+    NONE = "NONE"
+
+class SignalFingerprint(BaseModel):
+    fingerprint_id: str
+    symbol: str
+    strategy_name: Optional[str] = None
+    signal_direction: Optional[str] = None
+    source_type: Optional[str] = None
+    timeframe: Optional[str] = None
+    normalized_payload_hash: str
+    created_at: datetime
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+
+class TrackedSignal(BaseModel):
+    signal_id: str
+    fingerprint_id: str
+    symbol: str
+    strategy_name: Optional[str] = None
+    source_type: str
+    timeframe: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+    valid_until: Optional[datetime] = None
+    state: SignalLifecycleState = SignalLifecycleState.NEW
+    priority: SignalPriority = SignalPriority.NORMAL
+    direction: Optional[str] = None
+    initial_score: Optional[float] = None
+    current_score: Optional[float] = None
+    confidence: Optional[float] = None
+    consensus_score: Optional[float] = None
+    risk_decision: Optional[str] = None
+    regime: Optional[str] = None
+    breadth_status: Optional[str] = None
+    fundamental_score: Optional[float] = None
+    ml_score: Optional[float] = None
+    watchlist: bool = False
+    alert_count: int = 0
+    last_alert_at: Optional[datetime] = None
+    last_seen_at: Optional[datetime] = None
+    outcome_state: SignalOutcomeState = SignalOutcomeState.NOT_TRACKED
+    outcome_return_pct: Optional[float] = None
+    reasons: List[str] = Field(default_factory=list)
+    warnings: List[str] = Field(default_factory=list)
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+    disclaimer: str = "Tracked signal is research-only. Not investment advice. No real order was sent."
+
+    def summary(self) -> Dict[str, Any]:
+        return {
+            "signal_id": self.signal_id,
+            "symbol": self.symbol,
+            "strategy": self.strategy_name,
+            "state": self.state,
+            "priority": self.priority,
+            "direction": self.direction,
+            "current_score": self.current_score,
+            "outcome": self.outcome_state,
+        }
+
+    def safe_public_dict(self) -> Dict[str, Any]:
+        data = self.model_dump()
+        # Omit potentially sensitive fields for public output
+        data.pop("metadata", None)
+        return data
+
+class SignalLifecycleEvent(BaseModel):
+    event_id: str
+    signal_id: str
+    event_type: SignalLifecycleEventType
+    previous_state: Optional[SignalLifecycleState] = None
+    new_state: Optional[SignalLifecycleState] = None
+    timestamp: datetime
+    message: str
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+
+class SignalAlertPolicy(BaseModel):
+    dedupe_enabled: bool = True
+    cooldown_minutes: int = 240
+    validity_minutes: int = 1440
+    min_score_change_for_repeat_alert: float = 7.5
+    min_confidence_for_alert: float = 45.0
+    max_alerts_per_signal: int = 3
+    digest_only_below_priority: SignalPriority = SignalPriority.NORMAL
+    mute_low_agreement: bool = True
+    mute_high_conflict: bool = True
+    allow_critical_repeat: bool = True
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+
+class AlertEvaluationResult(BaseModel):
+    signal_id: Optional[str] = None
+    fingerprint_id: str
+    decision: SignalAlertDecision
+    should_send: bool
+    should_add_to_digest: bool
+    reason: str
+    cooldown_remaining_minutes: Optional[float] = None
+    previous_signal_id: Optional[str] = None
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+
+class WatchlistEntry(BaseModel):
+    watchlist_id: str
+    signal_id: str
+    symbol: str
+    strategy_name: Optional[str] = None
+    added_at: datetime
+    expires_at: Optional[datetime] = None
+    priority: SignalPriority = SignalPriority.NORMAL
+    notes: List[str] = Field(default_factory=list)
+    tags: List[str] = Field(default_factory=list)
+    active: bool = True
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+
+class ResearchExitRule(BaseModel):
+    rule_id: str
+    rule_type: ResearchExitRuleType
+    value: Optional[float] = None
+    enabled: bool = True
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+
+class ResearchExitSimulation(BaseModel):
+    simulation_id: str
+    signal_id: str
+    symbol: str
+    started_at: datetime
+    evaluated_at: datetime
+    entry_reference_price: Optional[float] = None
+    current_price: Optional[float] = None
+    target_price: Optional[float] = None
+    stop_price: Optional[float] = None
+    trailing_level: Optional[float] = None
+    triggered_rule: ResearchExitRuleType
+    outcome_state: SignalOutcomeState
+    simulated_return_pct: Optional[float] = None
+    warnings: List[str] = Field(default_factory=list)
+    disclaimer: str = "Exit simulation is research-only. It is not a real order. No real order was sent."
+    metadata: Dict[str, Any] = Field(default_factory=dict)
+
+class SignalLifecycleSummary(BaseModel):
+    total_signals: int = 0
+    active_count: int = 0
+    watching_count: int = 0
+    muted_count: int = 0
+    expired_count: int = 0
+    invalidated_count: int = 0
+    completed_count: int = 0
+    alerts_sent: int = 0
+    alerts_muted: int = 0
+    watchlist_count: int = 0
+    generated_at: datetime
+    warnings: List[str] = Field(default_factory=list)
+    metadata: Dict[str, Any] = Field(default_factory=dict)

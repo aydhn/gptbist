@@ -39,12 +39,19 @@ class SignalScannerEngine:
         filter_engine: Optional[ScanFilterEngine] = None,
         settings: Optional[Settings] = None,
         notifier: Optional[Any] = None,
-        logger: Optional[logging.Logger] = None
+        logger: Optional[logging.Logger] = None,
+        ml_inference_engine: Optional[Any] = None
     ):
         self.settings = settings or Settings()
         self.logger = logger or logging.getLogger(__name__)
         self.data_service = data_service
         self.strategy_engine = strategy_engine
+        self.risk_engine = risk_engine
+        self.portfolio_risk_engine = portfolio_risk_engine
+        self.paper_engine = paper_engine
+        self.ranker = ranker
+        self.filter_engine = filter_engine
+        self.notifier = notifier
         self.kill_switch = KillSwitchManager(self.settings, get_data_dir(self.settings))
         self.security_preflight = SecurityPreflightRunner(self.settings, kill_switch=self.kill_switch)
         self.ml_inference_engine = ml_inference_engine
