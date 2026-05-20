@@ -315,3 +315,11 @@ def get_signals_dir(settings=None) -> Path:
     path = get_data_dir(s) / getattr(s, "SIGNALS_DIR_NAME", "signals")
     path.mkdir(parents=True, exist_ok=True)
     return path
+
+def get_portfolio_research_dir(settings=None) -> Path:
+    from bist_signal_bot.config.settings import Settings
+    if settings is None:
+        settings = Settings()
+    path = get_data_dir(settings) / getattr(settings, "PORTFOLIO_RESEARCH_DIR_NAME", "portfolio_research")
+    path.mkdir(parents=True, exist_ok=True)
+    return path

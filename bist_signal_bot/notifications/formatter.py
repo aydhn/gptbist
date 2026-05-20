@@ -958,3 +958,57 @@ def format_sector_rotation(scores) -> str:
 
 def format_relative_strength_leaders(scores) -> str:
     return "Relative Strength Leaders calculated."
+
+    def format_research_portfolio_snapshot(self, snapshot: Any) -> str:
+        lines = [
+            "BIST Bot Research Portfolio Özeti",
+            "",
+            f"Snapshot: {snapshot.snapshot_id}",
+            f"Items: {snapshot.item_count}",
+            f"Method: {snapshot.allocation_method.value}",
+            f"Total Research Weight: {snapshot.total_weight:.2%}"
+        ]
+
+        top_sector = None
+        for exp in snapshot.exposures:
+            if exp.group.value == "SECTOR":
+                if not top_sector or exp.weight > top_sector.weight:
+                    top_sector = exp
+
+        if top_sector:
+            lines.append(f"Top Sector Exposure: {top_sector.weight:.2%}")
+
+        lines.append(f"Warnings: {len(snapshot.warnings)}")
+        lines.append("")
+        lines.append("Bu çıktı araştırma portföy sepeti özetidir.")
+        lines.append("Yatırım tavsiyesi değildir.")
+        lines.append("Gerçek emir gönderilmedi.")
+
+        return "\n".join(lines)
+
+    def format_rebalance_plan(self, plan: Any) -> str:
+        lines = [
+            "BIST Bot Research Portfolio Rebalance Özeti",
+            "",
+            f"Plan ID: {plan.plan_id}",
+            f"Turnover: {plan.turnover_estimate:.2%}",
+            f"Warnings: {len(plan.warnings)}",
+            "",
+            "Bu çıktı araştırma amaçlı rebalance deltalardır."
+            "Yatırım tavsiyesi değildir.",
+            "Gerçek emir gönderilmedi."
+        ]
+        return "\n".join(lines)
+
+    def format_basket_simulation(self, result: Any) -> str:
+        lines = [
+            "BIST Bot Research Basket Simulation",
+            "",
+            f"Simulation ID: {result.simulation_id}",
+            f"Return: {result.simulated_return_pct:.2f}%",
+            "",
+            "Bu çıktı geçmişe yönelik araştırma simülasyonudur.",
+            "Gelecek performans garantisi vermez.",
+            "Gerçek emir gönderilmedi."
+        ]
+        return "\n".join(lines)

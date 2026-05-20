@@ -44,7 +44,81 @@ class DiagnosticsRunner:
         checks.append(self.check_paper_ledger())
         checks.append(self.check_quality_last_run())
         checks.append(self.check_data_provider_v2())
+        checks.append(self.check_portfolio_research())
         return checks
+
+
+    def check_portfolio_research(self) -> DiagnosticCheckResult:
+        if not getattr(self.settings, "ENABLE_PORTFOLIO_RESEARCH", False):
+            return self._create_result(
+                name="Portfolio Research Check",
+                comp=MonitoringComponent.SYSTEM,
+                status=DiagnosticCheckStatus.PASS,
+                sev=AlertSeverity.INFO,
+                msg="Portfolio Research is disabled in settings.",
+                details={"enabled": False}
+            )
+
+        try:
+            from bist_signal_bot.app.portfolio_research_app import create_portfolio_research_engine
+            engine = create_portfolio_research_engine(self.settings)
+            snapshot = engine.latest_snapshot()
+            if not snapshot:
+                return self._create_result(
+                    name="Portfolio Research Check",
+                    comp=MonitoringComponent.SYSTEM,
+                    status=DiagnosticCheckStatus.WARN,
+                    sev=AlertSeverity.LOW,
+                    msg="No portfolio research snapshot found."
+                )
+
+            # Check staleness
+            from datetime import datetime, timezone
+            now = datetime.now(timezone.utc).replace(tzinfo=None)
+            age = (now - snapshot.created_at).total_seconds() / 3600.0
+
+            # Check high concentration
+            high_concentration = False
+            for exp in snapshot.exposures:
+                if exp.group.value == "SECTOR" and exp.weight > 0.5:
+                    high_concentration = True
+
+            if age > 48.0:
+                return self._create_result(
+                    name="Portfolio Research Check",
+                    comp=MonitoringComponent.SYSTEM,
+                    status=DiagnosticCheckStatus.WARN,
+                    sev=AlertSeverity.LOW,
+                    msg=f"Portfolio research snapshot is stale (age: {age:.1f} hours).",
+                    details={"snapshot_id": snapshot.snapshot_id, "age_hours": age}
+                )
+
+            if high_concentration:
+                return self._create_result(
+                    name="Portfolio Research Check",
+                    comp=MonitoringComponent.SYSTEM,
+                    status=DiagnosticCheckStatus.WARN,
+                    sev=AlertSeverity.MEDIUM,
+                    msg="Portfolio research snapshot shows high sector concentration (>50%).",
+                    details={"snapshot_id": snapshot.snapshot_id}
+                )
+
+            return self._create_result(
+                name="Portfolio Research Check",
+                comp=MonitoringComponent.SYSTEM,
+                status=DiagnosticCheckStatus.PASS,
+                sev=AlertSeverity.INFO,
+                msg="Portfolio research snapshot is healthy and recent.",
+                details={"snapshot_id": snapshot.snapshot_id, "items": snapshot.item_count}
+            )
+        except Exception as e:
+            return self._create_result(
+                name="Portfolio Research Check",
+                comp=MonitoringComponent.SYSTEM,
+                status=DiagnosticCheckStatus.FAIL,
+                sev=AlertSeverity.HIGH,
+                msg=f"Failed to check portfolio research: {str(e)}"
+            )
 
     def _create_result(self, name: str, comp: MonitoringComponent, status: DiagnosticCheckStatus, sev: AlertSeverity, msg: str, details: dict = None, recs: list = None) -> DiagnosticCheckResult:
         return DiagnosticCheckResult(
