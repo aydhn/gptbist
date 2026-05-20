@@ -1,0 +1,2 @@
+[console_scripts]
+bist-signal-bot = bist_signal_bot.__main__:main

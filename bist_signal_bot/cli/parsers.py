@@ -277,6 +277,7 @@ def add_release_parser(subparsers):
 
 import argparse
 from bist_signal_bot.cli.ensemble_commands import setup_ensemble_parser
+from bist_signal_bot.cli.stress_cmd import add_stress_parsers
 
 def add_costs_parser(subparsers):
     costs_parser = subparsers.add_parser(
@@ -1055,6 +1056,7 @@ def build_parser() -> argparse.ArgumentParser:
     b_conf.add_argument("--json", action="store_true", help="Output JSON")
 
     setup_ensemble_parser(subparsers)
+    add_stress_parsers(subparsers)
     return parser
 
 def add_paper_parser(subparsers: argparse._SubParsersAction) -> None:
