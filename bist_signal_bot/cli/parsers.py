@@ -406,6 +406,76 @@ def add_validate_backtest_parser(subparsers):
     rob_parser.add_argument("--max-runs", type=int, help="Maximum number of robustness runs")
     rob_parser.add_argument("--json", action="store_true", help="Output in JSON format")
 
+def add_signals_parser(subparsers):
+    signals_parser = subparsers.add_parser("signals", help="Manage signal lifecycle and watchlist")
+    signals_subparsers = signals_parser.add_subparsers(dest="signals_cmd", help="Signals sub-commands")
+
+    list_p = signals_subparsers.add_parser("list", help="List tracked signals")
+    list_p.add_argument("--state", type=str, help="Filter by state (e.g. ACTIVE, EXPIRED)")
+    list_p.add_argument("--symbol", type=str, help="Filter by symbol")
+    list_p.add_argument("--strategy", type=str, help="Filter by strategy")
+    list_p.add_argument("--json", action="store_true", help="Output JSON")
+
+    show_p = signals_subparsers.add_parser("show", help="Show signal details")
+    show_p.add_argument("signal_id", type=str, help="Signal ID")
+    show_p.add_argument("--events", action="store_true", help="Show lifecycle events")
+    show_p.add_argument("--json", action="store_true", help="Output JSON")
+
+    exp_p = signals_subparsers.add_parser("expire", help="Expire stale signals")
+    exp_p.add_argument("--json", action="store_true", help="Output JSON")
+
+    inv_p = signals_subparsers.add_parser("invalidate", help="Invalidate a signal manually")
+    inv_p.add_argument("signal_id", type=str, help="Signal ID")
+    inv_p.add_argument("--reason", type=str, required=True, help="Reason for invalidation")
+    inv_p.add_argument("--confirm", action="store_true", help="Confirm invalidation")
+
+    arc_p = signals_subparsers.add_parser("archive", help="Archive a signal manually")
+    arc_p.add_argument("signal_id", type=str, help="Signal ID")
+    arc_p.add_argument("--confirm", action="store_true", help="Confirm archive")
+
+    wl_p = signals_subparsers.add_parser("watchlist", help="Show active watchlist")
+    wl_p.add_argument("--symbol", type=str, help="Filter by symbol")
+    wl_p.add_argument("--json", action="store_true", help="Output JSON")
+
+    wla_p = signals_subparsers.add_parser("watchlist-add", help="Add a signal to watchlist")
+    wla_p.add_argument("signal_id", type=str, help="Signal ID")
+    wla_p.add_argument("--tag", type=str, help="Tag for watchlist entry")
+    wla_p.add_argument("--confirm", action="store_true", help="Confirm add")
+
+    wlr_p = signals_subparsers.add_parser("watchlist-remove", help="Remove from watchlist")
+    wlr_p.add_argument("watchlist_id", type=str, help="Watchlist entry ID")
+    wlr_p.add_argument("--confirm", action="store_true", help="Confirm remove")
+
+    dedupe_p = signals_subparsers.add_parser("dedupe", help="Check signal deduplication")
+    dedupe_p.add_argument("--symbol", type=str, required=True, help="Symbol to dedupe check")
+    dedupe_p.add_argument("--json", action="store_true", help="Output JSON")
+
+    sim_p = signals_subparsers.add_parser("simulate-exits", help="Simulate research exits")
+    sim_p.add_argument("--symbol", type=str, help="Symbol to simulate")
+    sim_p.add_argument("--state", type=str, help="State filter (e.g. ACTIVE)")
+    sim_p.add_argument("--source", type=str, default="local_file", help="Data source")
+    sim_p.add_argument("--json", action="store_true", help="Output JSON")
+
+    out_p = signals_subparsers.add_parser("outcomes", help="Show signal outcomes")
+    out_p.add_argument("--symbol", type=str, help="Filter by symbol")
+    out_p.add_argument("--strategy", type=str, help="Filter by strategy")
+    out_p.add_argument("--json", action="store_true", help="Output JSON")
+
+    out_up_p = signals_subparsers.add_parser("outcome-update", help="Update manual outcome")
+    out_up_p.add_argument("signal_id", type=str, help="Signal ID")
+    out_up_p.add_argument("--outcome", type=str, required=True, help="Outcome state (e.g. HIT_RESEARCH_TARGET)")
+    out_up_p.add_argument("--return-pct", type=float, help="Return percentage")
+    out_up_p.add_argument("--confirm", action="store_true", help="Confirm update")
+
+    sum_p = signals_subparsers.add_parser("summary", help="Show lifecycle summary")
+    sum_p.add_argument("--json", action="store_true", help="Output JSON")
+
+    pol_p = signals_subparsers.add_parser("policy", help="Show active alert policy")
+    pol_p.add_argument("--json", action="store_true", help="Output JSON")
+
+    cfg_p = signals_subparsers.add_parser("config", help="Show signals configuration")
+    cfg_p.add_argument("--json", action="store_true", help="Output JSON")
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="bist_signal_bot",
@@ -425,7 +495,6 @@ def build_parser() -> argparse.ArgumentParser:
     )
 
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
-
     healthcheck_parser = subparsers.add_parser("healthcheck", help="Check system components health")
     config_parser = subparsers.add_parser("config", help="View current configuration")
     config_parser.add_argument("--hide-secrets", action="store_true", default=True, help="Mask sensitive fields")
@@ -822,6 +891,7 @@ def build_parser() -> argparse.ArgumentParser:
     setup_package_parser(subparsers)
     add_performance_parser(subparsers)
     add_adaptive_parser(subparsers)
+    add_signals_parser(subparsers)
     # Report parser
     parser_report = subparsers.add_parser("report", help="Manage research reports")
     report_subparsers = parser_report.add_subparsers(dest="report_command")

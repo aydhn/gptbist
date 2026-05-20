@@ -308,3 +308,10 @@ def get_ensemble_dir(settings=None) -> Path:
     from bist_signal_bot.config.settings import get_settings
     s = settings or get_settings()
     return get_data_dir() / getattr(s, "ENSEMBLE_DIR_NAME", "ensemble")
+
+def get_signals_dir(settings=None) -> Path:
+    from bist_signal_bot.config.settings import get_settings
+    s = settings or get_settings()
+    path = get_data_dir(s) / getattr(s, "SIGNALS_DIR_NAME", "signals")
+    path.mkdir(parents=True, exist_ok=True)
+    return path

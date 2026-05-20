@@ -4704,3 +4704,134 @@ def handle_data_v2_command(args, settings):
             print(json.dumps(data_keys, indent=2))
         else:
             print(json.dumps(data_keys, indent=2))
+
+def handle_signals_command(args: argparse.Namespace) -> None:
+    from bist_signal_bot.app.signals_app import create_signal_lifecycle_manager, create_signal_watchlist_manager, create_signal_outcome_tracker, create_research_exit_simulator
+    from bist_signal_bot.signals.models import SignalLifecycleState, SignalOutcomeState
+    from bist_signal_bot.signals.reporting import format_tracked_signal_text, format_signal_lifecycle_summary, format_watchlist_text, format_exit_simulation_text
+    import json
+
+    if args.signals_cmd == "list":
+        lm = create_signal_lifecycle_manager()
+        state_filter = SignalLifecycleState(args.state) if getattr(args, "state", None) else None
+        signals = lm.store.load_signals(state=state_filter, symbol=getattr(args, "symbol", None))
+        if getattr(args, "strategy", None):
+            signals = [s for s in signals if s.strategy_name == args.strategy]
+        if getattr(args, "json", False):
+            print(json.dumps([s.safe_public_dict() for s in signals], indent=2))
+        else:
+            for s in signals:
+                print(format_tracked_signal_text(s))
+                print("-" * 40)
+    elif args.signals_cmd == "show":
+        lm = create_signal_lifecycle_manager()
+        s = lm.store.get_signal(args.signal_id)
+        if not s:
+            print("Signal not found")
+            return
+        if getattr(args, "json", False):
+            out = s.safe_public_dict()
+            if getattr(args, "events", False):
+                out["events"] = [e.model_dump(mode='json') for e in lm.store.load_events(s.signal_id)]
+            print(json.dumps(out, indent=2))
+        else:
+            print(format_tracked_signal_text(s))
+            if getattr(args, "events", False):
+                print("\\nEvents:")
+                for e in lm.store.load_events(s.signal_id):
+                    print(f"[{e.timestamp.strftime('%Y-%m-%d %H:%M:%S')}] {e.event_type.value}: {e.message}")
+    elif args.signals_cmd == "expire":
+        lm = create_signal_lifecycle_manager()
+        expired = lm.expire_stale_signals()
+        if getattr(args, "json", False):
+            print(json.dumps([s.safe_public_dict() for s in expired], indent=2))
+        else:
+            print(f"Expired {len(expired)} stale signals.")
+    elif args.signals_cmd == "invalidate":
+        lm = create_signal_lifecycle_manager()
+        s = lm.invalidate_signal(args.signal_id, reason=args.reason, confirm=args.confirm)
+        print(f"Signal {s.signal_id} invalidated.")
+    elif args.signals_cmd == "archive":
+        lm = create_signal_lifecycle_manager()
+        s = lm.archive_signal(args.signal_id, confirm=args.confirm)
+        print(f"Signal {s.signal_id} archived.")
+    elif args.signals_cmd == "watchlist":
+        wm = create_signal_watchlist_manager()
+        entries = wm.list_active(symbol=getattr(args, "symbol", None))
+        if getattr(args, "json", False):
+            print(json.dumps([e.model_dump(mode='json') for e in entries], indent=2))
+        else:
+            print(format_watchlist_text(entries))
+    elif args.signals_cmd == "watchlist-add":
+        wm = create_signal_watchlist_manager()
+        e = wm.add(args.signal_id, tags=[args.tag] if getattr(args, "tag", None) else None, confirm=args.confirm)
+        print(f"Added to watchlist: {e.watchlist_id}")
+    elif args.signals_cmd == "watchlist-remove":
+        wm = create_signal_watchlist_manager()
+        e = wm.remove(args.watchlist_id, confirm=args.confirm)
+        print(f"Removed from watchlist: {e.watchlist_id}")
+    elif args.signals_cmd == "dedupe":
+        print(f"Dedupe info for {args.symbol}: Use standard signal creation or scan module for full evaluation.")
+    elif args.signals_cmd == "simulate-exits":
+        from bist_signal_bot.app.factory import create_data_provider
+        dp = create_data_provider()
+        lm = create_signal_lifecycle_manager()
+        es = create_research_exit_simulator()
+        ot = create_signal_outcome_tracker()
+
+        state_filter = SignalLifecycleState(args.state) if getattr(args, "state", None) else None
+        signals = lm.store.load_signals(state=state_filter, symbol=getattr(args, "symbol", None))
+
+        results = []
+        for s in signals:
+            try:
+                df = dp.get_history(s.symbol, s.timeframe or "1d", rows=200, source=getattr(args, "source", "local_file"))
+                rules = es.build_default_rules(s)
+                sim = es.simulate(s, df, rules)
+                ot.update_from_exit_simulation(sim, confirm=True)
+                results.append(sim)
+            except Exception as e:
+                print(f"Failed simulating exit for {s.symbol}: {e}")
+
+        if getattr(args, "json", False):
+            print(json.dumps([r.model_dump(mode='json') for r in results], indent=2))
+        else:
+            for r in results:
+                print(format_exit_simulation_text(r))
+                print("-" * 40)
+    elif args.signals_cmd == "outcomes":
+        ot = create_signal_outcome_tracker()
+        summary = ot.summarize_outcomes(symbol=getattr(args, "symbol", None), strategy_name=getattr(args, "strategy", None))
+        if getattr(args, "json", False):
+            print(json.dumps(summary, indent=2))
+        else:
+            print(f"Outcome Tracking Summary:")
+            for k, v in summary.items():
+                print(f"{k}: {v}")
+    elif args.signals_cmd == "outcome-update":
+        ot = create_signal_outcome_tracker()
+        s = ot.update_manual_outcome(args.signal_id, SignalOutcomeState(args.outcome), getattr(args, "return_pct", None), args.confirm)
+        print(f"Updated outcome for {s.signal_id} to {s.outcome_state.value}")
+    elif args.signals_cmd == "summary":
+        lm = create_signal_lifecycle_manager()
+        sm = lm.summary()
+        if getattr(args, "json", False):
+            print(json.dumps(sm.model_dump(mode='json'), indent=2))
+        else:
+            print(format_signal_lifecycle_summary(sm))
+    elif args.signals_cmd == "policy":
+        from bist_signal_bot.signals.policy import SignalPolicyManager
+        pm = SignalPolicyManager()
+        policy = pm.load_alert_policy()
+        if getattr(args, "json", False):
+            print(json.dumps(policy.model_dump(mode='json'), indent=2))
+        else:
+            print(json.dumps(policy.model_dump(mode='json'), indent=2))
+    elif args.signals_cmd == "config":
+        from bist_signal_bot.config.settings import get_settings
+        s = get_settings()
+        cfg = {k: v for k, v in s.model_dump().items() if "SIGNAL" in k or "WATCHLIST" in k or "EXIT" in k}
+        if getattr(args, "json", False):
+            print(json.dumps(cfg, indent=2))
+        else:
+            print(json.dumps(cfg, indent=2))
