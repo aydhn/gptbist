@@ -19,6 +19,9 @@ from bist_signal_bot.data.adjustments import PriceAdjustmentEngine
 from bist_signal_bot.data.models import CorporateAction, CorporateActionType, AdjustmentPolicy
 from bist_signal_bot.data.mock_provider import MockMarketDataProvider
 import argparse
+
+from bist_signal_bot.cli.ensemble_commands import setup_ensemble_parser, handle_ensemble_command
+
 import sys
 import platform
 from datetime import datetime

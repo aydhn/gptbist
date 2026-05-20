@@ -1163,6 +1163,52 @@ class Settings(BaseSettings):
 
     RESEARCH_AUTO_LOG_REPORTS: bool = False
 
+
+    ENABLE_ENSEMBLE_ENGINE: bool = Field(default=True)
+    ENSEMBLE_DIR_NAME: str = Field(default="ensemble")
+    ENSEMBLE_DEFAULT_MODE: str = Field(default="METADATA_ONLY")
+    ENSEMBLE_SAVE_OUTPUTS: bool = Field(default=True)
+    ENSEMBLE_DEFAULT_STRATEGIES: str = Field(default="moving_average_trend,breakout_volume,rsi_mean_reversion")
+
+    ENSEMBLE_WEIGHT_STRATEGY: float = Field(default=0.25)
+    ENSEMBLE_WEIGHT_INDICATOR: float = Field(default=0.10)
+    ENSEMBLE_WEIGHT_PATTERN: float = Field(default=0.05)
+    ENSEMBLE_WEIGHT_DIVERGENCE: float = Field(default=0.05)
+    ENSEMBLE_WEIGHT_ML: float = Field(default=0.15)
+    ENSEMBLE_WEIGHT_REGIME: float = Field(default=0.10)
+    ENSEMBLE_WEIGHT_RISK: float = Field(default=0.15)
+    ENSEMBLE_WEIGHT_FUNDAMENTAL: float = Field(default=0.05)
+    ENSEMBLE_WEIGHT_BREADTH: float = Field(default=0.05)
+    ENSEMBLE_WEIGHT_RELATIVE_STRENGTH: float = Field(default=0.03)
+    ENSEMBLE_WEIGHT_SECTOR_ROTATION: float = Field(default=0.01)
+    ENSEMBLE_WEIGHT_ADAPTIVE: float = Field(default=0.01)
+
+    ENSEMBLE_MIN_APPROVED_SCORE: float = Field(default=70.0)
+    ENSEMBLE_MIN_APPROVED_CONFIDENCE: float = Field(default=55.0)
+    ENSEMBLE_MIN_AGREEMENT_RATIO: float = Field(default=0.60)
+    ENSEMBLE_MAX_CONFLICT_SCORE: float = Field(default=35.0)
+    ENSEMBLE_HIGH_CONFLICT_SCORE: float = Field(default=60.0)
+
+    ENSEMBLE_INCLUDE_ML: bool = Field(default=True)
+    ENSEMBLE_INCLUDE_REGIME: bool = Field(default=True)
+    ENSEMBLE_INCLUDE_RISK: bool = Field(default=True)
+    ENSEMBLE_INCLUDE_FUNDAMENTALS: bool = Field(default=True)
+    ENSEMBLE_INCLUDE_BREADTH: bool = Field(default=True)
+    ENSEMBLE_INCLUDE_ADAPTIVE: bool = Field(default=True)
+
+    SCANNER_USE_ENSEMBLE: bool = Field(default=False)
+    SCANNER_ENSEMBLE_MODE: str = Field(default="METADATA_ONLY")
+    SCANNER_MIN_CONSENSUS_SCORE: float = Field(default=55.0)
+    SCANNER_MIN_CONSENSUS_CONFIDENCE: float = Field(default=45.0)
+
+    BACKTEST_USE_ENSEMBLE: bool = Field(default=False)
+    BACKTEST_ENSEMBLE_LAG_BARS: int = Field(default=1)
+
+    RUNTIME_USE_ENSEMBLE: bool = Field(default=False)
+    RUNTIME_ENSEMBLE_MODE: str = Field(default="METADATA_ONLY")
+
+    REPORT_INCLUDE_ENSEMBLE: bool = Field(default=True)
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
 

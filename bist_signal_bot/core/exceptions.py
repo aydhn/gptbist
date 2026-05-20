@@ -806,3 +806,31 @@ class BreadthStorageError(BreadthError):
 
 class BreadthLookaheadError(BreadthError):
     pass
+
+
+class EnsembleError(BistBotError):
+    pass
+
+class EnsembleValidationError(EnsembleError):
+    pass
+
+class EnsembleWeightError(EnsembleError):
+    pass
+
+class EnsembleCollectionError(EnsembleError):
+    pass
+
+class EnsembleScoringError(EnsembleError):
+    pass
+
+class EnsembleConflictError(EnsembleError):
+    pass
+
+class EnsembleExplainabilityError(EnsembleError):
+    pass
+
+class EnsembleStorageError(EnsembleError):
+    pass
+
+class EnsembleLookaheadError(EnsembleError):
+    pass

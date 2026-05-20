@@ -276,6 +276,7 @@ def add_release_parser(subparsers):
     config_parser.add_argument("--json", action="store_true", help="Output JSON")
 
 import argparse
+from bist_signal_bot.cli.ensemble_commands import setup_ensemble_parser
 
 def add_costs_parser(subparsers):
     costs_parser = subparsers.add_parser(
@@ -932,6 +933,7 @@ def build_parser() -> argparse.ArgumentParser:
     b_conf = breadth_subs.add_parser("config", help="Show breadth config")
     b_conf.add_argument("--json", action="store_true", help="Output JSON")
 
+    setup_ensemble_parser(subparsers)
     return parser
 
 def add_paper_parser(subparsers: argparse._SubParsersAction) -> None:
