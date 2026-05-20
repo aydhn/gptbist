@@ -17,6 +17,7 @@ class ReportDataCollector:
         bundle.journal_items = self.collect_signal_journal(config)
         bundle.scanner_items = self.collect_scanner_highlights(config)
         bundle.paper_items = self.collect_paper_summary(config)
+        bundle.portfolio_research_summary = self.collect_portfolio_research_summary(config)
         bundle.source_summaries = self.build_source_summaries(bundle)
 
         # Merge operations summary into bundle dicts as appropriate, or keep separate logic.
@@ -33,6 +34,20 @@ class ReportDataCollector:
     def collect_scanner_highlights(self, config: ReportConfig) -> list[dict[str, Any]]:
         # Read from ScannerStorage
         return []
+
+
+    def collect_portfolio_research_summary(self, config: ReportConfig) -> dict[str, Any]:
+        if not getattr(self.settings, "REPORT_INCLUDE_PORTFOLIO_RESEARCH", False):
+            return {}
+        try:
+            from bist_signal_bot.app.portfolio_research_app import create_portfolio_research_engine
+            engine = create_portfolio_research_engine(self.settings)
+            snapshot = engine.latest_snapshot()
+            if snapshot:
+                return snapshot.summary()
+        except Exception as e:
+            self.logger.warning(f"Failed to collect portfolio research summary: {e}")
+        return {}
 
     def collect_paper_summary(self, config: ReportConfig) -> list[dict[str, Any]]:
         # Read from PaperLedger

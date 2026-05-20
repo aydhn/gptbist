@@ -173,6 +173,39 @@ class RuntimeOrchestrator:
         finally:
             result.finished_at = datetime.utcnow()
             result.elapsed_seconds = (result.finished_at - result.started_at).total_seconds()
+
+            # Portfolio Research Integration
+            if getattr(config, "build_research_portfolio", False) or getattr(self.settings, "RUNTIME_BUILD_RESEARCH_PORTFOLIO", False):
+                try:
+                    from bist_signal_bot.app.portfolio_research_app import create_portfolio_research_engine
+                    from bist_signal_bot.portfolio_research.models import PortfolioResearchRequest, AllocationMethod
+
+                    engine = create_portfolio_research_engine(self.settings)
+
+                    method_str = getattr(config, "portfolio_allocation_method", None) or getattr(self.settings, "RUNTIME_PORTFOLIO_ALLOCATION_METHOD", "HYBRID")
+                    try:
+                        method = AllocationMethod(method_str)
+                    except ValueError:
+                        method = AllocationMethod.HYBRID
+
+                    req = PortfolioResearchRequest(
+                        symbols=config.symbols if config.symbols else [],
+                        allocation_method=method,
+                        max_items=getattr(config, "portfolio_max_items", None) or getattr(self.settings, "RUNTIME_PORTFOLIO_MAX_ITEMS", 10),
+                        save_snapshot=True,
+                        source=config.data_source if hasattr(config, "data_source") else "local"
+                    )
+
+                    snapshot = engine.build_snapshot(req)
+
+                    result.metadata["portfolio_snapshot_id"] = snapshot.snapshot_id
+                    result.metadata["portfolio_item_count"] = snapshot.item_count
+                    result.metadata["portfolio_warnings"] = len(snapshot.warnings)
+                    self.logger.info(f"Built research portfolio snapshot: {snapshot.snapshot_id}")
+                except Exception as e:
+                    self.logger.error(f"Failed to build research portfolio: {e}")
+                    result.metadata["portfolio_error"] = str(e)
+
             self.state_store.mark_finished(result)
             self.lock_manager.release(lock_id)
 

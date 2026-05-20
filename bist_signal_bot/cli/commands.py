@@ -4835,3 +4835,157 @@ def handle_signals_command(args: argparse.Namespace) -> None:
             print(json.dumps(cfg, indent=2))
         else:
             print(json.dumps(cfg, indent=2))
+
+def run_portfolio_research_command(args, settings):
+    subcommand = getattr(args, "subcommand", None)
+    from bist_signal_bot.app.portfolio_research_app import create_portfolio_research_engine
+    from bist_signal_bot.portfolio_research.models import PortfolioResearchRequest, AllocationMethod, ExposureGroup
+    from bist_signal_bot.portfolio_research.reporting import format_snapshot_text, format_rebalance_plan_text, format_basket_simulation_text
+    from datetime import datetime, timedelta
+    import json
+
+    try:
+        engine = create_portfolio_research_engine(settings)
+
+        if subcommand == "build":
+            method_str = getattr(args, "method", "HYBRID")
+            try:
+                method = AllocationMethod(method_str)
+            except ValueError:
+                method = AllocationMethod.HYBRID
+
+            req = PortfolioResearchRequest(
+                symbols=args.symbols if args.symbols else [],
+                allocation_method=method,
+                max_items=args.max_items,
+                include_watchlist=args.include_watchlist,
+                include_ensemble=args.include_ensemble,
+                save_snapshot=args.save
+            )
+
+            snapshot = engine.build_snapshot(req)
+            if getattr(args, "json", False):
+                print(json.dumps(snapshot.safe_public_dict(), indent=2))
+            else:
+                print(format_snapshot_text(snapshot))
+
+        elif subcommand == "exposure":
+            snapshot = None
+            if getattr(args, "snapshot", None):
+                snapshot = engine.store.load_snapshot(args.snapshot)
+            else:
+                snapshot = engine.latest_snapshot()
+
+            if not snapshot:
+                print("No snapshot found.")
+                return
+
+            group_str = getattr(args, "group", "SECTOR")
+            try:
+                group = ExposureGroup(group_str)
+            except ValueError:
+                group = ExposureGroup.SECTOR
+
+            exposures = [e for e in snapshot.exposures if e.group == group and e.weight > 0]
+            if getattr(args, "json", False):
+                print(json.dumps([e.model_dump() for e in exposures], indent=2))
+            else:
+                print(f"Exposures for {group_str}:")
+                for e in exposures:
+                    print(f"  {e.key}: {e.weight:.2%} ({e.item_count} items)")
+
+        elif subcommand == "rebalance":
+            method_str = getattr(args, "method", "HYBRID")
+            try:
+                method = AllocationMethod(method_str)
+            except ValueError:
+                method = AllocationMethod.HYBRID
+
+            req = PortfolioResearchRequest(
+                allocation_method=method,
+                save_snapshot=False
+            )
+
+            plan = engine.rebalance(getattr(args, "current", None), req)
+            if getattr(args, "json", False):
+                print(json.dumps(plan.model_dump(), default=str, indent=2))
+            else:
+                print(format_rebalance_plan_text(plan))
+
+        elif subcommand == "simulate":
+            snapshot_id = getattr(args, "snapshot", None)
+            if getattr(args, "latest", False) or not snapshot_id:
+                snap = engine.latest_snapshot()
+                if snap:
+                    snapshot_id = snap.snapshot_id
+
+            if not snapshot_id:
+                print("No snapshot found for simulation.")
+                return
+
+            from datetime import timezone
+            end_date = datetime.now(timezone.utc).replace(tzinfo=None)
+            if getattr(args, "end", None):
+                end_date = datetime.strptime(args.end, "%Y-%m-%d")
+
+            days = getattr(args, "days", 60)
+            start_date = end_date - timedelta(days=days)
+            if getattr(args, "start", None):
+                start_date = datetime.strptime(args.start, "%Y-%m-%d")
+
+            result = engine.simulate(snapshot_id, start_date, end_date)
+            if getattr(args, "json", False):
+                print(json.dumps(result.model_dump(), default=str, indent=2))
+            else:
+                print(format_basket_simulation_text(result))
+
+        elif subcommand == "show":
+            snap = engine.store.load_snapshot(args.snapshot_id)
+            if not snap:
+                print(f"Snapshot {args.snapshot_id} not found.")
+                return
+            if getattr(args, "json", False):
+                print(json.dumps(snap.safe_public_dict(), indent=2))
+            else:
+                print(format_snapshot_text(snap))
+
+        elif subcommand == "latest":
+            snap = engine.latest_snapshot()
+            if not snap:
+                print("No recent snapshots found.")
+                return
+            if getattr(args, "json", False):
+                print(json.dumps(snap.safe_public_dict(), indent=2))
+            else:
+                print(format_snapshot_text(snap))
+
+        elif subcommand == "recent":
+            recent = engine.store.list_recent_snapshots(limit=getattr(args, "limit", 10))
+            if getattr(args, "json", False):
+                print(json.dumps(recent, indent=2, default=str))
+            else:
+                print(f"Recent Snapshots (Limit {getattr(args, 'limit', 10)}):")
+                for r in recent:
+                    print(f"  {r['snapshot_id']} | {r['created_at']} | Weight: {r.get('total_weight', 0):.2%} | Items: {r.get('item_count', 0)}")
+
+        elif subcommand == "config":
+            cfg = {
+                "ENABLE_PORTFOLIO_RESEARCH": getattr(settings, "ENABLE_PORTFOLIO_RESEARCH", False),
+                "PORTFOLIO_RESEARCH_MODE": getattr(settings, "PORTFOLIO_RESEARCH_MODE", "RESEARCH_ONLY"),
+                "PORTFOLIO_RESEARCH_ALLOCATION_METHOD": getattr(settings, "PORTFOLIO_RESEARCH_ALLOCATION_METHOD", "HYBRID"),
+                "PORTFOLIO_RESEARCH_MAX_ITEMS": getattr(settings, "PORTFOLIO_RESEARCH_MAX_ITEMS", 10),
+                "PORTFOLIO_RESEARCH_TARGET_GROSS_EXPOSURE": getattr(settings, "PORTFOLIO_RESEARCH_TARGET_GROSS_EXPOSURE", 1.0)
+            }
+            if getattr(args, "json", False):
+                print(json.dumps(cfg, indent=2))
+            else:
+                print("Portfolio Research Config:")
+                for k, v in cfg.items():
+                    print(f"  {k}: {v}")
+        else:
+            print("Missing or unknown subcommand for portfolio-research")
+
+    except Exception as e:
+        print(f"Error executing portfolio-research command: {e}")
+        import traceback
+        traceback.print_exc()

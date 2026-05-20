@@ -495,6 +495,57 @@ def build_parser() -> argparse.ArgumentParser:
     )
 
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
+
+    # Portfolio Research Command
+    portfolio_parser = subparsers.add_parser("portfolio-research", help="Manage research portfolio baskets and simulations")
+    portfolio_subparsers = portfolio_parser.add_subparsers(dest="subcommand", help="Portfolio Research commands")
+
+    # build
+    build_parser = portfolio_subparsers.add_parser("build", help="Build a new research portfolio snapshot")
+    build_parser.add_argument("--symbols", nargs="+", help="Specific symbols to include")
+    build_parser.add_argument("--method", type=str, default="HYBRID", help="Allocation method")
+    build_parser.add_argument("--max-items", type=int, default=10, help="Max items in basket")
+    build_parser.add_argument("--include-watchlist", action="store_true", help="Include watchlist items")
+    build_parser.add_argument("--include-ensemble", action="store_true", help="Include ensemble candidates")
+    build_parser.add_argument("--save", action="store_true", help="Save the snapshot")
+    build_parser.add_argument("--json", action="store_true", help="Output JSON")
+
+    # exposure
+    exposure_parser = portfolio_subparsers.add_parser("exposure", help="Show portfolio exposures")
+    exposure_parser.add_argument("--snapshot", type=str, help="Snapshot ID to analyze")
+    exposure_parser.add_argument("--group", type=str, default="SECTOR", help="Exposure group (SECTOR, STRATEGY, etc)")
+    exposure_parser.add_argument("--json", action="store_true", help="Output JSON")
+
+    # rebalance
+    rebalance_parser = portfolio_subparsers.add_parser("rebalance", help="Create a rebalance plan")
+    rebalance_parser.add_argument("--current", type=str, help="Current snapshot ID")
+    rebalance_parser.add_argument("--method", type=str, default="HYBRID", help="Allocation method for target")
+    rebalance_parser.add_argument("--json", action="store_true", help="Output JSON")
+
+    # simulate
+    simulate_parser = portfolio_subparsers.add_parser("simulate", help="Run a basket simulation")
+    simulate_parser.add_argument("--snapshot", type=str, help="Snapshot ID to simulate")
+    simulate_parser.add_argument("--start", type=str, help="Start date (YYYY-MM-DD)")
+    simulate_parser.add_argument("--end", type=str, help="End date (YYYY-MM-DD)")
+    simulate_parser.add_argument("--latest", action="store_true", help="Use latest snapshot")
+    simulate_parser.add_argument("--days", type=int, default=60, help="Lookback days if start/end not provided")
+    simulate_parser.add_argument("--json", action="store_true", help="Output JSON")
+
+    # show/latest/recent/config
+    show_parser = portfolio_subparsers.add_parser("show", help="Show a specific snapshot")
+    show_parser.add_argument("snapshot_id", type=str, help="Snapshot ID")
+    show_parser.add_argument("--json", action="store_true", help="Output JSON")
+
+    latest_parser = portfolio_subparsers.add_parser("latest", help="Show the latest snapshot")
+    latest_parser.add_argument("--json", action="store_true", help="Output JSON")
+
+    recent_parser = portfolio_subparsers.add_parser("recent", help="List recent snapshots")
+    recent_parser.add_argument("--limit", type=int, default=10, help="Number of snapshots")
+    recent_parser.add_argument("--json", action="store_true", help="Output JSON")
+
+    config_parser = portfolio_subparsers.add_parser("config", help="Show portfolio research configuration")
+    config_parser.add_argument("--json", action="store_true", help="Output JSON")
+
     healthcheck_parser = subparsers.add_parser("healthcheck", help="Check system components health")
     config_parser = subparsers.add_parser("config", help="View current configuration")
     config_parser.add_argument("--hide-secrets", action="store_true", default=True, help="Mask sensitive fields")

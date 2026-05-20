@@ -834,3 +834,30 @@ class EnsembleStorageError(EnsembleError):
 
 class EnsembleLookaheadError(EnsembleError):
     pass
+
+class PortfolioResearchError(BistSignalBotError):
+    pass
+
+class PortfolioResearchValidationError(PortfolioResearchError):
+    pass
+
+class PortfolioAllocationError(PortfolioResearchError):
+    pass
+
+class PortfolioConstraintError(PortfolioResearchError):
+    pass
+
+class PortfolioExposureError(PortfolioResearchError):
+    pass
+
+class PortfolioCorrelationError(PortfolioResearchError):
+    pass
+
+class PortfolioRebalanceError(PortfolioResearchError):
+    pass
+
+class BasketSimulationError(PortfolioResearchError):
+    pass
+
+class PortfolioResearchStorageError(PortfolioResearchError):
+    pass

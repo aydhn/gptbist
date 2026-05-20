@@ -8,6 +8,7 @@ class ReportSectionBuilder:
         sections.append(self.build_executive_summary(bundle, config))
         sections.append(self.build_scanner_highlights_section(bundle, config))
         sections.append(self.build_paper_summary_section(bundle, config))
+        sections.append(self.build_portfolio_research_section(bundle, config))
         return sections
 
     def build_disclaimer_section(self, config: ReportConfig) -> ReportSection:
@@ -41,6 +42,24 @@ class ReportSectionBuilder:
 
     def build_adaptive_summary_section(self, bundle: ReportDataBundle, config: ReportConfig) -> ReportSection:
         return ReportSection(section_id="adaptive_summary", section_type=ReportSectionType.ADAPTIVE_SUMMARY, title="Adaptive Summary", body_markdown="Adaptive updates.")
+
+
+    def build_portfolio_research_section(self, bundle: ReportDataBundle, config: ReportConfig) -> ReportSection:
+        summary = getattr(bundle, "portfolio_research_summary", {})
+        md = "No recent research portfolio snapshot found."
+        if summary:
+            md = f"**Snapshot ID:** {summary.get('snapshot_id')}\n"
+            md += f"**Total Weight:** {summary.get('total_weight', 0):.2%}\n"
+            md += f"**Items:** {summary.get('item_count')}\n"
+            md += f"**Warnings:** {summary.get('warnings_count')}\n"
+
+        return ReportSection(
+            section_id="portfolio_research",
+            section_type=ReportSectionType.PORTFOLIO_RESEARCH,
+            title="Portfolio Research Snapshot",
+            body_markdown=md,
+            summary=summary
+        )
 
     def build_paper_summary_section(self, bundle: ReportDataBundle, config: ReportConfig) -> ReportSection:
         return ReportSection(section_id="paper_summary", section_type=ReportSectionType.PAPER_SUMMARY, title="Paper Trading Summary", body_markdown="Simulated execution details. No real orders sent.")

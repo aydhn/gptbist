@@ -67,6 +67,9 @@ class RuntimeJobConfig(BaseModel):
     metadata: Dict[str, Any] = Field(default_factory=dict)
 
 class RuntimePipelineConfig(BaseModel):
+    build_research_portfolio: bool = False
+    portfolio_allocation_method: str | None = None
+    portfolio_max_items: int | None = None
     mode: RuntimeMode = RuntimeMode.RUN_ONCE
     strategy_name: str
     universe_mode: str = "GROUP"
