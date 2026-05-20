@@ -323,3 +323,9 @@ def get_portfolio_research_dir(settings=None) -> Path:
     path = get_data_dir(settings) / getattr(settings, "PORTFOLIO_RESEARCH_DIR_NAME", "portfolio_research")
     path.mkdir(parents=True, exist_ok=True)
     return path
+
+def get_stress_dir(settings=None) -> Path:
+    base = get_data_dir(settings)
+    stress_dir = base / "stress"
+    stress_dir.mkdir(parents=True, exist_ok=True)
+    return stress_dir

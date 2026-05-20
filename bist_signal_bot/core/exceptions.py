@@ -861,3 +861,24 @@ class BasketSimulationError(PortfolioResearchError):
 
 class PortfolioResearchStorageError(PortfolioResearchError):
     pass
+
+class StressTestError(BistSignalBotError):
+    pass
+
+class StressValidationError(StressTestError):
+    pass
+
+class MonteCarloError(StressTestError):
+    pass
+
+class ShockScenarioError(StressTestError):
+    pass
+
+class DrawdownSimulationError(StressTestError):
+    pass
+
+class RiskOfRuinError(StressTestError):
+    pass
+
+class StressStorageError(StressTestError):
+    pass

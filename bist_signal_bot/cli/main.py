@@ -175,13 +175,16 @@ def run_cli(argv: list[str] | None = None) -> int:
         "release": lambda a, c: __import__("bist_signal_bot.cli.commands", fromlist=["handle_release_command"]).handle_release_command(a, c.settings),
         "signals": lambda a, c: __import__("bist_signal_bot.cli.commands", fromlist=["handle_signals_command"]).handle_signals_command(a),
                 "ensemble": lambda a, c: __import__("bist_signal_bot.cli.ensemble_commands", fromlist=["handle_ensemble_command"]).handle_ensemble_command(a),
+        "stress": lambda a, c: __import__("bist_signal_bot.cli.stress_cmd", fromlist=["handle_stress_command"]).handle_stress_command(a, c.settings),
         "portfolio-research": lambda a, c: __import__("bist_signal_bot.cli.commands", fromlist=["run_portfolio_research_command"]).run_portfolio_research_command(a, c.settings),
         "release": lambda a, c: __import__("bist_signal_bot.cli.commands", fromlist=["handle_release_command"]).handle_release_command(a, c.settings),
         "signals": lambda a, c: __import__("bist_signal_bot.cli.commands", fromlist=["handle_signals_command"]).handle_signals_command(a),
         "ensemble": lambda a, c: __import__("bist_signal_bot.cli.ensemble_commands", fromlist=["handle_ensemble_command"]).handle_ensemble_command(a),
+        "stress": lambda a, c: __import__("bist_signal_bot.cli.stress_cmd", fromlist=["handle_stress_command"]).handle_stress_command(a, c.settings),
         "release": lambda a, c: __import__("bist_signal_bot.cli.commands", fromlist=["handle_release_command"]).handle_release_command(a, c.settings),
         "signals": lambda a, c: __import__("bist_signal_bot.cli.commands", fromlist=["handle_signals_command"]).handle_signals_command(a),
         "ensemble": lambda a, c: __import__("bist_signal_bot.cli.ensemble_commands", fromlist=["handle_ensemble_command"]).handle_ensemble_command(a),
+        "stress": lambda a, c: __import__("bist_signal_bot.cli.stress_cmd", fromlist=["handle_stress_command"]).handle_stress_command(a, c.settings),
 
 
     }
