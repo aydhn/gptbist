@@ -100,6 +100,13 @@ def run_cli(argv: list[str] | None = None) -> int:
 
 
 
+    if args_to_parse and args_to_parse[0] == 'review':
+        from bist_signal_bot.cli.commands import review
+        import sys
+        sys.argv = [sys.argv[0]] + args_to_parse[1:]
+        review()
+        return 0
+
     if args_to_parse and args_to_parse[0] == 'governance':
         import argparse
         parser = argparse.ArgumentParser()
