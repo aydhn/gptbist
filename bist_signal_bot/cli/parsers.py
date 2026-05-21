@@ -477,6 +477,60 @@ def add_signals_parser(subparsers):
     cfg_p = signals_subparsers.add_parser("config", help="Show signals configuration")
     cfg_p.add_argument("--json", action="store_true", help="Output JSON")
 
+
+def add_lab_parser(subparsers):
+    lab_parser = subparsers.add_parser("lab", help="Research Lab automation (queue, batch, jobs)")
+    lab_subs = lab_parser.add_subparsers(dest="lab_command", required=True)
+
+    plan_parser = lab_subs.add_parser("plan", help="Generate a research batch plan")
+    plan_parser.add_argument("plan_type", choices=["daily", "weekly", "adaptive", "drift"], help="Type of plan to generate")
+    plan_parser.add_argument("--symbols", nargs="+", help="Symbols to include")
+    plan_parser.add_argument("--strategies", nargs="+", help="Strategies to include")
+    plan_parser.add_argument("--from-latest", action="store_true", help="Use latest adaptive/drift state")
+    plan_parser.add_argument("--json", action="store_true", help="Output JSON")
+
+    enqueue_parser = lab_subs.add_parser("enqueue", help="Enqueue jobs")
+    enqueue_parser.add_argument("--plan", help="Plan ID to enqueue")
+    enqueue_parser.add_argument("--job", help="Single job type to enqueue")
+    enqueue_parser.add_argument("--symbol", help="Symbol for single job")
+    enqueue_parser.add_argument("--strategy", help="Strategy for single job")
+    enqueue_parser.add_argument("--json", action="store_true", help="Output JSON")
+
+    run_parser = lab_subs.add_parser("run", help="Run batch jobs")
+    run_parser.add_argument("--next", action="store_true", help="Run next ready jobs from queue")
+    run_parser.add_argument("--plan", help="Run a specific plan immediately")
+    run_parser.add_argument("--queued", action="store_true", help="Run all queued jobs")
+    run_parser.add_argument("--limit", type=int, default=1, help="Max jobs to run")
+    run_parser.add_argument("--confirm-heavy", action="store_true", help="Confirm running heavy jobs")
+    run_parser.add_argument("--json", action="store_true", help="Output JSON")
+
+    jobs_parser = lab_subs.add_parser("jobs", help="List jobs in queue")
+    jobs_parser.add_argument("--status", help="Filter by status")
+    jobs_parser.add_argument("--json", action="store_true", help="Output JSON")
+
+    cancel_parser = lab_subs.add_parser("cancel", help="Cancel a job")
+    cancel_parser.add_argument("job_id", help="Job ID to cancel")
+    cancel_parser.add_argument("--confirm", action="store_true", help="Confirm cancellation", required=True)
+
+    retry_parser = lab_subs.add_parser("retry", help="Retry a failed job")
+    retry_parser.add_argument("job_id", help="Job ID to retry")
+    retry_parser.add_argument("--confirm", action="store_true", help="Confirm retry", required=True)
+
+    show_parser = lab_subs.add_parser("show", help="Show details of job/run/plan")
+    show_parser.add_argument("type", choices=["job", "run", "plan"], help="Type of entity")
+    show_parser.add_argument("id", help="Entity ID")
+    show_parser.add_argument("--json", action="store_true", help="Output JSON")
+
+    recent_parser = lab_subs.add_parser("recent", help="List recent batch runs")
+    recent_parser.add_argument("--limit", type=int, default=10, help="Number of runs to show")
+    recent_parser.add_argument("--json", action="store_true", help="Output JSON")
+
+    policy_parser = lab_subs.add_parser("policy", help="Show active research policy")
+    policy_parser.add_argument("--json", action="store_true", help="Output JSON")
+
+    config_parser = lab_subs.add_parser("config", help="Show lab config")
+    config_parser.add_argument("--json", action="store_true", help="Output JSON")
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="bist_signal_bot",
@@ -1058,6 +1112,7 @@ def build_parser() -> argparse.ArgumentParser:
     setup_ensemble_parser(subparsers)
     add_stress_parsers(subparsers)
     add_drift_parser(subparsers)
+    add_lab_parser(subparsers)
     return parser
 
 def add_paper_parser(subparsers: argparse._SubParsersAction) -> None:

@@ -294,3 +294,36 @@ def print_ml_train_result(result):
 def print_ml_prediction_result(result):
     from bist_signal_bot.ml.training.reporting import format_ml_prediction_text
     print(format_ml_prediction_text(result))
+
+def format_job_text(job: Any) -> str:
+    lines = [
+        f"Job: {job.title} ({job.job_id})",
+        f"Status: {job.status.value if hasattr(job.status, 'value') else str(job.status)}",
+        f"Priority: {job.priority.value if hasattr(job.priority, 'value') else str(job.priority)}",
+        f"Symbols: {','.join(job.symbols) if job.symbols else 'N/A'}"
+    ]
+    return "\n".join(lines)
+
+def format_batch_plan_text(plan: Any) -> str:
+    lines = [
+        f"Research Batch Plan: {plan.plan_id}",
+        f"Trigger: {plan.trigger.value if hasattr(plan.trigger, 'value') else str(plan.trigger)}",
+        f"Total Jobs: {len(plan.jobs)}",
+        f"Estimated Runtime: {plan.estimated_runtime_seconds or 0:.1f}s",
+        f"Estimated Memory: {plan.estimated_memory_mb or 0:.1f}MB",
+        f"",
+        f"Disclaimer: {plan.disclaimer}"
+    ]
+    return "\n".join(lines)
+
+def format_batch_run_text(run: Any) -> str:
+    lines = [
+        f"Research Batch Run: {run.batch_id}",
+        f"Status: {run.status.value if hasattr(run.status, 'value') else str(run.status)}",
+        f"Total Jobs: {len(run.jobs)}",
+        f"Success: {run.success_count}, Failed: {run.failed_count}, Skipped: {run.skipped_count}",
+        f"Elapsed Time: {run.elapsed_seconds:.1f}s",
+        f"",
+        f"Disclaimer: {run.disclaimer}"
+    ]
+    return "\n".join(lines)

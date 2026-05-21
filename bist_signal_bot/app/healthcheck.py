@@ -15,7 +15,8 @@ class HealthChecker:
             "components": {
                 "config": "OK",
                 "storage": "OK",
-                "drift_monitoring": "OK" if self.settings.ENABLE_DRIFT_MONITORING else "DISABLED"
+                "drift_monitoring": "OK" if self.settings.ENABLE_DRIFT_MONITORING else "DISABLED",
+                "research_lab": "OK" if getattr(self.settings, "ENABLE_RESEARCH_LAB", True) else "DISABLED"
             }
         }
         return status
