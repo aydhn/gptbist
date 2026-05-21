@@ -78,3 +78,6 @@ class ReportSectionBuilder:
 
     def build_appendix_section(self, bundle: ReportDataBundle, config: ReportConfig) -> ReportSection:
         return ReportSection(section_id="appendix", section_type=ReportSectionType.APPENDIX, title="Appendix", body_markdown="Extra data.")
+def add_drift_section(result):
+    from bist_signal_bot.drift.reporting import format_drift_result_text
+    return "\n--- Drift & Decay Monitoring ---\n" + format_drift_result_text(result)

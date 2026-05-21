@@ -329,3 +329,11 @@ def get_stress_dir(settings=None) -> Path:
     stress_dir = base / "stress"
     stress_dir.mkdir(parents=True, exist_ok=True)
     return stress_dir
+
+def get_drift_dir(settings=None) -> Path:
+    from bist_signal_bot.config.settings import Settings
+    if settings is None:
+        settings = Settings()
+    path = get_data_dir(settings) / getattr(settings, "DRIFT_DIR_NAME", "drift")
+    path.mkdir(parents=True, exist_ok=True)
+    return path

@@ -882,3 +882,33 @@ class RiskOfRuinError(StressTestError):
 
 class StressStorageError(StressTestError):
     pass
+
+class DriftError(BistSignalBotError):
+    pass
+
+class DriftValidationError(DriftError):
+    pass
+
+class FeatureDriftError(DriftError):
+    pass
+
+class ModelDriftError(DriftError):
+    pass
+
+class CalibrationError(DriftError):
+    pass
+
+class SignalDecayError(DriftError):
+    pass
+
+class StrategyDecayError(DriftError):
+    pass
+
+class PortfolioDriftError(DriftError):
+    pass
+
+class DriftReferenceError(DriftError):
+    pass
+
+class DriftStorageError(DriftError):
+    pass

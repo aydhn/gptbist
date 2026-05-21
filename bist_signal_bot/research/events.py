@@ -149,3 +149,16 @@ class ResearchEventBuilder:
             metrics=metrics,
             started_at=datetime.utcnow()
         )
+def build_drift_analysis_event(drift_id: str, status: str, severity: str, recommendations: list, metadata: dict = None):
+    meta = metadata or {}
+    meta.update({
+        "drift_id": drift_id,
+        "status": status,
+        "severity": severity,
+        "recommended_actions": recommendations,
+        "no_real_order_sent": True
+    })
+    return {
+        "event_type": "DRIFT_ANALYSIS_COMPLETED",
+        "metadata": meta
+    }

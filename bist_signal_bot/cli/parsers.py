@@ -1057,6 +1057,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     setup_ensemble_parser(subparsers)
     add_stress_parsers(subparsers)
+    add_drift_parser(subparsers)
     return parser
 
 def add_paper_parser(subparsers: argparse._SubParsersAction) -> None:
@@ -1631,3 +1632,78 @@ def add_release_parser(subparsers):
     # release config
     config_parser = release_subparsers.add_parser("config", help="Show release configuration")
     config_parser.add_argument("--json", action="store_true", help="Output JSON")
+
+def add_drift_parser(subparsers):
+    drift_parser = subparsers.add_parser("drift", help="Drift, Model Decay & Calibration Monitoring")
+    subs = drift_parser.add_subparsers(dest="subcommand", help="Drift subcommands")
+
+    # snapshot
+    snap_parser = subs.add_parser("snapshot", help="Generate a comprehensive drift snapshot")
+    snap_parser.add_argument("--domains", nargs="+", help="Specific domains to analyze (FEATURE, MODEL_SCORE, etc.)")
+    snap_parser.add_argument("--symbols", nargs="+", help="Optional specific symbols")
+    snap_parser.add_argument("--save", action="store_true", help="Save the snapshot results to disk")
+    snap_parser.add_argument("--json", action="store_true", help="Output in JSON format")
+
+    # features
+    feat_parser = subs.add_parser("features", help="Analyze feature drift")
+    feat_parser.add_argument("--reference-days", type=int, default=90, help="Days for reference window")
+    feat_parser.add_argument("--current-days", type=int, default=14, help="Days for current window")
+    feat_parser.add_argument("--features", nargs="+", help="Specific feature names to analyze")
+    feat_parser.add_argument("--json", action="store_true", help="Output in JSON format")
+
+    # model
+    model_parser = subs.add_parser("model", help="Analyze model score drift and prediction rates")
+    model_parser.add_argument("--model-id", type=str, help="Specific model ID to analyze")
+    model_parser.add_argument("--latest", action="store_true", help="Use latest model")
+    model_parser.add_argument("--json", action="store_true", help="Output in JSON format")
+
+    # calibration
+    calib_parser = subs.add_parser("calibration", help="Generate model calibration report")
+    calib_parser.add_argument("--model-id", type=str, help="Specific model ID to analyze")
+    calib_parser.add_argument("--latest", action="store_true", help="Use latest model")
+    calib_parser.add_argument("--json", action="store_true", help="Output in JSON format")
+
+    # signals
+    sig_parser = subs.add_parser("signals", help="Analyze signal decay")
+    sig_parser.add_argument("--reference-days", type=int, default=90, help="Days for reference window")
+    sig_parser.add_argument("--current-days", type=int, default=14, help="Days for current window")
+    sig_parser.add_argument("--json", action="store_true", help="Output in JSON format")
+
+    # strategy
+    strat_parser = subs.add_parser("strategy", help="Analyze strategy decay")
+    strat_parser.add_argument("strategy", type=str, help="Strategy name to analyze")
+    strat_parser.add_argument("--json", action="store_true", help="Output in JSON format")
+
+    # portfolio
+    port_parser = subs.add_parser("portfolio", help="Analyze portfolio drift")
+    port_parser.add_argument("--latest", action="store_true", help="Compare current to latest snapshot")
+    port_parser.add_argument("--json", action="store_true", help="Output in JSON format")
+
+    # reference
+    ref_parser = subs.add_parser("reference", help="Manage drift reference windows")
+    ref_subs = ref_parser.add_subparsers(dest="ref_subcommand")
+
+    ref_list = ref_subs.add_parser("list", help="List reference windows")
+    ref_list.add_argument("--json", action="store_true", help="Output JSON")
+
+    ref_build = ref_subs.add_parser("build", help="Build a new reference window")
+    ref_build.add_argument("--domain", type=str, required=True, help="Domain for reference")
+    ref_build.add_argument("--days", type=int, default=90, help="Days of data")
+    ref_build.add_argument("--confirm", action="store_true", help="Confirm the build (required)")
+
+    ref_show = ref_subs.add_parser("show", help="Show reference window details")
+    ref_show.add_argument("reference_id", type=str, help="Reference ID")
+    ref_show.add_argument("--json", action="store_true", help="Output JSON")
+
+    # latest
+    lat_parser = subs.add_parser("latest", help="Show latest full drift snapshot")
+    lat_parser.add_argument("--json", action="store_true", help="Output JSON")
+
+    # recent
+    rec_parser = subs.add_parser("recent", help="List recent drift snapshots")
+    rec_parser.add_argument("--limit", type=int, default=10, help="Number of snapshots")
+    rec_parser.add_argument("--json", action="store_true", help="Output JSON")
+
+    # config
+    cfg_parser = subs.add_parser("config", help="Show drift configuration")
+    cfg_parser.add_argument("--json", action="store_true", help="Output JSON")
