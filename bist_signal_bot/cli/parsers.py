@@ -1762,3 +1762,7 @@ def add_drift_parser(subparsers):
     # config
     cfg_parser = subs.add_parser("config", help="Show drift configuration")
     cfg_parser.add_argument("--json", action="store_true", help="Output JSON")
+
+    # Adding maintenance logic integration
+    maintenance_parser = subparsers.add_parser('maintenance', help='Run maintenance operations (backup, restore, cleanup, doctor)')
+    maintenance_parser.add_argument('subcommand', nargs='...', help='Maintenance subcommand (backup-create, restore, cleanup, doctor, etc)')

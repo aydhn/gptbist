@@ -5432,3 +5432,12 @@ def route_lab_command(args, app_context) -> int:
     elif args.lab_command == "config":
         return cmd_lab_config(args, app_context)
     return 1
+
+def execute_maintenance(args):
+    import sys
+    from bist_signal_bot.cli.commands_maintenance import run_maintenance_cli
+
+    if args.subcommand:
+        # Patch sys.argv for the sub-parser
+        sys.argv = [sys.argv[0]] + args.subcommand
+    run_maintenance_cli()

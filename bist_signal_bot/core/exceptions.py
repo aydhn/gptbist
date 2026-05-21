@@ -939,3 +939,36 @@ class ResearchJobRetryError(ResearchLabError):
 
 class ResearchLabStorageError(ResearchLabError):
     pass
+
+class MaintenanceError(BistSignalBotError):
+    pass
+
+class BackupError(MaintenanceError):
+    pass
+
+class BackupValidationError(BackupError):
+    pass
+
+class RestoreError(MaintenanceError):
+    pass
+
+class RestoreValidationError(RestoreError):
+    pass
+
+class RetentionError(MaintenanceError):
+    pass
+
+class CleanupError(MaintenanceError):
+    pass
+
+class MigrationError(MaintenanceError):
+    pass
+
+class MaintenanceDoctorError(MaintenanceError):
+    pass
+
+class BackupManifestError(MaintenanceError):
+    pass
+
+class ChecksumError(MaintenanceError):
+    pass

@@ -1031,3 +1031,63 @@ def format_signal_decay_report(report) -> str:
 
 def format_strategy_decay_report(report) -> str:
     return f"Strategy Decay Status: {report.status.value}\nScore: {report.decay_score:.2f}\nActions: {', '.join([a.value for a in report.recommended_actions])}"
+
+
+def format_backup_result(result) -> str:
+    lines = [
+        "BIST Bot Maintenance Özeti",
+        "",
+        f"Backup: {result.status.value}",
+        f"Included Files: {result.manifest.included_files}",
+        f"Excluded Files: {result.manifest.excluded_files}",
+        f"Verified: {'true' if result.verified else 'false'}",
+        f"Warnings: {len(result.warnings)}",
+        "",
+        "Bu çıktı operasyonel bakım özetidir.",
+        "Yatırım tavsiyesi değildir.",
+        "Gerçek emir gönderilmedi."
+    ]
+    return "\n".join(lines)
+
+def format_restore_result(result) -> str:
+    lines = [
+        "BIST Bot Restore Özeti",
+        "",
+        f"Restore: {result.status.value}",
+        f"Restored: {result.restored_files}",
+        f"Blocked: {result.blocked_files}",
+        "",
+        "Bu çıktı operasyonel bakım özetidir.",
+        "Yatırım tavsiyesi değildir.",
+        "Gerçek emir gönderilmedi."
+    ]
+    return "\n".join(lines)
+
+def format_cleanup_result(result) -> str:
+    lines = [
+        "BIST Bot Cleanup Özeti",
+        "",
+        f"Cleanup: {result.status.value}",
+        f"Deleted: {result.deleted_files}",
+        f"Candidates: {len(result.candidates)}",
+        "",
+        "Bu çıktı operasyonel bakım özetidir.",
+        "Yatırım tavsiyesi değildir.",
+        "Gerçek emir gönderilmedi."
+    ]
+    return "\n".join(lines)
+
+def format_maintenance_doctor_report(report) -> str:
+    lines = [
+        "BIST Bot Doctor Özeti",
+        "",
+        f"Status: {report.status.value}",
+        f"Missing Dirs: {len(report.missing_dirs)}",
+        f"Corrupted: {len(report.corrupted_files)}",
+        f"Secret Risks: {len(report.secret_risk_files)}",
+        "",
+        "Bu çıktı operasyonel bakım özetidir.",
+        "Yatırım tavsiyesi değildir.",
+        "Gerçek emir gönderilmedi."
+    ]
+    return "\n".join(lines)

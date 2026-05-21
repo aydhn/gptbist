@@ -24,3 +24,29 @@ class HealthChecker:
 def run_healthcheck(settings: Settings | None = None) -> Dict[str, Any]:
     checker = HealthChecker(settings)
     return checker.run()
+
+def check_maintenance_status() -> dict:
+    from bist_signal_bot.app.maintenance_app import create_maintenance_doctor, create_maintenance_store
+
+    try:
+        doc = create_maintenance_doctor()
+        res = doc.run_doctor()
+
+        store = create_maintenance_store()
+        backups = store.list_backups(limit=1)
+        latest_backup_age_days = -1
+
+        if backups:
+            import datetime
+            from datetime import timezone
+            bkp_time = datetime.datetime.fromisoformat(backups[0].get('created_at'))
+            latest_backup_age_days = (datetime.datetime.now(timezone.utc) - bkp_time).days
+
+        return {
+            "status": "PASS" if res.status.value == "SUCCESS" else "WARN",
+            "latest_backup_age_days": latest_backup_age_days,
+            "corrupted_files": len(res.corrupted_files),
+            "secret_risks": len(res.secret_risk_files)
+        }
+    except Exception as e:
+        return {"status": "FAIL", "error": str(e)}
