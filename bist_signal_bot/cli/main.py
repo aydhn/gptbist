@@ -3,6 +3,7 @@ import sys
 from bist_signal_bot.app.bootstrap import bootstrap_app
 from bist_signal_bot.cli.parsers import parse_args
 from bist_signal_bot.cli.commands import (
+    handle_governance_command,
     cmd_patterns_list,
     cmd_patterns_detect,
     cmd_pattern_features,
@@ -97,6 +98,20 @@ def run_cli(argv: list[str] | None = None) -> int:
     args_to_parse = argv if argv is not None else sys.argv[1:]
 
 
+
+
+    if args_to_parse and args_to_parse[0] == 'governance':
+        import argparse
+        parser = argparse.ArgumentParser()
+        subparsers = parser.add_subparsers(dest="command")
+        from bist_signal_bot.cli.parsers import add_governance_parser
+        add_governance_parser(subparsers)
+
+        # Fake parse just for governance
+        args, _ = parser.parse_known_args(['governance'] + args_to_parse[1:])
+        from bist_signal_bot.cli.commands import handle_governance_command
+        handle_governance_command(args)
+        return 0
 
     if args_to_parse and args_to_parse[0] == 'maintenance':
         from bist_signal_bot.cli.commands_maintenance import run_maintenance_cli

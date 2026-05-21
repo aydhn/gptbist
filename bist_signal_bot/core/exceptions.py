@@ -488,9 +488,9 @@ class PerformanceBenchmarkError(PerformanceError):
 class PerformanceStorageError(PerformanceError):
     pass
 
-class BistBotError(Exception): pass
+class BistSignalBotError(Exception): pass
 
-class RuntimeErrorBase(BistBotError): pass
+class RuntimeErrorBase(BistSignalBotError): pass
 class RuntimeValidationError(RuntimeErrorBase): pass
 class RuntimeLockError(RuntimeErrorBase): pass
 class RuntimeStateError(RuntimeErrorBase): pass
@@ -808,7 +808,7 @@ class BreadthLookaheadError(BreadthError):
     pass
 
 
-class EnsembleError(BistBotError):
+class EnsembleError(BistSignalBotError):
     pass
 
 class EnsembleValidationError(EnsembleError):
@@ -971,4 +971,28 @@ class BackupManifestError(MaintenanceError):
     pass
 
 class ChecksumError(MaintenanceError):
+    pass
+
+class GovernanceError(BistSignalBotError):
+    pass
+
+class GovernancePolicyError(GovernanceError):
+    pass
+
+class GovernanceRuleError(GovernanceError):
+    pass
+
+class AuditReviewError(GovernanceError):
+    pass
+
+class EvidencePackError(GovernanceError):
+    pass
+
+class GovernanceGateError(GovernanceError):
+    pass
+
+class AttestationError(GovernanceError):
+    pass
+
+class GovernanceStorageError(GovernanceError):
     pass

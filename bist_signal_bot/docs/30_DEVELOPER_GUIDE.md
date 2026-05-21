@@ -12,3 +12,12 @@ All tasks run in an isolated environment that explicitly mocks or blocks broker 
 The queue processor runs offline and deduplicates identical configurations spanning configurable hours to conserve resources.
 
 *Disclaimer: The research automation is purely for analytics. It does not send real market orders, it makes zero network calls to exchanges, and output must not be considered financial advice.*
+
+### Governance & Compliance Katmanı (Phase 61)
+BIST Signal Bot strictly operates under a set of governance rules enforced by the Governance layer. Ensure that your modifications do not violate the core tenets:
+- No real orders
+- No broker APIs
+- No HTML scraping
+- Proper secret hygiene
+
+See `docs/33_GOVERNANCE_COMPLIANCE.md` for details.

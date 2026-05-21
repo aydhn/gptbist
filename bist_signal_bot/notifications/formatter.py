@@ -1091,3 +1091,34 @@ def format_maintenance_doctor_report(report) -> str:
         "Gerçek emir gönderilmedi."
     ]
     return "\n".join(lines)
+
+    def format_audit_review_result(self, result: Any) -> str:
+        lines = [
+            "BIST Bot Governance Özeti",
+            "",
+            f"Status: {result.status.value}",
+            f"Findings: {len(result.findings)}",
+            f"Critical: {sum(1 for f in result.findings if f.severity.value in ('CRITICAL', 'HIGH'))}",
+            f"Blocked: {result.blocked_count}",
+            f"Warnings: {result.warning_count}",
+            "",
+            "Bu çıktı operasyonel governance özetidir.",
+            "Yatırım tavsiyesi değildir.",
+            "Gerçek emir gönderilmedi."
+        ]
+        return "\n".join(lines)
+
+    def format_governance_gate_result(self, result: Any) -> str:
+        lines = [
+            "BIST Bot Governance Gate",
+            f"Gate: {result.request.gate_name}",
+            f"Decision: {result.decision.value}",
+            "Gerçek emir gönderilmedi."
+        ]
+        return "\n".join(lines)
+
+    def format_evidence_pack_manifest(self, manifest: Any) -> str:
+        return f"Evidence Pack Created: {manifest.pack_name}\nNo real order sent."
+
+    def format_compliance_attestation(self, attestation: Any) -> str:
+        return f"Compliance Attestation: {attestation.status.value}\nNot investment advice."

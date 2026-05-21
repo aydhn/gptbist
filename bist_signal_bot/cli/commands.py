@@ -5441,3 +5441,131 @@ def execute_maintenance(args):
         # Patch sys.argv for the sub-parser
         sys.argv = [sys.argv[0]] + args.subcommand
     run_maintenance_cli()
+
+def handle_governance_command(args):
+    from bist_signal_bot.app.governance_app import (
+        create_governance_policy_manager,
+        create_audit_review_engine,
+        create_governance_gate,
+        create_evidence_pack_builder,
+        create_attestation_builder,
+        create_governance_store
+    )
+    from bist_signal_bot.governance.models import AuditReviewRequest, EvidencePackRequest
+    from bist_signal_bot.governance.reporting import (
+        governance_policy_to_dict,
+        audit_review_to_dict,
+        gate_result_to_dict,
+        evidence_manifest_to_dict,
+        attestation_to_dict,
+        format_audit_review_text,
+        format_gate_result_text,
+        format_evidence_pack_text
+    )
+    import json
+
+    if args.gov_command == "policy":
+        mgr = create_governance_policy_manager()
+        policy = mgr.load_policy()
+        if args.json:
+            print(json.dumps(governance_policy_to_dict(policy), indent=2))
+        else:
+            print(f"Policy Version: {policy.version}")
+            print(f"Rules Count: {len(policy.rules)}")
+
+    elif args.gov_command == "policy-save":
+        if not args.confirm:
+            print("Error: --confirm is required to save policy")
+            return
+        mgr = create_governance_policy_manager()
+        pol = mgr.default_policy()
+        path = mgr.save_policy(pol, confirm=True)
+        print(f"Saved policy to {path}")
+
+    elif args.gov_command == "audit":
+        engine = create_audit_review_engine()
+        store = create_governance_store()
+        req = AuditReviewRequest()
+        result = engine.review(req)
+        store.save_review(result)
+        if args.json:
+            print(json.dumps(audit_review_to_dict(result), indent=2))
+        else:
+            print(format_audit_review_text(result))
+
+    elif args.gov_command == "gate":
+        gate = create_governance_gate()
+        payload = {"cli": True}
+        if args.gate_type == "release":
+            res = gate.release_gate(payload)
+        elif args.gate_type == "runtime":
+            res = gate.runtime_gate(payload)
+        elif args.gate_type == "research-lab":
+            res = gate.research_lab_gate(payload)
+        elif args.gate_type == "maintenance":
+            res = gate.maintenance_gate(payload)
+        else:
+            res = gate.report_gate(payload)
+
+        store = create_governance_store()
+        store.save_gate_result(res)
+
+        if args.json:
+            print(json.dumps(gate_result_to_dict(res), indent=2))
+        else:
+            print(format_gate_result_text(res))
+
+    elif args.gov_command == "evidence":
+        if not args.dry_run and not args.confirm:
+            print("Error: --confirm is required unless --dry-run is specified")
+            return
+
+        builder = create_evidence_pack_builder()
+        store = create_governance_store()
+        req = EvidencePackRequest(pack_name=args.pack_name, dry_run=args.dry_run)
+        manifest = builder.build_pack(req)
+        store.save_evidence_manifest(manifest)
+        if args.json:
+            print(json.dumps(evidence_manifest_to_dict(manifest), indent=2))
+        else:
+            print(format_evidence_pack_text(manifest))
+
+    elif args.gov_command == "attest":
+        store = create_governance_store()
+        rev = store.load_latest_review()
+        if not rev:
+            print("No latest review found. Run audit first.")
+            return
+        builder = create_attestation_builder()
+        att = builder.build_attestation(rev)
+        store.save_attestation(att)
+        if args.json:
+            print(json.dumps(attestation_to_dict(att), indent=2))
+        else:
+            print(builder.render_markdown(att))
+
+    elif args.gov_command == "latest":
+        store = create_governance_store()
+        rev = store.load_latest_review()
+        if not rev:
+            print("No latest review found.")
+            return
+        if args.json:
+            print(json.dumps(audit_review_to_dict(rev), indent=2))
+        else:
+            print(format_audit_review_text(rev))
+
+    elif args.gov_command == "recent":
+        store = create_governance_store()
+        revs = store.list_recent_reviews(args.limit)
+        if args.json:
+            print(json.dumps(revs, indent=2))
+        else:
+            for r in revs:
+                print(f"{r.get('review_id')} - {r.get('status')} - {r.get('generated_at')}")
+
+    elif args.gov_command == "config":
+        from bist_signal_bot.config.settings import get_settings
+        sett = get_settings()
+        cfg = {k: v for k, v in sett.model_dump().items() if "GOVERNANCE" in k and "SECRET" not in k}
+        print(json.dumps(cfg, indent=2))

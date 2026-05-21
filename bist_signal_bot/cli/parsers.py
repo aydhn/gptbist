@@ -1766,3 +1766,51 @@ def add_drift_parser(subparsers):
     # Adding maintenance logic integration
     maintenance_parser = subparsers.add_parser('maintenance', help='Run maintenance operations (backup, restore, cleanup, doctor)')
     maintenance_parser.add_argument('subcommand', nargs='...', help='Maintenance subcommand (backup-create, restore, cleanup, doctor, etc)')
+
+def add_governance_parser(subparsers):
+    parser = subparsers.add_parser("governance", help="Manage governance, compliance, and audit operations")
+    sub = parser.add_subparsers(dest="gov_command", required=True)
+
+    # policy
+    pol = sub.add_parser("policy", help="Show current governance policy")
+    pol.add_argument("--json", action="store_true", help="Output as JSON")
+
+    # policy-save
+    pols = sub.add_parser("policy-save", help="Save default governance policy")
+    pols.add_argument("--confirm", action="store_true", help="Confirm saving policy")
+
+    # audit
+    aud = sub.add_parser("audit", help="Run governance audit review")
+    aud.add_argument("--domains", nargs="+", help="Specific domains to audit")
+    aud.add_argument("--lookback-days", type=int, default=30, help="Lookback days")
+    aud.add_argument("--json", action="store_true", help="Output as JSON")
+
+    # gate
+    gat = sub.add_parser("gate", help="Run a specific governance gate")
+    gat.add_argument("gate_type", choices=["release", "runtime", "research-lab", "maintenance", "report"], help="Gate type")
+    gat.add_argument("--json", action="store_true", help="Output as JSON")
+
+    # evidence
+    evi = sub.add_parser("evidence", help="Build evidence pack")
+    evi.add_argument("--pack-name", default="evidence_pack", help="Name of the pack")
+    evi.add_argument("--dry-run", action="store_true", help="Do not create archive")
+    evi.add_argument("--confirm", action="store_true", help="Confirm archive creation if not dry-run")
+    evi.add_argument("--json", action="store_true", help="Output as JSON")
+
+    # attest
+    att = sub.add_parser("attest", help="Generate compliance attestation")
+    att.add_argument("--from-latest-review", action="store_true", help="Use latest review")
+    att.add_argument("--json", action="store_true", help="Output as JSON")
+
+    # latest
+    lat = sub.add_parser("latest", help="Show latest audit review")
+    lat.add_argument("--json", action="store_true", help="Output as JSON")
+
+    # recent
+    rec = sub.add_parser("recent", help="List recent reviews")
+    rec.add_argument("--limit", type=int, default=10, help="Max reviews to list")
+    rec.add_argument("--json", action="store_true", help="Output as JSON")
+
+    # config
+    cfg = sub.add_parser("config", help="Show governance config")
+    cfg.add_argument("--json", action="store_true", help="Output as JSON")
