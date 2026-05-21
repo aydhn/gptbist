@@ -98,6 +98,13 @@ def run_cli(argv: list[str] | None = None) -> int:
 
 
 
+    if args_to_parse and args_to_parse[0] == 'maintenance':
+        from bist_signal_bot.cli.commands_maintenance import run_maintenance_cli
+        import sys
+        sys.argv = [sys.argv[0]] + args_to_parse[1:]
+        run_maintenance_cli()
+        return 0
+
     if args_to_parse and args_to_parse[0] == 'scenario':
         from bist_signal_bot.cli.commands_scenarios import scenario_cli
         import sys

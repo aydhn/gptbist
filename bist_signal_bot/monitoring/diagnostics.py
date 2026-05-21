@@ -389,3 +389,29 @@ class DiagnosticsRunner:
             return self._create_result("Data Provider V2 Health", MonitoringComponent.DATA_PROVIDER, DiagnosticCheckStatus.PASS, AlertSeverity.INFO, "Data providers healthy", details=summary)
         except Exception as e:
             return self._create_result("Data Provider V2 Health", MonitoringComponent.DATA_PROVIDER, DiagnosticCheckStatus.ERROR, AlertSeverity.HIGH, f"Failed to check data provider health: {e}", details={})
+
+def get_maintenance_diagnostics() -> dict:
+    from bist_signal_bot.app.maintenance_app import create_maintenance_doctor, create_maintenance_store
+
+    try:
+        doc = create_maintenance_doctor()
+        res = doc.run_doctor()
+
+        store = create_maintenance_store()
+        backups = store.list_backups(limit=1)
+        latest_backup_age_days = None
+
+        if backups:
+            import datetime
+            from datetime import timezone
+            bkp_time = datetime.datetime.fromisoformat(backups[0].get('created_at'))
+            latest_backup_age_days = (datetime.datetime.now(timezone.utc) - bkp_time).days
+
+        return {
+            "doctor_status": res.status.value,
+            "latest_backup_age_days": latest_backup_age_days,
+            "corrupted_files_count": len(res.corrupted_files),
+            "maintenance_disk_usage": sum(f.size_bytes for f in res.metadata.get('files', []) if hasattr(f, 'size_bytes')) # Simplified
+        }
+    except Exception as e:
+        return {"error": str(e)}

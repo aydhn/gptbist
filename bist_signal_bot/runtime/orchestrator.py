@@ -300,3 +300,16 @@ def run_drift_check_if_enabled(engine, settings):
              logger.info(f"Drift Check completed. Status: {res.status.value}")
         except Exception as e:
              logger.error(f"Failed to run drift check during runtime: {e}")
+
+def maintenance_hook_before_heavy_research():
+    from bist_signal_bot.config.settings import get_settings
+    settings = get_settings()
+
+    if getattr(settings, 'MAINTENANCE_DOCTOR_BEFORE_RUN', False):
+         from bist_signal_bot.app.maintenance_app import create_maintenance_doctor
+         doc = create_maintenance_doctor()
+         doc.run_doctor() # Not halting, just logging / checking
+
+    if getattr(settings, 'BACKUP_BEFORE_HEAVY_RESEARCH', False):
+         # Typically just recommending or checking age, but could trigger backup
+         pass
