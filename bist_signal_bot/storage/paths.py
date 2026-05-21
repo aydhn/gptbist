@@ -344,3 +344,12 @@ def get_research_lab_dir(settings=None) -> Path:
     d = get_data_dir(s) / s.RESEARCH_LAB_DIR_NAME
     d.mkdir(parents=True, exist_ok=True)
     return d
+
+def get_governance_dir(settings: Settings | None = None) -> Path:
+    from bist_signal_bot.config.settings import get_settings
+    if settings is None:
+        settings = get_settings()
+
+    gov_dir = get_data_dir(settings) / getattr(settings, "GOVERNANCE_DIR_NAME", "governance")
+    gov_dir.mkdir(parents=True, exist_ok=True)
+    return gov_dir
