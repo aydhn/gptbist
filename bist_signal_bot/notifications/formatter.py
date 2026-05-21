@@ -1012,3 +1012,22 @@ def format_relative_strength_leaders(scores) -> str:
             "Gerçek emir gönderilmedi."
         ]
         return "\n".join(lines)
+
+# Drift formatting for notifications
+def format_drift_analysis_result(result) -> str:
+    from bist_signal_bot.drift.reporting import format_drift_result_text
+    return format_drift_result_text(result)
+
+def format_feature_drift_results(results) -> str:
+    from bist_signal_bot.drift.reporting import format_feature_drift_text
+    return format_feature_drift_text(results)
+
+def format_model_drift_result(result) -> str:
+    from bist_signal_bot.drift.reporting import format_model_drift_text
+    return format_model_drift_text(result)
+
+def format_signal_decay_report(report) -> str:
+    return f"Signal Decay Status: {report.status.value}\nActions: {', '.join([a.value for a in report.recommended_actions])}"
+
+def format_strategy_decay_report(report) -> str:
+    return f"Strategy Decay Status: {report.status.value}\nScore: {report.decay_score:.2f}\nActions: {', '.join([a.value for a in report.recommended_actions])}"

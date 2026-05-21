@@ -4989,3 +4989,156 @@ def run_portfolio_research_command(args, settings):
         print(f"Error executing portfolio-research command: {e}")
         import traceback
         traceback.print_exc()
+
+def run_drift_command(args, settings):
+    subcommand = getattr(args, "subcommand", None)
+    from bist_signal_bot.app.drift_app import create_drift_engine
+    from bist_signal_bot.drift.models import DriftAnalysisRequest, DriftDomain, ReferenceWindowType
+    from bist_signal_bot.drift.reporting import format_drift_result_text, format_feature_drift_text, format_model_drift_text, format_calibration_text
+    import json
+    import traceback
+
+    try:
+        engine = create_drift_engine(settings)
+
+        if subcommand == "snapshot":
+            domains_str = getattr(args, "domains", None)
+            domains = [DriftDomain(d.strip()) for d in domains_str] if domains_str else []
+
+            req = DriftAnalysisRequest(
+                domains=domains,
+                symbols=args.symbols if getattr(args, "symbols", None) else [],
+                save_output=getattr(args, "save", False)
+            )
+
+            result = engine.analyze(req)
+            if getattr(args, "json", False):
+                print(json.dumps(result.safe_public_dict(), indent=2))
+            else:
+                print(format_drift_result_text(result))
+
+        elif subcommand == "features":
+            ref_days = getattr(args, "reference_days", 90)
+            cur_days = getattr(args, "current_days", 14)
+            features = getattr(args, "features", None)
+
+            import pandas as pd
+            # Mock data for CLI demo as we don't have real feature store
+            ref_df = pd.DataFrame({f: [1, 2, 3] for f in (features or ["f1"])})
+            cur_df = pd.DataFrame({f: [4, 5, 6] for f in (features or ["f1"])})
+
+            results = engine.analyze_features(ref_df, cur_df, features)
+
+            if getattr(args, "json", False):
+                from bist_signal_bot.drift.reporting import feature_drift_to_dict
+                print(json.dumps([feature_drift_to_dict(r) for r in results], indent=2))
+            else:
+                print(format_feature_drift_text(results))
+
+        elif subcommand == "model":
+            model_id = getattr(args, "model_id", None)
+            result = engine.analyze_model(model_id)
+            if getattr(args, "json", False):
+                from bist_signal_bot.drift.reporting import model_drift_to_dict
+                print(json.dumps(model_drift_to_dict(result), indent=2))
+            else:
+                print(format_model_drift_text(result))
+
+        elif subcommand == "calibration":
+            model_id = getattr(args, "model_id", None)
+            # Mock data for CLI
+            report = engine.calibration_monitor.build_calibration_report([0.1, 0.9], [0, 1], model_id)
+            if getattr(args, "json", False):
+                from bist_signal_bot.drift.reporting import calibration_report_to_dict
+                print(json.dumps(calibration_report_to_dict(report), indent=2))
+            else:
+                print(format_calibration_text(report))
+
+        elif subcommand == "signals":
+            report = engine.analyze_signals()
+            if getattr(args, "json", False):
+                from bist_signal_bot.drift.reporting import signal_decay_to_dict
+                print(json.dumps(signal_decay_to_dict(report), indent=2))
+            else:
+                print(f"Signal Decay Status: {report.status.value}")
+                for m in report.metrics:
+                    print(f"  {m.metric_name}: {m.value:.2f} ({m.status.value})")
+
+        elif subcommand == "strategy":
+            strategy = getattr(args, "strategy", "moving_average_trend")
+            report = engine.analyze_strategy(strategy)
+            if getattr(args, "json", False):
+                from bist_signal_bot.drift.reporting import strategy_decay_to_dict
+                print(json.dumps(strategy_decay_to_dict(report), indent=2))
+            else:
+                print(f"Strategy Decay Status: {report.status.value}")
+                print(f"Decay Score: {report.decay_score:.2f}")
+
+        elif subcommand == "portfolio":
+            report = engine.analyze_portfolio()
+            if getattr(args, "json", False):
+                from bist_signal_bot.drift.reporting import portfolio_drift_to_dict
+                print(json.dumps(portfolio_drift_to_dict(report), indent=2))
+            else:
+                print(f"Portfolio Drift Status: {report.status.value}")
+
+        elif subcommand == "reference":
+            ref_subcmd = getattr(args, "ref_subcommand", "list")
+            if ref_subcmd == "list":
+                refs = engine.reference_manager.list_references()
+                if getattr(args, "json", False):
+                    print(json.dumps(refs, indent=2))
+                else:
+                    for r in refs:
+                        print(f"{r.get('reference_id')} | {r.get('domain')} | {r.get('created_at')}")
+            elif ref_subcmd == "build":
+                domain = DriftDomain(getattr(args, "domain", "FEATURE"))
+                days = getattr(args, "days", 90)
+                confirm = getattr(args, "confirm", False)
+                try:
+                    window = engine.reference_manager.build_reference_from_research_ledger(domain, days)
+                    engine.reference_manager.save_reference(window, confirm=confirm)
+                    print(f"Reference built: {window.reference_id}")
+                except Exception as e:
+                    print(f"Error building reference: {e}")
+            elif ref_subcmd == "show":
+                ref_id = getattr(args, "reference_id")
+                window, df = engine.reference_manager.load_reference(reference_id=ref_id)
+                if not window:
+                    print("Reference not found.")
+                elif getattr(args, "json", False):
+                    print(json.dumps(window.dict(default=str), indent=2))
+                else:
+                    print(f"Reference ID: {window.reference_id}")
+                    print(f"Domain: {window.domain.value}")
+
+        elif subcommand == "latest":
+            res = engine.store.load_latest_result()
+            if not res:
+                print("No latest drift result found.")
+            elif getattr(args, "json", False):
+                print(json.dumps(res.safe_public_dict(), indent=2))
+            else:
+                print(format_drift_result_text(res))
+
+        elif subcommand == "recent":
+            res = engine.store.list_recent_results(limit=getattr(args, "limit", 10))
+            if getattr(args, "json", False):
+                print(json.dumps(res, indent=2))
+            else:
+                for r in res:
+                    print(f"{r.get('drift_id')} | {r.get('generated_at')} | {r.get('status')} | {r.get('severity')}")
+
+        elif subcommand == "config":
+            cfg = {k: v for k, v in settings.model_dump().items() if "DRIFT" in k}
+            if getattr(args, "json", False):
+                print(json.dumps(cfg, indent=2))
+            else:
+                for k, v in cfg.items():
+                    print(f"{k}: {v}")
+        else:
+            print("Missing or unknown subcommand for drift")
+
+    except Exception as e:
+        print(f"Error executing drift command: {e}")
+        traceback.print_exc()

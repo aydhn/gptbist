@@ -287,3 +287,16 @@ class RuntimeOrchestrator:
         except Exception as e:
             self.logger.error(f"Error during quality preflight: {e}")
             return False
+
+# Add drift check
+def run_drift_check_if_enabled(engine, settings):
+    if settings.RUNTIME_RUN_DRIFT_CHECK:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info("Running optional drift check at the end of runtime pipeline...")
+        from bist_signal_bot.drift.models import DriftAnalysisRequest
+        try:
+             res = engine.analyze(DriftAnalysisRequest(save_output=True))
+             logger.info(f"Drift Check completed. Status: {res.status.value}")
+        except Exception as e:
+             logger.error(f"Failed to run drift check during runtime: {e}")

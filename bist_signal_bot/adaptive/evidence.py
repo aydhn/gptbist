@@ -308,3 +308,13 @@ class AdaptiveEvidenceCollector:
         wins = sum(1 for t in trades if float(t.get("pnl", 0)) > 0)
         win_rate = wins / len(trades)
         return max(0.0, min(100.0, win_rate * 100))
+def get_drift_evidence(engine):
+    latest = engine.store.load_latest_result()
+    if not latest:
+         return None
+    return {
+         "drift_id": latest.drift_id,
+         "status": latest.status.value,
+         "severity": latest.severity.value,
+         "recommended_actions": [a.value for a in latest.recommended_actions]
+    }
