@@ -5142,3 +5142,293 @@ def run_drift_command(args, settings):
     except Exception as e:
         print(f"Error executing drift command: {e}")
         traceback.print_exc()
+
+# ------------------------------------------------------------------------------
+# RESEARCH LAB COMMANDS
+# ------------------------------------------------------------------------------
+def cmd_lab_plan(args, app_context) -> int:
+    try:
+        from bist_signal_bot.app.research_lab_app import create_research_job_planner
+        from bist_signal_bot.cli.formatting import format_batch_plan_text, to_json_output
+        planner = create_research_job_planner(app_context.settings)
+
+        plan = None
+        syms = getattr(args, 'symbols', []) or []
+        strats = getattr(args, 'strategies', []) or []
+
+        if args.plan_type == "daily":
+            plan = planner.plan_daily_research(syms, strats)
+        elif args.plan_type == "weekly":
+            plan = planner.plan_weekly_research(syms, strats)
+        elif args.plan_type == "adaptive":
+            plan = planner.plan_daily_research(syms, strats)
+        elif args.plan_type == "drift":
+            plan = planner.plan_daily_research(syms, strats)
+
+        if not plan:
+            print("Failed to generate plan.")
+            return 1
+
+        if args.json:
+            from bist_signal_bot.research_lab.reporting import batch_plan_to_dict
+            print(to_json_output(batch_plan_to_dict(plan)))
+        else:
+            print(format_batch_plan_text(plan))
+        return 0
+    except Exception as e:
+        print(f"Error: {e}")
+        return 1
+
+def cmd_lab_enqueue(args, app_context) -> int:
+    try:
+        from bist_signal_bot.app.research_lab_app import create_research_job_queue, create_research_lab_store, create_research_job_planner
+        from bist_signal_bot.research_lab.models import ResearchJobType, ResearchJobPriority, ResearchJobTrigger
+        from bist_signal_bot.cli.formatting import to_json_output
+
+        queue = create_research_job_queue(app_context.settings)
+        store = create_research_lab_store(app_context.settings)
+
+        queued_jobs = []
+        if args.plan:
+             plan = store.load_plan(args.plan)
+             if not plan:
+                 print(f"Plan {args.plan} not found.")
+                 return 1
+             queued_jobs = queue.enqueue_plan(plan)
+        elif args.job:
+             planner = create_research_job_planner(app_context.settings)
+             try:
+                 jtype = ResearchJobType(args.job.upper())
+             except Exception:
+                 print(f"Invalid job type: {args.job}")
+                 return 1
+             job = planner.build_job(jtype, [args.symbol] if args.symbol else [], args.strategy, ResearchJobPriority.NORMAL, ResearchJobTrigger.MANUAL, {})
+             queued_jobs = [queue.enqueue(job)]
+        else:
+             print("Provide --plan or --job")
+             return 1
+
+        if args.json:
+             from bist_signal_bot.research_lab.reporting import research_job_to_dict
+             print(to_json_output([research_job_to_dict(j) for j in queued_jobs]))
+        else:
+             print(f"Successfully enqueued {len(queued_jobs)} jobs.")
+        return 0
+    except Exception as e:
+        print(f"Error: {e}")
+        return 1
+
+def cmd_lab_run(args, app_context) -> int:
+    try:
+        from bist_signal_bot.app.research_lab_app import create_research_job_executor, create_research_lab_store, create_research_job_queue
+        from bist_signal_bot.cli.formatting import format_batch_run_text, to_json_output
+
+        executor = create_research_job_executor(app_context.settings)
+        store = create_research_lab_store(app_context.settings)
+        queue = create_research_job_queue(app_context.settings)
+
+        jobs = []
+        if args.plan:
+             plan = store.load_plan(args.plan)
+             if not plan:
+                 print(f"Plan {args.plan} not found.")
+                 return 1
+             jobs = plan.jobs
+        elif getattr(args, 'next', False) or getattr(args, 'queued', False):
+             limit = args.limit if getattr(args, 'limit', None) else 100
+             ready = queue.pop_next_ready_jobs(limit=limit)
+             jobs = ready
+             if not jobs:
+                  if not args.json:
+                       print("No jobs ready in queue.")
+                  return 0
+        else:
+             print("Provide --next, --queued, or --plan")
+             return 1
+
+        run = executor.execute_batch(jobs, confirm_heavy=args.confirm_heavy)
+
+        if args.json:
+             from bist_signal_bot.research_lab.reporting import batch_run_to_dict
+             print(to_json_output(batch_run_to_dict(run)))
+        else:
+             print(format_batch_run_text(run))
+        return 0
+    except Exception as e:
+        print(f"Error: {e}")
+        return 1
+
+def cmd_lab_jobs(args, app_context) -> int:
+    try:
+        from bist_signal_bot.app.research_lab_app import create_research_job_queue
+        from bist_signal_bot.research_lab.models import ResearchJobStatus
+        from bist_signal_bot.cli.formatting import to_json_output, format_job_text
+
+        queue = create_research_job_queue(app_context.settings)
+        status = ResearchJobStatus(args.status.upper()) if args.status else None
+
+        jobs = queue.list_jobs(status=status)
+
+        if args.json:
+             from bist_signal_bot.research_lab.reporting import research_job_to_dict
+             print(to_json_output([research_job_to_dict(j) for j in jobs]))
+        else:
+             print(f"Found {len(jobs)} jobs.")
+             for j in jobs:
+                  print("-" * 40)
+                  print(format_job_text(j))
+        return 0
+    except Exception as e:
+        print(f"Error: {e}")
+        return 1
+
+def cmd_lab_cancel(args, app_context) -> int:
+    try:
+        from bist_signal_bot.app.research_lab_app import create_research_job_queue
+        queue = create_research_job_queue(app_context.settings)
+        job = queue.cancel_job(args.job_id, confirm=args.confirm)
+        print(f"Cancelled job {job.job_id}")
+        return 0
+    except Exception as e:
+        print(f"Error: {e}")
+        return 1
+
+def cmd_lab_retry(args, app_context) -> int:
+    try:
+        from bist_signal_bot.app.research_lab_app import create_research_job_queue
+        from bist_signal_bot.core.exceptions import ResearchLabValidationError
+        if not args.confirm:
+            raise ResearchLabValidationError("Must confirm retry")
+
+        queue = create_research_job_queue(app_context.settings)
+        job = queue.get_job(args.job_id)
+        if not job:
+             print("Job not found")
+             return 1
+        job.status = "QUEUED"
+        queue.update_job(job)
+        print(f"Retrying job {job.job_id}")
+        return 0
+    except Exception as e:
+        print(f"Error: {e}")
+        return 1
+
+def cmd_lab_show(args, app_context) -> int:
+    try:
+        from bist_signal_bot.app.research_lab_app import create_research_lab_store, create_research_job_queue
+        from bist_signal_bot.cli.formatting import to_json_output, format_job_text, format_batch_plan_text, format_batch_run_text
+
+        store = create_research_lab_store(app_context.settings)
+
+        if args.type == "job":
+             queue = create_research_job_queue(app_context.settings)
+             item = queue.get_job(args.id)
+             if not item:
+                  print("Not found")
+                  return 1
+             if args.json:
+                  from bist_signal_bot.research_lab.reporting import research_job_to_dict
+                  print(to_json_output(research_job_to_dict(item)))
+             else:
+                  print(format_job_text(item))
+
+        elif args.type == "plan":
+             item = store.load_plan(args.id)
+             if not item:
+                  print("Not found")
+                  return 1
+             if args.json:
+                  from bist_signal_bot.research_lab.reporting import batch_plan_to_dict
+                  print(to_json_output(batch_plan_to_dict(item)))
+             else:
+                  print(format_batch_plan_text(item))
+
+        elif args.type == "run":
+             item = store.load_batch_run(args.id)
+             if not item:
+                  print("Not found")
+                  return 1
+             if args.json:
+                  from bist_signal_bot.research_lab.reporting import batch_run_to_dict
+                  print(to_json_output(batch_run_to_dict(item)))
+             else:
+                  print(format_batch_run_text(item))
+        return 0
+    except Exception as e:
+        print(f"Error: {e}")
+        return 1
+
+def cmd_lab_recent(args, app_context) -> int:
+    try:
+        from bist_signal_bot.app.research_lab_app import create_research_lab_store
+        from bist_signal_bot.cli.formatting import to_json_output
+        store = create_research_lab_store(app_context.settings)
+        runs = store.list_recent_runs(limit=args.limit)
+
+        if args.json:
+             print(to_json_output(runs))
+        else:
+             for r in runs:
+                  print(r)
+        return 0
+    except Exception as e:
+        print(f"Error: {e}")
+        return 1
+
+def cmd_lab_policy(args, app_context) -> int:
+    try:
+        from bist_signal_bot.app.research_lab_app import create_research_lab_policy_manager
+        from bist_signal_bot.cli.formatting import to_json_output
+        mgr = create_research_lab_policy_manager(app_context.settings)
+        pol = mgr.load_policy()
+        if args.json:
+             print(to_json_output(pol.dict()))
+        else:
+             print(f"Max Jobs/Batch: {pol.max_jobs_per_batch}")
+             print(f"Max Parallel: {pol.max_parallel_jobs}")
+             print(f"Allow Network: {pol.allow_network}")
+             print(f"Allow Telegram: {pol.allow_telegram}")
+             print(f"Allow Destructive: {pol.allow_destructive}")
+        return 0
+    except Exception as e:
+        print(f"Error: {e}")
+        return 1
+
+def cmd_lab_config(args, app_context) -> int:
+    try:
+        from bist_signal_bot.cli.formatting import to_json_output
+        c = app_context.settings
+        keys = [k for k in dir(c) if k.startswith("RESEARCH_LAB_") or k == "ENABLE_RESEARCH_LAB"]
+        res = {k: getattr(c, k) for k in keys}
+        if args.json:
+             print(to_json_output(res))
+        else:
+             for k,v in res.items():
+                  print(f"{k} = {v}")
+        return 0
+    except Exception as e:
+        print(f"Error: {e}")
+        return 1
+
+def route_lab_command(args, app_context) -> int:
+    if args.lab_command == "plan":
+        return cmd_lab_plan(args, app_context)
+    elif args.lab_command == "enqueue":
+        return cmd_lab_enqueue(args, app_context)
+    elif args.lab_command == "run":
+        return cmd_lab_run(args, app_context)
+    elif args.lab_command == "jobs":
+        return cmd_lab_jobs(args, app_context)
+    elif args.lab_command == "cancel":
+        return cmd_lab_cancel(args, app_context)
+    elif args.lab_command == "retry":
+        return cmd_lab_retry(args, app_context)
+    elif args.lab_command == "show":
+        return cmd_lab_show(args, app_context)
+    elif args.lab_command == "recent":
+        return cmd_lab_recent(args, app_context)
+    elif args.lab_command == "policy":
+        return cmd_lab_policy(args, app_context)
+    elif args.lab_command == "config":
+        return cmd_lab_config(args, app_context)
+    return 1

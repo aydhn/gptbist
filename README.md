@@ -669,3 +669,17 @@ The breadth engine calculates market breadth, relative strength, sector rotation
 ## Phase 58: Drift & Calibration Monitoring
 Measures model decay, feature distribution shifts (PSI, KS), signal invalidation rates, strategy decay, and portfolio exposure drifts without executing any real market orders.
 Provides CLI tools (`python -m bist_signal_bot drift snapshot`) for offline research.
+
+## Phase 59: Research Automation Queue & Lab
+The Research Lab introduces a robust local job queue, batch planner, deduplication layer, dependency resolver, and budgeted execution framework. It allows automating heavy workloads like backtests, optimization, drift checks, and ML retrains without risking execution disruption.
+
+### Key Capabilities
+- **Batch Planning:** Translates adaptive/drift insights into actionable background jobs (daily, weekly, drift, adaptive plans).
+- **Job Deduplication:** Prevents identical jobs from running multiple times within a window.
+- **Dependency Graph:** Ensures jobs execute in topological order (e.g., data update before backtest).
+- **Resource Budgeting:** Checks maximum allowed runtimes and memory before starting batches.
+- **Local Storage:** Append-only JSONL files for safety.
+- **Zero Real Executions:** The Research Lab is entirely for analysis.
+
+### Important Disclaimer
+The Research Lab operates completely offline. It **never generates real market orders**, uses no cloud queue systems, does not connect to broker APIs, and should not be used as financial advice.

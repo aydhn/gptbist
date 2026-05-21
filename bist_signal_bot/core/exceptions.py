@@ -912,3 +912,30 @@ class DriftReferenceError(DriftError):
 
 class DriftStorageError(DriftError):
     pass
+
+class ResearchLabError(BistSignalBotError):
+    pass
+
+class ResearchLabValidationError(ResearchLabError):
+    pass
+
+class ResearchJobPlanningError(ResearchLabError):
+    pass
+
+class ResearchQueueError(ResearchLabError):
+    pass
+
+class ResearchJobExecutionError(ResearchLabError):
+    pass
+
+class ResearchJobDependencyError(ResearchLabError):
+    pass
+
+class ResearchJobBudgetError(ResearchLabError):
+    pass
+
+class ResearchJobRetryError(ResearchLabError):
+    pass
+
+class ResearchLabStorageError(ResearchLabError):
+    pass

@@ -337,3 +337,10 @@ def get_drift_dir(settings=None) -> Path:
     path = get_data_dir(settings) / getattr(settings, "DRIFT_DIR_NAME", "drift")
     path.mkdir(parents=True, exist_ok=True)
     return path
+
+def get_research_lab_dir(settings=None) -> Path:
+    from bist_signal_bot.config.settings import get_settings
+    s = settings or get_settings()
+    d = get_data_dir(s) / s.RESEARCH_LAB_DIR_NAME
+    d.mkdir(parents=True, exist_ok=True)
+    return d
