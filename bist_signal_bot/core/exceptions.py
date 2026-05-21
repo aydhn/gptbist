@@ -996,3 +996,31 @@ class AttestationError(GovernanceError):
 
 class GovernanceStorageError(GovernanceError):
     pass
+
+
+class ReviewError(BistSignalBotError):
+    pass
+
+class ReviewValidationError(ReviewError):
+    pass
+
+class ReviewInboxError(ReviewError):
+    pass
+
+class ReviewChecklistError(ReviewError):
+    pass
+
+class ReviewThesisError(ReviewError):
+    pass
+
+class ReviewDecisionError(ReviewError):
+    pass
+
+class ReviewJournalError(ReviewError):
+    pass
+
+class ReviewFollowupError(ReviewError):
+    pass
+
+class ReviewStorageError(ReviewError):
+    pass
