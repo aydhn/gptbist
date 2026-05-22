@@ -6038,3 +6038,15 @@ def run_kb_config(args, settings=None):
     else:
         for k, v in conf.items():
             print(f"{k} = {v}")
+@cli.command(name='scheduler')
+def run_scheduler():
+    import sys
+    from bist_signal_bot.cli.scheduler_cli import handle_scheduler
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('subcommand', nargs='?')
+    parser.add_argument('--create', action='store_true')
+    parser.add_argument('--confirm', action='store_true')
+    parser.add_argument('--dry-run', action='store_true')
+    args, _ = parser.parse_known_args(sys.argv[2:])
+    handle_scheduler(args)

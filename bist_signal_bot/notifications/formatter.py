@@ -1179,3 +1179,18 @@ def format_review_followups(items) -> str:
 
 def format_knowledge_index_build(result: Any) -> str:
     return f"BIST Bot Knowledge Base\n\nIndex Status: {result.status.value}\nDocuments: {result.documents_indexed}\nChunks: {result.chunks_created}\n\nBu çıktı araştırma hafızası operasyon özetidir.\nYatırım tavsiyesi değildir.\nGerçek emir gönderilmedi."
+# Scheduler Formatting
+def format_scheduler_run_result(result) -> str:
+    from bist_signal_bot.scheduler.reporting import format_scheduler_run_text
+    return format_scheduler_run_text(result)
+
+def format_due_job_result(result) -> str:
+    from bist_signal_bot.scheduler.reporting import format_due_result_text
+    return format_due_result_text(result)
+
+def format_market_session_snapshot(snapshot) -> str:
+    from bist_signal_bot.scheduler.reporting import format_market_session_text
+    return format_market_session_text(snapshot)
+
+def format_scheduled_job_run(run) -> str:
+    return f"Job Run: {run.job_name} ({run.status.value})"

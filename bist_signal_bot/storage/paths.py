@@ -373,3 +373,9 @@ def get_telegram_center_dir(settings: Settings | None = None) -> Path:
     path = base_dir / dir_name
     ensure_dir(path)
     return path
+
+def get_scheduler_dir(settings=None) -> Path:
+    base_dir = Path(getattr(settings, 'DATA_DIR', 'data'))
+    scheduler_dir = base_dir / getattr(settings, 'SCHEDULER_DIR_NAME', 'scheduler')
+    scheduler_dir.mkdir(parents=True, exist_ok=True)
+    return scheduler_dir

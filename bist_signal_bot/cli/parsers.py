@@ -1213,6 +1213,22 @@ def build_parser() -> argparse.ArgumentParser:
     # kb config
     kbcf = kb_subs.add_parser("config", help="KB Config")
     kbcf.add_argument("--json", action="store_true")
+
+    # Local Scheduler Module Phase 65
+    scheduler_parser = subparsers.add_parser("scheduler", help="Manage scheduled jobs")
+    scheduler_subs = scheduler_parser.add_subparsers(dest="subcommand", required=False) # allow fallback
+
+    scheduler_subs.add_parser("list", help="List jobs")
+
+    defaults_p = scheduler_subs.add_parser("defaults", help="Default jobs")
+    defaults_p.add_argument("--create", action="store_true")
+    defaults_p.add_argument("--confirm", action="store_true")
+
+    scheduler_subs.add_parser("due", help="Find due jobs")
+
+    run_due_p = scheduler_subs.add_parser("run-due", help="Run due jobs")
+    run_due_p.add_argument("--dry-run", action="store_true")
+    run_due_p.add_argument("--confirm", action="store_true")
     return parser
 
 def add_paper_parser(subparsers: argparse._SubParsersAction) -> None:

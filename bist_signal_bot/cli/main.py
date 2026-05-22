@@ -2,7 +2,9 @@ import sys
 
 from bist_signal_bot.app.bootstrap import bootstrap_app
 from bist_signal_bot.cli.parsers import parse_args
+from bist_signal_bot.cli.commands import run_scheduler
 from bist_signal_bot.cli.commands import (
+
     handle_governance_command,
     cmd_patterns_list,
     cmd_patterns_detect,
@@ -152,6 +154,7 @@ def run_cli(argv: list[str] | None = None) -> int:
 
     # Audit log
     commands = {
+        'scheduler': lambda args, ctx: __import__('bist_signal_bot.cli.scheduler_cli', fromlist=['']).handle_scheduler(args),
         "healthcheck": cmd_healthcheck,
         "config": cmd_config,
         "symbols": cmd_symbols,
