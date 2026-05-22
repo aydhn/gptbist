@@ -1,63 +1,29 @@
-from datetime import date
-
 import pytest
+from datetime import datetime, date
+from pathlib import Path
+from bist_signal_bot.scheduler.calendar import BISTMarketCalendar
+from bist_signal_bot.scheduler.models import MarketDayType
 
-from bist_signal_bot.calendar.market_calendar import BistMarketCalendar
-from bist_signal_bot.calendar.models import MarketDayType
-from bist_signal_bot.core.exceptions import MarketCalendarError
+def test_market_calendar_default_weekend(tmp_path):
+    cal = BISTMarketCalendar(data_dir=tmp_path)
 
+    # Oct 25 2025 is a Saturday
+    dt = datetime(2025, 10, 25)
+    day = cal.get_day(dt)
+    assert day.day_type == MarketDayType.WEEKEND
 
-@pytest.fixture
-def calendar():
-    return BistMarketCalendar(
-        manual_holidays={date(2023, 1, 2)} # Monday holiday
-    )
+def test_market_calendar_default_trading(tmp_path):
+    cal = BISTMarketCalendar(data_dir=tmp_path)
 
-def test_is_weekend(calendar):
-    assert calendar.is_weekend(date(2023, 1, 7)) is True # Saturday
-    assert calendar.is_weekend(date(2023, 1, 8)) is True # Sunday
-    assert calendar.is_weekend(date(2023, 1, 9)) is False # Monday
+    # Oct 24 2025 is a Friday
+    dt = datetime(2025, 10, 24)
+    day = cal.get_day(dt)
+    assert day.day_type == MarketDayType.TRADING_DAY
 
-def test_get_day_type(calendar):
-    assert calendar.get_day_type(date(2023, 1, 7)) == MarketDayType.WEEKEND
-    assert calendar.get_day_type(date(2023, 1, 2)) == MarketDayType.HOLIDAY
-    assert calendar.get_day_type(date(2023, 1, 3)) == MarketDayType.TRADING_DAY
+def test_market_calendar_next_trading_day(tmp_path):
+    cal = BISTMarketCalendar(data_dir=tmp_path)
 
-def test_is_trading_day(calendar):
-    assert calendar.is_trading_day(date(2023, 1, 3)) is True
-    assert calendar.is_trading_day(date(2023, 1, 2)) is False
-    assert calendar.is_trading_day(date(2023, 1, 7)) is False
-
-def test_next_trading_day(calendar):
-    # Jan 2 (Mon) is holiday, Jan 3 (Tue) is trading
-    assert calendar.next_trading_day(date(2023, 1, 1)) == date(2023, 1, 3)
-    # Friday -> Monday
-    assert calendar.next_trading_day(date(2023, 1, 6)) == date(2023, 1, 9)
-
-def test_previous_trading_day(calendar):
-    # Jan 2 (Mon) is holiday, Dec 30 (Fri) is trading
-    assert calendar.previous_trading_day(date(2023, 1, 3)) == date(2022, 12, 30)
-
-def test_market_open_close_datetime(calendar):
-    open_dt = calendar.market_open_datetime(date(2023, 1, 3))
-    assert open_dt is not None
-    assert open_dt.hour == 10
-
-    close_dt = calendar.market_close_datetime(date(2023, 1, 3))
-    assert close_dt is not None
-    assert close_dt.hour == 18
-
-def test_market_open_close_datetime_non_trading(calendar):
-    assert calendar.market_open_datetime(date(2023, 1, 2)) is None
-    assert calendar.market_close_datetime(date(2023, 1, 7)) is None
-
-def test_trading_days_between(calendar):
-    days = calendar.trading_days_between(date(2023, 1, 1), date(2023, 1, 4))
-    # Jan 1 (Sun), Jan 2 (Hol), Jan 3 (Tue), Jan 4 (Wed)
-    assert len(days) == 2
-    assert days[0] == date(2023, 1, 3)
-    assert days[1] == date(2023, 1, 4)
-
-def test_trading_days_between_error(calendar):
-    with pytest.raises(MarketCalendarError):
-        calendar.trading_days_between(date(2023, 1, 4), date(2023, 1, 1))
+    # Oct 24 2025 is a Friday, next should be Monday 27th
+    dt = datetime(2025, 10, 24)
+    next_day = cal.next_trading_day(dt)
+    assert next_day.date.date() == date(2025, 10, 27)

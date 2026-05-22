@@ -1,3 +1,6 @@
+class BISTBotError(Exception):
+    pass
+
 from typing import Any
 
 
@@ -1118,4 +1121,31 @@ class TelegramRateLimitError(TelegramCenterError):
 
 class TelegramStorageError(TelegramCenterError):
     """Error related to Telegram Center storage."""
+    pass
+
+class SchedulerError(BISTBotError):
+    pass
+
+class ScheduleValidationError(SchedulerError):
+    pass
+
+class MarketCalendarError(SchedulerError):
+    pass
+
+class MarketSessionError(SchedulerError):
+    pass
+
+class ScheduleTriggerError(SchedulerError):
+    pass
+
+class DueJobError(SchedulerError):
+    pass
+
+class SchedulerLockError(SchedulerError):
+    pass
+
+class ScheduledJobExecutionError(SchedulerError):
+    pass
+
+class SchedulerStorageError(SchedulerError):
     pass

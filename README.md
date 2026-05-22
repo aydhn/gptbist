@@ -706,3 +706,6 @@ python -m bist_signal_bot telegram-center inbox
 python -m bist_signal_bot telegram-center digest daily
 ```
 See `docs/36_TELEGRAM_COMMAND_CENTER.md` for more details.
+
+### Local Scheduler (Phase 65)
+BIST Signal Bot includes a fully local, calendar-aware scheduler to automate research tasks without external dependencies like cron or Celery. It understands BIST market hours, respects governance gates, and never produces live trading orders.
