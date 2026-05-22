@@ -36,7 +36,7 @@ class HealthChecker:
         except Exception as e:
             status["knowledge_base"] = {"status": "error", "error": str(e)}
 
-    return status
+        return status
 
 def run_healthcheck(settings: Settings | None = None) -> Dict[str, Any]:
     checker = HealthChecker(settings)

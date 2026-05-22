@@ -4705,6 +4705,124 @@ def handle_data_v2_command(args, settings):
         else:
             print(json.dumps(data_keys, indent=2))
 
+
+def handle_telegram_center_command(args, settings):
+    import json
+
+    if args.telegram_subcommand == "config":
+        try:
+            from bist_signal_bot.telegram_center.config import TelegramCenterConfigValidator
+            validator = TelegramCenterConfigValidator()
+            summary = validator.redacted_config_summary(settings)
+            if getattr(args, 'json', False):
+                print(json.dumps(summary, indent=2))
+            else:
+                print("Telegram Center Configuration:")
+                for k, v in summary.items():
+                    print(f"  {k}: {v}")
+        except Exception as e:
+            print(f"Error checking config: {e}")
+            return 1
+
+    elif args.telegram_subcommand == "dry-run":
+        try:
+            from bist_signal_bot.app.telegram_center_app import create_telegram_router
+            router = create_telegram_router(settings)
+
+            chat_id = "LOCAL_CLI_USER"
+            result = router.route_raw_message(args.command, chat_id, dry_run=True)
+
+            if getattr(args, 'json', False):
+                from bist_signal_bot.telegram_center.reporting import telegram_result_to_dict
+                print(json.dumps(telegram_result_to_dict(result), indent=2))
+            else:
+                print(f"Status: {result.status.value}")
+                print(f"Decision: {result.decision.value}")
+                print(f"Warnings: {result.warnings}")
+                print(f"Elapsed: {result.elapsed_seconds:.4f}s")
+                print("\nResponse:\n")
+                print(result.response_text)
+        except Exception as e:
+            print(f"Error running command: {e}")
+            return 1
+
+    elif args.telegram_subcommand == "route":
+        try:
+            from bist_signal_bot.app.telegram_center_app import create_telegram_router
+            router = create_telegram_router(settings)
+
+            chat_id = args.chat_id or "UNKNOWN_CLI_CHAT"
+            dry_run = getattr(args, 'dry_run', False)
+            result = router.route_raw_message(args.command, chat_id, dry_run=dry_run)
+
+            if getattr(args, 'json', False):
+                from bist_signal_bot.telegram_center.reporting import telegram_result_to_dict
+                print(json.dumps(telegram_result_to_dict(result), indent=2))
+            else:
+                print(f"Status: {result.status.value}")
+                print(f"Response: {result.response_text}")
+        except Exception as e:
+            print(f"Error routing command: {e}")
+            return 1
+
+    elif args.telegram_subcommand == "inbox":
+        try:
+            from bist_signal_bot.app.telegram_center_app import create_notification_inbox
+            from bist_signal_bot.telegram_center.models import NotificationStatus
+            inbox = create_notification_inbox(settings)
+
+            status = None
+            if getattr(args, 'status', None):
+                status = NotificationStatus(args.status.upper())
+
+            msgs = inbox.list_messages(status=status)
+
+            if getattr(args, 'json', False):
+                from bist_signal_bot.telegram_center.reporting import notification_to_dict
+                print(json.dumps([notification_to_dict(m) for m in msgs], indent=2))
+            else:
+                print(f"Found {len(msgs)} messages in inbox.")
+                for m in msgs:
+                    print(f"[{m.status.value}] {m.title}: {m.body[:50]}...")
+        except Exception as e:
+            print(f"Error checking inbox: {e}")
+            return 1
+
+    elif args.telegram_subcommand == "digest":
+        try:
+            from bist_signal_bot.app.telegram_center_app import create_digest_orchestrator
+            orch = create_digest_orchestrator(settings)
+
+            digest_type = args.type.lower()
+            if digest_type == "daily":
+                res = orch.build_daily_digest()
+            elif digest_type == "weekly":
+                res = orch.build_weekly_digest()
+            else:
+                print(f"Unknown digest type: {digest_type}")
+                return 1
+
+            dry_run = getattr(args, 'dry_run', False)
+            orch.send_digest(res, dry_run=dry_run)
+
+            if getattr(args, 'json', False):
+                from bist_signal_bot.telegram_center.reporting import digest_result_to_dict
+                print(json.dumps(digest_result_to_dict(res), indent=2))
+            else:
+                print(f"Generated {res.request.digest_type.value} digest (Sent: {res.sent})")
+        except Exception as e:
+            print(f"Error generating digest: {e}")
+            return 1
+
+    elif args.telegram_subcommand == "send-test":
+        print("Mock test message send logic (dry-run mode).")
+
+    elif args.telegram_subcommand == "retry-failed":
+        print("Mock retry failed notification logic (dry-run mode).")
+
+    elif args.telegram_subcommand == "recent-commands":
+        print("Mock recent commands logic.")
+
 def handle_signals_command(args: argparse.Namespace) -> None:
     from bist_signal_bot.app.signals_app import create_signal_lifecycle_manager, create_signal_watchlist_manager, create_signal_outcome_tracker, create_research_exit_simulator
     from bist_signal_bot.signals.models import SignalLifecycleState, SignalOutcomeState

@@ -1074,3 +1074,48 @@ class AnalystMemoryError(KnowledgeBaseError):
 class KnowledgeStorageError(KnowledgeBaseError):
     """Raised when knowledge storage read/write fails."""
     pass
+
+
+class TelegramCenterError(BistSignalBotError):
+    """Base error for Telegram Center operations."""
+    pass
+
+class TelegramConfigError(TelegramCenterError):
+    """Error related to Telegram Center configuration."""
+    pass
+
+class TelegramPermissionError(TelegramCenterError):
+    """Error related to unauthorized access or missing permissions."""
+    pass
+
+class TelegramCommandParseError(TelegramCenterError):
+    """Error parsing a Telegram command."""
+    pass
+
+class TelegramCommandSafetyError(TelegramCenterError):
+    """Error related to command safety guards and forbidden actions."""
+    pass
+
+class TelegramRoutingError(TelegramCenterError):
+    """Error routing a Telegram command."""
+    pass
+
+class TelegramClientError(TelegramCenterError):
+    """Error communicating with the Telegram API."""
+    pass
+
+class NotificationInboxError(TelegramCenterError):
+    """Error related to the notification inbox."""
+    pass
+
+class DigestOrchestrationError(TelegramCenterError):
+    """Error orchestrating a digest report."""
+    pass
+
+class TelegramRateLimitError(TelegramCenterError):
+    """Error related to Telegram rate limiting."""
+    pass
+
+class TelegramStorageError(TelegramCenterError):
+    """Error related to Telegram Center storage."""
+    pass

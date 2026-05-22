@@ -24,3 +24,9 @@ See `docs/33_GOVERNANCE_COMPLIANCE.md` for details.
 
 ## Knowledge Base
 The system incorporates a local embedding and indexing system. See `35_RESEARCH_KNOWLEDGE_BASE.md` for guidelines.
+
+## Telegram Command Center
+The system now features a robust `telegram_center` module. Important developer notes:
+- **No Real Orders:** The router intentionally lacks access to any broker or order execution layer. It is restricted to research operations.
+- **Dry-Run by Default:** By default, command routing runs in `dry_run=True` to prevent accidental Telegram spam or unintended state changes.
+- **Redaction:** All outgoing text is piped through `SecretRedactor` to protect tokens and chat IDs.

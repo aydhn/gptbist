@@ -196,3 +196,35 @@ class SignalLifecycleManager:
             summary.alerts_sent += s.alert_count
 
         return summary
+
+    def route_to_telegram_inbox(self, evaluation_result, settings=None):
+        if not settings or not getattr(settings, 'ENABLE_TELEGRAM_CENTER', False):
+            return
+
+        try:
+            from bist_signal_bot.app.telegram_center_app import create_notification_inbox
+            from bist_signal_bot.telegram_center.models import NotificationMessage, NotificationStatus, NotificationPriority
+            import uuid
+            from datetime import datetime
+
+            inbox = create_notification_inbox(settings)
+
+            status = NotificationStatus.PENDING
+            if evaluation_result.action.value in ["MUTE_COOLDOWN", "MUTE_UNCHANGED", "MUTE_EXPIRED"]:
+                status = NotificationStatus.MUTED
+
+            msg = NotificationMessage(
+                notification_id=str(uuid.uuid4()),
+                title=f"Signal Update: {evaluation_result.signal.symbol}",
+                body=f"Action: {evaluation_result.action.value}\nReason: {evaluation_result.reason}",
+                priority=NotificationPriority.NORMAL,
+                status=status,
+                created_at=datetime.utcnow(),
+                source="signal_lifecycle",
+                dedupe_key=f"sig_{evaluation_result.signal.signal_id}"
+            )
+
+            inbox.add_message(msg)
+        except Exception as e:
+            # gracefully ignore missing telegram center dependencies
+            pass

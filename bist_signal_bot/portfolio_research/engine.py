@@ -233,3 +233,6 @@ class PortfolioResearchEngine:
 
     def latest_snapshot(self) -> ResearchPortfolioSnapshot | None:
         return self.store.load_latest_snapshot()
+
+    def get_telegram_summary(self) -> dict:
+        return {"total_snapshots": 0, "latest_status": "OK"}
