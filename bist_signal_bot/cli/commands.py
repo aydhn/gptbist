@@ -5783,3 +5783,140 @@ def config(as_json):
 
 
 cli.add_command(review)
+
+def run_kb_index(args, settings=None):
+    from bist_signal_bot.app.knowledge_app import create_knowledge_indexer
+    from bist_signal_bot.knowledge.models import KnowledgeIndexBuildRequest
+    indexer = create_knowledge_indexer(settings)
+    req = KnowledgeIndexBuildRequest(
+        incremental=args.incremental,
+        use_embeddings=args.use_embeddings,
+        rebuild=args.rebuild,
+        confirm_rebuild=args.confirm
+    )
+    if hasattr(args, "source") and args.source:
+        from bist_signal_bot.knowledge.models import KnowledgeSourceType
+        req.source_types = [KnowledgeSourceType(s) for s in args.source]
+
+    res = indexer.build_index(req)
+    if getattr(args, "json", False):
+        print(res.model_dump_json())
+    else:
+        from bist_signal_bot.knowledge.reporting import format_index_build_text
+        print(format_index_build_text(res))
+
+def run_kb_search(args, settings=None):
+    from bist_signal_bot.app.knowledge_app import create_knowledge_search_engine
+    from bist_signal_bot.knowledge.models import KnowledgeSearchQuery, KnowledgeSearchMode
+    engine = create_knowledge_search_engine(settings)
+
+    req = KnowledgeSearchQuery(
+        query=args.query,
+        mode=KnowledgeSearchMode(args.mode) if hasattr(args, 'mode') and args.mode else KnowledgeSearchMode.AUTO
+    )
+    if hasattr(args, "symbol") and args.symbol:
+        req.symbols = [args.symbol]
+    if hasattr(args, "source") and args.source:
+        from bist_signal_bot.knowledge.models import KnowledgeSourceType
+        req.source_types = [KnowledgeSourceType(s) for s in args.source]
+
+    res = engine.search(req)
+    if getattr(args, "json", False):
+        print(res.model_dump_json())
+    else:
+        from bist_signal_bot.knowledge.reporting import format_search_result_text
+        print(format_search_result_text(res))
+
+def run_kb_similar(args, settings=None):
+    from bist_signal_bot.app.knowledge_app import create_similarity_engine
+    from bist_signal_bot.knowledge.models import SimilarCaseRequest
+    engine = create_similarity_engine(settings)
+    req = SimilarCaseRequest(
+        symbol=args.symbol if hasattr(args, "symbol") else None,
+        strategy_name=args.strategy if hasattr(args, "strategy") else None,
+        text_query=args.text if hasattr(args, "text") else None
+    )
+    res = engine.similar_cases(req)
+    if getattr(args, "json", False):
+        print(res.model_dump_json())
+    else:
+        from bist_signal_bot.knowledge.reporting import format_similar_cases_text
+        print(format_similar_cases_text(res))
+
+def run_kb_cases(args, settings=None):
+    from bist_signal_bot.app.knowledge_app import create_case_library
+    lib = create_case_library(settings)
+    cases = lib.case_history(
+        symbol=args.symbol if hasattr(args, "symbol") else None,
+        strategy_name=args.strategy if hasattr(args, "strategy") else None
+    )
+    if getattr(args, "json", False):
+        import json
+        print(json.dumps([c.model_dump() for c in cases]))
+    else:
+        print(f"Found {len(cases)} cases.")
+        for c in cases:
+            print(f"- {c.title}")
+
+def run_kb_memory(args, settings=None):
+    from bist_signal_bot.app.knowledge_app import create_analyst_memory_builder
+    builder = create_analyst_memory_builder(settings)
+    card = builder.build_memory_card(
+        symbol=args.symbol if hasattr(args, "symbol") else None,
+        strategy_name=args.strategy if hasattr(args, "strategy") else None
+    )
+    if getattr(args, "save", False):
+        builder.save_memory_card(card)
+    if getattr(args, "json", False):
+        print(card.model_dump_json())
+    else:
+        from bist_signal_bot.knowledge.reporting import format_memory_card_text
+        print(format_memory_card_text(card))
+
+def run_kb_show(args, settings=None):
+    from bist_signal_bot.app.knowledge_app import create_knowledge_store
+    store = create_knowledge_store(settings)
+    docs = store.load_documents()
+    doc = next((d for d in docs if d.document_id == args.document_id), None)
+    if not doc:
+        print("Document not found.")
+        return
+    if getattr(args, "json", False):
+        print(doc.model_dump_json())
+    else:
+        print(f"Title: {doc.title}")
+        print(f"Source: {doc.source_type.value}")
+        print(f"Text: {doc.text[:200]}...")
+    if getattr(args, "chunks", False):
+        chunks = store.load_chunks(args.document_id)
+        print(f"Found {len(chunks)} chunks.")
+
+def run_kb_stats(args, settings=None):
+    from bist_signal_bot.app.knowledge_app import create_knowledge_store
+    store = create_knowledge_store(settings)
+    stats = store.index_stats()
+    if getattr(args, "json", False):
+        import json
+        print(json.dumps(stats))
+    else:
+        for k, v in stats.items():
+            print(f"{k}: {v}")
+
+def run_kb_clear(args, settings=None):
+    from bist_signal_bot.app.knowledge_app import create_knowledge_store
+    store = create_knowledge_store(settings)
+    try:
+        res = store.clear_index(confirm=args.confirm)
+        print("Index cleared.")
+    except Exception as e:
+        print(f"Error: {e}")
+
+def run_kb_config(args, settings=None):
+    keys = [k for k in dir(settings) if k.startswith("KNOWLEDGE_")]
+    conf = {k: getattr(settings, k) for k in keys}
+    if getattr(args, "json", False):
+        import json
+        print(json.dumps(conf))
+    else:
+        for k, v in conf.items():
+            print(f"{k} = {v}")

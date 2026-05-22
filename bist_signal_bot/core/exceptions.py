@@ -1024,3 +1024,53 @@ class ReviewFollowupError(ReviewError):
 
 class ReviewStorageError(ReviewError):
     pass
+
+
+class KnowledgeBaseError(BistSignalBotError):
+    """Base exception for Knowledge Base operations."""
+    pass
+
+
+class KnowledgeValidationError(KnowledgeBaseError):
+    """Raised when knowledge document or configuration validation fails."""
+    pass
+
+
+class KnowledgeSourceError(KnowledgeBaseError):
+    """Raised when knowledge sources cannot be collected or accessed."""
+    pass
+
+
+class KnowledgeIndexError(KnowledgeBaseError):
+    """Raised when knowledge indexing fails."""
+    pass
+
+
+class KnowledgeSearchError(KnowledgeBaseError):
+    """Raised when knowledge search execution fails."""
+    pass
+
+
+class KnowledgeEmbeddingError(KnowledgeBaseError):
+    """Raised when local embedding generation or fallback fails."""
+    pass
+
+
+class KnowledgeRetrievalError(KnowledgeBaseError):
+    """Raised when evidence retrieval fails."""
+    pass
+
+
+class CaseLibraryError(KnowledgeBaseError):
+    """Raised when similar case library operations fail."""
+    pass
+
+
+class AnalystMemoryError(KnowledgeBaseError):
+    """Raised when analyst memory card generation fails."""
+    pass
+
+
+class KnowledgeStorageError(KnowledgeBaseError):
+    """Raised when knowledge storage read/write fails."""
+    pass

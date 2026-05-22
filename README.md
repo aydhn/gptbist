@@ -683,3 +683,6 @@ The Research Lab introduces a robust local job queue, batch planner, deduplicati
 
 ### Important Disclaimer
 The Research Lab operates completely offline. It **never generates real market orders**, uses no cloud queue systems, does not connect to broker APIs, and should not be used as financial advice.
+
+## Knowledge Base (Phase 63)
+The Research Knowledge Base provides a local-first memory layer. See `bist_signal_bot/docs/35_RESEARCH_KNOWLEDGE_BASE.md`.

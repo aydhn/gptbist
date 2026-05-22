@@ -23,7 +23,20 @@ class HealthChecker:
 
             }
         }
-        return status
+
+        # Knowledge Base Status
+        try:
+            from bist_signal_bot.app.knowledge_app import create_knowledge_store
+            store = create_knowledge_store(settings)
+            stats = store.index_stats()
+            status["knowledge_base"] = {
+                "enabled": getattr(settings, "ENABLE_KNOWLEDGE_BASE", False),
+                "stats": stats
+            }
+        except Exception as e:
+            status["knowledge_base"] = {"status": "error", "error": str(e)}
+
+    return status
 
 def run_healthcheck(settings: Settings | None = None) -> Dict[str, Any]:
     checker = HealthChecker(settings)

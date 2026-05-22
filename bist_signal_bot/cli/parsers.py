@@ -1113,6 +1113,65 @@ def build_parser() -> argparse.ArgumentParser:
     add_stress_parsers(subparsers)
     add_drift_parser(subparsers)
     add_lab_parser(subparsers)
+
+    # KB Command
+    kb_parser = subparsers.add_parser("kb", help="Knowledge Base operations")
+    kb_subs = kb_parser.add_subparsers(dest="kb_cmd")
+
+    # kb index
+    kbi = kb_subs.add_parser("index", help="Build or update knowledge index")
+    kbi.add_argument("--incremental", action="store_true", default=True)
+    kbi.add_argument("--rebuild", action="store_true")
+    kbi.add_argument("--confirm", action="store_true")
+    kbi.add_argument("--use-embeddings", action="store_true")
+    kbi.add_argument("--source", nargs="+")
+    kbi.add_argument("--json", action="store_true")
+
+    # kb search
+    kbs = kb_subs.add_parser("search", help="Search knowledge base")
+    kbs.add_argument("query")
+    kbs.add_argument("--mode")
+    kbs.add_argument("--symbol")
+    kbs.add_argument("--source", nargs="+")
+    kbs.add_argument("--json", action="store_true")
+
+    # kb similar
+    kbsim = kb_subs.add_parser("similar", help="Find similar cases")
+    kbsim.add_argument("--symbol")
+    kbsim.add_argument("--strategy")
+    kbsim.add_argument("--text")
+    kbsim.add_argument("--json", action="store_true")
+
+    # kb cases
+    kbc = kb_subs.add_parser("cases", help="Case history")
+    kbc.add_argument("--symbol")
+    kbc.add_argument("--strategy")
+    kbc.add_argument("--json", action="store_true")
+
+    # kb memory
+    kbm = kb_subs.add_parser("memory", help="Memory cards")
+    kbm.add_argument("--symbol")
+    kbm.add_argument("--strategy")
+    kbm.add_argument("--save", action="store_true")
+    kbm.add_argument("--json", action="store_true")
+
+    # kb show
+    kbsh = kb_subs.add_parser("show", help="Show document")
+    kbsh.add_argument("document_id")
+    kbsh.add_argument("--chunks", action="store_true")
+    kbsh.add_argument("--json", action="store_true")
+
+    # kb stats
+    kbst = kb_subs.add_parser("stats", help="Index stats")
+    kbst.add_argument("--json", action="store_true")
+
+    # kb clear-index
+    kbcl = kb_subs.add_parser("clear-index", help="Clear index")
+    kbcl.add_argument("--confirm", action="store_true")
+
+    # kb config
+    kbcf = kb_subs.add_parser("config", help="KB Config")
+    kbcf.add_argument("--json", action="store_true")
     return parser
 
 def add_paper_parser(subparsers: argparse._SubParsersAction) -> None:

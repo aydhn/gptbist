@@ -21,3 +21,6 @@ BIST Signal Bot strictly operates under a set of governance rules enforced by th
 - Proper secret hygiene
 
 See `docs/33_GOVERNANCE_COMPLIANCE.md` for details.
+
+## Knowledge Base
+The system incorporates a local embedding and indexing system. See `35_RESEARCH_KNOWLEDGE_BASE.md` for guidelines.
