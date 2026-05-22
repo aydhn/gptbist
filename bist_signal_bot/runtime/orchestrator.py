@@ -313,3 +313,13 @@ def maintenance_hook_before_heavy_research():
     if getattr(settings, 'BACKUP_BEFORE_HEAVY_RESEARCH', False):
          # Typically just recommending or checking age, but could trigger backup
          pass
+
+    def update_knowledge_index(self, settings: Any = None):
+        try:
+            from bist_signal_bot.app.knowledge_app import create_knowledge_indexer
+            from bist_signal_bot.knowledge.models import KnowledgeIndexBuildRequest
+            indexer = create_knowledge_indexer(settings)
+            req = KnowledgeIndexBuildRequest(incremental=True, use_embeddings=False)
+            indexer.build_index(req)
+        except Exception:
+            pass

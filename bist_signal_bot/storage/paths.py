@@ -353,3 +353,12 @@ def get_governance_dir(settings: Settings | None = None) -> Path:
     gov_dir = get_data_dir(settings) / getattr(settings, "GOVERNANCE_DIR_NAME", "governance")
     gov_dir.mkdir(parents=True, exist_ok=True)
     return gov_dir
+
+
+def get_knowledge_dir(settings: Settings | None = None) -> Path:
+    """Gets the directory for the knowledge base storage."""
+    base_dir = get_data_dir(settings)
+    dir_name = settings.KNOWLEDGE_DIR_NAME if settings else "knowledge"
+    knowledge_dir = base_dir / dir_name
+    knowledge_dir.mkdir(parents=True, exist_ok=True)
+    return knowledge_dir

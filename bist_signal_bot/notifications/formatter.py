@@ -1153,3 +1153,6 @@ def format_review_followups(items) -> str:
     for i in items:
         lines.append(f"- {i.symbol}")
     return "\n".join(lines)
+
+def format_knowledge_index_build(result: Any) -> str:
+    return f"BIST Bot Knowledge Base\n\nIndex Status: {result.status.value}\nDocuments: {result.documents_indexed}\nChunks: {result.chunks_created}\n\nBu çıktı araştırma hafızası operasyon özetidir.\nYatırım tavsiyesi değildir.\nGerçek emir gönderilmedi."

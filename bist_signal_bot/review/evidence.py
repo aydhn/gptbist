@@ -4,6 +4,14 @@ from typing import List
 from .models import ReviewEvidence, ReviewEvidenceType, ReviewItem
 
 class ReviewEvidenceCollector:
+
+    def get_similar_cases(self, item_id: str, settings: Any = None) -> list:
+        try:
+            from bist_signal_bot.app.knowledge_app import create_evidence_retriever
+            retriever = create_evidence_retriever(settings)
+            return retriever.retrieve_for_review_item(item_id)
+        except Exception:
+            return []
     def __init__(self, settings=None):
         self.settings = settings
 

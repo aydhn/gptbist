@@ -72,3 +72,11 @@ class ReportDataCollector:
             "scanner_items": len(bundle.scanner_items),
             "paper_items": len(bundle.paper_items)
         }
+
+    def _collect_knowledge(self, settings: Any = None) -> dict:
+        try:
+            from bist_signal_bot.app.knowledge_app import create_knowledge_store
+            store = create_knowledge_store(settings)
+            return store.index_stats()
+        except Exception:
+            return {}

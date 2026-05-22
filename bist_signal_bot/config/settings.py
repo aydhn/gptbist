@@ -6,6 +6,63 @@ from bist_signal_bot.config.profiles import get_profile
 from bist_signal_bot.config.secrets import settings_safe_dump
 
 class Settings(BaseSettings):
+    # Knowledge Base
+    ENABLE_KNOWLEDGE_BASE: bool = Field(default=True)
+    KNOWLEDGE_DIR_NAME: str = Field(default="knowledge")
+    KNOWLEDGE_INDEX_ON_RUNTIME: bool = Field(default=False)
+    KNOWLEDGE_RETRIEVE_ON_REVIEW: bool = Field(default=True)
+    KNOWLEDGE_RETRIEVE_ON_REPORT: bool = Field(default=True)
+    KNOWLEDGE_SAVE_SEARCH_LOGS: bool = Field(default=True)
+
+    # Knowledge Index
+    KNOWLEDGE_DEFAULT_SEARCH_MODE: str = Field(default="AUTO")
+    KNOWLEDGE_CHUNK_SIZE: int = Field(default=800, gt=0)
+    KNOWLEDGE_CHUNK_OVERLAP: int = Field(default=100, ge=0)
+    KNOWLEDGE_INCLUDE_ARCHIVED: bool = Field(default=False)
+    KNOWLEDGE_INCREMENTAL_INDEX: bool = Field(default=True)
+    KNOWLEDGE_REBUILD_REQUIRES_CONFIRM: bool = Field(default=True)
+
+    # Knowledge Sources
+    KNOWLEDGE_SOURCE_RESEARCH_LEDGER: bool = Field(default=True)
+    KNOWLEDGE_SOURCE_SIGNALS: bool = Field(default=True)
+    KNOWLEDGE_SOURCE_REVIEW: bool = Field(default=True)
+    KNOWLEDGE_SOURCE_REPORTS: bool = Field(default=True)
+    KNOWLEDGE_SOURCE_BACKTESTS: bool = Field(default=True)
+    KNOWLEDGE_SOURCE_ENSEMBLE: bool = Field(default=True)
+    KNOWLEDGE_SOURCE_PORTFOLIO: bool = Field(default=True)
+    KNOWLEDGE_SOURCE_STRESS: bool = Field(default=True)
+    KNOWLEDGE_SOURCE_DRIFT: bool = Field(default=True)
+    KNOWLEDGE_SOURCE_GOVERNANCE: bool = Field(default=True)
+    KNOWLEDGE_SOURCE_MAINTENANCE: bool = Field(default=False)
+
+    # Knowledge Embeddings
+    KNOWLEDGE_USE_LOCAL_EMBEDDINGS: bool = Field(default=False)
+    KNOWLEDGE_LOCAL_EMBEDDING_MODEL: str = Field(default="")
+    KNOWLEDGE_ALLOW_MODEL_DOWNLOAD: bool = Field(default=False)
+    KNOWLEDGE_FALLBACK_EMBEDDING_DIM: int = Field(default=128, gt=0)
+    KNOWLEDGE_HYBRID_KEYWORD_WEIGHT: float = Field(default=0.60, ge=0.0)
+    KNOWLEDGE_HYBRID_EMBEDDING_WEIGHT: float = Field(default=0.40, ge=0.0)
+
+    # Knowledge Search
+    KNOWLEDGE_DEFAULT_LIMIT: int = Field(default=10, gt=0)
+    KNOWLEDGE_MAX_LIMIT: int = Field(default=50, gt=0)
+    KNOWLEDGE_MAX_SNIPPET_CHARS: int = Field(default=300, gt=0)
+    KNOWLEDGE_DEDUPE_DOCUMENT_RESULTS: bool = Field(default=True)
+
+    # Knowledge Memory
+    KNOWLEDGE_BUILD_MEMORY_CARDS: bool = Field(default=True)
+    KNOWLEDGE_MEMORY_MIN_CASES: int = Field(default=3, gt=0)
+
+    @field_validator("KNOWLEDGE_CHUNK_OVERLAP")
+    @classmethod
+    def validate_overlap(cls, v: int, info: "ValidationInfo") -> int:
+        chunk_size = info.data.get("KNOWLEDGE_CHUNK_SIZE", 800)
+        if v >= chunk_size:
+            raise ValueError("KNOWLEDGE_CHUNK_OVERLAP must be smaller than KNOWLEDGE_CHUNK_SIZE")
+        return v
+
+    REPORT_INCLUDE_KNOWLEDGE: bool = Field(default=True)
+
     # Portfolio Research Settings
     ENABLE_PORTFOLIO_RESEARCH: bool = True
     PORTFOLIO_RESEARCH_DIR_NAME: str = "portfolio_research"

@@ -176,3 +176,11 @@ class ResearchJobPlanner:
         plan.dependency_graph = resolver.build_graph(plan.jobs)
 
         return self.estimate_plan(plan)
+
+    def retrieve_knowledge_context(self, job: Any, settings: Any = None) -> list:
+        try:
+            from bist_signal_bot.app.knowledge_app import create_evidence_retriever
+            retriever = create_evidence_retriever(settings)
+            return retriever.retrieve_for_research_lab_job(job)
+        except Exception:
+            return []
