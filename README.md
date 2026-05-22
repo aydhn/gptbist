@@ -686,3 +686,23 @@ The Research Lab operates completely offline. It **never generates real market o
 
 ## Knowledge Base (Phase 63)
 The Research Knowledge Base provides a local-first memory layer. See `bist_signal_bot/docs/35_RESEARCH_KNOWLEDGE_BASE.md`.
+
+## Telegram Command Center (Phase 64)
+
+The Telegram Research Command Center provides a secure, fully local interface for managing the bot via Telegram.
+
+### Features
+- **Research-Only**: Active guardrails block any attempts to send real orders or execute destructive actions.
+- **Digest Orchestration**: Compile daily, weekly, or runtime digests.
+- **Notification Inbox**: A resilient local queue for managing outgoing Telegram alerts.
+- **Strict Allowlisting**: Unknown Chat IDs are blocked immediately.
+- **Secret Hygiene**: Telegram tokens and Chat IDs are redacted from logs and outputs.
+
+### CLI Usage
+```bash
+python -m bist_signal_bot telegram-center config
+python -m bist_signal_bot telegram-center dry-run "/status"
+python -m bist_signal_bot telegram-center inbox
+python -m bist_signal_bot telegram-center digest daily
+```
+See `docs/36_TELEGRAM_COMMAND_CENTER.md` for more details.

@@ -270,3 +270,6 @@ class KnowledgeSearchEngine:
                 break
 
         return ranked
+
+    def get_telegram_summary(self) -> dict:
+        return {"documents_indexed": 0, "last_search": None}

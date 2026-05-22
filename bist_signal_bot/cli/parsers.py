@@ -407,6 +407,46 @@ def add_validate_backtest_parser(subparsers):
     rob_parser.add_argument("--max-runs", type=int, help="Maximum number of robustness runs")
     rob_parser.add_argument("--json", action="store_true", help="Output in JSON format")
 
+
+def add_telegram_center_parser(subparsers):
+    parser = subparsers.add_parser('telegram-center', help='Manage Telegram Command Center')
+    subs = parser.add_subparsers(dest='telegram_subcommand', required=True)
+
+    config_p = subs.add_parser('config', help='Show Telegram Center configuration summary')
+    config_p.add_argument('--json', action='store_true', help='Output in JSON format')
+
+    dry_run_p = subs.add_parser('dry-run', help='Simulate a Telegram command locally')
+    dry_run_p.add_argument('command', help='The command text (e.g. "/status")')
+    dry_run_p.add_argument('--json', action='store_true', help='Output in JSON format')
+
+    route_p = subs.add_parser('route', help='Route a Telegram command')
+    route_p.add_argument('command', help='The command text')
+    route_p.add_argument('--chat-id', required=True, help='The origin chat ID')
+    route_p.add_argument('--dry-run', action='store_true', help='Do not actually send response')
+    route_p.add_argument('--json', action='store_true', help='Output in JSON format')
+
+    inbox_p = subs.add_parser('inbox', help='Manage notification inbox')
+    inbox_p.add_argument('--status', help='Filter by status (PENDING, SENT, FAILED, MUTED)')
+    inbox_p.add_argument('--json', action='store_true', help='Output in JSON format')
+
+    digest_p = subs.add_parser('digest', help='Generate and optionally send a digest')
+    digest_p.add_argument('type', choices=['daily', 'weekly', 'runtime'], help='Digest type')
+    digest_p.add_argument('--dry-run', action='store_true', help='Do not send, only generate')
+    digest_p.add_argument('--json', action='store_true', help='Output in JSON format')
+
+    test_p = subs.add_parser('send-test', help='Send a test message')
+    test_p.add_argument('--dry-run', action='store_true')
+    test_p.add_argument('--confirm', action='store_true')
+
+    retry_p = subs.add_parser('retry-failed', help='Retry failed notifications')
+    retry_p.add_argument('--limit', type=int, default=10)
+    retry_p.add_argument('--dry-run', action='store_true')
+    retry_p.add_argument('--json', action='store_true')
+
+    recent_p = subs.add_parser('recent-commands', help='Show recently received commands')
+    recent_p.add_argument('--limit', type=int, default=20)
+    recent_p.add_argument('--json', action='store_true')
+
 def add_signals_parser(subparsers):
     signals_parser = subparsers.add_parser("signals", help="Manage signal lifecycle and watchlist")
     signals_subparsers = signals_parser.add_subparsers(dest="signals_cmd", help="Signals sub-commands")
@@ -550,6 +590,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
 
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
+    add_telegram_center_parser(subparsers)
 
     # Portfolio Research Command
     portfolio_parser = subparsers.add_parser("portfolio-research", help="Manage research portfolio baskets and simulations")

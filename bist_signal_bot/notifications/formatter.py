@@ -360,6 +360,29 @@ class NotificationFormatter:
         return "\n".join(lines)
 
 
+
+    def format_telegram_command_result(self, result: Any) -> str:
+        text = f"Command Result: {result.status.value}\n"
+        text += f"Elapsed: {result.elapsed_seconds:.2f}s\n"
+        text += f"\n{result.response_text}"
+        return self._escape(text)
+
+    def format_notification_message(self, message: Any) -> str:
+        text = f"[{message.priority.value}] {message.title}\n"
+        text += f"{message.body}"
+        return self._escape(text)
+
+    def format_digest_result(self, result: Any) -> str:
+        text = f"=== {result.title} ===\n"
+        text += f"{result.body}"
+        return self._escape(text)
+
+    def format_telegram_status_summary(self, stats: dict[str, Any]) -> str:
+        text = "Telegram Center Status\n"
+        for k, v in stats.items():
+            text += f"• {k}: {v}\n"
+        return self._escape(text)
+
 def format_divergence_result(result, symbol: str | None = None) -> str:
     sym = symbol or result.symbol
     lines = [

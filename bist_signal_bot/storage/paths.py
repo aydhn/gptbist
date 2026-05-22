@@ -362,3 +362,14 @@ def get_knowledge_dir(settings: Settings | None = None) -> Path:
     knowledge_dir = base_dir / dir_name
     knowledge_dir.mkdir(parents=True, exist_ok=True)
     return knowledge_dir
+
+def get_telegram_center_dir(settings: Settings | None = None) -> Path:
+    """Gets the directory for Telegram Center data."""
+    base_dir = get_data_dir()
+    if settings and hasattr(settings, "TELEGRAM_CENTER_DIR_NAME"):
+        dir_name = settings.TELEGRAM_CENTER_DIR_NAME
+    else:
+        dir_name = "telegram_center"
+    path = base_dir / dir_name
+    ensure_dir(path)
+    return path
