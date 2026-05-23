@@ -1189,3 +1189,66 @@ class OperatorRunbookError(DeploymentError):
 class DeploymentStorageError(DeploymentError):
     """Raised when deployment storage read/write fails."""
     pass
+
+class PerformanceError(BistSignalBotError):
+    pass
+
+class PerformanceValidationError(PerformanceError):
+    pass
+
+class ProfilerError(PerformanceError):
+    pass
+
+class BenchmarkError(PerformanceError):
+    pass
+
+class ResourceSamplingError(PerformanceError):
+    pass
+
+class PerformanceBaselineError(PerformanceError):
+    pass
+
+class PerformanceRegressionError(PerformanceError):
+    pass
+
+class BottleneckAnalysisError(PerformanceError):
+    pass
+
+class PerformanceStorageError(PerformanceError):
+    pass
+
+class PerformanceError(BistSignalBotError):
+    """Base exception for performance profiling and benchmarking."""
+    pass
+
+class PerformanceValidationError(PerformanceError):
+    """Raised when benchmark or profile validation fails."""
+    pass
+
+class ProfilerError(PerformanceError):
+    """Raised when there is an error during profiling."""
+    pass
+
+class BenchmarkError(PerformanceError):
+    """Raised when there is an error running a benchmark."""
+    pass
+
+class ResourceSamplingError(PerformanceError):
+    """Raised when there is an error sampling system resources."""
+    pass
+
+class PerformanceBaselineError(PerformanceError):
+    """Raised when there is an error managing performance baselines."""
+    pass
+
+class PerformanceRegressionError(PerformanceError):
+    """Raised when there is an error during regression checking."""
+    pass
+
+class BottleneckAnalysisError(PerformanceError):
+    """Raised when bottleneck analysis fails."""
+    pass
+
+class PerformanceStorageError(PerformanceError):
+    """Raised when saving or loading performance data fails."""
+    pass

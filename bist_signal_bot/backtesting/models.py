@@ -1,7 +1,7 @@
 from enum import Enum
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Any
+from typing import Any, Optional, List, Dict
 import pandas as pd
 
 from bist_signal_bot.costs.models import CostScenario, OrderSide
@@ -130,7 +130,7 @@ class BacktestResult:
     data_lineage_checksum: Optional[str] = None
     data_row_count: Optional[int] = None
     data_import_timestamp: Optional[datetime] = None
-    issues: list[str]
+    issues: list[str] = field(default_factory=list)
     symbol: str | None = None
     equity_curve: pd.DataFrame = field(default_factory=pd.DataFrame)
     metadata: dict[str, Any] = field(default_factory=dict)
@@ -188,7 +188,7 @@ class BenchmarkComparisonReport:
     outperform: bool | None
     warnings: list[str]
     generated_at: datetime
-    metadata: dict[str, Any]
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     def summary(self) -> dict[str, Any]:
         return self.__dict__
@@ -277,7 +277,7 @@ class BacktestPerformanceReport:
     generated_at: datetime
     warnings: list[str]
     disclaimer: str
-    metadata: dict[str, Any]
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     def summary(self) -> dict[str, Any]:
         return {
@@ -327,7 +327,7 @@ class BenchmarkComparisonReport:
     outperform: bool | None
     warnings: list[str]
     generated_at: datetime
-    metadata: dict[str, Any]
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     def summary(self) -> dict[str, Any]:
         return self.__dict__
@@ -342,7 +342,7 @@ class BacktestReportBundle:
     trades: pd.DataFrame
     generated_at: datetime
     output_files: dict[str, str]
-    metadata: dict[str, Any]
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     def summary(self) -> dict[str, Any]:
         return {

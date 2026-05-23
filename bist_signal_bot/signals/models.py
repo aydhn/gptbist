@@ -1,7 +1,7 @@
 from datetime import datetime
 from enum import Enum
 from typing import Any, List, Dict, Optional
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 
 
 class SignalDirection(str, Enum):
@@ -72,7 +72,7 @@ class SignalCandidate(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
     disclaimer: str = "Research signal candidate only. Not investment advice. No order was sent."
 
-    @validator("symbol", pre=True)
+    @field_validator("symbol", pre=True)
     def normalize_symbol(cls, v: str) -> str:
         if isinstance(v, str):
             v = v.upper().strip()
@@ -80,13 +80,13 @@ class SignalCandidate(BaseModel):
                 v = v[:-3]
         return v
 
-    @validator("strategy_name")
+    @field_validator("strategy_name")
     def validate_strategy_name(cls, v: str) -> str:
         if not v or not str(v).strip():
             raise ValueError("strategy_name cannot be empty")
         return str(v).lower().replace(" ", "_")
 
-    @validator("risk_reward")
+    @field_validator("risk_reward")
     def validate_risk_reward(cls, v: float | None) -> float | None:
         if v is not None and v < 0:
             raise ValueError("risk_reward cannot be negative")

@@ -719,3 +719,6 @@ To get started, try running:
 python -m bist_signal_bot deploy doctor
 python -m bist_signal_bot deploy first-run --dry-run
 ```
+
+## Performance Profiling
+BIST Signal Bot includes a fully local performance profiling suite. It generates zero financial claims, does not use external cloud services, and is meant purely for operational efficiency monitoring. Use `python -m bist_signal_bot perf --help` to explore.

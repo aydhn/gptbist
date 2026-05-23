@@ -4262,159 +4262,179 @@ def docs_config(json: bool = typer.Option(False, "--json")):
 
 
 def handle_performance_command(args, settings) -> None:
-    import json
     from bist_signal_bot.app.performance_app import (
-        create_resource_monitor, create_cache_inspector, create_performance_benchmark_runner,
-        create_batch_tuner, create_function_profiler, create_performance_report_store
+        create_resource_sampler, create_performance_store, create_benchmark_runner,
+        create_baseline_manager, create_regression_checker, create_bottleneck_analyzer, create_local_profiler
     )
-    from bist_signal_bot.performance.models import WorkloadType, CachePolicy
+    from bist_signal_bot.performance.models import BenchmarkRequest, BenchmarkType
     from bist_signal_bot.performance.reporting import (
-        format_resource_snapshot_text, format_cache_report_text, format_benchmark_result_text
+        resource_snapshot_to_dict, benchmark_result_to_dict, baseline_to_dict,
+        regression_result_to_dict, bottleneck_to_dict, format_benchmark_text,
+        format_regression_text, format_bottlenecks_text
     )
+    import json
 
-    cmd = args.perf_command
-
-    if cmd == "resource":
-        monitor = create_resource_monitor(settings)
-        snap = monitor.snapshot()
-        if getattr(args, "json", False):
-            print(json.dumps(snap.summary(), indent=2))
+    if args.perf_command == "resources":
+        sampler = create_resource_sampler(settings)
+        snap = sampler.snapshot()
+        if getattr(args, 'json', False):
+            print(snap.model_dump_json(indent=2))
         else:
-            print(format_resource_snapshot_text(snap))
+            print("=== Resource Snapshot ===")
+            print(f"Captured At: {snap.captured_at}")
+            print(f"CPU: {snap.cpu_percent}%")
+            print(f"Memory RSS: {snap.memory_rss_mb} MB")
+            print(f"Disk Free: {snap.disk_free_mb} MB")
+            if snap.gpu_available:
+                print(f"GPU: {snap.gpu_name} ({snap.gpu_utilization_percent}%)")
+            for w in snap.warnings:
+                print(f"Warning: {w}")
 
-    elif cmd == "diagnose":
-        monitor = create_resource_monitor(settings)
-        snap = monitor.snapshot()
-        cache = create_cache_inspector(settings)
-        cache_rep = cache.scan_cache_dirs()
-
-        diag = {
-            "resource": snap.summary(),
-            "cache": {
-                "total_mb": cache_rep.total_size_mb,
-                "safe_delete_mb": cache_rep.safe_delete_size_mb
-            }
+    elif args.perf_command == "benchmark":
+        b_type_map = {
+            "scanner": BenchmarkType.SCANNER,
+            "feature-builder": BenchmarkType.FEATURE_BUILDER,
+            "runtime": BenchmarkType.RUNTIME_RUN_ONCE,
+            "knowledge-index": BenchmarkType.KNOWLEDGE_INDEX,
+            "backtest": BenchmarkType.BACKTEST,
+            "ml-inference": BenchmarkType.ML_INFERENCE,
+            "report-generation": BenchmarkType.REPORT_GENERATION
         }
-        if getattr(args, "json", False):
-            print(json.dumps(diag, indent=2))
-        else:
-            print("--- DIAGNOSTICS ---")
-            print(format_resource_snapshot_text(snap))
-            print(format_cache_report_text(cache_rep))
+        btype = b_type_map[args.benchmark_type]
+        runner = create_benchmark_runner(settings)
 
-    elif cmd == "cache":
-        cache = create_cache_inspector(settings)
-        dry_run = True
-        confirm = False
-        if hasattr(args, 'cleanup') and args.cleanup:
-            dry_run = False
-            confirm = getattr(args, 'confirm', False)
-            if not confirm:
-                print("Error: --confirm is required for cleanup.")
+        req = BenchmarkRequest(
+            benchmark_type=btype,
+            symbols=args.symbols or [],
+            strategy_name=args.strategy,
+            sample_size=args.sample_size,
+            iterations=args.iterations,
+            use_synthetic_data=args.synthetic,
+            heavy=False
+        )
+        result = runner.run(req)
+        store = create_performance_store(settings)
+        store.save_benchmark(result)
+
+        if getattr(args, 'json', False):
+            print(json.dumps(benchmark_result_to_dict(result), indent=2))
+        else:
+            print(format_benchmark_text(result))
+
+    elif args.perf_command == "profile":
+        b_type_map = {
+            "scanner": BenchmarkType.SCANNER,
+            "runtime": BenchmarkType.RUNTIME_RUN_ONCE
+        }
+        btype = b_type_map[args.benchmark_type]
+        profiler = create_local_profiler(settings)
+
+        def dummy_work():
+            import time
+            time.sleep(0.1)
+
+        profile = profiler.profile_callable("cli_profile", btype, dummy_work)
+        if getattr(args, 'json', False):
+            import json
+            def default_serializer(o):
+                import datetime
+                if isinstance(o, datetime.datetime):
+                    return o.isoformat()
+                raise TypeError(f'Object of type {o.__class__.__name__} is not JSON serializable')
+            print(json.dumps(profile.summary(), indent=2, default=default_serializer))
+        else:
+            print(f"Profile {profile.profile_id} created. Status: {profile.status.value}")
+
+    elif args.perf_command == "report":
+        store = create_performance_store(settings)
+        recent = store.list_recent_benchmarks(limit=1)
+        if getattr(args, 'json', False):
+            print(json.dumps(recent, indent=2))
+        else:
+            if recent:
+                print(f"Found {len(recent)} recent benchmarks. Showing latest summary:")
+                print(recent[0])
+            else:
+                print("No recent benchmarks found.")
+
+    elif args.perf_command == "baseline":
+        mgr = create_baseline_manager(settings)
+        if args.base_command == "create":
+            store = create_performance_store(settings)
+            bench = store.load_benchmark(args.benchmark)
+            if not bench:
+                print("Benchmark not found.")
                 return
+            try:
+                base = mgr.create_baseline(bench, confirm=args.confirm)
+                mgr.save_baseline(base)
+                print(f"Baseline {base.baseline_id} created.")
+            except Exception as e:
+                print(f"Error: {e}")
+        elif args.base_command == "latest":
+            base = mgr.load_latest_baseline()
+            if base:
+                print(json.dumps(baseline_to_dict(base), indent=2) if getattr(args, 'json', False) else f"Latest baseline: {base.baseline_id}")
+            else:
+                print("No baseline found.")
+        elif args.base_command == "list":
+            bases = mgr.list_baselines()
+            if getattr(args, 'json', False):
+                print(json.dumps([baseline_to_dict(b) for b in bases], indent=2))
+            else:
+                print(f"Found {len(bases)} baselines.")
 
-        policy_str = getattr(args, "policy", "DRY_RUN_ONLY")
-        policy = CachePolicy[policy_str] if hasattr(CachePolicy, policy_str) else CachePolicy.DRY_RUN_ONLY
-        max_age = getattr(args, "max_age_days", 30)
+    elif args.perf_command == "compare":
+        store = create_performance_store(settings)
+        mgr = create_baseline_manager(settings)
+        checker = create_regression_checker(settings)
 
-        rep = cache.cleanup(policy=policy, max_age_days=max_age, dry_run=dry_run, confirm=confirm)
-
-        if getattr(args, "json", False):
-            from bist_signal_bot.performance.reporting import cache_report_to_dict
-            print(json.dumps(cache_report_to_dict(rep), indent=2))
+        if args.latest:
+            bench = store.load_latest_benchmark()
+            base = mgr.load_latest_baseline()
         else:
-            print(format_cache_report_text(rep))
+            bench = store.load_benchmark(args.benchmark)
+            base = mgr.load_latest_baseline() # Need load by ID technically, but lazy
 
-    elif cmd == "benchmark":
-        runner = create_performance_benchmark_runner(settings)
-        wl = args.workload.upper().replace("-", "_")
-        if wl == "SCANNER":
-            res = runner.benchmark_scan_mock(args.symbols, args.strategy, args.iterations)
-        elif wl == "BACKTEST":
-            res = runner.benchmark_backtest_mock(args.symbols[0], args.strategy, args.iterations)
-        elif wl == "ML_DATASET":
-            res = runner.benchmark_ml_dataset_mock(args.symbols, args.iterations)
-        else:
-            print(f"Unknown benchmark workload: {args.workload}")
+        if not bench or not base:
+            print("Could not load benchmark or baseline to compare.")
             return
 
-        if getattr(args, "json", False):
-            from bist_signal_bot.performance.reporting import benchmark_result_to_dict
-            print(json.dumps(benchmark_result_to_dict(res), indent=2))
+        reg = checker.compare(bench, base)
+        store.save_regression(reg)
+
+        if getattr(args, 'json', False):
+            print(json.dumps(regression_result_to_dict(reg), indent=2))
         else:
-            print(format_benchmark_result_text(res))
+            print(format_regression_text(reg))
 
-    elif cmd == "profile":
-        # Simplified profile handling for CLI
-        print(f"Profiling {args.workload}...")
-        # Since this is a massive block, we keep it simple for the implementation.
-        profiler = create_function_profiler(settings)
-        def mock_workload():
-            import time
-            time.sleep(0.1) # Simulate
+    elif args.perf_command == "bottlenecks":
+        store = create_performance_store(settings)
+        analyzer = create_bottleneck_analyzer(settings)
 
-        res = profiler.profile_callable(f"profile_{args.workload}", mock_workload)
-        if getattr(args, "json", False):
-            from bist_signal_bot.performance.reporting import workload_profile_to_dict
-            # Mock request injection since our CLI profile is synthetic here
-            from bist_signal_bot.performance.models import WorkloadProfileResult, WorkloadProfileRequest, WorkloadType
-
-            wr = WorkloadProfileResult(
-                request=WorkloadProfileRequest(workload_type=WorkloadType.CUSTOM),
-                status=res.status,
-                elapsed_seconds=res.elapsed_seconds
-            )
-            print(json.dumps(workload_profile_to_dict(wr), indent=2))
+        if getattr(args, 'latest', False):
+            bench = store.load_latest_benchmark()
         else:
-            print(f"Profile Status: {res.status.value}")
-            print(f"Elapsed: {res.elapsed_seconds:.4f}s")
+            bench = store.load_benchmark(args.benchmark)
 
-    elif cmd == "batch-recommend":
-        tuner = create_batch_tuner(settings)
-        monitor = create_resource_monitor(settings)
-        snap = monitor.snapshot()
+        if not bench:
+            print("Benchmark not found.")
+            return
 
-        wl = args.workload.upper().replace("-", "_")
-        try:
-            from bist_signal_bot.performance.models import WorkloadType
-            wl_enum = WorkloadType[wl]
-        except KeyError:
-            wl_enum = WorkloadType.CUSTOM
-
-        rec = tuner.recommend_for_workload(wl_enum, snap, args.symbols)
-
-        out = {
-            "workload": rec.workload_type.value,
-            "recommended_batch_size": rec.recommended_batch_size,
-            "recommended_max_workers": rec.recommended_max_workers,
-            "recommended_concurrency_mode": rec.recommended_concurrency_mode.value,
-            "reason": rec.reason,
-            "warnings": rec.warnings
-        }
-
-        if getattr(args, "json", False):
-            print(json.dumps(out, indent=2))
+        findings = analyzer.analyze_benchmark(bench)
+        if getattr(args, 'json', False):
+            print(json.dumps([bottleneck_to_dict(f) for f in findings], indent=2))
         else:
-            for k, v in out.items():
-                print(f"{k}: {v}")
+            print(format_bottlenecks_text(findings))
 
-    elif cmd == "recent":
-        store = create_performance_report_store(settings)
-        reps = store.list_recent_performance_reports(args.limit)
-        if getattr(args, "json", False):
-            print(json.dumps(reps, indent=2))
-        else:
-            print(f"--- RECENT REPORTS (Limit: {args.limit}) ---")
-            for r in reps:
-                print(f"[{r.get('date')}] {r.get('run_id')} - {r.get('workload_type')} ({r.get('elapsed_seconds')}s)")
-
-    elif cmd == "config":
-        conf = {k: v for k, v in settings.model_dump().items() if k.startswith("PERFORMANCE_")}
-        if getattr(args, "json", False):
+    elif args.perf_command == "config":
+        conf = {k: v for k, v in settings.model_dump().items() if "PERFORMANCE" in k}
+        if getattr(args, 'json', False):
             print(json.dumps(conf, indent=2))
         else:
             for k, v in conf.items():
-                print(f"{k}: {v}")
+                print(f"{k} = {v}")
+
 
 def handle_report(args: argparse.Namespace) -> None:
     settings = get_settings()

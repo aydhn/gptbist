@@ -67,6 +67,9 @@ class RuntimeJobConfig(BaseModel):
     metadata: Dict[str, Any] = Field(default_factory=dict)
 
 class RuntimePipelineConfig(BaseModel):
+
+    profile_runtime: bool = False
+    performance_budget_enabled: bool = False
     build_research_portfolio: bool = False
     portfolio_allocation_method: str | None = None
     portfolio_max_items: int | None = None
@@ -116,6 +119,10 @@ class RuntimeJobResult(BaseModel):
         }
 
 class RuntimePipelineResult(BaseModel):
+
+    performance_profile_id: str | None = None
+    memory_peak_mb: float | None = None
+    slowest_stage: str | None = None
     run_id: str
     trigger: RuntimeTrigger
     config: RuntimePipelineConfig

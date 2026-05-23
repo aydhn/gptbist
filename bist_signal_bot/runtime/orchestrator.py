@@ -66,7 +66,33 @@ class RuntimeOrchestrator:
         self.kill_switch = kill_switch or KillSwitchManager(self.settings, get_data_dir(self.settings))
         self.security_preflight = security_preflight or SecurityPreflightRunner(self.settings, kill_switch=self.kill_switch)
 
+
     def run_once(self, config: RuntimePipelineConfig, trigger: RuntimeTrigger = RuntimeTrigger.CLI) -> RuntimePipelineResult:
+        if config.profile_runtime and getattr(self.settings, 'ENABLE_PERFORMANCE_PROFILING', False):
+            from bist_signal_bot.app.performance_app import create_local_profiler
+            from bist_signal_bot.performance.models import BenchmarkType
+            profiler = create_local_profiler(self.settings)
+            with profiler.profile_context("runtime_run_once", BenchmarkType.RUNTIME_RUN_ONCE) as perf_ctx:
+                result = self._run_once_impl(config, trigger)
+                # Attach performance to result after execution completes, but before yielding context
+                if result:
+                    pass
+
+            # After context finishes, attach the saved profile info
+            if "profile" in perf_ctx and perf_ctx["profile"]:
+                profile = perf_ctx["profile"]
+                result.performance_profile_id = profile.profile_id
+                peak = next((m.value for m in profile.metrics if m.name == "Peak Memory Usage"), None)
+                result.memory_peak_mb = peak
+                if profile.spans:
+                    slowest = max(profile.spans, key=lambda s: s.elapsed_seconds)
+                    result.slowest_stage = slowest.name
+            return result
+        else:
+            return self._run_once_impl(config, trigger)
+
+    def _run_once_impl(self, config: RuntimePipelineConfig, trigger: RuntimeTrigger = RuntimeTrigger.CLI) -> RuntimePipelineResult:
+
         if getattr(self.settings, "RUNTIME_REQUIRE_FRESH_DATA", False):
             try:
                 from bist_signal_bot.data.data_service import MarketDataService

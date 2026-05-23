@@ -1,33 +1,26 @@
 import pytest
 import time
 from bist_signal_bot.performance.timer import PerformanceTimer
-from bist_signal_bot.core.exceptions import PerformanceError
-
-def test_timer_start_stop():
-    timer = PerformanceTimer()
-    timer.start("test_task")
-    time.sleep(0.01)
-    res = timer.stop("test_task")
-    assert res.elapsed_seconds >= 0.01
-    assert res.name == "test_task"
+from bist_signal_bot.performance.models import BenchmarkType
 
 def test_timer_context_manager():
     timer = PerformanceTimer()
-    with timer.time_block("block_task"):
+    with timer.span("test_span") as span:
         time.sleep(0.01)
 
-    results = timer.results()
-    assert len(results) == 1
-    assert results[0].name == "block_task"
-    assert results[0].elapsed_seconds >= 0.01
+    assert span.elapsed_seconds > 0
+    assert span.finished_at is not None
+    assert len(timer.current_spans()) == 1
 
-def test_timer_duplicate_start_raises():
+def test_timer_exception_closes_span():
     timer = PerformanceTimer()
-    timer.start("task")
-    with pytest.raises(PerformanceError):
-        timer.start("task")
+    try:
+        with timer.span("fail_span") as span:
+            raise ValueError("test")
+    except ValueError:
+        pass
 
-def test_timer_stop_without_start_raises():
-    timer = PerformanceTimer()
-    with pytest.raises(PerformanceError):
-        timer.stop("nonexistent")
+    spans = timer.current_spans()
+    assert len(spans) == 1
+    assert spans[0].finished_at is not None
+

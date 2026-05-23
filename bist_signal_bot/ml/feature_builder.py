@@ -41,22 +41,34 @@ class MLFeatureBuilder:
     def build_features(self, data: pd.DataFrame, config: FeatureConfig, symbol: str, timeframe: str) -> pd.DataFrame:
         df = data.copy()
 
+        # Inject Optional Profiler
+        profiler = None
+        if getattr(self.settings, 'ENABLE_PERFORMANCE_PROFILING', False):
+            from bist_signal_bot.app.performance_app import create_local_profiler
+            profiler = create_local_profiler(self.settings)
+
         # Add returns first
         if config.include_returns:
+            span = profiler.timer.start_span("returns_features") if profiler else None
             df = self.add_return_features(df)
+            if span: profiler.timer.finish_span(span.span_id)
 
         # Add basic feature modules if requested
         if config.include_trend:
+            span = profiler.timer.start_span("trend_features") if profiler else None
             try:
                 df = self.trend_builder.add_features(df, level=config.feature_set_level.value.lower())
             except Exception as e:
                 logger.warning(f"Failed to add trend features: {e}")
+            if span: profiler.timer.finish_span(span.span_id)
 
         if config.include_momentum:
+            span = profiler.timer.start_span("momentum_features") if profiler else None
             try:
                 df = self.momentum_builder.add_features(df, level=config.feature_set_level.value.lower())
             except Exception as e:
                 logger.warning(f"Failed to add momentum features: {e}")
+            if span: profiler.timer.finish_span(span.span_id)
 
         if config.include_volatility:
             try:

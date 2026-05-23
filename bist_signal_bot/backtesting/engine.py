@@ -64,6 +64,15 @@ class BacktestEngine:
         )
 
     def run_single_symbol(self, strategy_name: str, symbol: str, data: MarketDataFrame | pd.DataFrame, params: dict[str, Any] | None = None, config: BacktestConfig | None = None) -> BacktestResult:
+        import time
+        start_time = time.time()
+        profiler = None
+        timer_span = None
+        if getattr(self.settings, 'ENABLE_PERFORMANCE_PROFILING', False):
+            from bist_signal_bot.app.performance_app import create_local_profiler
+            profiler = create_local_profiler(self.settings)
+            timer_span = profiler.timer.start_span(f"backtest_single_{symbol}")
+
         started_at = datetime.now(UTC)
         df = data.data.copy() if isinstance(data, MarketDataFrame) else data.copy()
         df.sort_index(inplace=True)
@@ -172,8 +181,7 @@ class BacktestEngine:
             except Exception as e:
                 self.logger.warning(f"Failed to log backtest to research ledger: {e}")
 
-return res
-
+        return res
 
     def run_batch_symbols(self, strategy_name: str, symbols_data: dict[str, MarketDataFrame | pd.DataFrame], params: dict[str, Any] | None = None, config: BacktestConfig | None = None) -> dict[str, BacktestResult]:
         results = {}
