@@ -1,12 +1,12 @@
 import logging
 from typing import Dict, Any
-from bist_signal_bot.config.settings import Settings, get_settings
+from bist_signal_bot.config.settings import Settings
 
 logger = logging.getLogger(__name__)
 
 class HealthChecker:
     def __init__(self, settings: Settings | None = None):
-        self.settings = settings or get_settings()
+        self.settings = settings or Settings()
 
     def run(self) -> Dict[str, Any]:
         logger.info("Running healthcheck...")
@@ -23,6 +23,20 @@ class HealthChecker:
 
             }
         }
+
+
+        # Deployment Status
+        try:
+            from bist_signal_bot.app.deployment_app import create_deployment_store
+            deploy_store = create_deployment_store(self.settings)
+            first_run = deploy_store.load_latest_first_run_result()
+            deployment_info = {
+                "enabled": getattr(self.settings, "ENABLE_DEPLOYMENT_TOOLS", True),
+                "latest_first_run_status": first_run.status.name if first_run else "UNKNOWN",
+            }
+            status["components"]["deployment"] = deployment_info
+        except Exception as e:
+            status["components"]["deployment"] = f"ERROR: {e}"
 
         # Knowledge Base Status
         try:

@@ -709,3 +709,13 @@ See `docs/36_TELEGRAM_COMMAND_CENTER.md` for more details.
 
 ### Local Scheduler (Phase 65)
 BIST Signal Bot includes a fully local, calendar-aware scheduler to automate research tasks without external dependencies like cron or Celery. It understands BIST market hours, respects governance gates, and never produces live trading orders.
+
+
+## Local Deployment
+The bot supports an easy deployment wizard to help validate Python environments, initialize folders, setup profiles (like `RESEARCH_ONLY` to safely avoid broker execution), and output runbooks.
+
+To get started, try running:
+```bash
+python -m bist_signal_bot deploy doctor
+python -m bist_signal_bot deploy first-run --dry-run
+```

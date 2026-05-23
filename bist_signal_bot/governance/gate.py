@@ -20,6 +20,14 @@ logger = logging.getLogger(__name__)
 class GovernanceGate:
     def __init__(self, settings: Settings | None = None, base_dir: Path | None = None):
         self.settings = settings or get_settings()
+
+    def check_deployment_profile(self, profile) -> bool:
+        if getattr(profile, "real_order_enabled", False):
+            return False
+        if getattr(profile, "broker_enabled", False):
+            return False
+        return True
+
         self.base_dir = base_dir
         self.policy_manager = GovernancePolicyManager(self.settings)
         self.rule_evaluator = GovernanceRuleEvaluator(self.settings)

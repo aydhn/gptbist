@@ -4,7 +4,7 @@ from pathlib import Path
 import json
 from datetime import datetime
 
-from bist_signal_bot.config.settings import get_settings
+from bist_signal_bot.config.settings import Settings
 from bist_signal_bot.app.ensemble_app import create_ensemble_engine, create_weight_manager, create_ensemble_store
 from bist_signal_bot.ensemble.models import EnsembleMode
 
@@ -39,7 +39,7 @@ def setup_ensemble_parser(subparsers):
     cfg_p.add_argument("--json", action="store_true", help="Output JSON")
 
 def handle_ensemble_command(args: argparse.Namespace):
-    settings = get_settings()
+    settings = Settings()
 
     if args.ensemble_command == "run":
         engine = create_ensemble_engine(settings)

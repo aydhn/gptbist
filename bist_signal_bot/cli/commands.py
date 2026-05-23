@@ -6050,3 +6050,168 @@ def run_scheduler():
     parser.add_argument('--dry-run', action='store_true')
     args, _ = parser.parse_known_args(sys.argv[2:])
     handle_scheduler(args)
+
+
+def deploy_command(args, settings):
+    from bist_signal_bot.app.deployment_app import (
+        create_deployment_profile_manager,
+        create_environment_doctor,
+        create_deployment_directory_manager,
+        create_env_template_builder,
+        create_first_run_wizard,
+        create_deployment_smoke_tester,
+        create_operator_runbook_builder,
+        create_deployment_store
+    )
+    from bist_signal_bot.deployment.models import DeploymentProfileType, EnvTemplateRequest
+    from bist_signal_bot.deployment.reporting import (
+        format_profile_text, format_environment_doctor_text, format_first_run_text, format_smoke_test_text
+    )
+    import json
+
+    if args.deploy_subcommand == "profiles":
+        mgr = create_deployment_profile_manager(settings)
+        profiles = mgr.default_profiles()
+        if getattr(args, "json", False):
+            print(json.dumps([p.model_dump(mode="json") for p in profiles], indent=2))
+        else:
+            for p in profiles:
+                print(format_profile_text(p))
+
+    elif args.deploy_subcommand == "doctor":
+        doc = create_environment_doctor(settings)
+        res = doc.run(deep=getattr(args, "deep", False))
+        if getattr(args, "json", False):
+            print(json.dumps([r.model_dump(mode="json") for r in res], indent=2))
+        else:
+            print(format_environment_doctor_text(res))
+
+    elif args.deploy_subcommand == "init-dirs":
+        mgr = create_deployment_directory_manager(settings)
+        dry = getattr(args, "dry_run", True)
+        conf = getattr(args, "confirm", False)
+        if conf: dry = False
+        res = mgr.init_directories(confirm=conf, dry_run=dry)
+        if getattr(args, "json", False):
+            print(json.dumps([r.model_dump(mode="json") for r in res], indent=2))
+        else:
+            for r in res:
+                print(f"[{r.status.name}] {r.message}")
+
+    elif args.deploy_subcommand == "env-template":
+        mgr = create_deployment_profile_manager(settings)
+        try:
+            ptype = DeploymentProfileType[getattr(args, "profile", "RESEARCH_ONLY")]
+        except KeyError:
+            ptype = DeploymentProfileType.RESEARCH_ONLY
+        prof = mgr.get_profile(ptype)
+
+        bld = create_env_template_builder(settings)
+        out = getattr(args, "output", None)
+        conf = getattr(args, "confirm", False)
+
+        req = EnvTemplateRequest(profile_type=ptype, output_path=out, overwrite=conf)
+        res = bld.build_template(req, prof)
+
+        if out and conf:
+            from pathlib import Path
+            bld.write_env_file(res.metadata.get("generated_text", ""), Path(out), overwrite=True, confirm=True)
+            print(f"Written to {out}")
+        else:
+            print(res.metadata.get("generated_text", ""))
+
+    elif args.deploy_subcommand == "first-run":
+        mgr = create_deployment_profile_manager(settings)
+        try:
+            ptype = DeploymentProfileType[getattr(args, "profile", "RESEARCH_ONLY")]
+        except KeyError:
+            ptype = DeploymentProfileType.RESEARCH_ONLY
+
+        wiz = create_first_run_wizard(settings)
+        dry = getattr(args, "dry_run", True)
+        conf = getattr(args, "confirm_write", False)
+        if conf: dry = False
+
+        res = wiz.run(profile_type=ptype, confirm_write=conf, dry_run=dry)
+
+        store = create_deployment_store(settings)
+        store.save_first_run_result(res)
+
+        if getattr(args, "json", False):
+            print(json.dumps(res.safe_public_dict(), indent=2))
+        else:
+            print(format_first_run_text(res))
+
+    elif args.deploy_subcommand == "smoke-test":
+        tester = create_deployment_smoke_tester(settings)
+        mgr = create_deployment_profile_manager(settings)
+        prof = mgr.get_profile(DeploymentProfileType.RESEARCH_ONLY)
+        res = tester.run_smoke_tests(prof, dry_run=False) # Run actual smoke
+
+        store = create_deployment_store(settings)
+        store.save_smoke_result(res)
+
+        if getattr(args, "json", False):
+            print(json.dumps(res.model_dump(mode="json"), indent=2))
+        else:
+            print(format_smoke_test_text(res))
+
+    elif args.deploy_subcommand == "runbook":
+        mgr = create_deployment_profile_manager(settings)
+        try:
+            ptype = DeploymentProfileType[getattr(args, "profile", "RESEARCH_ONLY")]
+        except KeyError:
+            ptype = DeploymentProfileType.RESEARCH_ONLY
+        prof = mgr.get_profile(ptype)
+
+        bld = create_operator_runbook_builder(settings)
+        store = create_deployment_store(settings)
+        rb = bld.build_runbook(prof)
+        md = bld.render_markdown(rb)
+
+        out = getattr(args, "output", None)
+        if out:
+            from pathlib import Path
+            bld.write_runbook(rb, Path(out).parent)
+            print(f"Written to {out}")
+        else:
+            print(md)
+
+    elif args.deploy_subcommand == "platform-commands":
+        from bist_signal_bot.deployment.platforms import PlatformCommandBuilder
+        plat = getattr(args, "platform", None)
+        bld = PlatformCommandBuilder()
+        if not plat:
+            plat = bld.detect_platform()
+
+        cmds = []
+        if plat == "windows":
+            cmds = bld.windows_task_scheduler_examples()
+        elif plat == "macos":
+            cmds = bld.macos_launchd_examples()
+        else:
+            cmds = bld.linux_cron_examples()
+
+        if getattr(args, "json", False):
+            print(json.dumps(cmds, indent=2))
+        else:
+            for c in cmds:
+                print(f"{c['description']}:\n{c['action']}\n")
+
+    elif args.deploy_subcommand == "latest":
+        store = create_deployment_store(settings)
+        res = store.load_latest_first_run_result()
+        if res:
+            if getattr(args, "json", False):
+                print(json.dumps(res.safe_public_dict(), indent=2))
+            else:
+                print(format_first_run_text(res))
+        else:
+            print("No first-run found.")
+
+    elif args.deploy_subcommand == "config":
+        # Redacted config
+        if getattr(args, "json", False):
+            print(json.dumps({"status": "redacted"}, indent=2))
+        else:
+            print("Config is redacted.")
