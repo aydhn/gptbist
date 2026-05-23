@@ -1149,3 +1149,43 @@ class ScheduledJobExecutionError(SchedulerError):
 
 class SchedulerStorageError(SchedulerError):
     pass
+
+class DeploymentError(BistSignalBotError):
+    """Base exception for Deployment operations."""
+    pass
+
+class DeploymentValidationError(DeploymentError):
+    """Raised when deployment configuration or model validation fails."""
+    pass
+
+class DeploymentProfileError(DeploymentError):
+    """Raised when a deployment profile is invalid or unsafe."""
+    pass
+
+class EnvironmentDoctorError(DeploymentError):
+    """Raised when environment validation fails."""
+    pass
+
+class FirstRunError(DeploymentError):
+    """Raised when first run wizard encounters an error."""
+    pass
+
+class EnvTemplateError(DeploymentError):
+    """Raised when environment template generation fails."""
+    pass
+
+class DeploymentDirectoryError(DeploymentError):
+    """Raised when deployment directory initialization fails."""
+    pass
+
+class DeploymentSmokeTestError(DeploymentError):
+    """Raised when deployment smoke tests fail."""
+    pass
+
+class OperatorRunbookError(DeploymentError):
+    """Raised when operator runbook generation fails."""
+    pass
+
+class DeploymentStorageError(DeploymentError):
+    """Raised when deployment storage read/write fails."""
+    pass

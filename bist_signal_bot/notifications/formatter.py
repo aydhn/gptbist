@@ -1,3 +1,5 @@
+from typing import Any
+
 
 from bist_signal_bot.reports.models import GeneratedReport, TelegramDigest
 from ..research.models import ResearchRun, ResearchComparisonReport, AttributionReport, SignalJournalEntry
@@ -1194,3 +1196,60 @@ def format_market_session_snapshot(snapshot) -> str:
 
 def format_scheduled_job_run(run) -> str:
     return f"Job Run: {run.job_name} ({run.status.value})"
+
+# Deployment Notification Formatters
+def format_deployment_doctor(checks: list) -> str:
+    msg = ["🛠️ **Deployment Doctor Summary**\n"]
+    passed = sum(1 for c in checks if c.status.name == "PASS")
+    total = len(checks)
+    msg.append(f"Checks Passed: {passed}/{total}\n")
+    for check in checks:
+        if check.status.name != "PASS":
+            msg.append(f"⚠️ {check.title}: {check.status.name}")
+            if check.message:
+                msg.append(f"   {check.message}")
+    msg.append("\n_This output is for operational deployment guidance only._")
+    return "\n".join(msg)
+
+def format_first_run_result(result: Any) -> str:
+    msg = [
+        "🚀 **BIST Bot Deployment Özeti**\n",
+        f"Profile: {result.profile.profile_type.name}",
+        f"Environment: {result.status.name}"
+    ]
+
+    smoke_step = next((s for s in result.steps if s.step_type.name == "RUN_SMOKE_TESTS"), None)
+    if smoke_step:
+        msg.append(f"Smoke Test: {smoke_step.status.name}")
+
+    msg.append(f"Scheduler Dry Run: {'Enabled' if result.profile.scheduler_dry_run else 'Disabled'}")
+    msg.append(f"Telegram Send: {'Enabled' if result.profile.telegram_send_enabled else 'Disabled'}")
+    msg.append(f"Broker: {'Enabled' if getattr(result.profile, 'broker_enabled', False) else 'Disabled'}")
+
+    msg.append("\nBu çıktı operasyonel kurulum özetidir.")
+    msg.append("Yatırım tavsiyesi değildir.")
+    msg.append("Gerçek emir gönderilmedi.")
+
+    return "\n".join(msg)
+
+def format_smoke_test_result(result: Any) -> str:
+    msg = [
+        "💨 **Smoke Test Summary**\n",
+        f"Status: {result.status.name}",
+        f"Commands Tested: {len(result.commands_tested)}"
+    ]
+    if result.errors:
+        msg.append("\nErrors:")
+        for err in result.errors:
+            msg.append(f"- {err}")
+    msg.append("\n_Smoke test is operational only. No real order was sent._")
+    return "\n".join(msg)
+
+def format_operator_runbook_summary(runbook: Any) -> str:
+    msg = [
+        "📖 **Operator Runbook Generated**\n",
+        f"Profile: {runbook.profile_type.name}",
+        f"Sections: {len(runbook.sections)}"
+    ]
+    msg.append("\n_Operator runbook is operational guidance only. Not investment advice. No real order was sent._")
+    return "\n".join(msg)

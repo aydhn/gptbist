@@ -2,16 +2,16 @@ from typing import Any
 from pathlib import Path
 
 from bist_signal_bot.config.settings import Settings
-from bist_signal_bot.config.settings import Settings, settings as default_settings
+from bist_signal_bot.config.settings import Settings
 from bist_signal_bot.data.models import DataVendor, Timeframe
 from bist_signal_bot.data.symbol_utils import ensure_valid_internal_symbol
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 
 # Fallback for old code expecting these constants
-DATA_DIR = PROJECT_ROOT / default_settings.DATA_DIR
-CACHE_DIR = PROJECT_ROOT / default_settings.CACHE_DIR
-REPORTS_DIR = PROJECT_ROOT / default_settings.REPORTS_DIR
+DATA_DIR = PROJECT_ROOT / Settings().DATA_DIR
+CACHE_DIR = PROJECT_ROOT / Settings().CACHE_DIR
+REPORTS_DIR = PROJECT_ROOT / Settings().REPORTS_DIR
 
 def ensure_directories_exist():
     """Ensure that necessary application directories exist."""
@@ -134,8 +134,8 @@ def get_optimization_dir(settings: "Settings | None" = None) -> Path:
 def get_ml_feature_store_dir(settings=None) -> Path:
     """Gets the path to the ML feature store directory."""
     if settings is None:
-        from bist_signal_bot.config.settings import Settings, settings as default_settings
-        settings = default_settings
+        from bist_signal_bot.config.settings import Settings
+        settings = Settings()
 
     store_dir = get_data_dir(settings) / getattr(settings, "ML_FEATURE_STORE_DIR_NAME", "ml/features")
     store_dir.mkdir(parents=True, exist_ok=True)
@@ -143,13 +143,13 @@ def get_ml_feature_store_dir(settings=None) -> Path:
 
 
 def get_ml_models_dir(settings: Settings | None = None) -> Path:
-    from bist_signal_bot.config.settings import Settings, settings as default_settings
-    settings = settings or default_settings
+    from bist_signal_bot.config.settings import Settings
+    settings = settings or Settings()
     return get_data_dir() / settings.ML_MODELS_DIR_NAME
 
 def get_ml_training_dir(settings: Settings | None = None) -> Path:
-    from bist_signal_bot.config.settings import Settings, settings as default_settings
-    settings = settings or default_settings
+    from bist_signal_bot.config.settings import Settings
+    settings = settings or Settings()
     return get_data_dir() / settings.ML_TRAINING_DIR_NAME
 
 
@@ -379,3 +379,11 @@ def get_scheduler_dir(settings=None) -> Path:
     scheduler_dir = base_dir / getattr(settings, 'SCHEDULER_DIR_NAME', 'scheduler')
     scheduler_dir.mkdir(parents=True, exist_ok=True)
     return scheduler_dir
+
+def get_deployment_dir(settings=None) -> Path:
+    if settings is None:
+        from bist_signal_bot.config.settings import Settings
+        settings = Settings()
+    path = get_data_dir(settings) / getattr(settings, "DEPLOYMENT_DIR_NAME", "deployment")
+    path.mkdir(parents=True, exist_ok=True)
+    return path

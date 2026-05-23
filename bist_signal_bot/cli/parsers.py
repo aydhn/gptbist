@@ -1,4 +1,50 @@
 
+def add_deploy_parser(subparsers):
+    deploy_parser = subparsers.add_parser("deploy", help="Manage deployment")
+    deploy_subs = deploy_parser.add_subparsers(dest="deploy_subcommand", required=True)
+
+    dp_profiles = deploy_subs.add_parser("profiles")
+    dp_profiles.add_argument("--json", action="store_true")
+
+    dp_doctor = deploy_subs.add_parser("doctor")
+    dp_doctor.add_argument("--deep", action="store_true")
+    dp_doctor.add_argument("--json", action="store_true")
+
+    dp_init = deploy_subs.add_parser("init-dirs")
+    dp_init.add_argument("--dry-run", action="store_true")
+    dp_init.add_argument("--confirm", action="store_true")
+    dp_init.add_argument("--json", action="store_true")
+
+    dp_env = deploy_subs.add_parser("env-template")
+    dp_env.add_argument("--profile", type=str, default="RESEARCH_ONLY")
+    dp_env.add_argument("--dry-run", action="store_true")
+    dp_env.add_argument("--confirm", action="store_true")
+    dp_env.add_argument("--output", type=str)
+
+    dp_first = deploy_subs.add_parser("first-run")
+    dp_first.add_argument("--profile", type=str, default="RESEARCH_ONLY")
+    dp_first.add_argument("--dry-run", action="store_true")
+    dp_first.add_argument("--confirm-write", action="store_true")
+    dp_first.add_argument("--json", action="store_true")
+
+    dp_smoke = deploy_subs.add_parser("smoke-test")
+    dp_smoke.add_argument("--json", action="store_true")
+
+    dp_rb = deploy_subs.add_parser("runbook")
+    dp_rb.add_argument("--profile", type=str, default="RESEARCH_ONLY")
+    dp_rb.add_argument("--output", type=str)
+
+    dp_plat = deploy_subs.add_parser("platform-commands")
+    dp_plat.add_argument("--platform", type=str)
+    dp_plat.add_argument("--json", action="store_true")
+
+    dp_latest = deploy_subs.add_parser("latest")
+    dp_latest.add_argument("--json", action="store_true")
+
+    dp_cfg = deploy_subs.add_parser("config")
+    dp_cfg.add_argument("--json", action="store_true")
+
+
 
 def add_data_v2_parser(subparsers):
     data_parser = subparsers.add_parser("data", help="Manage data import, update, freshness, lineage, and health.")
@@ -1229,6 +1275,51 @@ def build_parser() -> argparse.ArgumentParser:
     run_due_p = scheduler_subs.add_parser("run-due", help="Run due jobs")
     run_due_p.add_argument("--dry-run", action="store_true")
     run_due_p.add_argument("--confirm", action="store_true")
+
+    deploy_parser = subparsers.add_parser("deploy", help="Manage deployment")
+    deploy_subs = deploy_parser.add_subparsers(dest="deploy_subcommand", required=True)
+
+    dp_profiles = deploy_subs.add_parser("profiles")
+    dp_profiles.add_argument("--json", action="store_true")
+
+    dp_doctor = deploy_subs.add_parser("doctor")
+    dp_doctor.add_argument("--deep", action="store_true")
+    dp_doctor.add_argument("--json", action="store_true")
+
+    dp_init = deploy_subs.add_parser("init-dirs")
+    dp_init.add_argument("--dry-run", action="store_true")
+    dp_init.add_argument("--confirm", action="store_true")
+    dp_init.add_argument("--json", action="store_true")
+
+    dp_env = deploy_subs.add_parser("env-template")
+    dp_env.add_argument("--profile", type=str, default="RESEARCH_ONLY")
+    dp_env.add_argument("--dry-run", action="store_true")
+    dp_env.add_argument("--confirm", action="store_true")
+    dp_env.add_argument("--output", type=str)
+
+    dp_first = deploy_subs.add_parser("first-run")
+    dp_first.add_argument("--profile", type=str, default="RESEARCH_ONLY")
+    dp_first.add_argument("--dry-run", action="store_true")
+    dp_first.add_argument("--confirm-write", action="store_true")
+    dp_first.add_argument("--json", action="store_true")
+
+    dp_smoke = deploy_subs.add_parser("smoke-test")
+    dp_smoke.add_argument("--json", action="store_true")
+
+    dp_rb = deploy_subs.add_parser("runbook")
+    dp_rb.add_argument("--profile", type=str, default="RESEARCH_ONLY")
+    dp_rb.add_argument("--output", type=str)
+
+    dp_plat = deploy_subs.add_parser("platform-commands")
+    dp_plat.add_argument("--platform", type=str)
+    dp_plat.add_argument("--json", action="store_true")
+
+    dp_latest = deploy_subs.add_parser("latest")
+    dp_latest.add_argument("--json", action="store_true")
+
+    dp_cfg = deploy_subs.add_parser("config")
+    dp_cfg.add_argument("--json", action="store_true")
+
     return parser
 
 def add_paper_parser(subparsers: argparse._SubParsersAction) -> None:
