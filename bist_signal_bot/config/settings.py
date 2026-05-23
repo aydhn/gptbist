@@ -542,6 +542,40 @@ class Settings(BaseSettings):
     ADJUSTMENT_FAIL_ON_ERROR: bool = Field(default=True)
     ADJUSTMENT_REQUIRE_VERIFIED_ACTIONS: bool = Field(default=False)
 
+
+    # Performance Profiling
+    ENABLE_PERFORMANCE_PROFILING: bool = Field(default=True)
+    PERFORMANCE_DIR_NAME: str = Field(default="performance")
+    PERFORMANCE_SAVE_PROFILES: bool = Field(default=True)
+    PERFORMANCE_SAVE_BENCHMARKS: bool = Field(default=True)
+    PERFORMANCE_USE_PSUTIL: bool = Field(default=True)
+    PERFORMANCE_USE_GPU_SAMPLING: bool = Field(default=True)
+
+    # Profiler
+    PERFORMANCE_PROFILE_RUNTIME: bool = Field(default=False)
+    PERFORMANCE_PROFILE_SCANNER: bool = Field(default=False)
+    PERFORMANCE_RESOURCE_SAMPLE_INTERVAL_SECONDS: float = Field(default=0.5, gt=0.0)
+    PERFORMANCE_MAX_RESOURCE_SNAPSHOTS: int = Field(default=500, gt=0)
+    PERFORMANCE_SLOW_SPAN_WARN_SECONDS: float = Field(default=2.0, gt=0.0)
+    PERFORMANCE_SLOW_SPAN_FAIL_SECONDS: float = Field(default=10.0, gt=0.0)
+    PERFORMANCE_MEMORY_DELTA_WARN_MB: float = Field(default=250.0, gt=0.0)
+    PERFORMANCE_MEMORY_DELTA_FAIL_MB: float = Field(default=750.0, gt=0.0)
+
+    # Benchmark
+    PERFORMANCE_DEFAULT_ITERATIONS: int = Field(default=3, gt=0)
+    PERFORMANCE_DEFAULT_WARMUP_ITERATIONS: int = Field(default=1, ge=0)
+    PERFORMANCE_DEFAULT_SAMPLE_SIZE: int = Field(default=20, gt=0)
+    PERFORMANCE_HEAVY_BENCHMARK_REQUIRES_CONFIRM: bool = Field(default=True)
+    PERFORMANCE_SYNTHETIC_DATA_DEFAULT: bool = Field(default=True)
+    PERFORMANCE_RANDOM_SEED: int = Field(default=42)
+
+    # Regression
+    PERFORMANCE_REGRESSION_ENABLED: bool = Field(default=True)
+    PERFORMANCE_ELAPSED_WARN_PCT: float = Field(default=25.0, gt=0.0)
+    PERFORMANCE_ELAPSED_FAIL_PCT: float = Field(default=50.0, gt=0.0)
+    PERFORMANCE_MEMORY_WARN_PCT: float = Field(default=25.0, gt=0.0)
+    PERFORMANCE_MEMORY_FAIL_PCT: float = Field(default=50.0, gt=0.0)
+
     @model_validator(mode='after')
     def validate_settings(self) -> 'Settings':
         # Apply profile overrides
@@ -1479,45 +1513,6 @@ class Settings(BaseSettings):
     RUNTIME_QUALITY_PREFLIGHT_SUITE: str = 'SMOKE'
 
     # Performance Settings (Phase 45)
-    ENABLE_PERFORMANCE_TOOLS: bool = True
-    PERFORMANCE_DIR_NAME: str = 'performance'
-    PERFORMANCE_SAVE_REPORTS: bool = True
-    PERFORMANCE_REPORT_FORMATS: str = 'json,markdown,csv'
-
-    PERFORMANCE_USE_PSUTIL_IF_AVAILABLE: bool = True
-    PERFORMANCE_CHECK_GPU: bool = True
-    PERFORMANCE_GPU_CHECK_TIMEOUT_SECONDS: int = 3
-    PERFORMANCE_MEMORY_WARN_PCT: float = 80.0
-    PERFORMANCE_MEMORY_CRITICAL_PCT: float = 92.0
-    PERFORMANCE_DISK_WARN_PCT: float = 85.0
-    PERFORMANCE_DISK_CRITICAL_PCT: float = 95.0
-
-    PERFORMANCE_PROFILE_ENABLED: bool = False
-    PERFORMANCE_PROFILE_TOP_N: int = 20
-    PERFORMANCE_PROFILE_TIMEOUT_SECONDS: int = 300
-
-    PERFORMANCE_CONCURRENCY_MODE: str = 'SERIAL'
-    PERFORMANCE_MAX_WORKERS: int = 1
-    PERFORMANCE_DEFAULT_BATCH_SIZE: int = 10
-    PERFORMANCE_MAX_BATCH_SIZE: int = 50
-    PERFORMANCE_SCANNER_SLOW_SYMBOL_SECONDS: float = 5.0
-
-    PERFORMANCE_CACHE_POLICY: str = 'DRY_RUN_ONLY'
-    PERFORMANCE_CACHE_MAX_AGE_DAYS: int = 30
-    PERFORMANCE_CACHE_MAX_TOTAL_SIZE_MB: float = 2048.0
-    PERFORMANCE_CACHE_CLEANUP_DRY_RUN: bool = True
-    PERFORMANCE_CACHE_CLEANUP_REQUIRE_CONFIRM: bool = True
-    PERFORMANCE_PROTECT_MODEL_ARTIFACTS: bool = True
-    PERFORMANCE_PROTECT_PAPER_LEDGER: bool = True
-    PERFORMANCE_PROTECT_RUNTIME_STATE: bool = True
-    PERFORMANCE_PROTECT_AUDIT_LOGS: bool = True
-
-    PERFORMANCE_BENCHMARK_ITERATIONS: int = 3
-    PERFORMANCE_BENCHMARK_USE_MOCK: bool = True
-    PERFORMANCE_BENCHMARK_SYMBOLS: str = 'ASELS,THYAO,GARAN'
-    PERFORMANCE_BENCHMARK_STRATEGY: str = 'moving_average_trend'
-
-    RUNTIME_USE_PERFORMANCE_METRICS: bool = True
 
 
     # Release Manager (Phase 50)
@@ -1588,25 +1583,15 @@ class Settings(BaseSettings):
             raise ValueError('Invalid')
         if not (0 <= self.PERFORMANCE_MEMORY_CRITICAL_PCT <= 100):
             raise ValueError('Invalid')
-        if not (0 <= self.PERFORMANCE_DISK_WARN_PCT <= 100):
             raise ValueError('Invalid')
-        if not (0 <= self.PERFORMANCE_DISK_CRITICAL_PCT <= 100):
             raise ValueError('Invalid')
-        if self.PERFORMANCE_PROFILE_TIMEOUT_SECONDS <= 0:
             raise ValueError('Must be > 0')
-        if self.PERFORMANCE_MAX_WORKERS <= 0:
             raise ValueError('Must be > 0')
-        if self.PERFORMANCE_DEFAULT_BATCH_SIZE <= 0:
             raise ValueError('Must be > 0')
-        if self.PERFORMANCE_MAX_BATCH_SIZE < self.PERFORMANCE_DEFAULT_BATCH_SIZE:
             raise ValueError('Invalid max batch')
-        if self.PERFORMANCE_CACHE_MAX_AGE_DAYS <= 0:
             raise ValueError('Must be > 0')
-        if self.PERFORMANCE_CACHE_MAX_TOTAL_SIZE_MB <= 0:
             raise ValueError('Must be > 0')
-        if self.PERFORMANCE_CONCURRENCY_MODE not in ('SERIAL', 'THREADS', 'PROCESSES', 'AUTO'):
             raise ValueError('Invalid')
-        if self.PERFORMANCE_CACHE_POLICY not in ('KEEP_ALL', 'CLEAN_OLD', 'CLEAN_LARGE', 'CLEAN_TEMP_ONLY', 'DRY_RUN_ONLY'):
             raise ValueError('Invalid')
         return self
 
@@ -1615,70 +1600,21 @@ class Settings(BaseSettings):
     RUNTIME_QUALITY_PREFLIGHT_SUITE: str = "SMOKE"
 
     # Performance Settings (Phase 45)
-    ENABLE_PERFORMANCE_TOOLS: bool = True
-    PERFORMANCE_DIR_NAME: str = "performance"
-    PERFORMANCE_SAVE_REPORTS: bool = True
-    PERFORMANCE_REPORT_FORMATS: str = "json,markdown,csv"
-
-    PERFORMANCE_USE_PSUTIL_IF_AVAILABLE: bool = True
-    PERFORMANCE_CHECK_GPU: bool = True
-    PERFORMANCE_GPU_CHECK_TIMEOUT_SECONDS: int = 3
-    PERFORMANCE_MEMORY_WARN_PCT: float = 80.0
-    PERFORMANCE_MEMORY_CRITICAL_PCT: float = 92.0
-    PERFORMANCE_DISK_WARN_PCT: float = 85.0
-    PERFORMANCE_DISK_CRITICAL_PCT: float = 95.0
-
-    PERFORMANCE_PROFILE_ENABLED: bool = False
-    PERFORMANCE_PROFILE_TOP_N: int = 20
-    PERFORMANCE_PROFILE_TIMEOUT_SECONDS: int = 300
-
-    PERFORMANCE_CONCURRENCY_MODE: str = "SERIAL"
-    PERFORMANCE_MAX_WORKERS: int = 1
-    PERFORMANCE_DEFAULT_BATCH_SIZE: int = 10
-    PERFORMANCE_MAX_BATCH_SIZE: int = 50
-    PERFORMANCE_SCANNER_SLOW_SYMBOL_SECONDS: float = 5.0
-
-    PERFORMANCE_CACHE_POLICY: str = "DRY_RUN_ONLY"
-    PERFORMANCE_CACHE_MAX_AGE_DAYS: int = 30
-    PERFORMANCE_CACHE_MAX_TOTAL_SIZE_MB: float = 2048.0
-    PERFORMANCE_CACHE_CLEANUP_DRY_RUN: bool = True
-    PERFORMANCE_CACHE_CLEANUP_REQUIRE_CONFIRM: bool = True
-    PERFORMANCE_PROTECT_MODEL_ARTIFACTS: bool = True
-    PERFORMANCE_PROTECT_PAPER_LEDGER: bool = True
-    PERFORMANCE_PROTECT_RUNTIME_STATE: bool = True
-    PERFORMANCE_PROTECT_AUDIT_LOGS: bool = True
-
-    PERFORMANCE_BENCHMARK_ITERATIONS: int = 3
-    PERFORMANCE_BENCHMARK_USE_MOCK: bool = True
-    PERFORMANCE_BENCHMARK_SYMBOLS: str = "ASELS,THYAO,GARAN"
-    PERFORMANCE_BENCHMARK_STRATEGY: str = "moving_average_trend"
-
-    RUNTIME_USE_PERFORMANCE_METRICS: bool = True
 
     def check_performance_settings(self) -> 'Settings':
         if not (0 <= self.PERFORMANCE_MEMORY_WARN_PCT <= 100):
             raise ValueError("PERFORMANCE_MEMORY_WARN_PCT must be between 0 and 100")
         if not (0 <= self.PERFORMANCE_MEMORY_CRITICAL_PCT <= 100):
             raise ValueError("PERFORMANCE_MEMORY_CRITICAL_PCT must be between 0 and 100")
-        if not (0 <= self.PERFORMANCE_DISK_WARN_PCT <= 100):
             raise ValueError("PERFORMANCE_DISK_WARN_PCT must be between 0 and 100")
-        if not (0 <= self.PERFORMANCE_DISK_CRITICAL_PCT <= 100):
             raise ValueError("PERFORMANCE_DISK_CRITICAL_PCT must be between 0 and 100")
-        if self.PERFORMANCE_PROFILE_TIMEOUT_SECONDS <= 0:
             raise ValueError("PERFORMANCE_PROFILE_TIMEOUT_SECONDS must be positive")
-        if self.PERFORMANCE_MAX_WORKERS <= 0:
             raise ValueError("PERFORMANCE_MAX_WORKERS must be positive")
-        if self.PERFORMANCE_DEFAULT_BATCH_SIZE <= 0:
             raise ValueError("PERFORMANCE_DEFAULT_BATCH_SIZE must be positive")
-        if self.PERFORMANCE_MAX_BATCH_SIZE < self.PERFORMANCE_DEFAULT_BATCH_SIZE:
             raise ValueError("PERFORMANCE_MAX_BATCH_SIZE must be >= PERFORMANCE_DEFAULT_BATCH_SIZE")
-        if self.PERFORMANCE_CACHE_MAX_AGE_DAYS <= 0:
             raise ValueError("PERFORMANCE_CACHE_MAX_AGE_DAYS must be positive")
-        if self.PERFORMANCE_CACHE_MAX_TOTAL_SIZE_MB <= 0:
             raise ValueError("PERFORMANCE_CACHE_MAX_TOTAL_SIZE_MB must be positive")
-        if self.PERFORMANCE_CONCURRENCY_MODE not in ("SERIAL", "THREADS", "PROCESSES", "AUTO"):
             raise ValueError("Invalid PERFORMANCE_CONCURRENCY_MODE")
-        if self.PERFORMANCE_CACHE_POLICY not in ("KEEP_ALL", "CLEAN_OLD", "CLEAN_LARGE", "CLEAN_TEMP_ONLY", "DRY_RUN_ONLY"):
             raise ValueError("Invalid PERFORMANCE_CACHE_POLICY")
         return self
 

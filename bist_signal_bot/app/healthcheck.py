@@ -17,6 +17,7 @@ class HealthChecker:
                 "storage": "OK",
                 "drift_monitoring": "OK" if self.settings.ENABLE_DRIFT_MONITORING else "DISABLED",
                 "research_lab": "OK" if getattr(self.settings, "ENABLE_RESEARCH_LAB", True) else "DISABLED",
+                "performance_profiler": "OK" if getattr(self.settings, "ENABLE_PERFORMANCE_PROFILING", False) else "DISABLED",
 
                 "governance_enabled": getattr(self.settings, "ENABLE_GOVERNANCE", False),
                 "governance_policy_valid": True,  # Minimal integration for testing

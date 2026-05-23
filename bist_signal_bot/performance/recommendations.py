@@ -1,59 +1,94 @@
-import logging
-from typing import Any
+import uuid
+from typing import List, Optional
 
 from bist_signal_bot.performance.models import (
-    WorkloadProfileResult, CacheReport, ResourceSnapshot, ResourceLevel, WorkloadType
+    BottleneckFinding, BenchmarkRunResult, PerformanceRecommendation,
+    PerformanceSeverity, BenchmarkType, PerformanceRegressionResult
 )
 
 class PerformanceRecommendationEngine:
-    def __init__(self, logger: logging.Logger | None = None):
-        self.logger = logger or logging.getLogger("bist_signal_bot.performance.recommendations")
+    def recommend(self, findings: List[BottleneckFinding], result: Optional[BenchmarkRunResult] = None) -> List[PerformanceRecommendation]:
+        recs = []
+        for finding in findings:
+            if "memory growth" in finding.name.lower():
+                recs.append(PerformanceRecommendation(
+                    recommendation_id=str(uuid.uuid4()),
+                    title="Reduce memory footprint in data processing",
+                    severity=finding.severity,
+                    action="Consider processing data in smaller batches or avoiding deep copies of large Pandas DataFrames.",
+                    expected_impact="Lower peak memory usage and fewer OOM risks.",
+                    risk="May require code refactoring around data pipelines.",
+                    requires_code_change=True
+                ))
+            if "Slow execution" in finding.name:
+                recs.append(PerformanceRecommendation(
+                    recommendation_id=str(uuid.uuid4()),
+                    title="Optimize slow logic loop",
+                    severity=finding.severity,
+                    action="Review the slow span for heavy I/O or unvectorized operations. Try to vectorize pandas calculations or cache results.",
+                    expected_impact="Faster execution times.",
+                    risk="Logic bugs if vectorized incorrectly.",
+                    requires_code_change=True
+                ))
+            if "throughput" in finding.name.lower():
+                recs.append(PerformanceRecommendation(
+                    recommendation_id=str(uuid.uuid4()),
+                    title="Increase batch sizes or concurrency",
+                    severity=finding.severity,
+                    action="If CPU/Memory is underutilized, consider increasing batch sizes or parallelizing this workload.",
+                    expected_impact="Higher throughput items/second.",
+                    risk="Could exhaust memory if batch size is too large.",
+                    requires_code_change=False
+                ))
 
-    def recommend_from_profile(self, result: WorkloadProfileResult) -> list[str]:
-        recommendations = []
-        if result.resource_after and result.resource_after.memory_percent:
-            if result.resource_after.memory_percent > 85.0:
-                recommendations.append("Memory usage is critically high during this workload. Reduce batch sizes or rows.")
+        # Benchmark specific safe rules
+        if result and result.request.benchmark_type == BenchmarkType.KNOWLEDGE_INDEX:
+            if any("slow" in f.name.lower() for f in findings):
+                recs.append(PerformanceRecommendation(
+                    recommendation_id=str(uuid.uuid4()),
+                    title="Use incremental knowledge indexing",
+                    severity=PerformanceSeverity.LOW,
+                    action="Ensure KNOWLEDGE_INCREMENTAL_INDEX=True to avoid full rebuilds.",
+                    expected_impact="Significantly faster index updates.",
+                    requires_code_change=False
+                ))
 
-        if result.request.workload_type == WorkloadType.SCANNER:
-            if result.elapsed_seconds > len(result.request.symbols) * 2.0:
-                recommendations.append("Scanner average per symbol is high. Consider using THREADS concurrency mode.")
+        if result and result.request.heavy:
+            recs.append(PerformanceRecommendation(
+                recommendation_id=str(uuid.uuid4()),
+                title="Schedule heavy workloads after-hours",
+                severity=PerformanceSeverity.INFO,
+                action="For heavy benchmarks or jobs, schedule them outside of active trading hours via Scheduler.",
+                expected_impact="No impact on live execution latency.",
+                requires_code_change=False
+            ))
 
-        if result.request.workload_type == WorkloadType.OPTIMIZATION:
-            recommendations.append("Ensure OPTIMIZATION_MAX_COMBINATIONS is kept low to avoid excessive CPU usage.")
+        # Deduplicate
+        unique = {}
+        for r in recs:
+            if r.title not in unique:
+                unique[r.title] = r
 
-        return recommendations
+        return list(unique.values())
 
-    def recommend_from_cache(self, report: CacheReport) -> list[str]:
-        recommendations = []
-        if report.safe_delete_size_mb > 500:
-            recommendations.append(f"Cache holds {report.safe_delete_size_mb:.1f} MB of safe-to-delete files. Run cleanup.")
-        if report.dry_run:
-            recommendations.append("Cache scan was dry-run. Re-run with --confirm to execute deletion.")
-        if report.policy.name == "KEEP_ALL":
-            recommendations.append("Policy is KEEP_ALL. Storage may grow indefinitely.")
-        return recommendations
+    def recommend_for_regression(self, regression: PerformanceRegressionResult) -> List[PerformanceRecommendation]:
+        recs = []
+        for reg_msg in regression.regressions:
+            if "memory_peak_mb" in reg_msg:
+                recs.append(PerformanceRecommendation(
+                    recommendation_id=str(uuid.uuid4()),
+                    title="Investigate recent memory leaks",
+                    severity=PerformanceSeverity.HIGH,
+                    action="Review recent commits for unclosed file handles, large dataframe copies, or caching logic changes.",
+                    requires_code_change=True
+                ))
+            if "elapsed_seconds" in reg_msg:
+                recs.append(PerformanceRecommendation(
+                    recommendation_id=str(uuid.uuid4()),
+                    title="Investigate recent latency regression",
+                    severity=PerformanceSeverity.HIGH,
+                    action="Review recent commits for new network calls, unoptimized loops, or disabled caches.",
+                    requires_code_change=True
+                ))
+        return recs
 
-    def recommend_from_resources(self, snapshot: ResourceSnapshot) -> list[str]:
-        recommendations = []
-        if snapshot.memory_percent is not None and snapshot.memory_percent > 80.0:
-            recommendations.append("Memory is above 80%. Avoid starting ML or Optimization workloads.")
-        if snapshot.disk_percent is not None and snapshot.disk_percent > 85.0:
-            recommendations.append("Disk space is running low. Consider cleaning up old reports or cache.")
-        if snapshot.cpu_count is not None and snapshot.cpu_count < 4:
-            recommendations.append("System has limited CPU cores. Keep concurrency mode to SERIAL.")
-        return recommendations
-
-    def recommend_runtime_settings(self, snapshot: ResourceSnapshot) -> dict[str, Any]:
-        settings = {}
-        if snapshot.memory_percent is not None and snapshot.memory_percent > 85.0:
-            settings["PERFORMANCE_MAX_WORKERS"] = 1
-            settings["PERFORMANCE_DEFAULT_BATCH_SIZE"] = 5
-        elif snapshot.cpu_count is not None and snapshot.cpu_count >= 8:
-            settings["PERFORMANCE_MAX_WORKERS"] = 4
-            settings["PERFORMANCE_DEFAULT_BATCH_SIZE"] = 25
-        else:
-            settings["PERFORMANCE_MAX_WORKERS"] = 2
-            settings["PERFORMANCE_DEFAULT_BATCH_SIZE"] = 10
-
-        return settings

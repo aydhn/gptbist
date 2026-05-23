@@ -2,7 +2,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any, List, Dict, Optional
 import pandas as pd
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 
 from bist_signal_bot.signals.models import SignalCandidate
 
@@ -55,17 +55,17 @@ class StrategySpec(BaseModel):
     produces_signal_candidates: bool = True
     version: str = "1.0"
 
-    @validator("name")
+    @field_validator("name")
     def validate_name(cls, v: str) -> str:
         return v.lower().replace(" ", "_")
 
-    @validator("min_rows")
+    @field_validator("min_rows")
     def validate_min_rows(cls, v: int) -> int:
         if v < 1:
             raise ValueError("min_rows must be positive")
         return v
 
-    @validator("default_params")
+    @field_validator("default_params")
     def validate_default_params(cls, v: dict[str, Any], values: dict[str, Any]) -> dict[str, Any]:
         if "parameters" in values:
             param_names = {p.name for p in values["parameters"]}
@@ -84,7 +84,7 @@ class StrategyRequest(BaseModel):
     use_latest_bar_only: bool = True
     metadata: dict[str, Any] = Field(default_factory=dict)
 
-    @validator("symbol", pre=True)
+    @field_validator("symbol", pre=True)
     def normalize_symbol(cls, v: str) -> str:
         if isinstance(v, str):
             v = v.upper().strip()
@@ -92,7 +92,7 @@ class StrategyRequest(BaseModel):
                 v = v[:-3]
         return v
 
-    @validator("strategy_name")
+    @field_validator("strategy_name")
     def normalize_strategy_name(cls, v: str) -> str:
         return str(v).lower().replace(" ", "_")
 

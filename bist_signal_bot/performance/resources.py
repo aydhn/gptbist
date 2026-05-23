@@ -1,148 +1,154 @@
-import os
+import uuid
+import datetime
+import time
 import shutil
-import logging
 import subprocess
-from datetime import datetime, timezone
+import threading
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
-from bist_signal_bot.performance.models import (
-    ResourceSnapshot, ResourceLevel, PerformanceMetric, PerformanceStatus
-)
+try:
+    import psutil
+    HAS_PSUTIL = True
+except ImportError:
+    HAS_PSUTIL = False
+
+try:
+    import pynvml
+    HAS_PYNVML = True
+except ImportError:
+    HAS_PYNVML = False
+
 from bist_signal_bot.config.settings import Settings
+from bist_signal_bot.performance.models import ResourceSnapshot
+from bist_signal_bot.core.exceptions import ResourceSamplingError
 
-class ResourceMonitor:
-    def __init__(self, settings: Settings | None = None, logger: logging.Logger | None = None):
-        from bist_signal_bot.config.settings import get_settings
-        self.settings = settings or get_settings()
-        self.logger = logger or logging.getLogger("bist_signal_bot.performance.resources")
-        self._psutil_available = False
-        if self.settings.PERFORMANCE_USE_PSUTIL_IF_AVAILABLE:
+class ResourceSampler:
+    def __init__(self, settings: Optional[Settings] = None):
+        self.settings = settings or Settings()
+        self._use_psutil = getattr(self.settings, 'PERFORMANCE_USE_PSUTIL', True) and HAS_PSUTIL
+        self._use_gpu = getattr(self.settings, 'PERFORMANCE_USE_GPU_SAMPLING', True)
+
+        global HAS_PYNVML
+        if self._use_gpu and HAS_PYNVML:
             try:
-                import psutil
-                self._psutil_available = True
-            except ImportError:
-                self.logger.debug("psutil not available, falling back to stdlib.")
+                pynvml.nvmlInit()
+            except Exception:
+                self._use_gpu = False
+                HAS_PYNVML = False
+
+    def memory_rss_mb(self) -> Optional[float]:
+        if self._use_psutil:
+            try:
+                process = psutil.Process()
+                return process.memory_info().rss / (1024 * 1024)
+            except Exception:
+                pass
+        return None
+
+    def cpu_percent(self) -> Optional[float]:
+        if self._use_psutil:
+            try:
+                return psutil.cpu_percent(interval=None)
+            except Exception:
+                pass
+        return None
+
+    def disk_free_mb(self, path: Optional[Path] = None) -> Optional[float]:
+        try:
+            path_str = str(path.absolute()) if path else "/"
+            total, used, free = shutil.disk_usage(path_str)
+            return free / (1024 * 1024)
+        except Exception:
+            pass
+        return None
+
+    def gpu_snapshot(self) -> Dict[str, Any]:
+        if not self._use_gpu:
+            return {"gpu_available": False}
+
+        if HAS_PYNVML:
+            try:
+                handle = pynvml.nvmlDeviceGetHandleByIndex(0)
+                name = pynvml.nvmlDeviceGetName(handle)
+                # Decode if needed (pynvml might return bytes)
+                if isinstance(name, bytes):
+                    name = name.decode('utf-8')
+
+                meminfo = pynvml.nvmlDeviceGetMemoryInfo(handle)
+                util = pynvml.nvmlDeviceGetUtilizationRates(handle)
+
+                return {
+                    "gpu_available": True,
+                    "gpu_name": name,
+                    "gpu_memory_used_mb": meminfo.used / (1024 * 1024),
+                    "gpu_memory_total_mb": meminfo.total / (1024 * 1024),
+                    "gpu_utilization_percent": float(util.gpu)
+                }
+            except Exception:
+                pass
+
+        # Fallback to nvidia-smi
+        try:
+            output = subprocess.check_output(
+                ["nvidia-smi", "--query-gpu=name,memory.used,memory.total,utilization.gpu", "--format=csv,noheader,nounits"],
+                timeout=2.0
+            ).decode('utf-8').strip().split('\n')[0].split(',')
+
+            return {
+                "gpu_available": True,
+                "gpu_name": output[0].strip(),
+                "gpu_memory_used_mb": float(output[1].strip()),
+                "gpu_memory_total_mb": float(output[2].strip()),
+                "gpu_utilization_percent": float(output[3].strip())
+            }
+        except Exception:
+            return {"gpu_available": False}
 
     def snapshot(self) -> ResourceSnapshot:
-        snapshot = ResourceSnapshot(timestamp=datetime.now(timezone.utc))
+        gpu_info = self.gpu_snapshot()
+        warnings = []
+        if not self._use_psutil:
+            warnings.append("psutil not available or disabled, CPU metrics may be missing")
 
-        if self._psutil_available:
-            import psutil
-            snapshot.cpu_count = psutil.cpu_count(logical=True)
-            snapshot.cpu_percent = psutil.cpu_percent(interval=0.1)
+        return ResourceSnapshot(
+            snapshot_id=str(uuid.uuid4()),
+            captured_at=datetime.datetime.now(datetime.timezone.utc),
+            cpu_percent=self.cpu_percent(),
+            memory_rss_mb=self.memory_rss_mb(),
+            disk_free_mb=self.disk_free_mb(),
+            gpu_available=gpu_info.get("gpu_available", False),
+            gpu_name=gpu_info.get("gpu_name"),
+            gpu_memory_used_mb=gpu_info.get("gpu_memory_used_mb"),
+            gpu_memory_total_mb=gpu_info.get("gpu_memory_total_mb"),
+            gpu_utilization_percent=gpu_info.get("gpu_utilization_percent"),
+            warnings=warnings
+        )
 
-            mem = psutil.virtual_memory()
-            snapshot.memory_total_mb = mem.total / (1024 * 1024)
-            snapshot.memory_used_mb = mem.used / (1024 * 1024)
-            snapshot.memory_available_mb = mem.available / (1024 * 1024)
-            snapshot.memory_percent = mem.percent
+    def sample_during(self, func: Callable, interval_seconds: float = 0.5) -> Tuple[Any, List[ResourceSnapshot]]:
+        snapshots = []
+        stop_event = threading.Event()
 
-            # Use root dir for overall disk snapshot
-            disk = psutil.disk_usage(os.path.abspath(os.sep))
-            snapshot.disk_total_mb = disk.total / (1024 * 1024)
-            snapshot.disk_used_mb = disk.used / (1024 * 1024)
-            snapshot.disk_free_mb = disk.free / (1024 * 1024)
-            snapshot.disk_percent = disk.percent
-        else:
-            snapshot.cpu_count = os.cpu_count()
+        def sampler_loop():
+            # Initial snapshot
+            snapshots.append(self.snapshot())
+            while not stop_event.is_set():
+                if stop_event.wait(interval_seconds):
+                    break
+                # Only keep up to a max to prevent memory leak on very long runs
+                if len(snapshots) < getattr(self.settings, 'PERFORMANCE_MAX_RESOURCE_SNAPSHOTS', 500):
+                    snapshots.append(self.snapshot())
 
-            disk = shutil.disk_usage(os.path.abspath(os.sep))
-            snapshot.disk_total_mb = disk.total / (1024 * 1024)
-            snapshot.disk_used_mb = disk.used / (1024 * 1024)
-            snapshot.disk_free_mb = disk.free / (1024 * 1024)
-            if disk.total > 0:
-                snapshot.disk_percent = (disk.used / disk.total) * 100.0
-
-        if self.settings.PERFORMANCE_CHECK_GPU:
-            self._check_gpu(snapshot)
-
-        return snapshot
-
-    def _check_gpu(self, snapshot: ResourceSnapshot) -> None:
-        if not shutil.which("nvidia-smi"):
-            snapshot.gpu_detected = False
-            return
+        sampler_thread = threading.Thread(target=sampler_loop, daemon=True)
+        sampler_thread.start()
 
         try:
-            cmd = ["nvidia-smi", "--query-gpu=name,memory.total,memory.used", "--format=csv,noheader,nounits"]
-            result = subprocess.run(
-                cmd, capture_output=True, text=True,
-                timeout=self.settings.PERFORMANCE_GPU_CHECK_TIMEOUT_SECONDS
-            )
-            if result.returncode == 0 and result.stdout.strip():
-                parts = result.stdout.strip().split(',')
-                if len(parts) >= 3:
-                    snapshot.gpu_detected = True
-                    snapshot.gpu_name = parts[0].strip()
-                    snapshot.gpu_memory_total_mb = float(parts[1].strip())
-                    snapshot.gpu_memory_used_mb = float(parts[2].strip())
-        except Exception as e:
-            self.logger.debug(f"Failed to check GPU: {e}")
-            snapshot.gpu_detected = False
+            result = func()
+        finally:
+            stop_event.set()
+            sampler_thread.join(timeout=1.0)
+            # Final snapshot
+            snapshots.append(self.snapshot())
 
-    def classify_memory_level(self, snapshot: ResourceSnapshot) -> ResourceLevel:
-        if snapshot.memory_percent is None:
-            return ResourceLevel.UNKNOWN
+        return result, snapshots
 
-        if snapshot.memory_percent >= self.settings.PERFORMANCE_MEMORY_CRITICAL_PCT:
-            return ResourceLevel.CRITICAL
-        elif snapshot.memory_percent >= self.settings.PERFORMANCE_MEMORY_WARN_PCT:
-            return ResourceLevel.HIGH
-        elif snapshot.memory_percent <= 50.0:
-            return ResourceLevel.LOW
-        return ResourceLevel.NORMAL
-
-    def classify_disk_level(self, snapshot: ResourceSnapshot) -> ResourceLevel:
-        if snapshot.disk_percent is None:
-            return ResourceLevel.UNKNOWN
-
-        if snapshot.disk_percent >= self.settings.PERFORMANCE_DISK_CRITICAL_PCT:
-            return ResourceLevel.CRITICAL
-        elif snapshot.disk_percent >= self.settings.PERFORMANCE_DISK_WARN_PCT:
-            return ResourceLevel.HIGH
-        elif snapshot.disk_percent <= 50.0:
-            return ResourceLevel.LOW
-        return ResourceLevel.NORMAL
-
-    def resource_metrics(self, snapshot: ResourceSnapshot) -> list[PerformanceMetric]:
-        metrics = []
-        if snapshot.cpu_percent is not None:
-            metrics.append(PerformanceMetric("cpu_percent", snapshot.cpu_percent, "%"))
-        if snapshot.memory_percent is not None:
-            status = PerformanceStatus.PASS
-            if snapshot.memory_percent >= self.settings.PERFORMANCE_MEMORY_CRITICAL_PCT:
-                status = PerformanceStatus.CRITICAL if hasattr(PerformanceStatus, 'CRITICAL') else PerformanceStatus.ERROR
-            elif snapshot.memory_percent >= self.settings.PERFORMANCE_MEMORY_WARN_PCT:
-                status = PerformanceStatus.WARN
-            metrics.append(PerformanceMetric("memory_percent", snapshot.memory_percent, "%", status=status))
-        if snapshot.disk_percent is not None:
-            status = PerformanceStatus.PASS
-            if snapshot.disk_percent >= self.settings.PERFORMANCE_DISK_CRITICAL_PCT:
-                status = PerformanceStatus.CRITICAL if hasattr(PerformanceStatus, 'CRITICAL') else PerformanceStatus.ERROR
-            elif snapshot.disk_percent >= self.settings.PERFORMANCE_DISK_WARN_PCT:
-                status = PerformanceStatus.WARN
-            metrics.append(PerformanceMetric("disk_percent", snapshot.disk_percent, "%", status=status))
-        return metrics
-
-    def resource_summary_text(self, snapshot: ResourceSnapshot) -> str:
-        mem_level = self.classify_memory_level(snapshot).value
-        disk_level = self.classify_disk_level(snapshot).value
-
-        parts = []
-        parts.append(f"CPU Cores: {snapshot.cpu_count or 'Unknown'}")
-        if snapshot.cpu_percent is not None:
-            parts.append(f"CPU Usage: {snapshot.cpu_percent:.1f}%")
-
-        parts.append(f"Memory: {mem_level}")
-        if snapshot.memory_percent is not None:
-            parts.append(f"({snapshot.memory_percent:.1f}%)")
-
-        parts.append(f"Disk: {disk_level}")
-        if snapshot.disk_percent is not None:
-            parts.append(f"({snapshot.disk_percent:.1f}%)")
-
-        if snapshot.gpu_detected:
-            parts.append(f"GPU: {snapshot.gpu_name}")
-
-        return " | ".join(parts)

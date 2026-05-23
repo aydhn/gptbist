@@ -1,35 +1,35 @@
+from typing import Optional
 from pathlib import Path
 
 from bist_signal_bot.config.settings import Settings
-from bist_signal_bot.performance.resources import ResourceMonitor
-from bist_signal_bot.performance.cache import CacheInspector
-from bist_signal_bot.performance.benchmarks import PerformanceBenchmarkRunner
-from bist_signal_bot.performance.storage import PerformanceReportStore
-from bist_signal_bot.performance.batch import BatchTuner
-from bist_signal_bot.performance.profiler import FunctionProfiler
-from bist_signal_bot.performance.recommendations import PerformanceRecommendationEngine
-from bist_signal_bot.performance.timer import PerformanceTimer
+from bist_signal_bot.performance.resources import ResourceSampler
+from bist_signal_bot.performance.profiler import LocalProfiler
+from bist_signal_bot.performance.benchmark import BenchmarkRunner
+from bist_signal_bot.performance.baseline import PerformanceBaselineManager
+from bist_signal_bot.performance.regression import PerformanceRegressionChecker
+from bist_signal_bot.performance.bottlenecks import BottleneckAnalyzer
+from bist_signal_bot.performance.storage import PerformanceStore
 
-def create_resource_monitor(settings: Settings | None = None) -> ResourceMonitor:
-    return ResourceMonitor(settings)
+def create_resource_sampler(settings: Optional[Settings] = None) -> ResourceSampler:
+    return ResourceSampler(settings=settings)
 
-def create_cache_inspector(settings: Settings | None = None, base_dir: Path | None = None) -> CacheInspector:
-    return CacheInspector(settings, base_dir)
+def create_local_profiler(settings: Optional[Settings] = None) -> LocalProfiler:
+    sampler = create_resource_sampler(settings)
+    return LocalProfiler(sampler=sampler, settings=settings)
 
-def create_performance_benchmark_runner(settings: Settings | None = None) -> PerformanceBenchmarkRunner:
-    return PerformanceBenchmarkRunner(settings)
+def create_benchmark_runner(settings: Optional[Settings] = None, base_dir: Optional[Path] = None) -> BenchmarkRunner:
+    profiler = create_local_profiler(settings)
+    return BenchmarkRunner(profiler=profiler, settings=settings)
 
-def create_performance_report_store(settings: Settings | None = None, base_dir: Path | None = None) -> PerformanceReportStore:
-    return PerformanceReportStore(settings, base_dir)
+def create_baseline_manager(settings: Optional[Settings] = None, base_dir: Optional[Path] = None) -> PerformanceBaselineManager:
+    return PerformanceBaselineManager(settings=settings, base_dir=base_dir)
 
-def create_batch_tuner(settings: Settings | None = None) -> BatchTuner:
-    return BatchTuner(settings)
+def create_regression_checker(settings: Optional[Settings] = None) -> PerformanceRegressionChecker:
+    return PerformanceRegressionChecker(settings=settings)
 
-def create_function_profiler(settings: Settings | None = None) -> FunctionProfiler:
-    return FunctionProfiler(settings)
+def create_bottleneck_analyzer(settings: Optional[Settings] = None) -> BottleneckAnalyzer:
+    return BottleneckAnalyzer(settings=settings)
 
-def create_recommendation_engine() -> PerformanceRecommendationEngine:
-    return PerformanceRecommendationEngine()
+def create_performance_store(settings: Optional[Settings] = None, base_dir: Optional[Path] = None) -> PerformanceStore:
+    return PerformanceStore(settings=settings, base_dir=base_dir)
 
-def create_performance_timer() -> PerformanceTimer:
-    return PerformanceTimer()

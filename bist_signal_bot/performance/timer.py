@@ -1,64 +1,91 @@
 import time
-from datetime import datetime, timezone
+import uuid
+import datetime
+from typing import Any, Dict, List, Optional
 from contextlib import contextmanager
-from typing import Any, Generator
-import logging
-
-from bist_signal_bot.performance.models import TimerResult
-from bist_signal_bot.core.exceptions import PerformanceError
+from bist_signal_bot.performance.models import ProfileSpan, ProfileResult, BenchmarkType
 
 class PerformanceTimer:
-    def __init__(self, logger: logging.Logger | None = None):
-        self._logger = logger or logging.getLogger("bist_signal_bot.performance.timer")
-        self._active_timers: dict[str, dict[str, Any]] = {}
-        self._results: list[TimerResult] = []
+    def __init__(self):
+        self._spans: Dict[str, ProfileSpan] = {}
+        self._active_spans: List[str] = []
 
-    def start(self, name: str, metadata: dict[str, Any] | None = None) -> None:
-        if name in self._active_timers:
-            raise PerformanceError(f"Timer '{name}' is already active.")
-
-        self._active_timers[name] = {
-            "started_at": datetime.now(timezone.utc),
-            "start_time": time.perf_counter(),
-            "metadata": metadata or {}
-        }
-        self._logger.debug(f"Timer started: {name}")
-
-    def stop(self, name: str) -> TimerResult:
-        if name not in self._active_timers:
-            self._logger.warning(f"Timer '{name}' was not active.")
-            raise PerformanceError(f"Timer '{name}' was not active.")
-
-        active = self._active_timers.pop(name)
-        finished_at = datetime.now(timezone.utc)
-        end_time = time.perf_counter()
-
-        result = TimerResult(
+    def start_span(self, name: str, module: Optional[str] = None, metadata: Optional[Dict[str, Any]] = None) -> ProfileSpan:
+        span_id = str(uuid.uuid4())
+        span = ProfileSpan(
+            span_id=span_id,
             name=name,
-            started_at=active["started_at"],
-            finished_at=finished_at,
-            elapsed_seconds=end_time - active["start_time"],
-            metadata=active["metadata"]
+            module=module,
+            started_at=datetime.datetime.now(datetime.timezone.utc),
+            metadata=metadata or {}
         )
-        self._results.append(result)
-        self._logger.debug(f"Timer stopped: {name} ({result.elapsed_seconds:.4f}s)")
-        return result
+
+        # Store start times using monotonic clock for accurate elapsed calculation
+        span.metadata['_start_monotonic'] = time.monotonic()
+
+        # Link to parent if nested
+        if self._active_spans:
+            parent_id = self._active_spans[-1]
+            if parent_id in self._spans:
+                self._spans[parent_id].children.append(span_id)
+
+        self._spans[span_id] = span
+        self._active_spans.append(span_id)
+        return span
+
+    def finish_span(self, span_id: str) -> ProfileSpan:
+        if span_id not in self._spans:
+            raise ValueError(f"Span {span_id} not found")
+
+        span = self._spans[span_id]
+        if span.finished_at is not None:
+            return span
+
+        end_monotonic = time.monotonic()
+        span.finished_at = datetime.datetime.now(datetime.timezone.utc)
+        start_monotonic = span.metadata.pop('_start_monotonic', end_monotonic)
+        span.elapsed_seconds = max(0.0, end_monotonic - start_monotonic)
+
+        if self._active_spans and self._active_spans[-1] == span_id:
+            self._active_spans.pop()
+        else:
+            # Handle out-of-order closing or exceptions
+            if span_id in self._active_spans:
+                self._active_spans.remove(span_id)
+
+        return span
 
     @contextmanager
-    def time_block(self, name: str, metadata: dict[str, Any] | None = None) -> Generator[None, None, None]:
-        self.start(name, metadata)
+    def span(self, name: str, module: Optional[str] = None, metadata: Optional[Dict[str, Any]] = None):
+        span_obj = self.start_span(name, module, metadata)
         try:
-            yield
+            yield span_obj
         finally:
-            if name in self._active_timers:
-                self.stop(name)
+            self.finish_span(span_obj.span_id)
 
-    def results(self) -> list[TimerResult]:
-        # Handle warning for active unstopped timers
-        for name in list(self._active_timers.keys()):
-            self._logger.warning(f"Timer '{name}' was never stopped.")
-        return list(self._results)
+    def current_spans(self) -> List[ProfileSpan]:
+        return list(self._spans.values())
 
-    def clear(self) -> None:
-        self._active_timers.clear()
-        self._results.clear()
+    def build_profile_result(self, benchmark_type: BenchmarkType) -> ProfileResult:
+        # Finish any dangling active spans just in case
+        for span_id in list(self._active_spans):
+            self.finish_span(span_id)
+
+        spans = list(self._spans.values())
+        if not spans:
+            started_at = datetime.datetime.now(datetime.timezone.utc)
+            finished_at = started_at
+            elapsed = 0.0
+        else:
+            started_at = min(s.started_at for s in spans)
+            finished_at = max(s.finished_at for s in spans if s.finished_at is not None)
+            elapsed = sum(s.elapsed_seconds for s in spans if not any(s.span_id in parent.children for parent in spans))
+
+        return ProfileResult(
+            profile_id=str(uuid.uuid4()),
+            benchmark_type=benchmark_type,
+            started_at=started_at,
+            finished_at=finished_at,
+            elapsed_seconds=elapsed,
+            spans=spans
+        )

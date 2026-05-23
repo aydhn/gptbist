@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import Dict, Any, List, Optional
 from datetime import datetime
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 from typing import Literal
 
 class ResearchJobType(str, Enum):
@@ -88,19 +88,19 @@ class ResearchJob(BaseModel):
     errors: List[str] = Field(default_factory=list)
     metadata: Dict[str, Any] = Field(default_factory=dict)
 
-    @validator("title")
+    @field_validator("title")
     def validate_title(cls, v):
         if not v or not str(v).strip():
             raise ValueError("title cannot be empty")
         return v
 
-    @validator("symbols")
+    @field_validator("symbols")
     def validate_symbols(cls, v):
         if v is None:
             return []
         return sorted(list(set([str(s).upper().strip() for s in v if s])))
 
-    @validator("command_preview", always=True)
+    @field_validator("command_preview", mode='before')
     def validate_command_preview(cls, v, values):
         if not v and not values.get('metadata', {}).get('function'):
              pass

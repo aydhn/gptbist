@@ -1,13 +1,36 @@
+from bist_signal_bot.app.performance_app import create_baseline_manager
 from typing import List, Dict, Any
 from bist_signal_bot.research_lab.models import ResearchJob, ResearchLabPolicy, ResearchJobRiskLevel
 
 class ResearchBudgetManager:
     def estimate_job_cost(self, job: ResearchJob) -> Dict[str, Any]:
+        # Try to pull actual estimates from the performance baseline
+        from bist_signal_bot.app.performance_app import create_baseline_manager
+        from bist_signal_bot.performance.models import BenchmarkType
+        from bist_signal_bot.config.settings import Settings
+
+        try:
+            baseline_mgr = create_baseline_manager(Settings())
+            baseline = baseline_mgr.load_latest_baseline(BenchmarkType.RESEARCH_LAB_JOB)
+            if baseline:
+                med_time = baseline.metrics.get("median_elapsed_seconds", 300)
+                max_mem = baseline.metrics.get("max_memory_peak_mb", 1024 if job.risk_level == ResearchJobRiskLevel.RESOURCE_HEAVY else 256)
+                return {
+                    "estimated_runtime": int(med_time),
+                    "estimated_memory_mb": int(max_mem),
+                    "risk_level": job.risk_level.value,
+                    "source": "baseline"
+                }
+        except Exception:
+            pass
+
         return {
             "estimated_runtime": job.max_runtime_seconds,
             "estimated_memory_mb": 1024 if job.risk_level == ResearchJobRiskLevel.RESOURCE_HEAVY else 256,
-            "risk_level": job.risk_level.value
+            "risk_level": job.risk_level.value,
+            "source": "heuristic"
         }
+
 
     def estimate_batch_cost(self, jobs: List[ResearchJob]) -> Dict[str, Any]:
         total_time = 0

@@ -59,6 +59,14 @@ class ScheduledJobExecutor:
         run_id = f"run_{uuid.uuid4().hex[:8]}"
         started_at = datetime.utcnow()
 
+        # Inject Optional Profiler
+        profiler = None
+        timer_span = None
+        if getattr(self.settings, 'ENABLE_PERFORMANCE_PROFILING', False):
+            from bist_signal_bot.app.performance_app import create_local_profiler
+            profiler = create_local_profiler(self.settings)
+            timer_span = profiler.timer.start_span(f"scheduler_job_{job.job_type.value}")
+
         run = ScheduledJobRun(
             run_id=run_id,
             job_id=job.job_id,

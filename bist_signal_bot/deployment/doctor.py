@@ -186,3 +186,34 @@ class EnvironmentDoctor:
             title="Integrations Check",
             message="Integrations check passed."
         )
+
+    def check_performance_profiler(self) -> EnvironmentCheckResult:
+        try:
+            from bist_signal_bot.app.performance_app import create_resource_sampler
+            sampler = create_resource_sampler(self.settings)
+            snap = sampler.snapshot()
+            if snap.warnings:
+                return EnvironmentCheckResult(
+                    check_id=str(uuid.uuid4()),
+                    check_type=EnvironmentCheckType.DEPENDENCIES,
+                    name="Performance Profiler Resources",
+                    status=DeploymentStatus.WARN,
+                    message="Resource sampler works but has warnings.",
+                    warnings=snap.warnings
+                )
+            return EnvironmentCheckResult(
+                check_id=str(uuid.uuid4()),
+                check_type=EnvironmentCheckType.DEPENDENCIES,
+                name="Performance Profiler Resources",
+                status=DeploymentStatus.PASS,
+                message="Resource sampler is fully capable."
+            )
+        except Exception as e:
+            return EnvironmentCheckResult(
+                check_id=str(uuid.uuid4()),
+                check_type=EnvironmentCheckType.DEPENDENCIES,
+                name="Performance Profiler Resources",
+                status=DeploymentStatus.WARN,
+                message=f"Performance profiler missing or errored: {e}",
+                warnings=[str(e)]
+            )

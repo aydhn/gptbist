@@ -44,6 +44,7 @@ class DiagnosticsRunner:
         checks.append(self.check_paper_ledger())
         checks.append(self.check_quality_last_run())
         checks.append(self.check_data_provider_v2())
+        checks.append(self.check_performance_baselines())
         checks.append(self.check_portfolio_research())
         return checks
 
@@ -415,3 +416,23 @@ def get_maintenance_diagnostics() -> dict:
         }
     except Exception as e:
         return {"error": str(e)}
+    def check_performance_baselines(self) -> DiagnosticCheckResult:
+        comp = MonitoringComponent.RESEARCH
+        if not getattr(self.settings, 'ENABLE_PERFORMANCE_PROFILING', False):
+            return self._create_result("Performance Profiling", comp, DiagnosticCheckStatus.SKIPPED, AlertSeverity.INFO, "Performance profiling is disabled.")
+
+        try:
+            from bist_signal_bot.app.performance_app import create_performance_store
+            store = create_performance_store(self.settings)
+            recent = store.list_recent_benchmarks(limit=1)
+
+            if not recent:
+                return self._create_result("Performance Profiling", comp, DiagnosticCheckStatus.WARN, AlertSeverity.LOW, "Performance enabled but no benchmarks found.", recs=["Run 'perf benchmark runtime' to establish baseline."])
+
+            last = recent[0]
+            if last.get("status") in ["FAIL", "ERROR"]:
+                return self._create_result("Performance Profiling", comp, DiagnosticCheckStatus.FAIL, AlertSeverity.HIGH, "Latest benchmark failed.", details=last)
+
+            return self._create_result("Performance Profiling", comp, DiagnosticCheckStatus.PASS, AlertSeverity.INFO, "Performance benchmarking is healthy.", details=last)
+        except Exception as e:
+            return self._create_result("Performance Profiling", comp, DiagnosticCheckStatus.WARN, AlertSeverity.LOW, f"Failed to check performance state: {e}")

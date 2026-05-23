@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import Optional, Any
 from datetime import datetime
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 
 from bist_signal_bot.backtesting.models import BacktestPerformanceReport
 
@@ -45,14 +45,14 @@ class ParameterSearchSpace(BaseModel):
     step: float | int | None = None
     choices: list[Any] | None = None
 
-    @validator("name")
+    @field_validator("name")
     def name_must_not_be_empty(cls, v: str) -> str:
         if not v or not v.strip():
             from bist_signal_bot.core.exceptions import OptimizationValidationError
             raise OptimizationValidationError("Parameter name cannot be empty")
         return v
 
-    @validator("values")
+    @field_validator("values")
     def validate_values(cls, v: list[Any] | None, values: dict[str, Any]) -> list[Any] | None:
         if v is not None and len(v) == 0:
             from bist_signal_bot.core.exceptions import OptimizationValidationError
@@ -65,7 +65,7 @@ class ParameterSearchSpace(BaseModel):
                 raise OptimizationValidationError("BOOL parameter requires boolean values")
         return v
 
-    @validator("max_value")
+    @field_validator("max_value")
     def validate_range(cls, v: float | int | None, values: dict[str, Any]) -> float | int | None:
         min_v = values.get("min_value")
         if min_v is not None and v is not None:
@@ -74,14 +74,14 @@ class ParameterSearchSpace(BaseModel):
                 raise OptimizationValidationError(f"min_value ({min_v}) cannot be greater than max_value ({v})")
         return v
 
-    @validator("step")
+    @field_validator("step")
     def validate_step(cls, v: float | int | None) -> float | int | None:
         if v is not None and v <= 0:
             from bist_signal_bot.core.exceptions import OptimizationValidationError
             raise OptimizationValidationError("step must be positive")
         return v
 
-    @validator("choices")
+    @field_validator("choices")
     def validate_choices(cls, v: list[Any] | None, values: dict[str, Any]) -> list[Any] | None:
         param_type = values.get("param_type")
         if param_type == ParameterType.CATEGORICAL and (v is None or len(v) == 0):
@@ -104,21 +104,21 @@ class OptimizationConstraints(BaseModel):
     reject_same_close_research: bool = Field(default=False)
     metadata: dict[str, Any] = Field(default_factory=dict)
 
-    @validator("min_trades")
+    @field_validator("min_trades")
     def validate_min_trades(cls, v: int) -> int:
         if v < 0:
             from bist_signal_bot.core.exceptions import OptimizationValidationError
             raise OptimizationValidationError("min_trades cannot be negative")
         return v
 
-    @validator("max_drawdown_pct")
+    @field_validator("max_drawdown_pct")
     def validate_max_dd(cls, v: float | None) -> float | None:
         if v is not None and v < 0:
             from bist_signal_bot.core.exceptions import OptimizationValidationError
             raise OptimizationValidationError("max_drawdown_pct cannot be negative")
         return v
 
-    @validator("max_cost_pct_of_profit")
+    @field_validator("max_cost_pct_of_profit")
     def validate_max_cost(cls, v: float | None) -> float | None:
         if v is not None and v < 0:
             from bist_signal_bot.core.exceptions import OptimizationValidationError
@@ -142,14 +142,14 @@ class OptimizationConfig(BaseModel):
     save_report: bool = Field(default=False)
     metadata: dict[str, Any] = Field(default_factory=dict)
 
-    @validator("max_combinations", "top_n")
+    @field_validator("max_combinations", "top_n")
     def must_be_positive(cls, v: int) -> int:
         if v <= 0:
             from bist_signal_bot.core.exceptions import OptimizationValidationError
             raise OptimizationValidationError("Value must be positive")
         return v
 
-    @validator("train_window_rows", "test_window_rows", "step_rows")
+    @field_validator("train_window_rows", "test_window_rows", "step_rows")
     def wf_must_be_positive(cls, v: int | None) -> int | None:
         if v is not None and v <= 0:
             from bist_signal_bot.core.exceptions import OptimizationValidationError

@@ -195,6 +195,7 @@ def run_cli(argv: list[str] | None = None) -> int:
         "monitor": lambda a, c: __import__("bist_signal_bot.cli.commands", fromlist=["cmd_monitor"]).cmd_monitor(a, c.settings),
         "package": lambda a, c: __import__("bist_signal_bot.cli.commands", fromlist=["run_package_command"]).run_package_command(a, c.settings),
         "performance": lambda a, c: __import__("bist_signal_bot.cli.commands", fromlist=["handle_performance_command"]).handle_performance_command(a, c.settings),
+        "perf": lambda a, c: __import__("bist_signal_bot.cli.commands", fromlist=["handle_performance_command"]).handle_performance_command(a, c.settings),
         "docs": lambda a, c: __import__("typer").run(__import__("bist_signal_bot.cli.commands", fromlist=["docs_app"]).docs_app(), sys.argv[2:]),
         "adaptive": lambda a, c: __import__("bist_signal_bot.cli.adaptive_commands", fromlist=["handle_adaptive_commands"]).handle_adaptive_commands(a),
         "scan": lambda a, c: __import__("bist_signal_bot.cli.commands", fromlist=["cmd_scan"]).cmd_scan(a, c.settings),
