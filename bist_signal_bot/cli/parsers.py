@@ -731,6 +731,7 @@ def build_parser() -> argparse.ArgumentParser:
     adjust_parser.add_argument("--policy", type=str, choices=["STRICT", "FLEXIBLE", "FLAG_ONLY"], default="FLEXIBLE", help="Adjustment Policy")
 
     ca_parser = subparsers.add_parser("corporate-actions", help="Manage corporate actions")
+    ca_parser.add_argument("dummy", nargs="*")
     ca_subparsers = ca_parser.add_subparsers(dest="ca_command", required=True)
 
     ca_list_parser = ca_subparsers.add_parser("list", help="List all corporate actions for a symbol")
@@ -1320,7 +1321,24 @@ def build_parser() -> argparse.ArgumentParser:
     dp_cfg = deploy_subs.add_parser("config")
     dp_cfg.add_argument("--json", action="store_true")
 
+
+    p_inst = subparsers.add_parser("instruments", help="Instruments master operations")
+    p_inst.add_argument("dummy", nargs="*") # to bypass argparse strictness and let click handle it
+
+    # corporate-actions may already exist, let's safely add it only if it's missing
+    if "corporate-actions" not in subparsers.choices:
+        p_ca = subparsers.add_parser("corporate-actions", help="Corporate actions operations")
+        p_ca.add_argument("dummy", nargs="*")
+    else:
+        # It exists, we just let it be. But wait, corporate-actions was already added natively?
+        pass
+
+    if "data-quality" not in subparsers.choices:
+        p_dq = subparsers.add_parser("data-quality", help="Data quality operations")
+        p_dq.add_argument("dummy", nargs="*")
+
     return parser
+
 
 def add_paper_parser(subparsers: argparse._SubParsersAction) -> None:
     paper_parser = subparsers.add_parser("paper", help="Paper trading commands")

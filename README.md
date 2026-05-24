@@ -730,3 +730,6 @@ Introduces a centralized Config Registry for managing environment variables, fea
 - Redaction of sensitive values in outputs.
 - CLI tools for listing, validating, and applying runtime profiles.
 - Integrated gates to ensure operational safety before runtime or deployment.
+
+## Phase 69: Instrument Master & Corporate Actions
+Local first instrument database tracking lifecycle events, sectors, adjustments and data reconciliation without external live broker access.

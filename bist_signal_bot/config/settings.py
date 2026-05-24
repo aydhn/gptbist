@@ -6,6 +6,47 @@ from bist_signal_bot.config.profiles import get_profile
 from bist_signal_bot.config.secrets import settings_safe_dump
 
 class Settings(BaseSettings):
+
+    # --- Instrument Master (Phase 69) ---
+    ENABLE_INSTRUMENT_MASTER: bool = True
+    INSTRUMENTS_DIR_NAME: str = "instruments"
+    INSTRUMENT_MASTER_REQUIRED_FOR_SCANNER: bool = True
+    INSTRUMENT_MASTER_ALLOW_UNKNOWN_SYMBOLS: bool = True
+    INSTRUMENT_MASTER_IMPORT_REQUIRES_CONFIRM: bool = True
+    INSTRUMENT_DEFAULT_CURRENCY: str = "TRY"
+
+    # --- Universe (Phase 69) ---
+    UNIVERSE_EXCLUDE_INACTIVE: bool = True
+    UNIVERSE_EXCLUDE_DELISTED: bool = True
+    UNIVERSE_REQUIRE_RECENT_DATA: bool = False
+    UNIVERSE_MIN_AVERAGE_VOLUME: float = 0.0
+
+    # --- Corporate Actions (Phase 69) ---
+    ENABLE_CORPORATE_ACTIONS: bool = True
+    CORPORATE_ACTIONS_DIR_NAME: str = "corporate_actions"
+    CORPORATE_ACTION_IMPORT_REQUIRES_CONFIRM: bool = True
+    CORPORATE_ACTION_OVERWRITE_REQUIRES_CONFIRM: bool = True
+    CORPORATE_ACTION_VALIDATE_PRICE_GAPS: bool = True
+    CORPORATE_ACTION_EXTREME_FACTOR_WARN: float = 0.25
+
+    # --- Adjusted Prices (Phase 69) ---
+    ENABLE_ADJUSTED_PRICES: bool = True
+    ADJUSTED_PRICES_DIR_NAME: str = "adjusted_prices"
+    ADJUSTED_PRICE_DIRECTION: str = "BACKWARD"
+    BACKTEST_USE_ADJUSTED_PRICES: bool = True
+    SCANNER_USE_ADJUSTED_PRICES: bool = False
+    ADJUSTED_CACHE_INVALIDATE_ON_ACTION_IMPORT: bool = True
+
+    # --- Data Quality / Reconciliation (Phase 69) ---
+    ENABLE_DATA_RECONCILIATION: bool = True
+    DATA_RECONCILIATION_CLOSE_DIFF_WARN_PCT: float = 0.50
+    DATA_RECONCILIATION_CLOSE_DIFF_FAIL_PCT: float = 2.00
+    DATA_RECONCILIATION_VOLUME_DIFF_WARN_PCT: float = 5.0
+    DATA_QUALITY_ABNORMAL_GAP_WARN_PCT: float = 12.0
+    DATA_QUALITY_ABNORMAL_GAP_FAIL_PCT: float = 25.0
+    REPORT_INCLUDE_MARKET_DATA_MASTER: bool = True
+
+
     # --- Config Registry (Phase 68) ---
     ENABLE_CONFIG_REGISTRY: bool = True
     CONFIG_REGISTRY_DIR_NAME: str = 'config_registry'
