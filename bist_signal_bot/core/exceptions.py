@@ -1283,3 +1283,36 @@ class ConfigGateError(ConfigRegistryError):
 
 class ConfigRegistryStorageError(ConfigRegistryError):
     pass
+
+class InstrumentError(BistSignalBotError):
+    pass
+
+class InstrumentValidationError(InstrumentError):
+    pass
+
+class InstrumentMasterError(InstrumentError):
+    pass
+
+class SymbolLifecycleError(InstrumentError):
+    pass
+
+class UniverseBuilderError(InstrumentError):
+    pass
+
+class CorporateActionError(BistSignalBotError):
+    pass
+
+class CorporateActionImportError(CorporateActionError):
+    pass
+
+class CorporateActionValidationError(CorporateActionError):
+    pass
+
+class PriceAdjustmentError(CorporateActionError):
+    pass
+
+class DataReconciliationError(BistSignalBotError):
+    pass
+
+class AdjustedPriceError(DataReconciliationError):
+    pass

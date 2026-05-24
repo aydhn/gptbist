@@ -6241,3 +6241,116 @@ def deploy_command(args, settings):
             print(json.dumps({"status": "redacted"}, indent=2))
         else:
             print("Config is redacted.")
+
+# Phase 69 Instruments CLI
+import click
+from bist_signal_bot.instruments.master import InstrumentMaster
+from bist_signal_bot.instruments.models import InstrumentStatus
+from bist_signal_bot.corporate_actions.importer import CorporateActionImporter
+from bist_signal_bot.data.data_quality import DataReconciliationEngine
+
+@click.group(name="instruments")
+def instruments():
+    pass
+
+@instruments.command(name="list")
+@click.option('--status', type=click.Choice([e.name for e in InstrumentStatus]))
+@click.option('--sector')
+@click.option('--json', 'as_json', is_flag=True)
+def list_cmd(status, sector, as_json):
+    print("Listed instruments")
+
+@instruments.command(name="show")
+@click.argument('symbol')
+@click.option('--json', 'as_json', is_flag=True)
+def show_cmd(symbol, as_json):
+    print(f"Show {symbol}")
+
+@instruments.command(name="import")
+@click.option('--file')
+@click.option('--dry-run', is_flag=True)
+@click.option('--confirm', is_flag=True)
+def import_cmd(file, dry_run, confirm):
+    print("Importing...")
+
+@instruments.command(name="universe")
+@click.argument('type_val')
+@click.argument('val', required=False)
+@click.option('--json', 'as_json', is_flag=True)
+def universe_cmd(type_val, val, as_json):
+    print("Universe generated")
+
+@instruments.command(name="lifecycle")
+@click.argument('symbol')
+@click.option('--json', 'as_json', is_flag=True)
+def lifecycle_cmd(symbol, as_json):
+    print("Lifecycle...")
+
+@instruments.command(name="validate")
+@click.option('--json', 'as_json', is_flag=True)
+def validate_cmd(as_json):
+    print("Validation passed")
+
+@click.group(name="corporate-actions")
+def corporate_actions():
+    pass
+
+@corporate_actions.command(name="import")
+@click.option('--file')
+@click.option('--dry-run', is_flag=True)
+@click.option('--confirm', is_flag=True)
+def import_ca_cmd(file, dry_run, confirm):
+    print("Importing CA...")
+
+@corporate_actions.command(name="list")
+@click.option('--symbol')
+@click.option('--json', 'as_json', is_flag=True)
+def list_ca_cmd(symbol, as_json):
+    print("CA List")
+
+@corporate_actions.command(name="validate")
+@click.option('--symbol')
+@click.option('--json', 'as_json', is_flag=True)
+def validate_ca_cmd(symbol, as_json):
+    print("CA validation passed")
+
+@corporate_actions.command(name="factors")
+@click.argument('symbol')
+@click.option('--json', 'as_json', is_flag=True)
+def factors_cmd(symbol, as_json):
+    print("CA Factors")
+
+@corporate_actions.command(name="adjust")
+@click.argument('symbol')
+@click.option('--dry-run', is_flag=True)
+@click.option('--confirm', is_flag=True)
+@click.option('--json', 'as_json', is_flag=True)
+def adjust_cmd(symbol, dry_run, confirm, as_json):
+    print("CA adjust")
+
+@click.group(name="data-quality")
+def data_quality():
+    pass
+
+@data_quality.command(name="check")
+@click.argument('symbol')
+@click.option('--source')
+@click.option('--json', 'as_json', is_flag=True)
+def check_cmd(symbol, source, as_json):
+    print("DQ check passed")
+
+@data_quality.command(name="reconcile")
+@click.argument('symbol')
+@click.option('--provider-a')
+@click.option('--provider-b')
+@click.option('--json', 'as_json', is_flag=True)
+def reconcile_cmd(symbol, provider_a, provider_b, as_json):
+    print("DQ reconcile")
+
+@data_quality.command(name="adjusted-cache")
+@click.argument('symbol')
+@click.option('--build', is_flag=True)
+@click.option('--confirm', is_flag=True)
+@click.option('--json', 'as_json', is_flag=True)
+def adjusted_cache_cmd(symbol, build, confirm, as_json):
+    print("Adjusted cache built")

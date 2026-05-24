@@ -1,3 +1,23 @@
+
+def cmd_instruments(args, app_context):
+    import sys
+    from bist_signal_bot.cli.commands import instruments
+    # Strip everything before 'instruments'
+    idx = sys.argv.index('instruments')
+    instruments.main(args=sys.argv[idx+1:])
+
+def cmd_corporate_actions_wrap(args, app_context):
+    import sys
+    from bist_signal_bot.cli.commands import corporate_actions
+    idx = sys.argv.index('corporate-actions')
+    corporate_actions.main(args=sys.argv[idx+1:])
+
+def cmd_data_quality_wrap(args, app_context):
+    import sys
+    from bist_signal_bot.cli.commands import data_quality
+    idx = sys.argv.index('data-quality')
+    data_quality.main(args=sys.argv[idx+1:])
+
 import sys
 
 from bist_signal_bot.app.bootstrap import bootstrap_app
@@ -161,7 +181,30 @@ def run_cli(argv: list[str] | None = None) -> int:
         docs_app()
         return 0
 
+
+    if args_to_parse and args_to_parse[0] == 'instruments':
+        from bist_signal_bot.cli.commands import instruments
+        import sys
+        sys.argv = [sys.argv[0]] + args_to_parse[1:]
+        instruments()
+        return 0
+
+    if args_to_parse and args_to_parse[0] == 'corporate-actions':
+        from bist_signal_bot.cli.commands import corporate_actions
+        import sys
+        sys.argv = [sys.argv[0]] + args_to_parse[1:]
+        corporate_actions()
+        return 0
+
+    if args_to_parse and args_to_parse[0] == 'data-quality':
+        from bist_signal_bot.cli.commands import data_quality
+        import sys
+        sys.argv = [sys.argv[0]] + args_to_parse[1:]
+        data_quality()
+        return 0
+
     args = parse_args(argv)
+
 
     try:
         app_context = bootstrap_app()

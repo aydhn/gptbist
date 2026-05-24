@@ -396,3 +396,12 @@ def get_config_registry_dir(settings=None) -> Path:
     path = get_data_dir(settings) / getattr(settings, "CONFIG_REGISTRY_DIR_NAME", "config_registry")
     path.mkdir(parents=True, exist_ok=True)
     return path
+
+def get_instruments_dir(settings=None) -> Path:
+    return Path("data/instruments")
+
+def get_corporate_actions_dir(settings=None) -> Path:
+    return Path("data/corporate_actions")
+
+def get_adjusted_prices_dir(settings=None) -> Path:
+    return Path("data/adjusted_prices")
