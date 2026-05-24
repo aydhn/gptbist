@@ -93,6 +93,35 @@ class RuntimeOrchestrator:
 
     def _run_once_impl(self, config: RuntimePipelineConfig, trigger: RuntimeTrigger = RuntimeTrigger.CLI) -> RuntimePipelineResult:
 
+        # Config Registry Integration
+        if getattr(config, "config_gate_before_run", False) or getattr(self.settings, "RUNTIME_CONFIG_GATE_BEFORE_RUN", False):
+            try:
+                from bist_signal_bot.app.config_registry_app import create_config_gate
+                from bist_signal_bot.config_registry.models import RuntimeProfileType
+                gate = create_config_gate(self.settings)
+
+                profile_type = None
+                if getattr(config, "runtime_profile", None):
+                    profile_type = RuntimeProfileType(config.runtime_profile)
+
+                gate_res = gate.runtime_gate(profile_type=profile_type)
+
+                if gate_res.blocked:
+                    self.logger.error("Config Gate blocked execution.")
+                    # Simplified return for mock integration
+                    result = RuntimePipelineResult(
+                        run_id=f"run_{uuid.uuid4().hex[:8]}",
+                        trigger=trigger,
+                        config=config,
+                        status=RuntimePipelineStatus.FAILED,
+                        started_at=datetime.utcnow()
+                    )
+                    result.config_gate_status = gate_res.decision.value
+                    result.metadata["config_gate_warnings"] = gate_res.warnings
+                    return result
+            except Exception as e:
+                self.logger.error(f"Config gate error: {e}")
+
         if getattr(self.settings, "RUNTIME_REQUIRE_FRESH_DATA", False):
             try:
                 from bist_signal_bot.data.data_service import MarketDataService

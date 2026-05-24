@@ -1252,3 +1252,34 @@ class BottleneckAnalysisError(PerformanceError):
 class PerformanceStorageError(PerformanceError):
     """Raised when saving or loading performance data fails."""
     pass
+
+class ConfigRegistryError(BistSignalBotError):
+    """Base exception for Config Registry operations."""
+    pass
+
+class ConfigSchemaError(ConfigRegistryError):
+    pass
+
+class FeatureFlagError(ConfigRegistryError):
+    pass
+
+class RuntimeProfileError(ConfigRegistryError):
+    pass
+
+class ConfigValidationError(ConfigRegistryError):
+    pass
+
+class ConfigSnapshotError(ConfigRegistryError):
+    pass
+
+class ConfigDiffError(ConfigRegistryError):
+    pass
+
+class ConfigDriftError(ConfigRegistryError):
+    pass
+
+class ConfigGateError(ConfigRegistryError):
+    pass
+
+class ConfigRegistryStorageError(ConfigRegistryError):
+    pass

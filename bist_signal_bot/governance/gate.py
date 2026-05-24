@@ -38,6 +38,43 @@ class GovernanceGate:
 
         findings = self.rule_evaluator.evaluate_payload(request.payload, policy, request.domains)
 
+        # Config Registry Integration
+        if getattr(self.settings, "ENABLE_CONFIG_REGISTRY", False):
+            try:
+                from bist_signal_bot.app.config_registry_app import create_config_gate
+                cg = create_config_gate(self.settings)
+
+                # Check mapping
+                gate_mapping = {
+                    "runtime_gate": cg.runtime_gate,
+                    "release_gate": cg.release_gate,
+                    "scheduler_gate": cg.scheduler_gate,
+                    "research_lab_gate": cg.research_lab_gate,
+                    "deployment_gate": cg.deployment_gate,
+                }
+
+                gate_fn = gate_mapping.get(request.gate_name)
+                if gate_fn:
+                    cg_res = gate_fn()
+                    if cg_res.blocked:
+                        from bist_signal_bot.governance.models import GovernanceFinding, GovernanceDecision
+                        if findings is None:
+                            findings = []
+                        findings.append(GovernanceFinding(
+                            finding_id=f"cfg_{uuid.uuid4().hex[:8]}",
+                            domain=request.domains[0],
+                            status=GovernanceStatus.BLOCKED,
+                            decision=GovernanceDecision.BLOCK,
+                            title="Config Registry Blocked",
+                            message=f"Blocked by config registry: {cg_res.warnings}",
+                            rule_id="config_registry_gate"
+                        ))
+            except Exception as e:
+                logger.warning(f"Config registry gate integration failed: {e}")
+
+
+
+
         blocked = False
         warnings = []
 

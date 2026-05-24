@@ -67,7 +67,8 @@ class RuntimeJobConfig(BaseModel):
     metadata: Dict[str, Any] = Field(default_factory=dict)
 
 class RuntimePipelineConfig(BaseModel):
-
+    config_gate_before_run: bool = False
+    runtime_profile: str | None = None
     profile_runtime: bool = False
     performance_budget_enabled: bool = False
     build_research_portfolio: bool = False
@@ -119,7 +120,8 @@ class RuntimeJobResult(BaseModel):
         }
 
 class RuntimePipelineResult(BaseModel):
-
+    config_gate_status: str | None = None
+    config_snapshot_id: str | None = None
     performance_profile_id: str | None = None
     memory_peak_mb: float | None = None
     slowest_stage: str | None = None

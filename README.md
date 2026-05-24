@@ -722,3 +722,11 @@ python -m bist_signal_bot deploy first-run --dry-run
 
 ## Performance Profiling
 BIST Signal Bot includes a fully local performance profiling suite. It generates zero financial claims, does not use external cloud services, and is meant purely for operational efficiency monitoring. Use `python -m bist_signal_bot perf --help` to explore.
+
+### Phase 68: Config Registry
+Introduces a centralized Config Registry for managing environment variables, feature flags, and runtime profiles. Features include:
+- Strict validation schema blocking forbidden integrations (real orders, scraping, paid APIs).
+- Config snapshots, diffs, and drift detection.
+- Redaction of sensitive values in outputs.
+- CLI tools for listing, validating, and applying runtime profiles.
+- Integrated gates to ensure operational safety before runtime or deployment.

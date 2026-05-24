@@ -96,9 +96,29 @@ class LocalSchedulerOrchestrator:
             if len(unique_due) > actual_limit:
                 result.warnings.append(f"Limited run to {actual_limit} out of {len(unique_due)} due jobs")
 
-            # 5. Execute
+            # 5. Config Gate Check
+            gate_blocked = False
+            gate_warnings = []
+            try:
+                from bist_signal_bot.app.config_registry_app import create_config_gate
+                gate = create_config_gate(self.settings)
+                gate_res = gate.scheduler_gate()
+                if gate_res.blocked:
+                    gate_blocked = True
+                    gate_warnings = gate_res.warnings
+                    result.status = ScheduledJobStatus.FAILED
+                    result.errors.append(f"Scheduler blocked by Config Gate: {gate_res.warnings}")
+            except Exception as e:
+                self.logger.warning(f"Could not run Config Gate for Scheduler: {e}")
+
+            # Execute
             runs = []
             success_count = 0
+
+            if gate_blocked:
+                # Cancel execution
+                jobs_to_run = []
+
             failed_count = 0
 
             for job in jobs_to_run:

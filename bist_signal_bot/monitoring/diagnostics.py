@@ -416,6 +416,46 @@ def get_maintenance_diagnostics() -> dict:
         }
     except Exception as e:
         return {"error": str(e)}
+    def check_config_registry(self) -> DiagnosticCheckResult:
+        comp = MonitoringComponent.SYSTEM
+        if not getattr(self.settings, 'ENABLE_CONFIG_REGISTRY', False):
+            return self._create_result("Config Registry", comp, DiagnosticCheckStatus.SKIP, AlertSeverity.INFO, "Config Registry is disabled.")
+
+        try:
+            from bist_signal_bot.app.config_registry_app import create_config_validator, create_config_registry, create_config_drift_detector
+            reg = create_config_registry(self.settings)
+            val = create_config_validator(self.settings)
+            drift = create_config_drift_detector(self.settings)
+
+            recs = reg.list_records()
+            val_res = val.validate_all(recs)
+
+            details = {
+                "records_loaded": len(recs),
+                "validation_status": val_res.status.value,
+                "blocked_count": val_res.blocked_count,
+            }
+
+            # Simple drift snapshot call if a snapshot exists
+            from bist_signal_bot.app.config_registry_app import create_config_snapshot_manager
+            manager = create_config_snapshot_manager(self.settings)
+            base = manager.load_latest_snapshot()
+            if base:
+                curr = manager.create_snapshot(save=False)
+                drift_res = drift.detect_drift(curr, base)
+                details["drift_score"] = drift_res.drift_score
+                details["drift_status"] = drift_res.status.value
+
+            if val_res.status.name == "FAIL":
+                 return self._create_result("Config Registry", comp, DiagnosticCheckStatus.FAIL, AlertSeverity.CRITICAL, f"Config validation failed: {val_res.blocked_count} blockers.", details=details)
+            elif val_res.status.name == "WARN":
+                 return self._create_result("Config Registry", comp, DiagnosticCheckStatus.WARN, AlertSeverity.WARNING, f"Config validation warnings: {val_res.warning_count}.", details=details)
+
+            return self._create_result("Config Registry", comp, DiagnosticCheckStatus.PASS, AlertSeverity.INFO, "Config registry is healthy.", details=details)
+
+        except Exception as e:
+            return self._create_result("Config Registry", comp, DiagnosticCheckStatus.ERROR, AlertSeverity.HIGH, f"Failed to check config registry: {e}")
+
     def check_performance_baselines(self) -> DiagnosticCheckResult:
         comp = MonitoringComponent.RESEARCH
         if not getattr(self.settings, 'ENABLE_PERFORMANCE_PROFILING', False):

@@ -387,3 +387,12 @@ def get_deployment_dir(settings=None) -> Path:
     path = get_data_dir(settings) / getattr(settings, "DEPLOYMENT_DIR_NAME", "deployment")
     path.mkdir(parents=True, exist_ok=True)
     return path
+
+
+def get_config_registry_dir(settings=None) -> Path:
+    from bist_signal_bot.config.settings import Settings
+    if settings is None:
+        settings = Settings()
+    path = get_data_dir(settings) / getattr(settings, "CONFIG_REGISTRY_DIR_NAME", "config_registry")
+    path.mkdir(parents=True, exist_ok=True)
+    return path
