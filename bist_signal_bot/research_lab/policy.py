@@ -11,6 +11,18 @@ class ResearchLabPolicyManager:
 
     def default_policy(self) -> ResearchLabPolicy:
         s = self.settings
+
+        try:
+            from bist_signal_bot.app.config_registry_app import create_config_registry
+            registry = create_config_registry(s)
+
+            # Using defaults/overrides from registry if present
+            max_jobs = registry.get_record("RESEARCH_LAB_MAX_JOBS")
+            if max_jobs:
+                setattr(s, "RESEARCH_LAB_MAX_JOBS_PER_BATCH", max_jobs.value)
+        except Exception:
+            pass
+
         return ResearchLabPolicy(
             max_jobs_per_batch=getattr(s, "RESEARCH_LAB_MAX_JOBS_PER_BATCH", 20),
             max_parallel_jobs=getattr(s, "RESEARCH_LAB_MAX_PARALLEL_JOBS", 1),

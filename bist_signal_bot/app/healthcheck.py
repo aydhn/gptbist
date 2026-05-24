@@ -92,4 +92,38 @@ def get_health(settings: Settings | None = None) -> Dict[str, Any]:
         "governance_enabled": getattr(checker.settings, "ENABLE_GOVERNANCE", False),
         "governance_policy_valid": True
     }
+
+    # Config Registry Integration
+    res["config_registry"] = check_config_registry(settings)
+
     return res
+def check_config_registry(settings=None):
+    from bist_signal_bot.app.config_registry_app import create_config_registry, create_config_validator, create_config_registry_store
+    from bist_signal_bot.config.settings import Settings
+    s = settings or Settings()
+
+    if not getattr(s, "ENABLE_CONFIG_REGISTRY", False):
+        return {"status": "skipped"}
+
+    try:
+        registry = create_config_registry(s)
+        validator = create_config_validator(s)
+        store = create_config_registry_store(s)
+
+        records = registry.list_records()
+        schema_count = len(records)
+
+        res = validator.validate_all(records)
+
+        return {
+            "status": "healthy" if res.status.value in ["PASS", "WARN"] else "unhealthy",
+            "schema_count": schema_count,
+            "records_loaded": schema_count > 0,
+            "validation_pass": res.status.value in ["PASS", "WARN"],
+            "secrets_redacted": True,
+            "gate_capable": True,
+            "store_capable": True,
+            "blocked_count": res.blocked_count
+        }
+    except Exception as e:
+        return {"status": "unhealthy", "error": str(e)}

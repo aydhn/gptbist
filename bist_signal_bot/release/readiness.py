@@ -81,6 +81,46 @@ class ReleaseReadinessEvaluator:
             checks = []
             checks.extend(self.check_runner.run_all_basic_checks())
 
+            # Config Registry Integration
+            if getattr(self.settings, "ENABLE_CONFIG_REGISTRY", False):
+                try:
+                    from bist_signal_bot.app.config_registry_app import create_config_validator, create_config_registry
+                    reg = create_config_registry(self.settings)
+                    val = create_config_validator(self.settings)
+                    recs = reg.list_records()
+                    res = val.validate_all(recs)
+
+                    status = ReleaseCheckStatus.PASS
+                    severity = ReleaseBlockerSeverity.LOW
+                    msg = f"Config valid. Checked {res.records_checked} items."
+                    if res.status.name == "FAIL":
+                        status = ReleaseCheckStatus.FAIL
+                        severity = ReleaseBlockerSeverity.CRITICAL
+                        msg = f"Config invalid. Blocked: {res.blocked_count} items."
+                    elif res.status.name == "WARN":
+                        status = ReleaseCheckStatus.WARN
+                        severity = ReleaseBlockerSeverity.MEDIUM
+                        msg = f"Config has warnings: {res.warning_count} items."
+
+                    checks.append(ReleaseCheckResult(
+                        check_id="config_registry_validation",
+                        name="Config Registry Validation",
+                        category=ReleaseCheckCategory.ENVIRONMENT,
+                        status=status,
+                        severity=severity,
+                        message=msg
+                    ))
+                except Exception as e:
+                    checks.append(ReleaseCheckResult(
+                        check_id="config_registry_validation",
+                        name="Config Registry Validation",
+                        category=ReleaseCheckCategory.ENVIRONMENT,
+                        status=ReleaseCheckStatus.WARN,
+                        severity=ReleaseBlockerSeverity.LOW,
+                        message=f"Config validation error: {e}"
+                    ))
+
+
             # Here we would normally call self.quality_runner.run_smoke() etc.
             # For this MVP integration, we simulate those calls returning check results if they were injected.
 

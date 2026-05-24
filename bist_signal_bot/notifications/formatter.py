@@ -1253,3 +1253,51 @@ def format_operator_runbook_summary(runbook: Any) -> str:
     ]
     msg.append("\n_Operator runbook is operational guidance only. Not investment advice. No real order was sent._")
     return "\n".join(msg)
+
+def format_config_validation_result(result) -> str:
+    lines = [
+        "**BIST Bot Config Registry Özeti**\n",
+        f"Validation: {result.status.value}",
+        f"Records Checked: {result.records_checked}",
+        f"Warnings: {result.warning_count}",
+        f"Blocked: {result.blocked_count}\n",
+        f"Bu çıktı operasyonel config özetidir.",
+        f"Yatırım tavsiyesi değildir.",
+        f"Gerçek emir gönderilmedi."
+    ]
+    return "\n".join(lines)
+
+def format_config_snapshot(snapshot) -> str:
+    lines = [
+        "**Config Snapshot Created**",
+        f"ID: {snapshot.snapshot_id}",
+        f"Profile: {snapshot.profile_type.value if snapshot.profile_type else 'None'}",
+        f"Checksum: {snapshot.checksum_sha256[:8] if snapshot.checksum_sha256 else ''}"
+    ]
+    return "\n".join(lines)
+
+def format_config_diff(diff) -> str:
+    lines = [
+        "**Config Diff**",
+        f"Changed: {diff.changed_count}",
+        f"Dangerous: {diff.dangerous_count}",
+        f"Blocked: {diff.blocked_count}"
+    ]
+    return "\n".join(lines)
+
+def format_config_drift(result) -> str:
+    lines = [
+        "**Config Drift Report**",
+        f"Status: {result.status.value}",
+        f"Score: {result.drift_score:.1f}"
+    ]
+    return "\n".join(lines)
+
+def format_config_gate(result) -> str:
+    lines = [
+        "**Config Gate Result**",
+        f"Gate: {result.request.gate_name}",
+        f"Decision: {result.decision.value}",
+        f"Blocked: {result.blocked}"
+    ]
+    return "\n".join(lines)

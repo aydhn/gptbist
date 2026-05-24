@@ -125,6 +125,14 @@ class DeploymentProfileManager:
         # Fallback to custom / research_only
         return self.default_profiles()[0]
 
+    def sync_with_config_registry(self, settings: Settings) -> None:
+        try:
+            from bist_signal_bot.app.config_registry_app import create_runtime_profile_manager
+            manager = create_runtime_profile_manager(settings)
+            # Future integration to sync deployment profiles with runtime profiles
+        except Exception:
+            pass
+
     def apply_profile_to_settings(self, profile: DeploymentProfile, settings: Settings) -> Dict[str, Any]:
         applied = {}
         for key, value in profile.settings_overrides.items():

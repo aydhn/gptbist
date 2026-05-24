@@ -109,11 +109,28 @@ def run_cli(argv: list[str] | None = None) -> int:
         review()
         return 0
 
+    if args_to_parse and args_to_parse[0] == 'config-registry':
+        import argparse
+        parser = argparse.ArgumentParser()
+        subparsers = parser.add_subparsers(dest="command")
+        from bist_signal_bot.cli.parsers import add_config_registry_parser
+        add_config_registry_parser(subparsers)
+
+        args, _ = parser.parse_known_args(['config-registry'] + args_to_parse[1:])
+        from bist_signal_bot.cli.commands_registry import run_config_registry_command
+        try:
+             from bist_signal_bot.config.settings import Settings
+             s = Settings()
+             run_config_registry_command(args, s)
+        except Exception as e:
+             print(f"Config Registry Error: {e}")
+        return 0
+
     if args_to_parse and args_to_parse[0] == 'governance':
         import argparse
         parser = argparse.ArgumentParser()
         subparsers = parser.add_subparsers(dest="command")
-        from bist_signal_bot.cli.parsers import add_governance_parser
+        from bist_signal_bot.cli.parsers import add_governance_parser, add_config_registry_parser
         add_governance_parser(subparsers)
 
         # Fake parse just for governance

@@ -2022,3 +2022,70 @@ def add_governance_parser(subparsers):
     # config
     cfg = sub.add_parser("config", help="Show governance config")
     cfg.add_argument("--json", action="store_true", help="Output as JSON")
+def add_config_registry_parser(subparsers):
+    parser = subparsers.add_parser("config-registry", help="Config Registry management")
+    subparsers_config = parser.add_subparsers(dest="config_command", required=True)
+
+    # list
+    p_list = subparsers_config.add_parser("list", help="List config records")
+    p_list.add_argument("--module", type=str, help="Filter by module")
+    p_list.add_argument("--json", action="store_true", help="JSON output")
+
+    # show
+    p_show = subparsers_config.add_parser("show", help="Show specific config record")
+    p_show.add_argument("key", type=str, help="Config key")
+    p_show.add_argument("--json", action="store_true", help="JSON output")
+
+    # validate
+    p_validate = subparsers_config.add_parser("validate", help="Validate current config")
+    p_validate.add_argument("--json", action="store_true", help="JSON output")
+
+    # flags
+    p_flags = subparsers_config.add_parser("flags", help="Show feature flags")
+    p_flags.add_argument("--module", type=str, help="Filter by module")
+    p_flags.add_argument("--json", action="store_true", help="JSON output")
+
+    # profiles
+    p_profiles = subparsers_config.add_parser("profiles", help="Show runtime profiles")
+    p_profiles.add_argument("--json", action="store_true", help="JSON output")
+
+    # profile-preview
+    p_preview = subparsers_config.add_parser("profile-preview", help="Preview profile apply diff")
+    p_preview.add_argument("profile_type", type=str, help="Profile type")
+    p_preview.add_argument("--json", action="store_true", help="JSON output")
+
+    # profile-apply
+    p_apply = subparsers_config.add_parser("profile-apply", help="Apply a runtime profile")
+    p_apply.add_argument("profile_type", type=str, help="Profile type")
+    p_apply.add_argument("--confirm", action="store_true", help="Confirm apply")
+
+    # snapshot
+    p_snapshot = subparsers_config.add_parser("snapshot", help="Create a config snapshot")
+    p_snapshot.add_argument("--profile", type=str, help="Profile type string")
+    p_snapshot.add_argument("--json", action="store_true", help="JSON output")
+
+    # diff
+    p_diff = subparsers_config.add_parser("diff", help="Diff snapshots")
+    p_diff.add_argument("--old", type=str, help="Old snapshot ID")
+    p_diff.add_argument("--new", type=str, help="New snapshot ID")
+    p_diff.add_argument("--current-against", type=str, help="Diff current against snapshot ID")
+    p_diff.add_argument("--json", action="store_true", help="JSON output")
+
+    # drift
+    p_drift = subparsers_config.add_parser("drift", help="Detect config drift")
+    p_drift.add_argument("--baseline", type=str, help="Baseline snapshot ID")
+    p_drift.add_argument("--json", action="store_true", help="JSON output")
+
+    # gate
+    p_gate = subparsers_config.add_parser("gate", help="Run a config gate")
+    p_gate.add_argument("gate_type", type=str, choices=["runtime", "release", "scheduler"], help="Gate type")
+    p_gate.add_argument("--json", action="store_true", help="JSON output")
+
+    # recent
+    p_recent = subparsers_config.add_parser("recent", help="Show recent snapshots")
+    p_recent.add_argument("--limit", type=int, default=10, help="Number of snapshots")
+    p_recent.add_argument("--json", action="store_true", help="JSON output")
+
+    # config
+    p_config = subparsers_config.add_parser("config", help="Show safe redacted config summary")
+    p_config.add_argument("--json", action="store_true", help="JSON output")

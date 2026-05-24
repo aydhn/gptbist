@@ -168,14 +168,39 @@ class EnvironmentDoctor:
         )
 
     def check_config_validation(self) -> EnvironmentCheckResult:
-        return EnvironmentCheckResult(
-            check_id=str(uuid.uuid4()),
-            check_type=EnvironmentCheckType.CONFIG_VALIDATION,
-            status=DeploymentStatus.PASS,
-            decision=DeploymentDecision.CONTINUE,
-            title="Config Validation Check",
-            message="Configuration is valid."
-        )
+        try:
+            from bist_signal_bot.app.config_registry_app import create_config_validator, create_config_registry
+            registry = create_config_registry(self.settings)
+            validator = create_config_validator(self.settings)
+            records = registry.list_records()
+            res = validator.validate_all(records)
+
+            if res.status.name == "FAIL":
+                return EnvironmentCheckResult(
+                    check_id=str(uuid.uuid4()),
+                    check_type=EnvironmentCheckType.CONFIG_VALIDATION,
+                    status=DeploymentStatus.FAIL,
+                    decision=DeploymentDecision.BLOCK,
+                    title="Config Validation Check",
+                    message=f"Config validation failed. Blocked: {res.blocked_count}, Warnings: {res.warning_count}"
+                )
+            return EnvironmentCheckResult(
+                check_id=str(uuid.uuid4()),
+                check_type=EnvironmentCheckType.CONFIG_VALIDATION,
+                status=DeploymentStatus.PASS,
+                decision=DeploymentDecision.CONTINUE,
+                title="Config Validation Check",
+                message=f"Config is valid. Checked {res.records_checked} items."
+            )
+        except Exception as e:
+            return EnvironmentCheckResult(
+                check_id=str(uuid.uuid4()),
+                check_type=EnvironmentCheckType.CONFIG_VALIDATION,
+                status=DeploymentStatus.WARN,
+                decision=DeploymentDecision.WARN_CONTINUE,
+                title="Config Validation Check",
+                message=f"Config validator could not run: {e}"
+            )
 
     def check_integrations(self) -> EnvironmentCheckResult:
         return EnvironmentCheckResult(

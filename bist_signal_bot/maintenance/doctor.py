@@ -12,7 +12,7 @@ class MaintenanceDoctor:
         self.settings = get_settings()
         self.required_dirs = [
             "logs", "reports", "scenarios", "stress", "drift", "research_lab",
-            "temp", "signals", "cache", "release", "research_ledger", "market_data", "models"
+            "temp", "signals", "cache", "release", "research_ledger", "market_data", "models", "config_registry"
         ]
 
     def check_required_dirs(self) -> list[str]:
@@ -67,6 +67,15 @@ class MaintenanceDoctor:
 
         if getattr(self.settings, "MAINTENANCE_DOCTOR_CHECK_SECRET_RISK", True):
              secret_risk_files.extend(self.check_secret_risk(all_paths))
+
+        # Config Registry Checks
+        if getattr(self.settings, "ENABLE_CONFIG_REGISTRY", False):
+             try:
+                 from bist_signal_bot.app.config_registry_app import create_config_registry_store
+                 store = create_config_registry_store(self.settings)
+                 store.load_latest_snapshot() # tests integrity
+             except Exception as e:
+                 corrupted_files.append(f"config_registry/snapshots (error: {e})")
 
         status = MaintenanceStatus.SUCCESS
         if corrupted_files or secret_risk_files:

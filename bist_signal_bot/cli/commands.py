@@ -3604,6 +3604,12 @@ def cmd_runtime(args, settings):
         config.use_paper = args.paper
         config.send_telegram = args.telegram
 
+        if hasattr(args, "config_gate") and args.config_gate:
+            config.config_gate_before_run = True
+
+        if hasattr(args, "runtime_profile") and args.runtime_profile:
+            config.runtime_profile = args.runtime_profile
+
         res = orchestrator.run_once(config, trigger=RuntimeTrigger.CLI)
         if args.json:
             print(res.model_dump_json(indent=2))
