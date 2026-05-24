@@ -174,6 +174,14 @@ def run_cli(argv: list[str] | None = None) -> int:
         return 0
 
 
+
+    if args_to_parse and args_to_parse[0] == 'validation':
+        from bist_signal_bot.cli.validation_commands import app
+        import sys
+        sys.argv = [sys.argv[0]] + args_to_parse[1:]
+        app()
+        return 0
+
     if args_to_parse and args_to_parse[0] == 'docs':
         from bist_signal_bot.cli.commands import docs_app
         import sys

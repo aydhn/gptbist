@@ -1,3 +1,4 @@
+from bist_signal_bot.cli.validation_commands import app as validation_app
 from bist_signal_bot.cli.commands_scenarios import scenario_cli
 
 from bist_signal_bot.app.reports_app import create_report_generator, create_report_store, create_digest_builder

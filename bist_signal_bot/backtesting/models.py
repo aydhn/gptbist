@@ -39,6 +39,7 @@ class BacktestOrder:
     metadata: dict[str, Any] = field(default_factory=dict)
 
 @dataclass
+class SimulatedTrade:
     gross_entry_price: float | None = None
     simulated_entry_fill_price: float | None = None
     gross_exit_price: float | None = None
@@ -59,6 +60,7 @@ class BacktestFill:
     metadata: dict[str, Any] = field(default_factory=dict)
 
 @dataclass
+class BacktestConfig:
     include_transaction_costs: bool = True
     include_slippage: bool = True
     execution_scenario: str = "BASE"

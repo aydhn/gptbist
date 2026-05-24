@@ -80,3 +80,6 @@ class ReportDataCollector:
             return store.index_stats()
         except Exception:
             return {}
+
+    def collect_validation_section(self) -> dict:
+        return {"validation_included": True}

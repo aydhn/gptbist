@@ -184,3 +184,6 @@ class ResearchJobPlanner:
             return retriever.retrieve_for_research_lab_job(job)
         except Exception:
             return []
+
+    def generate_validation_jobs(self, strategy_name: str, symbol: str) -> list:
+        return []

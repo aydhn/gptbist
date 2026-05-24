@@ -1301,3 +1301,18 @@ def format_config_gate(result) -> str:
         f"Blocked: {result.blocked}"
     ]
     return "\n".join(lines)
+
+def format_strategy_validation_result(result) -> str:
+    return f"Validation {result.status}"
+
+def format_walk_forward_result(result) -> str:
+    return f"WF {result.status}"
+
+def format_overfit_diagnostics(result) -> str:
+    return f"Overfit {result.status}"
+
+def format_parameter_stability(result) -> str:
+    return f"Stability {result.status}"
+
+def format_cost_robustness(result) -> str:
+    return f"Cost {result.status}"
