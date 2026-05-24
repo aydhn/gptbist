@@ -1316,3 +1316,30 @@ class DataReconciliationError(BistSignalBotError):
 
 class AdjustedPriceError(DataReconciliationError):
     pass
+
+class ValidationError(BistSignalBotError):
+    pass
+
+class StrategyValidationError(ValidationError):
+    pass
+
+class WalkForwardError(ValidationError):
+    pass
+
+class PurgedCVError(ValidationError):
+    pass
+
+class ParameterStabilityError(ValidationError):
+    pass
+
+class OverfitDiagnosticsError(ValidationError):
+    pass
+
+class RegimeRobustnessError(ValidationError):
+    pass
+
+class CostRobustnessError(ValidationError):
+    pass
+
+class ValidationStorageError(ValidationError):
+    pass

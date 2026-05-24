@@ -54,3 +54,6 @@ class ReviewEvidenceCollector:
 
     def collect_history_evidence(self, item: ReviewItem) -> List[ReviewEvidence]:
         return []
+
+    def attach_validation_summary(self, validation_result) -> None:
+        pass

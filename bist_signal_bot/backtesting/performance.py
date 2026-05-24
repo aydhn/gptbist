@@ -1,3 +1,4 @@
+from typing import Any
 import logging
 from datetime import datetime, timezone
 import pandas as pd
@@ -237,7 +238,7 @@ class BacktestPerformanceAnalyzer:
             return_over_max_drawdown=romad
         )
 
-def performance_by_regime(result: Any) -> dict[str, Any]:
+def performance_by_regime(result: "Any") -> dict[str, Any]:
     if not hasattr(result, 'trades') or not result.trades:
         return {}
     by_regime = {}

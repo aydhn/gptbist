@@ -1468,6 +1468,43 @@ class Settings(BaseSettings):
 
     # Report Governance Integration
     REPORT_INCLUDE_GOVERNANCE: bool = True
+    # Strategy Validation / Walk-Forward
+    ENABLE_STRATEGY_VALIDATION: bool = Field(default=True)
+    VALIDATION_DIR_NAME: str = Field(default="validation")
+    VALIDATION_SAVE_RESULTS: bool = Field(default=True)
+    VALIDATION_HEAVY_RUN_REQUIRES_CONFIRM: bool = Field(default=True)
+
+    VALIDATION_DEFAULT_SPLIT_TYPE: str = Field(default="WALK_FORWARD")
+    VALIDATION_TRAIN_WINDOW_DAYS: int = Field(default=252)
+    VALIDATION_TEST_WINDOW_DAYS: int = Field(default=63)
+    VALIDATION_STEP_DAYS: int = Field(default=63)
+    VALIDATION_MIN_FOLDS: int = Field(default=3)
+    VALIDATION_PURGE_DAYS: int = Field(default=5)
+    VALIDATION_EMBARGO_DAYS: int = Field(default=2)
+
+    VALIDATION_WF_MIN_POSITIVE_FOLD_RATE_PCT: float = Field(default=50.0)
+    VALIDATION_WF_OOS_DECAY_WARN_PCT: float = Field(default=30.0)
+    VALIDATION_WF_OOS_DECAY_FAIL_PCT: float = Field(default=60.0)
+
+    VALIDATION_OVERFIT_WARN_SCORE: float = Field(default=40.0)
+    VALIDATION_OVERFIT_FAIL_SCORE: float = Field(default=70.0)
+    VALIDATION_PARAMETER_INSTABILITY_WARN: float = Field(default=50.0)
+    VALIDATION_PERFORMANCE_CONCENTRATION_WARN: float = Field(default=60.0)
+
+    VALIDATION_INCLUDE_COSTS_DEFAULT: bool = Field(default=True)
+    VALIDATION_INCLUDE_SLIPPAGE_DEFAULT: bool = Field(default=True)
+    VALIDATION_COST_STRESS_ENABLED: bool = Field(default=True)
+    VALIDATION_COST_SENSITIVITY_WARN: float = Field(default=50.0)
+    VALIDATION_COST_SENSITIVITY_FAIL: float = Field(default=75.0)
+
+    VALIDATION_REGIME_ROBUSTNESS_ENABLED: bool = Field(default=True)
+    VALIDATION_REGIME_STABILITY_WARN: float = Field(default=50.0)
+    VALIDATION_REGIME_STABILITY_FAIL: float = Field(default=30.0)
+
+    REPORT_INCLUDE_STRATEGY_VALIDATION: bool = Field(default=True)
+    RESEARCH_AUTO_LOG_VALIDATION: bool = Field(default=False)
+    RUNTIME_RUN_VALIDATION_CHECK: bool = Field(default=False)
+
 
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")

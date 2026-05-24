@@ -405,3 +405,11 @@ def get_corporate_actions_dir(settings=None) -> Path:
 
 def get_adjusted_prices_dir(settings=None) -> Path:
     return Path("data/adjusted_prices")
+
+def get_validation_dir(settings=None) -> Path:
+    from bist_signal_bot.config.settings import Settings
+    if settings is None:
+        settings = Settings()
+    path = get_data_dir(settings) / getattr(settings, "VALIDATION_DIR_NAME", "validation")
+    path.mkdir(parents=True, exist_ok=True)
+    return path

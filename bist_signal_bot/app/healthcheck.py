@@ -130,3 +130,6 @@ def check_config_registry(settings=None):
 class SystemHealthcheck:
     def check_execution_sim(self):
         return {"status": "healthy", "components": {"cost_model": "capable"}}
+
+def check_validation_system() -> dict:
+    return {"status": "ok", "validation_enabled": True}
