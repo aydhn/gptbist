@@ -2107,3 +2107,53 @@ def add_config_registry_parser(subparsers):
     # config
     p_config = subparsers_config.add_parser("config", help="Show safe redacted config summary")
     p_config.add_argument("--json", action="store_true", help="JSON output")
+
+def add_execution_sim_parser(subparsers):
+    p = subparsers.add_parser("execution-sim", help="Execution Simulation utilities")
+    sp = p.add_subparsers(dest="exec_cmd")
+
+    c = sp.add_parser("cost", help="Estimate transaction costs")
+    c.add_argument("--symbol", type=str, required=True)
+    c.add_argument("--side", type=str, required=True)
+    c.add_argument("--price", type=float, required=True)
+    c.add_argument("--quantity", type=float, required=True)
+    c.add_argument("--json", action="store_true")
+
+    l = sp.add_parser("liquidity", help="Analyze liquidity")
+    l.add_argument("symbol", type=str)
+    l.add_argument("--source", type=str, default="local_file")
+    l.add_argument("--notional", type=float)
+    l.add_argument("--json", action="store_true")
+
+    s = sp.add_parser("slippage", help="Estimate slippage")
+    s.add_argument("symbol", type=str)
+    s.add_argument("--side", type=str, required=True)
+    s.add_argument("--price", type=float, required=True)
+    s.add_argument("--quantity", type=float, required=True)
+    s.add_argument("--model", type=str)
+    s.add_argument("--json", action="store_true")
+
+    f = sp.add_parser("fill", help="Simulate a fill")
+    f.add_argument("symbol", type=str)
+    f.add_argument("--side", type=str, required=True)
+    f.add_argument("--notional", type=float, required=True)
+    f.add_argument("--order-type", type=str, default="NEXT_CLOSE")
+    f.add_argument("--limit-price", type=float)
+    f.add_argument("--json", action="store_true")
+
+    sc = sp.add_parser("scenario", help="Run scenarios")
+    sc.add_argument("symbol", type=str)
+    sc.add_argument("--side", type=str, required=True)
+    sc.add_argument("--notional", type=float, required=True)
+    sc.add_argument("--json", action="store_true")
+
+    q = sp.add_parser("quality", help="Execution quality report")
+    q.add_argument("--symbol", type=str)
+    q.add_argument("--json", action="store_true")
+
+    r = sp.add_parser("recent", help="Recent simulated fills")
+    r.add_argument("--symbol", type=str)
+    r.add_argument("--json", action="store_true")
+
+    cfg = sp.add_parser("config", help="Execution sim config")
+    cfg.add_argument("--json", action="store_true")

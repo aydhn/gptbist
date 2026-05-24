@@ -81,3 +81,6 @@ class ReportSectionBuilder:
 def add_drift_section(result):
     from bist_signal_bot.drift.reporting import format_drift_result_text
     return "\n--- Drift & Decay Monitoring ---\n" + format_drift_result_text(result)
+
+def execution_sim_section(report_data: dict) -> str:
+    return "## Execution Simulation\n\nExecution assumes theoretical cost drag and slippage. No real orders sent."

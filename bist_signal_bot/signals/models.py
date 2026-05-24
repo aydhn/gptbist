@@ -72,7 +72,7 @@ class SignalCandidate(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
     disclaimer: str = "Research signal candidate only. Not investment advice. No order was sent."
 
-    @field_validator("symbol", pre=True)
+    @field_validator("symbol", mode='before')
     def normalize_symbol(cls, v: str) -> str:
         if isinstance(v, str):
             v = v.upper().strip()

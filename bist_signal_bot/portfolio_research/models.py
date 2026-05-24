@@ -226,3 +226,9 @@ class PortfolioResearchRequest(BaseModel):
         self.max_strategy_weight = max(0.0, min(1.0, self.max_strategy_weight))
         self.min_score = max(0.0, min(100.0, self.min_score))
         self.target_gross_exposure = max(0.0, min(1.0, self.target_gross_exposure))
+from pydantic import BaseModel
+class ScoredAsset(BaseModel):
+    symbol: str
+    final_score: float
+    liquidity_capacity_score: float | None = None
+    execution_penalty: float | None = None

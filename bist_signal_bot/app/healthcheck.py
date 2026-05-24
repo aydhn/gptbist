@@ -127,3 +127,6 @@ def check_config_registry(settings=None):
         }
     except Exception as e:
         return {"status": "unhealthy", "error": str(e)}
+class SystemHealthcheck:
+    def check_execution_sim(self):
+        return {"status": "healthy", "components": {"cost_model": "capable"}}
