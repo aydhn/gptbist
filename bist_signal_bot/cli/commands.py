@@ -6355,3 +6355,190 @@ def reconcile_cmd(symbol, provider_a, provider_b, as_json):
 @click.option('--json', 'as_json', is_flag=True)
 def adjusted_cache_cmd(symbol, build, confirm, as_json):
     print("Adjusted cache built")
+
+def handle_strategy_registry(args, settings):
+    import json
+    from bist_signal_bot.app.strategy_registry_app import (
+        create_strategy_registry_manager,
+        create_strategy_evidence_collector,
+        create_strategy_scorecard_builder,
+        create_strategy_promotion_manager,
+        create_strategy_quality_gate,
+        create_strategy_registry_snapshot_builder
+    )
+    from bist_signal_bot.strategy_registry.models import StrategyRegistryStatus, StrategyFamily
+    from bist_signal_bot.strategy_registry.reporting import (
+        format_strategy_definition_text,
+        format_scorecard_text,
+        format_promotion_result_text,
+        format_strategy_registry_snapshot_text,
+        format_strategy_registry_report_markdown,
+        strategy_definition_to_dict,
+        scorecard_to_dict
+    )
+
+    cmd = getattr(args, "registry_command", None)
+    if not cmd:
+        print("Missing strategy-registry subcommand.")
+        return 1
+
+    try:
+        if cmd == "list":
+            manager = create_strategy_registry_manager(settings)
+            status = StrategyRegistryStatus(args.status) if args.status else None
+            family = StrategyFamily(args.family) if args.family else None
+
+            strategies = manager.list_strategies(status=status, family=family)
+            if args.json:
+                print(json.dumps([strategy_definition_to_dict(s) for s in strategies], indent=2, default=str))
+            else:
+                for s in strategies:
+                    print(f"{s.strategy_name} - {s.version} - {s.family.value} - {s.status.value}")
+
+        elif cmd == "show":
+            manager = create_strategy_registry_manager(settings)
+            strategy = manager.get_strategy(args.strategy_name)
+            if not strategy:
+                print(f"Strategy {args.strategy_name} not found.")
+                return 1
+            if args.json:
+                print(json.dumps(strategy_definition_to_dict(strategy), indent=2, default=str))
+            else:
+                print(format_strategy_definition_text(strategy))
+
+        elif cmd == "sync-catalog":
+            manager = create_strategy_registry_manager(settings)
+            if not args.confirm and not args.dry_run:
+                print("Requires --confirm or --dry-run")
+                return 1
+
+            if args.dry_run:
+                existing = manager.store.load_definitions()
+                missing = manager.catalog.detect_missing_registry_entries(existing)
+                print(f"Dry run: Found {len(missing)} missing strategies in catalog.")
+                for m in missing:
+                    print(f" - {m.strategy_name}")
+            else:
+                registered = manager.sync_from_catalog(confirm=args.confirm)
+                print(f"Synced {len(registered)} strategies from catalog.")
+
+        elif cmd == "evidence":
+            collector = create_strategy_evidence_collector(settings)
+            evidence = collector.collect_for_strategy(args.strategy_name)
+            if args.json:
+                from bist_signal_bot.strategy_registry.reporting import strategy_evidence_to_dict
+                print(json.dumps([strategy_evidence_to_dict(e) for e in evidence], indent=2, default=str))
+            else:
+                print(f"Found {len(evidence)} evidence records for {args.strategy_name}")
+
+        elif cmd == "score":
+            manager = create_strategy_registry_manager(settings)
+            strategy = manager.get_strategy(args.strategy_name)
+            if not strategy:
+                print(f"Strategy {args.strategy_name} not found.")
+                return 1
+
+            collector = create_strategy_evidence_collector(settings)
+            evidence = collector.collect_for_strategy(args.strategy_name)
+
+            builder = create_strategy_scorecard_builder(settings)
+            scorecard = builder.build_scorecard(strategy, evidence)
+
+            if args.save:
+                manager.store.append_scorecard(scorecard)
+
+            if args.json:
+                print(json.dumps(scorecard_to_dict(scorecard), indent=2, default=str))
+            else:
+                print(format_scorecard_text(scorecard))
+
+        elif cmd == "gate":
+            gate = create_strategy_quality_gate(settings)
+            decision = None
+            if args.context == "scanner":
+                decision = gate.scanner_gate(args.strategy_name)
+            elif args.context == "ensemble":
+                decision = gate.ensemble_gate(args.strategy_name)
+            elif args.context == "adaptive":
+                decision = gate.adaptive_gate(args.strategy_name)
+            else:
+                decision = gate.evaluate_strategy(args.strategy_name)
+
+            if args.json:
+                print(json.dumps({"strategy": args.strategy_name, "context": args.context, "decision": decision.value}))
+            else:
+                print(f"Gate decision for {args.strategy_name} ({args.context}): {decision.value}")
+
+        elif cmd == "promote":
+            promoter = create_strategy_promotion_manager(settings)
+            from bist_signal_bot.strategy_registry.models import StrategyPromotionRequest
+            req = StrategyPromotionRequest(
+                strategy_id=args.strategy_name,
+                target_status=StrategyRegistryStatus(args.to),
+                reason=args.reason,
+                confirm=args.confirm
+            )
+            result = promoter.promote(req)
+            if result.decision.value == "BLOCK":
+                print("Promotion blocked!")
+            print(format_promotion_result_text(result))
+
+        elif cmd == "demote":
+            promoter = create_strategy_promotion_manager(settings)
+            result = promoter.demote(args.strategy_name, args.reason, StrategyRegistryStatus(args.to), confirm=args.confirm)
+            print(format_promotion_result_text(result))
+
+        elif cmd == "block":
+            promoter = create_strategy_promotion_manager(settings)
+            result = promoter.block(args.strategy_name, args.reason, confirm=args.confirm)
+            print(format_promotion_result_text(result))
+
+        elif cmd == "events":
+            manager = create_strategy_registry_manager(settings)
+            events = manager.lifecycle.events_for_strategy(args.strategy_name)
+            if args.json:
+                from bist_signal_bot.strategy_registry.reporting import lifecycle_event_to_dict
+                print(json.dumps([lifecycle_event_to_dict(e) for e in events], indent=2, default=str))
+            else:
+                for e in events:
+                    print(f"[{e.created_at.isoformat()}] {e.event_type.value}: {e.previous_status.value if e.previous_status else 'None'} -> {e.new_status.value if e.new_status else 'None'} ({e.reason})")
+
+        elif cmd == "snapshot":
+            builder = create_strategy_registry_snapshot_builder(settings)
+            snapshot = builder.create_snapshot(save=True)
+            if args.json:
+                from bist_signal_bot.strategy_registry.reporting import snapshot_to_dict
+                print(json.dumps(snapshot_to_dict(snapshot), indent=2, default=str))
+            else:
+                print(format_strategy_registry_snapshot_text(snapshot))
+
+        elif cmd == "report":
+            manager = create_strategy_registry_manager(settings)
+            strategies = manager.store.load_definitions()
+
+            scorecards = []
+            for s in strategies:
+                sc = manager.store.load_latest_scorecard(s.strategy_id)
+                if sc:
+                    scorecards.append(sc)
+
+            if args.json:
+                print(json.dumps({
+                    "strategies": [strategy_definition_to_dict(s) for s in strategies],
+                    "scorecards": [scorecard_to_dict(s) for s in scorecards]
+                }, indent=2, default=str))
+            else:
+                print(format_strategy_registry_report_markdown(strategies, scorecards))
+
+        elif cmd == "config":
+            cfg = {k: v for k, v in vars(settings).items() if k.startswith("STRATEGY_")}
+            if args.json:
+                print(json.dumps(cfg, indent=2))
+            else:
+                for k, v in cfg.items():
+                    print(f"{k}: {v}")
+
+        return 0
+    except Exception as e:
+        print(f"Strategy registry error: {e}")
+        return 1

@@ -1370,3 +1370,28 @@ class RealityCheckError(MonteCarloError):
 
 class MonteCarloStorageError(MonteCarloError):
     pass
+
+
+class StrategyRegistryError(BistSignalBotError):
+    pass
+
+class StrategyCatalogError(StrategyRegistryError):
+    pass
+
+class StrategyScorecardError(StrategyRegistryError):
+    pass
+
+class StrategyEvidenceError(StrategyRegistryError):
+    pass
+
+class StrategyLifecycleError(StrategyRegistryError):
+    pass
+
+class StrategyPromotionError(StrategyRegistryError):
+    pass
+
+class StrategyGateError(StrategyRegistryError):
+    pass
+
+class StrategyRegistryStorageError(StrategyRegistryError):
+    pass

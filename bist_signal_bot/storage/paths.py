@@ -421,3 +421,12 @@ def get_monte_carlo_dir(settings=None) -> Path:
     path = get_data_dir(settings) / getattr(settings, "MONTE_CARLO_DIR_NAME", "monte_carlo")
     path.mkdir(parents=True, exist_ok=True)
     return path
+
+
+def get_strategy_registry_dir(settings=None) -> Path:
+    from bist_signal_bot.config.settings import Settings
+    if settings is None:
+        settings = Settings()
+    path = get_data_dir(settings) / getattr(settings, "STRATEGY_REGISTRY_DIR_NAME", "strategy_registry")
+    path.mkdir(parents=True, exist_ok=True)
+    return path
