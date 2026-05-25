@@ -30,7 +30,7 @@ class StrategyEngine:
         logger: logging.Logger | None = None
     ):
         self.registry = registry
-        self.ml_inference_engine = ml_inference_engine or get_registry()
+        # self.ml_inference_engine = ml_inference_engine or get_registry()
         self.data_service = data_service
         self.indicator_engine = indicator_engine
         self.settings = settings or Settings()

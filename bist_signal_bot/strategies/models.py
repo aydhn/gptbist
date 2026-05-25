@@ -67,8 +67,8 @@ class StrategySpec(BaseModel):
 
     @field_validator("default_params")
     def validate_default_params(cls, v: dict[str, Any], values: dict[str, Any]) -> dict[str, Any]:
-        if "parameters" in values:
-            param_names = {p.name for p in values["parameters"]}
+        if hasattr(values, "data") and "parameters" in values.data:
+            param_names = {p.name for p in values.data.get("parameters", [])}
             for k in v.keys():
                 if k not in param_names:
                     raise ValueError(f"default_params contains unknown parameter: {k}")
@@ -84,7 +84,7 @@ class StrategyRequest(BaseModel):
     use_latest_bar_only: bool = True
     metadata: dict[str, Any] = Field(default_factory=dict)
 
-    @field_validator("symbol", pre=True)
+    @field_validator("symbol", mode="before")
     def normalize_symbol(cls, v: str) -> str:
         if isinstance(v, str):
             v = v.upper().strip()

@@ -2157,3 +2157,78 @@ def add_execution_sim_parser(subparsers):
 
     cfg = sp.add_parser("config", help="Execution sim config")
     cfg.add_argument("--json", action="store_true")
+
+def add_strategy_registry_parser(subparsers):
+    registry_parser = subparsers.add_parser("strategy-registry", help="Manage Strategy Registry")
+    reg_subs = registry_parser.add_subparsers(dest="registry_command")
+
+    # List
+    list_p = reg_subs.add_parser("list", help="List registered strategies")
+    list_p.add_argument("--status", type=str, help="Filter by status")
+    list_p.add_argument("--family", type=str, help="Filter by family")
+    list_p.add_argument("--json", action="store_true", help="Output as JSON")
+
+    # Show
+    show_p = reg_subs.add_parser("show", help="Show strategy details")
+    show_p.add_argument("strategy_name", type=str, help="Strategy name or ID")
+    show_p.add_argument("--json", action="store_true", help="Output as JSON")
+
+    # Sync Catalog
+    sync_p = reg_subs.add_parser("sync-catalog", help="Sync strategies from catalog")
+    sync_p.add_argument("--dry-run", action="store_true", help="Dry run only")
+    sync_p.add_argument("--confirm", action="store_true", help="Confirm sync")
+
+    # Evidence
+    ev_p = reg_subs.add_parser("evidence", help="Show strategy evidence")
+    ev_p.add_argument("strategy_name", type=str, help="Strategy name or ID")
+    ev_p.add_argument("--json", action="store_true", help="Output as JSON")
+
+    # Score
+    sc_p = reg_subs.add_parser("score", help="Generate scorecard")
+    sc_p.add_argument("strategy_name", type=str, help="Strategy name or ID")
+    sc_p.add_argument("--save", action="store_true", help="Save the scorecard")
+    sc_p.add_argument("--json", action="store_true", help="Output as JSON")
+
+    # Gate
+    gate_p = reg_subs.add_parser("gate", help="Evaluate quality gate")
+    gate_p.add_argument("strategy_name", type=str, help="Strategy name or ID")
+    gate_p.add_argument("--context", type=str, default="runtime", help="Gate context (scanner, ensemble, runtime)")
+    gate_p.add_argument("--json", action="store_true", help="Output as JSON")
+
+    # Promote
+    prom_p = reg_subs.add_parser("promote", help="Promote strategy")
+    prom_p.add_argument("strategy_name", type=str, help="Strategy name or ID")
+    prom_p.add_argument("--to", required=True, type=str, help="Target status")
+    prom_p.add_argument("--reason", required=True, type=str, help="Reason for promotion")
+    prom_p.add_argument("--confirm", action="store_true", help="Confirm promotion")
+
+    # Demote
+    dem_p = reg_subs.add_parser("demote", help="Demote strategy")
+    dem_p.add_argument("strategy_name", type=str, help="Strategy name or ID")
+    dem_p.add_argument("--to", default="WATCH", type=str, help="Target status")
+    dem_p.add_argument("--reason", required=True, type=str, help="Reason for demotion")
+    dem_p.add_argument("--confirm", action="store_true", help="Confirm demotion")
+
+    # Block
+    blk_p = reg_subs.add_parser("block", help="Block strategy")
+    blk_p.add_argument("strategy_name", type=str, help="Strategy name or ID")
+    blk_p.add_argument("--reason", required=True, type=str, help="Reason for block")
+    blk_p.add_argument("--confirm", action="store_true", help="Confirm block")
+
+    # Events
+    evt_p = reg_subs.add_parser("events", help="List lifecycle events")
+    evt_p.add_argument("strategy_name", type=str, help="Strategy name or ID")
+    evt_p.add_argument("--json", action="store_true", help="Output as JSON")
+
+    # Snapshot
+    snap_p = reg_subs.add_parser("snapshot", help="Create or show registry snapshot")
+    snap_p.add_argument("--json", action="store_true", help="Output as JSON")
+
+    # Report
+    rep_p = reg_subs.add_parser("report", help="Generate strategy registry report")
+    rep_p.add_argument("--latest", action="store_true", help="Use latest data")
+    rep_p.add_argument("--json", action="store_true", help="Output as JSON")
+
+    # Config
+    cfg_p = reg_subs.add_parser("config", help="Show registry configuration")
+    cfg_p.add_argument("--json", action="store_true", help="Output as JSON")

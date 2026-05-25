@@ -129,7 +129,26 @@ def run_cli(argv: list[str] | None = None) -> int:
         review()
         return 0
 
+
+    if args_to_parse and args_to_parse[0] == 'strategy-registry':
+        import argparse
+        parser = argparse.ArgumentParser()
+        subparsers = parser.add_subparsers(dest="registry_command")
+        from bist_signal_bot.cli.parsers import add_strategy_registry_parser
+        add_strategy_registry_parser(subparsers)
+
+        args, _ = parser.parse_known_args(['strategy-registry'] + args_to_parse[1:])
+        from bist_signal_bot.cli.commands import handle_strategy_registry
+        try:
+             from bist_signal_bot.config.settings import Settings
+             s = Settings()
+             return handle_strategy_registry(args, s)
+        except Exception as e:
+             print(f"Strategy Registry Error: {e}")
+        return 1
+
     if args_to_parse and args_to_parse[0] == 'config-registry':
+
         import argparse
         parser = argparse.ArgumentParser()
         subparsers = parser.add_subparsers(dest="command")
