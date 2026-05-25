@@ -1423,3 +1423,30 @@ class DecisionTraceError(ExplainabilityError):
 
 class ExplainabilityStorageError(ExplainabilityError):
     pass
+
+class CalibrationError(BistSignalBotError):
+    pass
+
+class CalibrationValidationError(CalibrationError):
+    pass
+
+class OutcomeDatasetError(CalibrationError):
+    pass
+
+class ReliabilityCurveError(CalibrationError):
+    pass
+
+class SignalCalibratorError(CalibrationError):
+    pass
+
+class ThresholdTuningError(CalibrationError):
+    pass
+
+class OutcomeCohortError(CalibrationError):
+    pass
+
+class ErrorTaxonomyError(CalibrationError):
+    pass
+
+class CalibrationStorageError(CalibrationError):
+    pass

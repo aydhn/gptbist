@@ -122,6 +122,25 @@ def run_cli(argv: list[str] | None = None) -> int:
 
 
 
+
+    if args_to_parse and args_to_parse[0] == 'calibration':
+        import argparse
+        from bist_signal_bot.cli.calibration_cli import setup_calibration_parser, handle_calibration_command
+        parser = argparse.ArgumentParser()
+        subparsers = parser.add_subparsers(dest="command")
+        setup_calibration_parser(subparsers)
+
+        args, _ = parser.parse_known_args(args_to_parse)
+
+        from bist_signal_bot.app.bootstrap import ApplicationContext
+        from bist_signal_bot.config.settings import Settings
+
+        class MockCtx:
+            def __init__(self, settings):
+                self.settings = settings
+        ctx = MockCtx(settings=Settings())
+        return handle_calibration_command(args, ctx)
+
     if args_to_parse and args_to_parse[0] == 'review':
         from bist_signal_bot.cli.commands import review
         import sys

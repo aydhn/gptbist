@@ -12,6 +12,13 @@ Borsa İstanbul (BIST) evreninde çalışacak, ücretsiz araçlara dayalı, yere
 - **İzlenebilirlik (Lineage):** Her verinin kaynağı, indirilme zamanı ve bütünlüğü metadata olarak saklanır.
 - **Manuel İçe Aktarma:** Kendi CSV veya Parquet dosyalarınızı sisteme kolayca entegre edebilirsiniz.
 
+## Signal Calibration & Outcome Analytics
+Sistem, ürettiği sinyallerin (güven skorlarının) geçmişteki gerçek başarı oranlarıyla ne kadar uyuştuğunu test eden kapalı devre bir kalibrasyon mekanizmasına (Phase 75) sahiptir. Bu modül:
+- Brier Score, Expected Calibration Error (ECE) ve Reliability Curve metriklerini hesaplar.
+- Sinyal doğruluğu için optimum threshold (eşik değeri) önerileri sunar.
+- Yüksek güvenli hataları ve execution maliyetine yenilen sinyalleri izler (Error Taxonomy).
+- Kesinlikle yatırım tavsiyesi veya gelecek başarı garantisi sunmaz. İşlem emirleri için bir onay mekanizması değil, salt araştırma aracıdır.
+
 ## Ne Değildir?
 - **HFT (Yüksek Frekanslı İşlem) Değildir:** Saniyede onlarca işlem hedeflenmez.
 - **Garanti Kazanç Sistemi Değildir:** Piyasada hiçbir sistem garanti kazanç sunamaz.

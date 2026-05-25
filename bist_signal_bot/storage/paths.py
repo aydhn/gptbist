@@ -430,3 +430,11 @@ def get_strategy_registry_dir(settings=None) -> Path:
     path = get_data_dir(settings) / getattr(settings, "STRATEGY_REGISTRY_DIR_NAME", "strategy_registry")
     path.mkdir(parents=True, exist_ok=True)
     return path
+
+def get_calibration_dir(settings=None) -> Path:
+    from bist_signal_bot.config.settings import Settings
+    if settings is None:
+        settings = Settings()
+    path = get_data_dir(settings) / getattr(settings, "CALIBRATION_DIR_NAME", "calibration")
+    path.mkdir(parents=True, exist_ok=True)
+    return path
