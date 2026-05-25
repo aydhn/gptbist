@@ -637,7 +637,9 @@ def build_parser() -> argparse.ArgumentParser:
     )
 
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
+    from bist_signal_bot.cli.calibration_cli import setup_calibration_parser
     setup_explain_parser(subparsers)
+    setup_calibration_parser(subparsers)
     add_telegram_center_parser(subparsers)
 
     # Portfolio Research Command
