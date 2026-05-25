@@ -1395,3 +1395,31 @@ class StrategyGateError(StrategyRegistryError):
 
 class StrategyRegistryStorageError(StrategyRegistryError):
     pass
+
+
+class ExplainabilityError(BistSignalBotError):
+    pass
+
+class FeatureAttributionError(ExplainabilityError):
+    pass
+
+class IndicatorStateError(ExplainabilityError):
+    pass
+
+class RuleTraceError(ExplainabilityError):
+    pass
+
+class MLExplainabilityError(ExplainabilityError):
+    pass
+
+class EnsembleExplainabilityError(ExplainabilityError):
+    pass
+
+class EvidenceCardError(ExplainabilityError):
+    pass
+
+class DecisionTraceError(ExplainabilityError):
+    pass
+
+class ExplainabilityStorageError(ExplainabilityError):
+    pass

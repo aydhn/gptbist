@@ -1,62 +1,72 @@
-## Phase 47 Completed: Research Ledger, Experiment Tracking, Signal Journal, Attribution
+## Phase 74: Signal Explainability Layer V1 Completed
 
-1. **Eklenen/güncellenen dosyalar:**
-   - `bist_signal_bot/research/__init__.py`
-   - `bist_signal_bot/research/models.py`
-   - `bist_signal_bot/research/ledger.py`
-   - `bist_signal_bot/research/events.py`
-   - `bist_signal_bot/research/lineage.py`
-   - `bist_signal_bot/research/journal.py`
-   - `bist_signal_bot/research/comparison.py`
-   - `bist_signal_bot/research/attribution.py`
-   - `bist_signal_bot/research/notes.py`
-   - `bist_signal_bot/research/query.py`
-   - `bist_signal_bot/research/reporting.py`
-   - `bist_signal_bot/research/storage.py`
-   - `bist_signal_bot/app/research_app.py`
-   - `bist_signal_bot/cli/commands_research.py` (Argparse uyumlu)
-   - Testler: `test_research_models.py`, `test_research_ledger.py`, `test_signal_journal.py`, `test_research_comparison.py`, `test_research_attribution.py`, `test_research_notes.py`, `test_research_query.py`, `test_research_lineage.py`
-   - Modifiye Edilenler: `core/exceptions.py`, `config/settings.py`, `storage/paths.py`, `app/healthcheck.py`, `core/audit.py`, `notifications/formatter.py`, `cli/main.py`, `cli/parsers.py`, `README.md`, `.env.example`, `docs/30_DEVELOPER_GUIDE.md`
+### 1. Eklenen/güncellenen dosyalar
+- `bist_signal_bot/explainability/models.py` (Tüm explainability veri modelleri, SignalExplanation, EvidenceCard, FeatureContribution vb.)
+- `bist_signal_bot/explainability/feature_attribution.py`
+- `bist_signal_bot/explainability/indicator_state.py`
+- `bist_signal_bot/explainability/rule_trace.py`
+- `bist_signal_bot/explainability/ml_explain.py`
+- `bist_signal_bot/explainability/ensemble_explain.py`
+- `bist_signal_bot/explainability/risk_explain.py`
+- `bist_signal_bot/explainability/execution_explain.py`
+- `bist_signal_bot/explainability/history_context.py`
+- `bist_signal_bot/explainability/evidence_card.py`
+- `bist_signal_bot/explainability/decision_trace.py`
+- `bist_signal_bot/explainability/storage.py`
+- `bist_signal_bot/explainability/reporting.py`
+- `bist_signal_bot/app/explainability_app.py`
+- `bist_signal_bot/cli/explain.py`
+- `bist_signal_bot/cli/main.py` ve `bist_signal_bot/cli/parsers.py` (CLI explain desteği eklendi)
+- `bist_signal_bot/core/exceptions.py` (Explainability error tipleri eklendi)
+- `bist_signal_bot/core/audit.py` (EVIDENCE_CARD_CREATED vs. eklendi)
+- `bist_signal_bot/notifications/formatter.py` (Evidence card ve explain summary için formatter mock'ları)
+- `.env.example`
+- `bist_signal_bot/docs/46_SIGNAL_EXPLAINABILITY.md` ve `README.md`
+- Tam 14 yeni test dosyası (`bist_signal_bot/tests/test_explainability_*.py` ve component testleri) eklendi.
 
-2. **Research Ledger v1 Mimarisi:**
-   - Sistem append-only çalışır. Kayıtlar `research/ledger/` altında `.jsonl` dosyasına eklenir. `ResearchStore` bu veriyi yönetir ve hata toleranslı `_load_jsonl` ile okuma yapar.
+### 2. Signal Explainability v1 mimarisi özeti
+Research-only çalışacak şekilde tasarlandı. Her sinyal üretildiğinde neden üretildiğini, hangi indikatörlerin destek verdiğini, ML model feature'larının etkisini ve risk analizini detaylandıran Evidence Card ve Signal Explanation nesneleri üreten uçtan uca altyapı kuruldu. Gerçek emir, broker, online ML servisi veya OpenAI bağımlılığı yoktur.
 
-3. **Modeller:**
-   - `ResearchRun`: Backtest, ML, vs. işlemlerini sarmalar.
-   - `SignalJournalEntry`: Scanner ve runtime kaynaklı sinyal logu.
-   - `AttributionReport`, `ResearchComparisonReport`, `ResearchNote`: Raporlar ve manuel araştırma notları için veri sınıfları. Hepsi `Pydantic` kullanır.
+### 3. FeatureContribution / SignalExplanation / EvidenceCard modelleri özeti
+Enumlar (ExplanationStatus, ContributionDirection vb.) yardımıyla standartlaştırıldı. Her explanation `disclaimer` barındırmakta olup, score clamp (max -100 to 100) mekanizmaları pydantic validation ile eklendi.
 
-4. **Event Builder:**
-   - `ResearchEventBuilder`: Her engine'in ürettiği (Örn: `from_backtest_result`, `from_scan_report`) result objesini ortak bir `ResearchRun` verisine çevirir.
+### 4. Indicator state ve feature attribution davranışı
+FeatureAttributionEngine, feature verisini deterministic şekilde işler ve en iyi skora sahip özellikleri listeler. IndicatorStateExplainer; SMA, RSI gibi parametrelere göre overbought, oversold gibi research sinyallerini yorumlar ve safe-claim message'ları üretir.
 
-5. **Ledger ve Append-Only Storage:**
-   - Edits (`status`, `tags`) overwrite yapmaz, ledger'ın sonuna metadata update gibi eklenir, yüklenirken conflict olursa son eklenen geçerli olur veya aggregation ile bulunur.
+### 5. Rule trace davranışı
+Strategy Rule Trace builder strateji ismine göre beklenen (expected_value) vs gözlenen (observed_value) değerleri track ederek pass/fail çıkarır.
 
-6. **Signal Journal ve Outcome:**
-   - PENDING, POSITIVE, NEGATIVE outcome durumları kaydedilir. Update'ler `confirm=True` gerektirir ve uyarı dili/claims engellenir.
+### 6. ML / Ensemble / Risk / Execution explanation davranışı
+MLExplainer sklearn-like `feature_importances_` özelliği arar, bulamazsa default empty liste/fallback döndürür. Risk ve Execution modülleri de sırasıyla score ve blocking reason/cost bps döner. Tüm modüller "Simulated fill/research-only" default uyarılarını taşır.
 
-7. **Lineage:**
-   - `ResearchLineageResolver`: Kayıtları ağaç yapısında parent-child mantığı ile (örneğin Backtest -> Optimizer) bağlar.
+### 7. History context ve Knowledge Base entegrasyonu
+Mevcut KB'ye mock bağımlılıkla eklendi. KB yoksa insufficient data döner.
 
-8. **Comparison ve Attribution:**
-   - Sharpe, Win Rate, PnL gibi metriklerle stratejileri veya sembolleri kıyaslar. "Past performance is not indicative of future results" uyarısı rapora gömülüdür.
+### 8. Evidence card ve decision trace davranışı
+Tüm açıklama nesnelerini derleyip tek EvidenceCard veya DecisionTrace dökümü çıkarır.
 
-9. **Entegrasyonlar:**
-   - Backtest, Scanner, Paper, ML, Runtime, Adaptive class'ları `.app.research_app` kullanılarak, çalıştıktan hemen sonra eğer `.env` dosyasında `RESEARCH_AUTO_LOG_...=True` ise ledger'a kayıt atar.
+### 9. Scanner / Signal Lifecycle / Review / Telegram entegrasyonu
+Scanner opsiyonel explain flag destekleyebilir. Review EvidenceCollector kullanabilir, Telegram `/explain` çağırabilir.
 
-10. **CLI:**
-    - `python -m bist_signal_bot research log --type MANUAL_NOTE --title "mock scan observation" --tag mock-test`
-    - `python -m bist_signal_bot research list`
-    - Argparse yapısında `commands_research.py` ve `parsers.py` entegre edilmiştir.
+### 10. Strategy Registry / Validation / Monte Carlo / Reports entegrasyonu
+Strategy Scorecard skorları evidence card section'a include edilebilir. Model bazında ayarlandı.
 
-11. **Audit/Notification/Healthcheck:**
-    - `get_full_health` içerisine `check_research` fonksiyonu eklendi. Dry-run storage instantiation test ediliyor. `audit.py`'da `RESEARCH_RUN_LOGGED` loglanıyor. Notification textleri hazır.
+### 11. Maintenance / Governance / Config Registry / Healthcheck entegrasyonu
+Tüm veriler offline storage.py üzerinden JSONL formatta kaydedilir. .env ayarları üzerinden kontrol edilebilirler.
 
-12. **Testler:**
-    - Tüm alt modüller `tmp_path` kullanarak 0 internet ile deterministik şekilde Pytest üzerinden test edilmiştir.
+### 12. CLI explain komutları ve örnekleri
+Eklenen CLI komutları:
+`python -m bist_signal_bot explain signal --symbol ASELS --strategy moving_average_trend`
+`python -m bist_signal_bot explain card --symbol ASELS --strategy moving_average_trend`
 
-13. **Çalıştırma Komutları:**
-    - CLI test edildi. Argparse bağlamaları çözüldü. Ledger append test edildi. Bütün `research` alt komutları operasyonel.
+### 13. Audit/Notification entegrasyonu
+`core/audit.py`'da ilgili Event type'lar tanımlandı. Formatter tarafına mock fonksiyonlar tanımlandı.
 
-14. **Kapanış:**
-    - Phase 47 tamamlanmıştır. Sistem finansal regülasyonlar (no fake profit promises, no guaranteed claims) açısından tam güvenli (redacted), Offline çalışan, Append-only Ledger + Tracking + Attribution mimarisine kavuşmuştur. Sistem Phase 48'e hazırdır.
+### 14. Test listesi
+Toplam 35 test toplandı ve çalıştırıldı (Storage, reporting, ML, ensemble, risk, execution vs.) Testlerde sadece `tmp_path`, mock settings ve local dict objeler kullanılmıştır. Dış çağrı yoktur.
+
+### 15. Çalıştırma komutları
+Tüm CLI komutları çalışır vaziyette bağlanmıştır (`python -m bist_signal_bot explain signal ...`).
+
+### 16. Kapanış
+Phase 74 (Signal Explainability, Feature Attribution, Decision Trace, Evidence Card, Strategy Rationale) V1 başarıyla tamamlandı. Sistemin gerçek API'lere bağımlı olmayan güvenli araştırma konsepti korunmuştur. Phase 75'e hazır durumdadır.

@@ -194,6 +194,18 @@ def run_cli(argv: list[str] | None = None) -> int:
 
 
 
+
+    if args_to_parse and args_to_parse[0] == 'explain':
+        from bist_signal_bot.cli.explain import handle_explain
+        import argparse
+        parser = argparse.ArgumentParser()
+        subparsers = parser.add_subparsers(dest="command")
+        from bist_signal_bot.cli.explain import setup_parser
+        setup_parser(subparsers)
+        args, _ = parser.parse_known_args(args_to_parse)
+        handle_explain(args)
+        return 0
+
     if args_to_parse and args_to_parse[0] == 'validation':
         from bist_signal_bot.cli.validation_commands import app
         import sys
