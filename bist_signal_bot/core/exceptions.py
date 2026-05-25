@@ -1343,3 +1343,30 @@ class CostRobustnessError(ValidationError):
 
 class ValidationStorageError(ValidationError):
     pass
+
+class MonteCarloError(BistSignalBotError):
+    pass
+
+class MonteCarloValidationError(MonteCarloError):
+    pass
+
+class ResamplingError(MonteCarloError):
+    pass
+
+class BootstrapError(MonteCarloError):
+    pass
+
+class PathSimulationError(MonteCarloError):
+    pass
+
+class TradeSimulationError(MonteCarloError):
+    pass
+
+class CostRandomizationError(MonteCarloError):
+    pass
+
+class RealityCheckError(MonteCarloError):
+    pass
+
+class MonteCarloStorageError(MonteCarloError):
+    pass
