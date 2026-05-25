@@ -1,3 +1,4 @@
+from bist_signal_bot.cli.explain import setup_parser as setup_explain_parser
 
 def add_deploy_parser(subparsers):
     deploy_parser = subparsers.add_parser("deploy", help="Manage deployment")
@@ -636,6 +637,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
 
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
+    setup_explain_parser(subparsers)
     add_telegram_center_parser(subparsers)
 
     # Portfolio Research Command

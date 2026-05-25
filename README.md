@@ -733,3 +733,6 @@ Introduces a centralized Config Registry for managing environment variables, fea
 
 ## Phase 69: Instrument Master & Corporate Actions
 Local first instrument database tracking lifecycle events, sectors, adjustments and data reconciliation without external live broker access.
+
+## Explainability (Phase 74)
+Provides research-only explainability and evidence cards. See docs/46_SIGNAL_EXPLAINABILITY.md

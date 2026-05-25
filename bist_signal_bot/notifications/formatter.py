@@ -1316,3 +1316,12 @@ def format_parameter_stability(result) -> str:
 
 def format_cost_robustness(result) -> str:
     return f"Cost {result.status}"
+
+def format_signal_explanation(explanation: Any) -> str:
+    return "Signal Explanation Mock"
+
+def format_evidence_card(card: Any) -> str:
+    return "Evidence Card Mock"
+
+def format_decision_trace(trace: Any) -> str:
+    return "Decision Trace Mock"
