@@ -1411,3 +1411,56 @@ def format_portfolio_ledger_report(report: Any) -> str:
     lines.append("Yatırım tavsiyesi değildir.")
     lines.append("Gerçek emir gönderilmedi.")
     return "\n".join(lines)
+
+    def format_whatif_run_result(self, result: Any) -> str:
+        lines = [
+            "BIST Bot What-If Özeti",
+            f"Scenarios: {len(result.scenario_results)}",
+            f"Run ID: {result.run_id}"
+        ]
+        if result.comparison:
+            baseline = next((r for r in result.scenario_results if r.scenario.scenario_type.value == "BASELINE"), None)
+            best_id = result.comparison.best_scenario_id
+            worst_id = result.comparison.worst_scenario_id
+
+            if baseline:
+                lines.append(f"Baseline Net Quality: {baseline.estimated_net_quality_score}")
+
+            worst = next((r for r in result.scenario_results if r.result_id == worst_id), None)
+            if worst:
+                lines.append(f"Worst Scenario Net Quality: {worst.estimated_net_quality_score}")
+                lines.append(f"Key Warning: {worst.scenario.name} scenario reduces net quality materially.")
+
+            if result.comparison.sensitivity_findings:
+                most_sens = result.comparison.sensitivity_findings[0].assumption_type.value
+                lines.append(f"Most Sensitive Assumption: {most_sens}")
+
+        lines.extend([
+            "",
+            "Bu çıktı araştırma amaçlı varsayım analizi özetidir.",
+            "Yatırım tavsiyesi değildir.",
+            "Gerçek emir gönderilmedi."
+        ])
+        return "\n".join(lines)
+
+    def format_whatif_comparison(self, result: Any) -> str:
+        lines = [
+            "What-If Comparison",
+            f"Best: {result.best_scenario_id}",
+            f"Worst: {result.worst_scenario_id}"
+        ]
+        return "\n".join(lines)
+
+    def format_capital_scaling_result(self, result: Any) -> str:
+        lines = [
+            "Capital Scaling Result",
+            f"Best Notional: {result.best_research_notional}"
+        ]
+        return "\n".join(lines)
+
+    def format_policy_sandbox_result(self, result: Any) -> str:
+        lines = [
+            "Policy Sandbox",
+            f"Tested Policy: {result.policy_name}"
+        ]
+        return "\n".join(lines)

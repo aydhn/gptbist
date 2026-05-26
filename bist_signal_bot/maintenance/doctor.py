@@ -102,3 +102,14 @@ class MaintenanceDoctor:
 
     def get_telegram_summary(self) -> dict:
         return {"status": "HEALTHY", "warnings": 0}
+
+    def check_whatif_store(self) -> dict[str, Any]:
+        try:
+            from bist_signal_bot.storage.paths import get_whatif_dir
+            d = get_whatif_dir(self.settings)
+            runs = d / "runs"
+            if not d.exists() or not os.access(d, os.W_OK):
+                return {"status": "FAIL", "message": f"WhatIf directory {d} not writable"}
+            return {"status": "PASS", "message": "WhatIf store OK", "path": str(d)}
+        except Exception as e:
+            return {"status": "ERROR", "message": str(e)}

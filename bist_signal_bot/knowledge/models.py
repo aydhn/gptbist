@@ -8,6 +8,7 @@ from bist_signal_bot.core.exceptions import KnowledgeValidationError
 
 
 class KnowledgeSourceType(str, Enum):
+    WHATIF_REPORT = "WHATIF_REPORT"
     RESEARCH_LEDGER = "RESEARCH_LEDGER"
     SIGNAL_LIFECYCLE = "SIGNAL_LIFECYCLE"
     REVIEW_INBOX = "REVIEW_INBOX"

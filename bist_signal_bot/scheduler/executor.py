@@ -185,3 +185,14 @@ class ScheduledJobExecutor:
         # Fallback for others
         self.logger.info(f"Executing {job.job_type.value} logic for {job.name} (mocked)")
         return {"action": f"mock_{job.job_type.value.lower()}_completed"}
+
+    def execute_whatif_weekly(self) -> dict[str, Any]:
+        if not getattr(self.settings, "SCHEDULER_ENABLE_WHATIF_WEEKLY", False):
+            return {"status": "SKIPPED", "reason": "Scheduler whatif disabled"}
+        try:
+            from bist_signal_bot.app.whatif_app import create_whatif_engine
+            engine = create_whatif_engine(self.settings)
+            res = engine.run_default(source_type="scheduler_weekly")
+            return {"status": "SUCCESS", "run_id": res.run_id}
+        except Exception as e:
+            return {"status": "ERROR", "message": str(e)}

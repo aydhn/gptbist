@@ -143,3 +143,10 @@ class GovernanceGate:
             payload=payload,
         )
         return self.run_gate(request)
+
+    def check_whatif_output(self, content: str) -> dict[str, Any]:
+        unsafe = ["investment advice", "guaranteed", "sure profit", "live order sent"]
+        for u in unsafe:
+            if u.lower() in content.lower():
+                return {"status": "BLOCK", "reason": f"Unsafe what-if claim: {u}"}
+        return {"status": "PASS"}

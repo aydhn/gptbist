@@ -1,3 +1,4 @@
+from typing import Any
 import uuid
 from datetime import datetime
 from typing import Any
@@ -124,3 +125,34 @@ class EvidenceCardBuilder:
         if warnings:
             return ExplanationStatus.WARN
         return ExplanationStatus.PASS
+
+    def add_whatif_section(self, card: EvidenceCard, whatif_run_result: Any) -> None:
+        if not whatif_run_result:
+            return
+
+        lines = []
+        if hasattr(whatif_run_result, 'comparison') and whatif_run_result.comparison:
+            comp = whatif_run_result.comparison
+            if comp.sensitivity_findings:
+                lines.append("Bu sinyal/sepet hangi varsayımlara hassas?")
+                for f in comp.sensitivity_findings:
+                    lines.append(f"- {f.metric_name}: {f.message}")
+            if comp.key_findings:
+                lines.append("Maliyet artarsa kalite nasıl değişiyor?")
+                for kf in comp.key_findings:
+                    lines.append(f"- {kf}")
+
+        if hasattr(whatif_run_result, 'capital_scaling') and whatif_run_result.capital_scaling:
+            cs = whatif_run_result.capital_scaling
+            if cs.capacity_warnings:
+                lines.append("Sermaye ölçeklenirse likidite uyarısı var mı?")
+                for cw in cs.capacity_warnings:
+                    lines.append(f"- {cw}")
+
+        section = EvidenceSection(
+            section_id=str(uuid.uuid4()),
+            title="What-If Scenario Lab",
+            content="\n".join(lines) if lines else "What-If analysis completed without significant findings.",
+            importance=EvidenceImportance.MEDIUM
+        )
+        card.sections.append(section)

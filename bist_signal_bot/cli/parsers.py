@@ -2414,3 +2414,62 @@ def add_strategy_registry_parser(subparsers):
     # Config
     cfg_p = reg_subs.add_parser("config", help="Show registry configuration")
     cfg_p.add_argument("--json", action="store_true", help="Output as JSON")
+
+def setup_whatif_parser(subparsers):
+    whatif_parser = subparsers.add_parser("what-if", help="What-If Scenario Lab commands")
+    whatif_subs = whatif_parser.add_subparsers(dest="whatif_command")
+
+    # run
+    run_parser = whatif_subs.add_parser("run", help="Run what-if scenarios")
+    run_parser.add_argument("--source", type=str, default="latest-portfolio-construction", help="Source type")
+    run_parser.add_argument("--source-ref", type=str, help="Source reference ID")
+    run_parser.add_argument("--symbols", nargs="+", help="Specific symbols to override")
+    run_parser.add_argument("--strategy", type=str, help="Strategy to override")
+    run_parser.add_argument("--json", action="store_true", help="Output JSON")
+
+    # compare
+    compare_parser = whatif_subs.add_parser("compare", help="Compare scenarios")
+    compare_parser.add_argument("--latest", action="store_true", help="Compare latest run")
+    compare_parser.add_argument("--run-id", type=str, help="Run ID to compare")
+    compare_parser.add_argument("--json", action="store_true", help="Output JSON")
+
+    # sensitivity
+    sens_parser = whatif_subs.add_parser("sensitivity", help="Run sensitivity analysis")
+    sens_parser.add_argument("--assumption", type=str, required=True, help="Assumption type")
+    sens_parser.add_argument("--source", type=str, default="latest-portfolio-construction")
+    sens_parser.add_argument("--json", action="store_true")
+
+    # capital-scale
+    cap_parser = whatif_subs.add_parser("capital-scale", help="Run capital scaling")
+    cap_parser.add_argument("--notionals", nargs="+", type=float, help="List of notionals")
+    cap_parser.add_argument("--source", type=str, default="latest-portfolio-construction")
+    cap_parser.add_argument("--source-ref", type=str)
+    cap_parser.add_argument("--json", action="store_true")
+
+    # policy
+    pol_parser = whatif_subs.add_parser("policy", help="Run policy sandbox")
+    pol_parser.add_argument("--preset", type=str, required=True, help="Policy preset")
+    pol_parser.add_argument("--json", action="store_true")
+
+    # scenario
+    scen_parser = whatif_subs.add_parser("scenario", help="Scenario management")
+    scen_subs = scen_parser.add_subparsers(dest="scenario_command")
+    scen_subs.add_parser("list")
+    sh = scen_subs.add_parser("show")
+    sh.add_argument("name", type=str)
+    sh.add_argument("--json", action="store_true")
+
+    # report
+    rep_parser = whatif_subs.add_parser("report", help="View report")
+    rep_parser.add_argument("--latest", action="store_true")
+    rep_parser.add_argument("--run-id", type=str)
+    rep_parser.add_argument("--json", action="store_true")
+
+    # recent
+    rec_parser = whatif_subs.add_parser("recent", help="List recent what-if runs")
+    rec_parser.add_argument("--limit", type=int, default=10)
+    rec_parser.add_argument("--json", action="store_true")
+
+    # config
+    conf_parser = whatif_subs.add_parser("config", help="View what-if config")
+    conf_parser.add_argument("--json", action="store_true")

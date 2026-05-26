@@ -378,3 +378,17 @@ def maintenance_hook_before_heavy_research():
             indexer.build_index(req)
         except Exception:
             pass
+    def run_whatif_analysis(self) -> dict[str, Any]:
+        if not getattr(self.settings, "ENABLE_WHATIF_LAB", True):
+            return {"status": "SKIPPED", "reason": "WhatIf disabled"}
+        if not getattr(self.settings, "RUNTIME_RUN_WHATIF_ANALYSIS", False):
+            return {"status": "SKIPPED", "reason": "Runtime whatif disabled"}
+
+        try:
+            from bist_signal_bot.app.whatif_app import create_whatif_engine
+            engine = create_whatif_engine(self.settings)
+            res = engine.run_default(source_type="runtime_orchestrator")
+            return {"status": "SUCCESS", "run_id": res.run_id}
+        except Exception as e:
+            self.logger.error(f"Runtime whatif error: {e}")
+            return {"status": "ERROR", "message": str(e)}

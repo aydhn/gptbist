@@ -1477,3 +1477,30 @@ class PortfolioNavError(PortfolioLedgerError):
 
 class PortfolioLedgerStorageError(PortfolioLedgerError):
     pass
+
+class WhatIfError(BistSignalBotError):
+    pass
+
+class WhatIfValidationError(WhatIfError):
+    pass
+
+class ScenarioDefinitionError(WhatIfError):
+    pass
+
+class AssumptionOverrideError(WhatIfError):
+    pass
+
+class SensitivityAnalysisError(WhatIfError):
+    pass
+
+class CapitalScalingError(WhatIfError):
+    pass
+
+class PolicySandboxError(WhatIfError):
+    pass
+
+class CounterfactualAnalysisError(WhatIfError):
+    pass
+
+class WhatIfStorageError(WhatIfError):
+    pass

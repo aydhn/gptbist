@@ -84,3 +84,24 @@ def add_drift_section(result):
 
 def execution_sim_section(report_data: dict) -> str:
     return "## Execution Simulation\n\nExecution assumes theoretical cost drag and slippage. No real orders sent."
+
+    def format_whatif_section(self, whatif_data: dict[str, Any]) -> str:
+        if not whatif_data or whatif_data.get("status") in ["NO_DATA", "ERROR"]:
+            return "## What-If Scenario Lab\nNo recent scenario data available.\n"
+
+        lines = [
+            "## What-If Scenario Lab",
+            f"**Run ID:** {whatif_data.get('run_id')}",
+            f"**Status:** {whatif_data.get('status')}",
+            f"**Scenarios Run:** {whatif_data.get('scenarios_count')}",
+            f"**Best Scenario (ID):** {whatif_data.get('best_scenario') or 'N/A'}"
+        ]
+
+        warnings = whatif_data.get("warnings", [])
+        if warnings:
+            lines.append("")
+            lines.append("**Warnings:**")
+            for w in warnings[:5]:
+                lines.append(f"- {w}")
+
+        return "\n".join(lines) + "\n"
