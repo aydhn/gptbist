@@ -192,3 +192,13 @@ class ConfigSchemaBuilder:
                 ))
 
         return findings
+
+    def validate_whatif_config(self, config: dict[str, Any]) -> list[str]:
+        errors = []
+        if "WHATIF_CAPITAL_SCALE_NOTIONALS" in config:
+            val = config["WHATIF_CAPITAL_SCALE_NOTIONALS"]
+            if not isinstance(val, str):
+                errors.append("WHATIF_CAPITAL_SCALE_NOTIONALS must be string")
+        if config.get("ENABLE_WHATIF_LAB") is False and config.get("RUNTIME_RUN_WHATIF_ANALYSIS") is True:
+            errors.append("Cannot enable runtime whatif when lab is disabled")
+        return errors

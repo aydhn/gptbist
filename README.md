@@ -749,3 +749,9 @@ Provides research-only explainability and evidence cards. See docs/46_SIGNAL_EXP
 - Offline constraints validation (max weight, max sector concentration, correlation clusters)
 - Rebalance simulation showing cost drag and turnover estimates (research-only, no live broker execution)
 - Fully offline CLI endpoints for basket generation (`portfolio-construct build`, `compare`, `rebalance`).
+
+## Phase 78: What-If Scenario Lab
+The What-If Scenario Lab is a research-only environment designed to test counterfactual scenarios (e.g., doubling commissions, scaling capital, tweaking thresholds) offline.
+- Features: Assumption Overrides, Sensitivity Analysis, Capital Scaling, Policy Sandbox.
+- Integrated fully with Portfolio Construction and Ledger without altering global configuration or writing mutating states to the main ledger.
+- *Disclaimer: Scenario results are research-only and do not constitute financial advice. No real orders are executed.*

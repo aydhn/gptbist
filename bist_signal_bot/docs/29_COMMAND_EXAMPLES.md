@@ -18,3 +18,13 @@ python -m bist_signal_bot portfolio-construct compare --methods EQUAL_WEIGHT SCO
 python -m bist_signal_bot portfolio-construct rebalance --latest
 python -m bist_signal_bot portfolio-construct report --latest --json
 ```
+
+### What-If Scenario Lab
+```bash
+python -m bist_signal_bot what-if run --source latest-portfolio-construction
+python -m bist_signal_bot what-if compare --latest
+python -m bist_signal_bot what-if sensitivity --assumption COMMISSION_BPS --source latest-portfolio-construction
+python -m bist_signal_bot what-if capital-scale --notionals 50000 100000 250000
+python -m bist_signal_bot what-if policy --preset conservative-liquidity
+python -m bist_signal_bot what-if report --latest
+```

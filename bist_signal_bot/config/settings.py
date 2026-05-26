@@ -2160,6 +2160,51 @@ class Settings(BaseSettings):
     RESEARCH_AUTO_LOG_CALIBRATION: bool = False
     SCHEDULER_ENABLE_CALIBRATION_WEEKLY: bool = False
 
+    # --- What-If Scenario Lab (Phase 78) ---
+    ENABLE_WHATIF_LAB: bool = True
+    WHATIF_DIR_NAME: str = "whatif"
+    WHATIF_SAVE_RESULTS: bool = True
+    WHATIF_RESEARCH_ONLY: bool = True
+
+    WHATIF_DEFAULT_SCENARIOS_ENABLED: bool = True
+    WHATIF_INCLUDE_BASELINE: bool = True
+    WHATIF_INCLUDE_COST_STRESS: bool = True
+    WHATIF_INCLUDE_SLIPPAGE_STRESS: bool = True
+    WHATIF_INCLUDE_LIQUIDITY_STRESS: bool = True
+    WHATIF_INCLUDE_CAPITAL_SCALING: bool = True
+    WHATIF_INCLUDE_POLICY_SANDBOX: bool = False
+
+    WHATIF_CAPITAL_SCALE_NOTIONALS: str = "50000,100000,250000,500000"
+    WHATIF_CAPITAL_SCALE_MAX_NOTIONAL_WITHOUT_CONFIRM: float = 500000.0
+
+    WHATIF_SENSITIVITY_DELTA_WARN_PCT: float = 15.0
+    WHATIF_SENSITIVITY_DELTA_FAIL_PCT: float = 30.0
+    WHATIF_RANKING_METRIC: str = "estimated_net_quality_score"
+
+    WHATIF_POLICY_SANDBOX_REQUIRES_CONFIRM: bool = True
+    WHATIF_ALLOW_CANDIDATE_POLICY_OUTPUT: bool = True
+
+    RUNTIME_RUN_WHATIF_ANALYSIS: bool = False
+    SCHEDULER_ENABLE_WHATIF_WEEKLY: bool = False
+    REPORT_INCLUDE_WHATIF: bool = True
+    RESEARCH_AUTO_LOG_WHATIF: bool = False
+
+    @field_validator("WHATIF_CAPITAL_SCALE_NOTIONALS")
+    @classmethod
+    def validate_whatif_notionals(cls, v: str) -> str:
+        for n in v.split(","):
+            if not n.strip():
+                continue
+            if float(n.strip()) <= 0:
+                raise ValueError("WHATIF_CAPITAL_SCALE_NOTIONALS must contain positive numbers")
+        return v
+
+    @field_validator("WHATIF_RANKING_METRIC")
+    @classmethod
+    def validate_whatif_ranking_metric(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("WHATIF_RANKING_METRIC cannot be empty")
+        return v
     def check_drift_settings(self) -> 'Settings':
         return self
 

@@ -1,3 +1,4 @@
+from typing import Any
 import uuid
 from typing import List
 
@@ -57,3 +58,25 @@ class ReviewEvidenceCollector:
 
     def attach_validation_summary(self, validation_result) -> None:
         pass
+
+    def collect_whatif_evidence(self, item: ReviewItem, whatif_run_result: Any) -> List[ReviewEvidence]:
+        if not whatif_run_result:
+            return []
+
+        summary = ""
+        warnings = []
+        if hasattr(whatif_run_result, "comparison") and whatif_run_result.comparison:
+            summary = f"What-If Comparison: {len(whatif_run_result.comparison.scenario_results)} scenarios."
+            if whatif_run_result.comparison.best_scenario_id:
+                summary += f" Best: {whatif_run_result.comparison.best_scenario_id}."
+            warnings = whatif_run_result.comparison.key_findings
+
+        return [ReviewEvidence(
+            evidence_id=str(uuid.uuid4()),
+            item_id=item.item_id,
+            evidence_type=ReviewEvidenceType.CUSTOM,
+            title="What-If Scenario Summary",
+            summary=summary,
+            warnings=warnings,
+            metadata={"source": "whatif_lab", "whatif_summary": whatif_run_result.summary() if hasattr(whatif_run_result, 'summary') else {}}
+        )]

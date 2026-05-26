@@ -453,3 +453,9 @@ def get_portfolio_ledger_dir(settings=None) -> Path:
     d = base / dir_name
     d.mkdir(parents=True, exist_ok=True)
     return d
+
+def get_whatif_dir(settings=None) -> Path:
+    s = settings or get_settings()
+    d = get_data_dir(s) / getattr(s, "WHATIF_DIR_NAME", "whatif")
+    d.mkdir(parents=True, exist_ok=True)
+    return d

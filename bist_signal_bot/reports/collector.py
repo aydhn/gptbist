@@ -83,3 +83,21 @@ class ReportDataCollector:
 
     def collect_validation_section(self) -> dict:
         return {"validation_included": True}
+
+    def collect_whatif_summary(self) -> dict[str, Any]:
+        try:
+            from bist_signal_bot.app.whatif_app import create_whatif_store
+            store = create_whatif_store(self.settings)
+            latest = store.load_latest_run()
+            if not latest:
+                return {"status": "NO_DATA"}
+
+            return {
+                "run_id": latest.run_id,
+                "status": latest.status.value,
+                "scenarios_count": len(latest.scenario_results),
+                "best_scenario": latest.comparison.best_scenario_id if latest.comparison else None,
+                "warnings": [w for r in latest.scenario_results for w in r.warnings]
+            }
+        except Exception as e:
+            return {"status": "ERROR", "message": str(e)}

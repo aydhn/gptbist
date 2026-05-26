@@ -230,6 +230,17 @@ def run_cli(argv: list[str] | None = None) -> int:
 
 
 
+
+    if args_to_parse and args_to_parse[0] == 'what-if':
+        import argparse
+        parser = argparse.ArgumentParser()
+        subparsers = parser.add_subparsers(dest="command")
+        from bist_signal_bot.cli.parsers import setup_whatif_parser
+        setup_whatif_parser(subparsers)
+        args, _ = parser.parse_known_args(['what-if'] + args_to_parse[1:])
+        from bist_signal_bot.cli.commands import handle_whatif_commands
+        return handle_whatif_commands(args)
+
     if args_to_parse and args_to_parse[0] == 'explain':
         from bist_signal_bot.cli.explain import handle_explain
         import argparse

@@ -23,6 +23,8 @@ class KnowledgeSourceCollector:
             docs.extend(self.collect_from_research_ledger())
 
         if KnowledgeSourceType.REVIEW_THESIS in types_to_collect:
+        if KnowledgeSourceType.WHATIF_REPORT in types_to_collect:
+            docs.extend(self.collect_from_whatif_reports())
             docs.extend(self.collect_from_review_thesis())
 
         if KnowledgeSourceType.DECISION_JOURNAL in types_to_collect:
@@ -183,3 +185,38 @@ class KnowledgeSourceCollector:
 
     def collect_from_research_lab(self) -> list[KnowledgeDocument]:
         return []
+
+    def collect_from_whatif_reports(self) -> list[KnowledgeDocument]:
+        docs = []
+        try:
+            from bist_signal_bot.storage.paths import get_whatif_dir
+            whatif_dir = get_whatif_dir(self.settings) / "runs"
+            if not whatif_dir.exists():
+                return docs
+
+            for date_dir in whatif_dir.iterdir():
+                if not date_dir.is_dir():
+                    continue
+                for run_dir in date_dir.iterdir():
+                    if not run_dir.is_dir():
+                        continue
+
+                    report_path = run_dir / "whatif_report.md"
+                    if report_path.exists():
+                        try:
+                            with open(report_path, "r", encoding="utf-8") as f:
+                                content = f.read()
+
+                            docs.append(KnowledgeDocument(
+                                document_id=str(uuid.uuid4()),
+                                source_type=KnowledgeSourceType.WHATIF_REPORT,
+                                source_id=run_dir.name,
+                                title=f"What-If Report {run_dir.name[:8]}",
+                                content=content,
+                                metadata={"date": date_dir.name}
+                            ))
+                        except Exception:
+                            continue
+        except Exception:
+            pass
+        return docs

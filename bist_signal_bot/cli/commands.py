@@ -6542,3 +6542,119 @@ def handle_strategy_registry(args, settings):
     except Exception as e:
         print(f"Strategy registry error: {e}")
         return 1
+
+def handle_whatif_commands(args):
+    from bist_signal_bot.app.whatif_app import create_whatif_engine, create_whatif_store, create_whatif_scenario_factory
+    from bist_signal_bot.whatif.models import AssumptionType
+    from bist_signal_bot.config.settings import get_settings
+    import json
+
+    settings = get_settings()
+    engine = create_whatif_engine(settings)
+    store = create_whatif_store(settings)
+    factory = create_whatif_scenario_factory(settings)
+
+    cmd = args.whatif_command
+    if cmd == "run":
+        res = engine.run_default(args.source, args.source_ref)
+        if args.json:
+            print(json.dumps(res.safe_public_dict(), indent=2))
+        else:
+            print(f"What-If run completed. ID: {res.run_id}")
+            print(f"Scenarios: {len(res.scenario_results)}")
+
+    elif cmd == "compare":
+        if args.latest:
+            res = store.load_latest_run()
+        else:
+            res = store.load_run(args.run_id)
+        if not res or not res.comparison:
+            print("No comparison data found.")
+            return
+        if args.json:
+            print(json.dumps(res.comparison.model_dump(), indent=2))
+        else:
+            print("Comparison Key Findings:")
+            for k in res.comparison.key_findings:
+                print(f"- {k}")
+
+    elif cmd == "sensitivity":
+        try:
+            a_type = AssumptionType(args.assumption)
+        except ValueError:
+            print(f"Invalid assumption type: {args.assumption}")
+            return
+        res = engine.run_sensitivity(args.source, None, a_type)
+        if args.json:
+            print(json.dumps(res.safe_public_dict(), indent=2))
+        else:
+            print(f"Sensitivity Analysis Run ID: {res.run_id}")
+
+    elif cmd == "capital-scale":
+        res = engine.run_capital_scale(args.source, args.source_ref, args.notionals)
+        if args.json:
+            print(json.dumps(res.model_dump(), indent=2))
+        else:
+            print(f"Best Notional: {res.best_research_notional}")
+            for w in res.capacity_warnings:
+                print(f"- {w}")
+
+    elif cmd == "policy":
+        policies = [{"name": args.preset}]
+        res = engine.run_policy_sandbox("cli_policy", None, policies)
+        if args.json:
+            print(json.dumps(res.model_dump(), indent=2))
+        else:
+            print(f"Tested Policy: {args.preset}")
+            if res.selected_policy_candidate:
+                print(f"Selected Candidate: {res.selected_policy_candidate.get('name')}")
+
+    elif cmd == "scenario":
+        scmd = args.scenario_command
+        if scmd == "list":
+            for s in factory.default_scenarios():
+                print(f"- {s.name}")
+        elif scmd == "show":
+            s = factory.scenario_by_name(args.name)
+            if not s:
+                print("Scenario not found.")
+                return
+            if args.json:
+                print(json.dumps(s.model_dump(), indent=2))
+            else:
+                print(f"Name: {s.name}")
+                print(f"Description: {s.description}")
+
+    elif cmd == "report":
+        if args.latest:
+            res = store.load_latest_run()
+        else:
+            res = store.load_run(args.run_id)
+        if not res:
+            print("Report not found.")
+            return
+        if args.json:
+            print(json.dumps(res.safe_public_dict(), indent=2))
+        else:
+            from bist_signal_bot.whatif.reporting import format_whatif_report_markdown
+            print(format_whatif_report_markdown(res))
+
+    elif cmd == "recent":
+        runs = store.list_recent_runs(args.limit)
+        if args.json:
+            print(json.dumps(runs, indent=2))
+        else:
+            for r in runs:
+                print(f"{r['generated_at']} - {r['run_id']} [{r['status']}]")
+
+    elif cmd == "config":
+        data = {
+            "ENABLE_WHATIF_LAB": settings.ENABLE_WHATIF_LAB,
+            "WHATIF_INCLUDE_BASELINE": getattr(settings, "WHATIF_INCLUDE_BASELINE", True),
+            "WHATIF_CAPITAL_SCALE_NOTIONALS": getattr(settings, "WHATIF_CAPITAL_SCALE_NOTIONALS", "")
+        }
+        if args.json:
+            print(json.dumps(data, indent=2))
+        else:
+            for k, v in data.items():
+                print(f"{k}: {v}")

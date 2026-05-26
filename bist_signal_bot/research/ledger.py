@@ -1,3 +1,4 @@
+from typing import Any
 import logging
 import uuid
 from typing import Any
@@ -99,3 +100,21 @@ class ResearchLedger:
             "total_recent": len(entries),
             "runs": [e.run.summary() for e in entries]
         }
+
+    def log_whatif_run(self, result: Any, tags: list[str] | None = None) -> ResearchEvent:
+        metrics = {
+            "elapsed_seconds": getattr(result, "elapsed_seconds", 0.0),
+            "status": getattr(result, "status", "UNKNOWN")
+        }
+        if hasattr(result, "comparison") and result.comparison:
+            metrics["best_scenario_id"] = result.comparison.best_scenario_id
+
+        event = ResearchEvent(
+            event_id=str(uuid.uuid4()),
+            event_type=ResearchEventType.WHATIF_RUN,
+            source_id=getattr(result, "run_id", "unknown"),
+            metrics=metrics,
+            tags=tags or ["whatif"],
+            metadata={"source_type": getattr(result.request, "source_type", "unknown")} if hasattr(result, "request") else {}
+        )
+        return self.append_event(event)
