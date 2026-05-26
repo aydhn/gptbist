@@ -1544,6 +1544,41 @@ class Settings(BaseSettings):
 
 
 
+    # Portfolio Ledger
+    ENABLE_PORTFOLIO_LEDGER: bool = True
+    PORTFOLIO_LEDGER_DIR_NAME: str = 'portfolio_ledger'
+    PORTFOLIO_LEDGER_SAVE_RESULTS: bool = True
+    PORTFOLIO_LEDGER_RESEARCH_ONLY: bool = True
+    PORTFOLIO_LEDGER_CONFIRM_CREATE: bool = True
+    PORTFOLIO_LEDGER_CONFIRM_UPDATE: bool = True
+
+    # Valuation
+    PORTFOLIO_LEDGER_DEFAULT_INITIAL_NOTIONAL: float = 100000.0
+    PORTFOLIO_LEDGER_BASE_CURRENCY: str = 'TRY'
+    PORTFOLIO_LEDGER_USE_NET_RETURNS: bool = True
+    PORTFOLIO_LEDGER_INCLUDE_COST_DRAG: bool = True
+    PORTFOLIO_LEDGER_FORWARD_FILL_PRICES: bool = False
+    PORTFOLIO_LEDGER_OUTCOME_HORIZON_DAYS: int = 5
+
+    # Attribution
+    PORTFOLIO_LEDGER_ATTRIBUTION_BY_SYMBOL: bool = True
+    PORTFOLIO_LEDGER_ATTRIBUTION_BY_SECTOR: bool = True
+    PORTFOLIO_LEDGER_ATTRIBUTION_BY_STRATEGY: bool = True
+    PORTFOLIO_LEDGER_ATTRIBUTION_BY_COST: bool = True
+
+    # NAV
+    PORTFOLIO_LEDGER_BUILD_NAV_CURVE: bool = True
+    PORTFOLIO_LEDGER_NAV_MAX_POINTS: int = 5000
+
+    # Runtime & Scheduler
+    RUNTIME_UPDATE_PORTFOLIO_LEDGER: bool = False
+    RUNTIME_CREATE_PORTFOLIO_FROM_CONSTRUCTION: bool = False
+    SCHEDULER_ENABLE_PORTFOLIO_LEDGER_VALUATION: bool = False
+    SCHEDULER_ENABLE_PORTFOLIO_LEDGER_OUTCOMES: bool = False
+
+    # Reports & Research
+    REPORT_INCLUDE_PORTFOLIO_LEDGER: bool = True
+    RESEARCH_AUTO_LOG_PORTFOLIO_LEDGER: bool = False
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
 

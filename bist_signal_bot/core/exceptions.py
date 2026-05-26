@@ -1450,3 +1450,30 @@ class ErrorTaxonomyError(CalibrationError):
 
 class CalibrationStorageError(CalibrationError):
     pass
+
+class PortfolioLedgerError(BistSignalBotError):
+    pass
+
+class PortfolioLedgerValidationError(PortfolioLedgerError):
+    pass
+
+class PortfolioLifecycleError(PortfolioLedgerError):
+    pass
+
+class PortfolioValuationError(PortfolioLedgerError):
+    pass
+
+class PortfolioAttributionError(PortfolioLedgerError):
+    pass
+
+class PortfolioOutcomeError(PortfolioLedgerError):
+    pass
+
+class RebalanceTrackingError(PortfolioLedgerError):
+    pass
+
+class PortfolioNavError(PortfolioLedgerError):
+    pass
+
+class PortfolioLedgerStorageError(PortfolioLedgerError):
+    pass
