@@ -446,3 +446,10 @@ def get_portfolio_construction_dir(settings=None) -> Path:
     d = get_data_dir(settings) / getattr(settings, "PORTFOLIO_CONSTRUCTION_DIR_NAME", "portfolio_construction")
     d.mkdir(parents=True, exist_ok=True)
     return d
+
+def get_portfolio_ledger_dir(settings=None) -> Path:
+    base = get_data_dir(settings)
+    dir_name = getattr(settings, "PORTFOLIO_LEDGER_DIR_NAME", "portfolio_ledger") if settings else "portfolio_ledger"
+    d = base / dir_name
+    d.mkdir(parents=True, exist_ok=True)
+    return d

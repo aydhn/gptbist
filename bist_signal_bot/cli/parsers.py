@@ -807,6 +807,8 @@ def build_parser() -> argparse.ArgumentParser:
     setup_explain_parser(subparsers)
     setup_calibration_parser(subparsers)
     add_portfolio_construct_parser(subparsers)
+    from bist_signal_bot.cli.portfolio_ledger_commands import setup_portfolio_ledger_parser
+    setup_portfolio_ledger_parser(subparsers)
     add_telegram_center_parser(subparsers)
 
     # Portfolio Research Command
@@ -2281,6 +2283,8 @@ def add_config_registry_parser(subparsers):
 
 def add_execution_sim_parser(subparsers):
     add_portfolio_construct_parser(subparsers)
+    from bist_signal_bot.cli.portfolio_ledger_commands import setup_portfolio_ledger_parser
+    setup_portfolio_ledger_parser(subparsers)
     p = subparsers.add_parser("execution-sim", help="Execution Simulation utilities")
     sp = p.add_subparsers(dest="exec_cmd")
 
@@ -2332,7 +2336,11 @@ def add_execution_sim_parser(subparsers):
 
 def add_strategy_registry_parser(subparsers):
     add_portfolio_construct_parser(subparsers)
+    from bist_signal_bot.cli.portfolio_ledger_commands import setup_portfolio_ledger_parser
+    setup_portfolio_ledger_parser(subparsers)
     add_portfolio_construct_parser(subparsers)
+    from bist_signal_bot.cli.portfolio_ledger_commands import setup_portfolio_ledger_parser
+    setup_portfolio_ledger_parser(subparsers)
     registry_parser = subparsers.add_parser("strategy-registry", help="Manage Strategy Registry")
     reg_subs = registry_parser.add_subparsers(dest="registry_command")
 

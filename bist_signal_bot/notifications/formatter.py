@@ -1325,3 +1325,89 @@ def format_evidence_card(card: Any) -> str:
 
 def format_decision_trace(trace: Any) -> str:
     return "Decision Trace Mock"
+
+def format_research_portfolio(portfolio: Any) -> str:
+    lines = [
+        f"BIST Bot Research Portfolio Ledger Özeti",
+        "",
+        f"Portfolio: {portfolio.name}",
+        f"Status: {portfolio.status.value}",
+        f"Initial Notional: {portfolio.initial_notional:,.2f} {portfolio.base_currency}"
+    ]
+    if portfolio.current_simulated_nav is not None:
+        lines.append(f"Simulated NAV: {portfolio.current_simulated_nav:,.2f} {portfolio.base_currency}")
+    lines.append("")
+    lines.append("Bu çıktı araştırma amaçlı simülasyon özetidir.")
+    lines.append("Yatırım tavsiyesi değildir.")
+    lines.append("Gerçek emir gönderilmedi.")
+    return "\n".join(lines)
+
+def format_portfolio_valuation(snapshot: Any) -> str:
+    lines = [
+        f"BIST Bot Research Portfolio Ledger Özeti",
+        "",
+        f"Portfolio ID: {snapshot.portfolio_id}",
+        f"Simulated NAV: {snapshot.simulated_nav:,.2f}"
+    ]
+    if snapshot.net_return_pct is not None:
+        lines.append(f"Net Return: {snapshot.net_return_pct:.2f}%")
+    if snapshot.total_cost_drag_pct is not None:
+        lines.append(f"Cost Drag: {snapshot.total_cost_drag_pct:.2f}%")
+
+    lines.append("")
+    lines.append("Bu çıktı araştırma amaçlı simülasyon özetidir.")
+    lines.append("Yatırım tavsiyesi değildir.")
+    lines.append("Gerçek emir gönderilmedi.")
+    return "\n".join(lines)
+
+def format_portfolio_attribution(result: Any) -> str:
+    lines = [
+        f"BIST Bot Research Portfolio Ledger Özeti",
+        "",
+        f"Portfolio ID: {result.portfolio_id}"
+    ]
+    if result.top_positive_contributors:
+        lines.append(f"Top Positive: {', '.join(result.top_positive_contributors)}")
+    if result.top_negative_contributors:
+        lines.append(f"Top Negative: {', '.join(result.top_negative_contributors)}")
+
+    lines.append("")
+    lines.append("Bu çıktı araştırma amaçlı simülasyon özetidir.")
+    lines.append("Yatırım tavsiyesi değildir.")
+    lines.append("Gerçek emir gönderilmedi.")
+    return "\n".join(lines)
+
+def format_portfolio_outcome(result: Any) -> str:
+    lines = [
+        f"BIST Bot Research Portfolio Ledger Özeti",
+        "",
+        f"Portfolio ID: {result.portfolio_id}",
+        f"Horizon: {result.horizon_days} days",
+        f"Label: {result.label.value}"
+    ]
+    if result.net_return_pct is not None:
+        lines.append(f"Net Return: {result.net_return_pct:.2f}%")
+
+    lines.append("")
+    lines.append("Bu çıktı araştırma amaçlı simülasyon özetidir.")
+    lines.append("Yatırım tavsiyesi değildir.")
+    lines.append("Gerçek emir gönderilmedi.")
+    return "\n".join(lines)
+
+def format_portfolio_ledger_report(report: Any) -> str:
+    lines = [
+        f"BIST Bot Research Portfolio Ledger Raporu",
+        "",
+        f"Portfolios: {len(report.portfolios)}",
+        f"Valuations: {len(report.valuations)}",
+        f"Attributions: {len(report.attributions)}",
+        ""
+    ]
+    for k in report.key_findings:
+        lines.append(f"- {k}")
+
+    lines.append("")
+    lines.append("Bu çıktı araştırma amaçlı simülasyon özetidir.")
+    lines.append("Yatırım tavsiyesi değildir.")
+    lines.append("Gerçek emir gönderilmedi.")
+    return "\n".join(lines)
