@@ -1,33 +1,27 @@
+import pytest
 import pandas as pd
-from bist_signal_bot.portfolio.correlation import CorrelationAnalyzer
+from bist_signal_bot.portfolio_construction.correlation import CorrelationAnalyzer
 
 def test_correlation_returns_matrix():
     analyzer = CorrelationAnalyzer()
-    df1 = pd.DataFrame({"close": [10, 11, 12, 11, 10]})
-    df2 = pd.DataFrame({"close": [10, 11, 12, 11, 10]})
+    df = analyzer.returns_matrix(["ASELS", "THYAO"], lookback_days=10)
+    assert not df.empty
+    assert list(df.columns) == ["ASELS", "THYAO"]
+    assert len(df) == 10
 
-    res = analyzer.calculate_returns_matrix({"A": df1, "B": df2}, lookback_rows=5)
-    assert len(res) == 4
-
-def test_correlation_matrix_pearson():
+def test_correlation_high_pairs_and_clusters():
     analyzer = CorrelationAnalyzer()
-    df1 = pd.DataFrame({"close": [10, 11, 12, 11, 10]})
-    df2 = pd.DataFrame({"close": [10, 11, 12, 11, 10]})
+    df = pd.DataFrame({
+        "A": [1, 2, 3, 4, 5],
+        "B": [1, 2, 3, 4, 5],
+        "C": [5, 4, 3, 2, 1]
+    })
 
-    res = analyzer.calculate_correlation_matrix({"A": df1, "B": df2})
-    assert "A" in res.symbols
-    assert res.matrix.loc["A", "B"] > 0.99
+    corr = analyzer.correlation_matrix(df)
+    pairs = analyzer.pairwise_high_correlations(corr, 0.9)
+    assert len(pairs) == 2 # A-B (1.0), and A-C / B-C are -1.0 so their abs is 1.0
 
-def test_max_pairwise_correlation():
-    analyzer = CorrelationAnalyzer()
-    df1 = pd.DataFrame({"close": [10, 11, 12, 11, 10]})
-    df2 = pd.DataFrame({"close": [10, 11, 12, 11, 10]})
-    res = analyzer.calculate_correlation_matrix({"A": df1, "B": df2})
-
-    max_c = analyzer.max_pairwise_correlation("A", ["B"], res)
-    assert max_c > 0.99
-
-def test_correlation_missing_data_warning():
-    analyzer = CorrelationAnalyzer()
-    res = analyzer.calculate_correlation_matrix({})
-    assert len(res.issues) > 0
+    clusters = analyzer.build_clusters(corr, {"A": 0.5, "B": 0.5, "C": 0.0}, 0.9)
+    assert len(clusters) > 0
+    # A, B, C are all highly correlated (magnitude 1.0)
+    assert len(clusters[0].symbols) == 3

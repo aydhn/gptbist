@@ -438,3 +438,11 @@ def get_calibration_dir(settings=None) -> Path:
     path = get_data_dir(settings) / getattr(settings, "CALIBRATION_DIR_NAME", "calibration")
     path.mkdir(parents=True, exist_ok=True)
     return path
+
+def get_portfolio_construction_dir(settings=None) -> Path:
+    from bist_signal_bot.config.settings import get_settings
+    if settings is None:
+        settings = get_settings()
+    d = get_data_dir(settings) / getattr(settings, "PORTFOLIO_CONSTRUCTION_DIR_NAME", "portfolio_construction")
+    d.mkdir(parents=True, exist_ok=True)
+    return d

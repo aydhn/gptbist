@@ -1,27 +1,24 @@
-from bist_signal_bot.portfolio_research.models import ResearchPortfolioItem, PortfolioResearchRequest
-from bist_signal_bot.portfolio_research.constraints import PortfolioConstraintEngine
+import pytest
+from bist_signal_bot.config.settings import Settings
+from bist_signal_bot.portfolio_construction.constraints import PortfolioConstraintEngine
+from bist_signal_bot.portfolio_construction.models import PortfolioPositionResearch, PortfolioConstraint, ConstraintType, ConstraintSeverity
 
-def test_constraint_engine():
-    engine = PortfolioConstraintEngine()
-    req = PortfolioResearchRequest(
-        max_symbol_weight=0.2,
-        max_sector_weight=0.35,
-        min_score=50.0
-    )
-    items = [
-        ResearchPortfolioItem(item_id="1", symbol="A", proposed_weight=0.3, capped_weight=0.0, final_weight=0.0, score=40.0, sector="TECH", state="ACTIVE"),
-        ResearchPortfolioItem(item_id="2", symbol="B", proposed_weight=0.1, capped_weight=0.0, final_weight=0.0, score=60.0, sector="TECH", state="ACTIVE"),
-        ResearchPortfolioItem(item_id="3", symbol="C", proposed_weight=0.1, capped_weight=0.0, final_weight=0.0, score=70.0, sector="TECH", state="BLOCKED_BY_RISK"),
-    ]
+def test_constraint_engine_violations():
+    settings = Settings()
+    settings.PORTFOLIO_MAX_SYMBOL_WEIGHT = 0.20
+    settings.PORTFOLIO_MAX_SECTOR_WEIGHT = 0.35
+    engine = PortfolioConstraintEngine(settings)
 
-    constraints = engine.validate_items(items, req)
+    p1 = PortfolioPositionResearch(position_id="1", symbol="ASELS", sector="TECH", current_weight=0.0, target_weight=0.30, weight_delta=0.30)
+    p2 = PortfolioPositionResearch(position_id="2", symbol="LOGO", sector="TECH", current_weight=0.0, target_weight=0.10, weight_delta=0.10)
 
-    # Assert
-    assert items[0].state == "BLOCKED_BY_SCORE"
-    assert items[2].state == "BLOCKED_BY_RISK"
-    assert len(constraints) == 2
+    c_sym = PortfolioConstraint(constraint_id="1", constraint_type=ConstraintType.MAX_SYMBOL_WEIGHT, name="sym", limit_value=0.20, severity=ConstraintSeverity.HIGH)
+    c_sec = PortfolioConstraint(constraint_id="2", constraint_type=ConstraintType.MAX_SECTOR_WEIGHT, name="sec", limit_value=0.35, severity=ConstraintSeverity.MEDIUM)
 
-    engine.apply_weight_caps(items, req)
-    assert items[0].capped_weight == 0.0 # because blocked
-    assert items[1].capped_weight == 0.1
-    assert items[2].capped_weight == 0.0 # because blocked
+    v_sym = engine.check_max_symbol_weight([p1, p2], c_sym)
+    assert len(v_sym) == 1
+    assert v_sym[0].symbol == "ASELS"
+
+    v_sec = engine.check_max_sector_weight([p1, p2], c_sec)
+    assert len(v_sec) == 1
+    assert v_sec[0].sector == "TECH"

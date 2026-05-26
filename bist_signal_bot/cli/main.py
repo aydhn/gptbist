@@ -141,6 +141,22 @@ def run_cli(argv: list[str] | None = None) -> int:
         ctx = MockCtx(settings=Settings())
         return handle_calibration_command(args, ctx)
 
+
+    if args_to_parse and args_to_parse[0] == 'portfolio-construct':
+        import argparse
+        root_parser = argparse.ArgumentParser()
+        root_subs = root_parser.add_subparsers(dest="command")
+        from bist_signal_bot.cli.parsers import add_portfolio_construct_parser
+        add_portfolio_construct_parser(root_subs)
+        args, unknown = root_parser.parse_known_args(args_to_parse)
+
+        from bist_signal_bot.config.settings import Settings
+        from bist_signal_bot.cli.portfolio_construct_commands import handle_portfolio_construct_command
+
+        from bist_signal_bot.config.settings import get_settings
+        handle_portfolio_construct_command(args, get_settings())
+        return 0
+
     if args_to_parse and args_to_parse[0] == 'review':
         from bist_signal_bot.cli.commands import review
         import sys

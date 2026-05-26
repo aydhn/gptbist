@@ -1,3 +1,44 @@
+
+def add_portfolio_construct_parser(subparsers):
+    parser = subparsers.add_parser("portfolio-construct", help="Portfolio Construction Management")
+    sub = parser.add_subparsers(dest="pc_command", required=True)
+
+    b = sub.add_parser("build", help="Build a portfolio basket")
+    b.add_argument("--symbols", nargs="+", default=[], help="Symbols to include")
+    b.add_argument("--method", type=str, default="HYBRID", help="Weighting method")
+    b.add_argument("--max-positions", type=int, default=10, help="Max positions")
+    b.add_argument("--notional", type=float, default=100000.0, help="Portfolio notional")
+    b.add_argument("--json", action="store_true", help="JSON output")
+
+    c = sub.add_parser("compare", help="Compare weighting methods")
+    c.add_argument("--symbols", nargs="+", default=[])
+    c.add_argument("--methods", nargs="+", default=["EQUAL_WEIGHT", "SCORE_WEIGHTED", "HYBRID"])
+    c.add_argument("--json", action="store_true", help="JSON output")
+
+    r = sub.add_parser("rebalance", help="Rebalance simulation")
+    r.add_argument("--latest", action="store_true", help="Use latest construction result")
+    r.add_argument("--current-weights", type=str, help="Path to current weights CSV/JSON")
+    r.add_argument("--json", action="store_true", help="JSON output")
+
+    con = sub.add_parser("constraints", help="Check constraints")
+    con.add_argument("--latest", action="store_true", help="Use latest construction result")
+    con.add_argument("--json", action="store_true", help="JSON output")
+
+    rb = sub.add_parser("risk-budget", help="Check risk budget")
+    rb.add_argument("--latest", action="store_true", help="Use latest construction result")
+    rb.add_argument("--json", action="store_true", help="JSON output")
+
+    rep = sub.add_parser("report", help="Show portfolio construction report")
+    rep.add_argument("--latest", action="store_true", help="Use latest construction result")
+    rep.add_argument("--json", action="store_true", help="JSON output")
+
+    rec = sub.add_parser("recent", help="List recent portfolio constructions")
+    rec.add_argument("--limit", type=int, default=10, help="Max items")
+    rec.add_argument("--json", action="store_true", help="JSON output")
+
+    cfg = sub.add_parser("config", help="Show portfolio construction config")
+    cfg.add_argument("--json", action="store_true", help="JSON output")
+
 from bist_signal_bot.cli.explain import setup_parser as setup_explain_parser
 
 def add_deploy_parser(subparsers):
@@ -323,6 +364,131 @@ def add_release_parser(subparsers):
     config_parser.add_argument("--json", action="store_true", help="Output JSON")
 
 import argparse
+
+def add_portfolio_construct_parser(subparsers):
+    parser = subparsers.add_parser("portfolio-construct", help="Portfolio Construction Management")
+    sub = parser.add_subparsers(dest="pc_command", required=True)
+
+    b = sub.add_parser("build", help="Build a portfolio basket")
+    b.add_argument("--symbols", nargs="+", default=[], help="Symbols to include")
+    b.add_argument("--method", type=str, default="HYBRID", help="Weighting method")
+    b.add_argument("--max-positions", type=int, default=10, help="Max positions")
+    b.add_argument("--notional", type=float, default=100000.0, help="Portfolio notional")
+    b.add_argument("--json", action="store_true", help="JSON output")
+
+    c = sub.add_parser("compare", help="Compare weighting methods")
+    c.add_argument("--symbols", nargs="+", default=[])
+    c.add_argument("--methods", nargs="+", default=["EQUAL_WEIGHT", "SCORE_WEIGHTED", "HYBRID"])
+    c.add_argument("--json", action="store_true", help="JSON output")
+
+    r = sub.add_parser("rebalance", help="Rebalance simulation")
+    r.add_argument("--latest", action="store_true", help="Use latest construction result")
+    r.add_argument("--current-weights", type=str, help="Path to current weights CSV/JSON")
+    r.add_argument("--json", action="store_true", help="JSON output")
+
+    con = sub.add_parser("constraints", help="Check constraints")
+    con.add_argument("--latest", action="store_true", help="Use latest construction result")
+    con.add_argument("--json", action="store_true", help="JSON output")
+
+    rb = sub.add_parser("risk-budget", help="Check risk budget")
+    rb.add_argument("--latest", action="store_true", help="Use latest construction result")
+    rb.add_argument("--json", action="store_true", help="JSON output")
+
+    rep = sub.add_parser("report", help="Show portfolio construction report")
+    rep.add_argument("--latest", action="store_true", help="Use latest construction result")
+    rep.add_argument("--json", action="store_true", help="JSON output")
+
+    rec = sub.add_parser("recent", help="List recent portfolio constructions")
+    rec.add_argument("--limit", type=int, default=10, help="Max items")
+    rec.add_argument("--json", action="store_true", help="JSON output")
+
+    cfg = sub.add_parser("config", help="Show portfolio construction config")
+    cfg.add_argument("--json", action="store_true", help="JSON output")
+
+
+def add_portfolio_construct_parser(subparsers):
+    parser = subparsers.add_parser("portfolio-construct", help="Portfolio Construction Management")
+    sub = parser.add_subparsers(dest="pc_command", required=True)
+
+    b = sub.add_parser("build", help="Build a portfolio basket")
+    b.add_argument("--symbols", nargs="+", default=[], help="Symbols to include")
+    b.add_argument("--method", type=str, default="HYBRID", help="Weighting method")
+    b.add_argument("--max-positions", type=int, default=10, help="Max positions")
+    b.add_argument("--notional", type=float, default=100000.0, help="Portfolio notional")
+    b.add_argument("--json", action="store_true", help="JSON output")
+
+    c = sub.add_parser("compare", help="Compare weighting methods")
+    c.add_argument("--symbols", nargs="+", default=[])
+    c.add_argument("--methods", nargs="+", default=["EQUAL_WEIGHT", "SCORE_WEIGHTED", "HYBRID"])
+    c.add_argument("--json", action="store_true", help="JSON output")
+
+    r = sub.add_parser("rebalance", help="Rebalance simulation")
+    r.add_argument("--latest", action="store_true", help="Use latest construction result")
+    r.add_argument("--current-weights", type=str, help="Path to current weights CSV/JSON")
+    r.add_argument("--json", action="store_true", help="JSON output")
+
+    con = sub.add_parser("constraints", help="Check constraints")
+    con.add_argument("--latest", action="store_true", help="Use latest construction result")
+    con.add_argument("--json", action="store_true", help="JSON output")
+
+    rb = sub.add_parser("risk-budget", help="Check risk budget")
+    rb.add_argument("--latest", action="store_true", help="Use latest construction result")
+    rb.add_argument("--json", action="store_true", help="JSON output")
+
+    rep = sub.add_parser("report", help="Show portfolio construction report")
+    rep.add_argument("--latest", action="store_true", help="Use latest construction result")
+    rep.add_argument("--json", action="store_true", help="JSON output")
+
+    rec = sub.add_parser("recent", help="List recent portfolio constructions")
+    rec.add_argument("--limit", type=int, default=10, help="Max items")
+    rec.add_argument("--json", action="store_true", help="JSON output")
+
+    cfg = sub.add_parser("config", help="Show portfolio construction config")
+    cfg.add_argument("--json", action="store_true", help="JSON output")
+
+
+
+def add_portfolio_construct_parser(subparsers):
+    parser = subparsers.add_parser("portfolio-construct", help="Portfolio Construction Management")
+    sub = parser.add_subparsers(dest="pc_command", required=True)
+
+    b = sub.add_parser("build", help="Build a portfolio basket")
+    b.add_argument("--symbols", nargs="+", default=[], help="Symbols to include")
+    b.add_argument("--method", type=str, default="HYBRID", help="Weighting method")
+    b.add_argument("--max-positions", type=int, default=10, help="Max positions")
+    b.add_argument("--notional", type=float, default=100000.0, help="Portfolio notional")
+    b.add_argument("--json", action="store_true", help="JSON output")
+
+    c = sub.add_parser("compare", help="Compare weighting methods")
+    c.add_argument("--symbols", nargs="+", default=[])
+    c.add_argument("--methods", nargs="+", default=["EQUAL_WEIGHT", "SCORE_WEIGHTED", "HYBRID"])
+    c.add_argument("--json", action="store_true", help="JSON output")
+
+    r = sub.add_parser("rebalance", help="Rebalance simulation")
+    r.add_argument("--latest", action="store_true", help="Use latest construction result")
+    r.add_argument("--current-weights", type=str, help="Path to current weights CSV/JSON")
+    r.add_argument("--json", action="store_true", help="JSON output")
+
+    con = sub.add_parser("constraints", help="Check constraints")
+    con.add_argument("--latest", action="store_true", help="Use latest construction result")
+    con.add_argument("--json", action="store_true", help="JSON output")
+
+    rb = sub.add_parser("risk-budget", help="Check risk budget")
+    rb.add_argument("--latest", action="store_true", help="Use latest construction result")
+    rb.add_argument("--json", action="store_true", help="JSON output")
+
+    rep = sub.add_parser("report", help="Show portfolio construction report")
+    rep.add_argument("--latest", action="store_true", help="Use latest construction result")
+    rep.add_argument("--json", action="store_true", help="JSON output")
+
+    rec = sub.add_parser("recent", help="List recent portfolio constructions")
+    rec.add_argument("--limit", type=int, default=10, help="Max items")
+    rec.add_argument("--json", action="store_true", help="JSON output")
+
+    cfg = sub.add_parser("config", help="Show portfolio construction config")
+    cfg.add_argument("--json", action="store_true", help="JSON output")
+
+
 from bist_signal_bot.cli.ensemble_commands import setup_ensemble_parser
 from bist_signal_bot.cli.stress_cmd import add_stress_parsers
 
@@ -640,6 +806,7 @@ def build_parser() -> argparse.ArgumentParser:
     from bist_signal_bot.cli.calibration_cli import setup_calibration_parser
     setup_explain_parser(subparsers)
     setup_calibration_parser(subparsers)
+    add_portfolio_construct_parser(subparsers)
     add_telegram_center_parser(subparsers)
 
     # Portfolio Research Command
@@ -2113,6 +2280,7 @@ def add_config_registry_parser(subparsers):
     p_config.add_argument("--json", action="store_true", help="JSON output")
 
 def add_execution_sim_parser(subparsers):
+    add_portfolio_construct_parser(subparsers)
     p = subparsers.add_parser("execution-sim", help="Execution Simulation utilities")
     sp = p.add_subparsers(dest="exec_cmd")
 
@@ -2163,6 +2331,8 @@ def add_execution_sim_parser(subparsers):
     cfg.add_argument("--json", action="store_true")
 
 def add_strategy_registry_parser(subparsers):
+    add_portfolio_construct_parser(subparsers)
+    add_portfolio_construct_parser(subparsers)
     registry_parser = subparsers.add_parser("strategy-registry", help="Manage Strategy Registry")
     reg_subs = registry_parser.add_subparsers(dest="registry_command")
 

@@ -743,3 +743,9 @@ Local first instrument database tracking lifecycle events, sectors, adjustments 
 
 ## Explainability (Phase 74)
 Provides research-only explainability and evidence cards. See docs/46_SIGNAL_EXPLAINABILITY.md
+
+### Phase 76: Portfolio Construction & Rebalance Research
+- Built-in correlation clustering and risk budgeting (`RISK_PARITY_LITE`, `SCORE_WEIGHTED`, etc.)
+- Offline constraints validation (max weight, max sector concentration, correlation clusters)
+- Rebalance simulation showing cost drag and turnover estimates (research-only, no live broker execution)
+- Fully offline CLI endpoints for basket generation (`portfolio-construct build`, `compare`, `rebalance`).
