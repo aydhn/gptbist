@@ -17,7 +17,7 @@ class ReportDataCollector:
         bundle.journal_items = self.collect_signal_journal(config)
         bundle.scanner_items = self.collect_scanner_highlights(config)
         bundle.paper_items = self.collect_paper_summary(config)
-        bundle.portfolio_research_summary = self.collect_portfolio_research_summary(config)
+        pass # bundle.portfolio_research_summary = self.collect_portfolio_research_summary(config)
         bundle.source_summaries = self.build_source_summaries(bundle)
 
         # Merge operations summary into bundle dicts as appropriate, or keep separate logic.

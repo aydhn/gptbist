@@ -1528,3 +1528,34 @@ class EventLinkingError(EventCalendarError):
 
 class EventStorageError(EventCalendarError):
     pass
+
+
+class DisclosureError(BistSignalBotError):
+    pass
+
+class DisclosureImportError(DisclosureError):
+    pass
+
+class DisclosureValidationError(DisclosureError):
+    pass
+
+class DisclosureClassificationError(DisclosureError):
+    pass
+
+class DisclosureEntityLinkingError(DisclosureError):
+    pass
+
+class DisclosureRiskTagError(DisclosureError):
+    pass
+
+class DisclosureEventExtractionError(DisclosureError):
+    pass
+
+class DisclosureImpactError(DisclosureError):
+    pass
+
+class DisclosureDigestError(DisclosureError):
+    pass
+
+class DisclosureStorageError(DisclosureError):
+    pass
