@@ -22,6 +22,15 @@ def run_healthcheck(settings=None, as_json=False):
             "risk_engine_capable": True,
             "policy_manager_capable": True
         },
+
+        "disclosures": {
+            "enabled": getattr(settings, "ENABLE_DISCLOSURE_INTELLIGENCE", True),
+            "importer_capable": True,
+            "classifier_capable": True,
+            "risk_tagger_capable": True,
+            "event_extractor_capable": True,
+            "store_capable": True
+        },
         "whatif_lab": {
             "enabled": getattr(settings, "ENABLE_WHATIF_LAB", True),
             "scenario_factory_capable": True,
@@ -38,3 +47,4 @@ def run_healthcheck(settings=None, as_json=False):
         print(f"Portfolio Ledger Enabled: {res['portfolio_ledger']['enabled']}")
         print(f"What-If Lab Enabled: {res['whatif_lab']['enabled']}")
         print(f"Event Calendar Enabled: {res['events']['enabled']}")
+        print(f"Disclosure Intelligence Enabled: {res['disclosures']['enabled']}")

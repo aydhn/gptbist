@@ -622,6 +622,7 @@ def add_validate_backtest_parser(subparsers):
 
 
 def add_telegram_center_parser(subparsers):
+    add_disclosures_parser(subparsers)
     parser = subparsers.add_parser('telegram-center', help='Manage Telegram Command Center')
     subs = parser.add_subparsers(dest='telegram_subcommand', required=True)
 
@@ -2473,3 +2474,57 @@ def setup_whatif_parser(subparsers):
     # config
     conf_parser = whatif_subs.add_parser("config", help="View what-if config")
     conf_parser.add_argument("--json", action="store_true")
+
+def add_disclosures_parser(subparsers):
+    parser = subparsers.add_parser("disclosures", help="Manage Disclosure Intelligence")
+    subs = parser.add_subparsers(dest="disc_command", required=True)
+
+    imp = subs.add_parser("import", help="Import disclosures")
+    imp.add_argument("--file", type=str)
+    imp.add_argument("--folder", type=str)
+    imp.add_argument("--confirm", action="store_true")
+    imp.add_argument("--dry-run", action="store_true")
+    imp.add_argument("--json", action="store_true")
+
+    ls = subs.add_parser("list", help="List disclosures")
+    ls.add_argument("--symbol", type=str)
+    ls.add_argument("--type", type=str)
+    ls.add_argument("--limit", type=int, default=50)
+    ls.add_argument("--json", action="store_true")
+
+    show = subs.add_parser("show", help="Show disclosure details")
+    show.add_argument("disclosure_id", type=str)
+    show.add_argument("--json", action="store_true")
+
+    clf = subs.add_parser("classify", help="Classify disclosure")
+    clf.add_argument("disclosure_id", type=str)
+    clf.add_argument("--json", action="store_true")
+
+    ext = subs.add_parser("extract", help="Extract events")
+    ext.add_argument("disclosure_id", type=str)
+    ext.add_argument("--create-event", action="store_true")
+    ext.add_argument("--confirm", action="store_true")
+    ext.add_argument("--json", action="store_true")
+
+    ass = subs.add_parser("assess", help="Assess impact")
+    ass.add_argument("disclosure_id", type=str)
+    ass.add_argument("--json", action="store_true")
+
+    dig = subs.add_parser("digest", help="Build digest")
+    dig.add_argument("--symbol", type=str)
+    dig.add_argument("--json", action="store_true")
+
+    lnk = subs.add_parser("link-events", help="Link events")
+    lnk.add_argument("disclosure_id", type=str)
+    lnk.add_argument("--json", action="store_true")
+
+    rep = subs.add_parser("report", help="Generate report")
+    rep.add_argument("--latest", action="store_true")
+    rep.add_argument("--json", action="store_true")
+
+    rec = subs.add_parser("recent", help="Recent disclosures")
+    rec.add_argument("--limit", type=int, default=10)
+    rec.add_argument("--json", action="store_true")
+
+    conf = subs.add_parser("config", help="Show config")
+    conf.add_argument("--json", action="store_true")
