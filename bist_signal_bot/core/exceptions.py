@@ -1504,3 +1504,27 @@ class CounterfactualAnalysisError(WhatIfError):
 
 class WhatIfStorageError(WhatIfError):
     pass
+
+class EventCalendarError(BistSignalBotError):
+    pass
+
+class EventValidationError(EventCalendarError):
+    pass
+
+class EventImportError(EventCalendarError):
+    pass
+
+class EventWindowError(EventCalendarError):
+    pass
+
+class EventRiskError(EventCalendarError):
+    pass
+
+class BlackoutPolicyError(EventCalendarError):
+    pass
+
+class EventLinkingError(EventCalendarError):
+    pass
+
+class EventStorageError(EventCalendarError):
+    pass

@@ -6658,3 +6658,6 @@ def handle_whatif_commands(args):
         else:
             for k, v in data.items():
                 print(f"{k}: {v}")
+
+# Keep handle_event_calendar_command inside event_calendar_group.py, just import it
+from bist_signal_bot.cli.event_calendar_group import register_event_calendar_commands, handle_event_calendar_command
