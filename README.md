@@ -755,3 +755,6 @@ The What-If Scenario Lab is a research-only environment designed to test counter
 - Features: Assumption Overrides, Sensitivity Analysis, Capital Scaling, Policy Sandbox.
 - Integrated fully with Portfolio Construction and Ledger without altering global configuration or writing mutating states to the main ledger.
 - *Disclaimer: Scenario results are research-only and do not constitute financial advice. No real orders are executed.*
+
+## Event Risk Calendar
+Phase 79 introduced the Event Risk Calendar component, allowing local-first tracking of BIST financial results and macro events. It supports generating Event Risk Assessments, managing Blackout Windows, and generating reports. All actions are strictly for research and do not connect to external brokers or paid services.

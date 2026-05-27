@@ -28,3 +28,55 @@ python -m bist_signal_bot what-if capital-scale --notionals 50000 100000 250000
 python -m bist_signal_bot what-if policy --preset conservative-liquidity
 python -m bist_signal_bot what-if report --latest
 ```
+
+## Event Calendar Examples
+
+```bash
+# Import events
+python -m bist_signal_bot event-calendar import --file data/imports/events.csv --dry-run
+python -m bist_signal_bot event-calendar import --file data/imports/events.csv --confirm
+
+# List events
+python -m bist_signal_bot event-calendar list
+python -m bist_signal_bot event-calendar list --symbol ASELS
+python -m bist_signal_bot event-calendar list --type EARNINGS --json
+
+# Show details
+python -m bist_signal_bot event-calendar show EVENT_ID
+python -m bist_signal_bot event-calendar show EVENT_ID --json
+
+# Upcoming
+python -m bist_signal_bot event-calendar upcoming --days 30
+python -m bist_signal_bot event-calendar upcoming --symbol ASELS --json
+
+# Active Windows
+python -m bist_signal_bot event-calendar windows
+python -m bist_signal_bot event-calendar windows --symbol ASELS --json
+
+# Risk Check
+python -m bist_signal_bot event-calendar check ASELS
+python -m bist_signal_bot event-calendar check ASELS --strategy moving_average_trend --json
+
+# Portfolio Check
+python -m bist_signal_bot event-calendar portfolio-check --symbols ASELS THYAO GARAN
+python -m bist_signal_bot event-calendar portfolio-check --portfolio-id PORTFOLIO_ID --json
+
+# Policies
+python -m bist_signal_bot event-calendar policies
+python -m bist_signal_bot event-calendar policies --json
+
+# Snapshot
+python -m bist_signal_bot event-calendar snapshot
+python -m bist_signal_bot event-calendar snapshot --json
+
+# Report
+python -m bist_signal_bot event-calendar report
+python -m bist_signal_bot event-calendar report --latest --json
+
+# Recent
+python -m bist_signal_bot event-calendar recent
+python -m bist_signal_bot event-calendar recent --limit 10 --json
+
+# Config
+python -m bist_signal_bot event-calendar config
+```

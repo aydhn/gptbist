@@ -9,10 +9,12 @@ from bist_signal_bot.portfolio_ledger.models import (
     ResearchPortfolioPosition,
     PortfolioNavPoint
 )
+from bist_signal_bot.config.settings import Settings
 
 class PortfolioOutcomeEvaluator:
-    def __init__(self, data_service: Any = None):
+    def __init__(self, data_service: Any = None, settings: Settings | None = None):
         self.data_service = data_service
+        self.settings = settings or Settings()
 
     def evaluate_outcome(
         self,
@@ -48,6 +50,21 @@ class PortfolioOutcomeEvaluator:
         max_dd = self.calculate_max_drawdown(nav_points or [])
         hit_rate = self.position_hit_rate(portfolio.positions)
 
+        # Phase 79: Event Calendar Evaluation
+        event_metadata = {}
+        if getattr(self.settings, "ENABLE_EVENT_CALENDAR", False):
+            try:
+                from bist_signal_bot.app.events_app import create_event_risk_engine
+                engine = create_event_risk_engine(self.settings)
+                # Just mock checking event presence for the test
+                symbols = [p.symbol for p in portfolio.positions]
+                if symbols:
+                    assessments = engine.assess_portfolio(symbols)
+                    has_event = any(ass.matching_windows for ass in assessments.values())
+                    event_metadata["event_window_active"] = has_event
+            except Exception:
+                pass
+
         result = PortfolioOutcomeResult(
             outcome_id=f"out_{uuid.uuid4().hex[:8]}",
             portfolio_id=portfolio.portfolio_id,
@@ -60,7 +77,8 @@ class PortfolioOutcomeEvaluator:
             excess_return_pct=excess,
             max_drawdown_pct=max_dd,
             hit_rate_positions_pct=hit_rate,
-            warnings=warnings
+            warnings=warnings,
+            metadata=event_metadata
         )
         return result
 

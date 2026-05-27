@@ -17,6 +17,12 @@ class OutcomeCohortAnalyzer:
         cohorts.extend(self.cohort_by_field(records, "regime_label", score_type))
         cohorts.extend(self.cohort_by_field(records, "liquidity_status", score_type))
 
+        # Phase 79: Event Cohorts
+        if getattr(self.settings, "ENABLE_EVENT_CALENDAR", False):
+            cohorts.extend(self.cohort_by_field(records, "event_window_active", score_type))
+            cohorts.extend(self.cohort_by_field(records, "event_type", score_type))
+            cohorts.extend(self.cohort_by_field(records, "event_severity", score_type))
+
         return cohorts
 
     def cohort_by_field(self, records: list[OutcomeRecord], field_name: str, score_type: CalibrationScoreType) -> list[OutcomeCohort]:

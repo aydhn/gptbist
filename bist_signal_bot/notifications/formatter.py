@@ -1464,3 +1464,38 @@ def format_portfolio_ledger_report(report: Any) -> str:
             f"Tested Policy: {result.policy_name}"
         ]
         return "\n".join(lines)
+
+def format_market_event(event: Any) -> str:
+    msg = f"📅 **Market Event:** {event.title}\n"
+    msg += f"• Date: {event.event_date.strftime('%Y-%m-%d')}\n"
+    msg += f"• Type: {event.event_type.value}\n"
+    msg += f"• Scope: {event.scope.value}\n"
+    if event.symbol:
+        msg += f"• Symbol: {event.symbol}\n"
+    msg += f"• Severity: {event.severity.value}\n"
+    msg += f"• Status: {event.status.value}\n"
+    msg += "\n*This is an operational research metadata record. It is not investment advice. No real order was sent.*\n"
+    return msg
+
+def format_event_risk_assessment(assessment: Any) -> str:
+    msg = f"⚠️ **BIST Bot Event Risk Özeti**\n\n"
+    msg += f"Sembol: {assessment.symbol or 'Market-wide'}\n"
+    if assessment.matching_events:
+        msg += f"Yakın Event: {assessment.matching_events[0].title}\n"
+    else:
+        msg += "Yakın Event: None\n"
+
+    window_status = "ACTIVE" if assessment.matching_windows else "NONE"
+    msg += f"Event Window: {window_status}\n"
+    msg += f"Risk Score: {assessment.risk_score or 0}\n"
+    msg += f"Decision: {assessment.decision.value}\n\n"
+    msg += "Bu çıktı araştırma amaçlı event risk özetidir.\nYatırım tavsiyesi değildir.\nGerçek emir gönderilmedi.\n"
+    return msg
+
+def format_event_calendar_snapshot(snapshot: Any) -> str:
+    msg = f"🗓️ **Event Calendar Snapshot**\n"
+    msg += f"• Total Events: {snapshot.events_count}\n"
+    msg += f"• Upcoming: {snapshot.upcoming_count}\n"
+    msg += f"• High Severity: {snapshot.high_severity_count}\n"
+    msg += "\n*This snapshot is research-only metadata. No real orders were sent.*\n"
+    return msg

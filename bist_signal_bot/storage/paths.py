@@ -459,3 +459,10 @@ def get_whatif_dir(settings=None) -> Path:
     d = get_data_dir(s) / getattr(s, "WHATIF_DIR_NAME", "whatif")
     d.mkdir(parents=True, exist_ok=True)
     return d
+
+def get_events_dir(settings=None) -> Path:
+    base = get_data_dir(settings)
+    events_dir_name = getattr(settings, 'EVENTS_DIR_NAME', 'events') if settings else 'events'
+    dir_path = base / events_dir_name
+    dir_path.mkdir(parents=True, exist_ok=True)
+    return dir_path

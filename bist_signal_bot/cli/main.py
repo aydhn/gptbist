@@ -205,12 +205,25 @@ def run_cli(argv: list[str] | None = None) -> int:
         parser = argparse.ArgumentParser()
         subparsers = parser.add_subparsers(dest="command")
         from bist_signal_bot.cli.parsers import add_governance_parser, add_config_registry_parser
+        from bist_signal_bot.cli.event_calendar_group import register_event_calendar_commands
+        register_event_calendar_commands(subparsers)
         add_governance_parser(subparsers)
 
         # Fake parse just for governance
         args, _ = parser.parse_known_args(['governance'] + args_to_parse[1:])
         from bist_signal_bot.cli.commands import handle_governance_command
         handle_governance_command(args)
+        return 0
+
+    if args_to_parse and args_to_parse[0] == "event-calendar":
+        import argparse
+        parser = argparse.ArgumentParser()
+        subparsers = parser.add_subparsers(dest="command")
+        from bist_signal_bot.cli.event_calendar_group import register_event_calendar_commands
+        register_event_calendar_commands(subparsers)
+        args, _ = parser.parse_known_args(["event-calendar"] + args_to_parse[1:])
+        from bist_signal_bot.cli.event_calendar_group import handle_event_calendar_command
+        handle_event_calendar_command(args)
         return 0
 
     if args_to_parse and args_to_parse[0] == 'maintenance':
