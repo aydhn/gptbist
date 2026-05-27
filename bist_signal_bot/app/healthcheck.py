@@ -23,6 +23,17 @@ def run_healthcheck(settings=None, as_json=False):
             "policy_manager_capable": True
         },
 
+
+        "valuation": {
+            "enabled": getattr(settings, "ENABLE_VALUATION", True),
+            "market_input_builder_capable": True,
+            "multiple_calculator_capable": True,
+            "band_analyzer_capable": True,
+            "peer_comparator_capable": True,
+            "risk_engine_capable": True,
+            "store_capable": True
+        },
+
         "financials": {
             "enabled": getattr(settings, "ENABLE_FINANCIALS", True),
             "importer_capable": True,
@@ -57,3 +68,5 @@ def run_healthcheck(settings=None, as_json=False):
         print(f"Event Calendar Enabled: {res['events']['enabled']}")
         print(f"Disclosure Intelligence Enabled: {res['disclosures']['enabled']}")
     print(f"Financials enabled: {res['financials']['enabled']}")
+
+    return res

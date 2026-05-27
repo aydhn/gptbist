@@ -2528,3 +2528,46 @@ def add_disclosures_parser(subparsers):
 
     conf = subs.add_parser("config", help="Show config")
     conf.add_argument("--json", action="store_true")
+
+def add_valuation_parser(subparsers):
+    parser = subparsers.add_parser("valuation", help="Valuation Intelligence")
+    sub = parser.add_subparsers(dest="val_command", required=True)
+
+    c = sub.add_parser("compute", help="Compute valuation for a symbol")
+    c.add_argument("symbol", type=str)
+    c.add_argument("--save", action="store_true")
+    c.add_argument("--json", action="store_true")
+
+    s = sub.add_parser("show", help="Show valuation for a symbol")
+    s.add_argument("symbol", type=str)
+    s.add_argument("--json", action="store_true")
+
+    m = sub.add_parser("multiples", help="Show multiples for a symbol")
+    m.add_argument("symbol", type=str)
+    m.add_argument("--metric", type=str)
+    m.add_argument("--json", action="store_true")
+
+    b = sub.add_parser("bands", help="Show valuation bands for a symbol")
+    b.add_argument("symbol", type=str)
+    b.add_argument("--metric", type=str)
+    b.add_argument("--json", action="store_true")
+
+    p = sub.add_parser("compare-peers", help="Compare peers for a symbol")
+    p.add_argument("symbol", type=str)
+    p.add_argument("--metric", type=str)
+    p.add_argument("--json", action="store_true")
+
+    r = sub.add_parser("risk", help="Show valuation risk for a symbol")
+    r.add_argument("symbol", type=str)
+    r.add_argument("--json", action="store_true")
+
+    rep = sub.add_parser("report", help="Generate valuation report")
+    rep.add_argument("--symbol", type=str)
+    rep.add_argument("--json", action="store_true")
+
+    rec = sub.add_parser("recent", help="Show recent valuations")
+    rec.add_argument("--limit", type=int, default=10)
+    rec.add_argument("--json", action="store_true")
+
+    cfg = sub.add_parser("config", help="Show valuation config")
+    cfg.add_argument("--json", action="store_true")

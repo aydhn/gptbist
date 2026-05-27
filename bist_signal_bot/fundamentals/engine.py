@@ -21,6 +21,29 @@ class FundamentalEngine:
         return cls(store, FundamentalRatioCalculator(), FactorScorer(), CorporateEventAnalyzer(), SectorClassifier(store), FundamentalFreshnessChecker(store), FundamentalSignalFilter())
     def import_data(self, request: FundamentalImportRequest) -> FundamentalImportResult: pass
     def build_scorecard(self, symbol: str, as_of_date: Optional[datetime] = None) -> FundamentalScorecard:
+        # Phase 82 Valuation injection
+        val_score = None
+        val_percentile = None
+        peer_score = None
+        val_risk = None
+
+        try:
+            from bist_signal_bot.app.valuation_app import create_valuation_store
+            store = create_valuation_store()
+            risk = store.load_latest_risk(symbol)
+            if risk:
+                val_score = risk.valuation_score
+                val_risk = risk.valuation_risk_level.value
+        except Exception:
+            pass
+
+        scorecard = FundamentalScorecard(symbol=symbol, as_of_date=as_of_date or datetime.now(), available_at=as_of_date or datetime.now(), composite_score=50.0, data_status=FundamentalDataStatus.VALID)
+        if hasattr(scorecard, 'metadata'):
+            scorecard.metadata['valuation_score'] = val_score
+            scorecard.metadata['valuation_risk_level'] = val_risk
+        return scorecard
+
+    def _old_build_scorecard(self, symbol: str, as_of_date: Optional[datetime] = None):
         return FundamentalScorecard(symbol=symbol, as_of_date=as_of_date or datetime.now(), available_at=as_of_date or datetime.now(), composite_score=50.0, data_status=FundamentalDataStatus.VALID)
     def build_scorecards(self, symbols: List[str], as_of_date: Optional[datetime] = None) -> List[FundamentalScorecard]: return [self.build_scorecard(s, as_of_date) for s in symbols]
     def filter_signal(self, signal: SignalCandidate, as_of_date: Optional[datetime] = None, mode: Optional[str] = None): pass

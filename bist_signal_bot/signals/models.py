@@ -239,6 +239,11 @@ class SignalFingerprint(BaseModel):
     metadata: Dict[str, Any] = Field(default_factory=dict)
 
 class TrackedSignal(BaseModel):
+    valuation_context_id: Optional[str] = None
+    valuation_score: Optional[float] = None
+    valuation_risk_level: Optional[str] = None
+    expensive_metric_count: Optional[int] = None
+    cheap_metric_count: Optional[int] = None
     signal_id: str
     fingerprint_id: str
     symbol: str

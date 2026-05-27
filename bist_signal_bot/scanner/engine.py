@@ -389,3 +389,18 @@ class SignalScannerEngine:
     def scan_all(self, strategy_name: str, **kwargs) -> ScanReport:
         req = self.build_default_request(strategy_name, all=True, **kwargs)
         return self.scan(req)
+
+    def add_valuation_context(self, result: SymbolScanResult) -> None:
+        if not getattr(self.settings, "SCANNER_INCLUDE_VALUATION_CONTEXT", True):
+            return
+
+        try:
+            from bist_signal_bot.app.valuation_app import create_valuation_store
+            store = create_valuation_store()
+            risk = store.load_latest_risk(result.symbol)
+            if risk:
+                setattr(result, "valuation_score", risk.valuation_score)
+                setattr(result, "valuation_risk_level", risk.valuation_risk_level.value)
+                setattr(result, "valuation_status", "FAIR") # Mock
+        except Exception:
+            pass

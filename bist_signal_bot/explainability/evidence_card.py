@@ -156,3 +156,21 @@ class EvidenceCardBuilder:
             importance=EvidenceImportance.MEDIUM
         )
         card.sections.append(section)
+
+
+    def section_valuation(self, symbol: str) -> EvidenceCardSection:
+        try:
+            from bist_signal_bot.app.valuation_app import create_valuation_store
+            store = create_valuation_store(self.settings)
+            risk = store.load_latest_risk(symbol)
+            if risk:
+                return EvidenceCardSection(
+                    section_id=str(uuid.uuid4()),
+                    section_type=EvidenceCardSectionType.RISK,
+                    title="Valuation Context",
+                    body=f"Score: {risk.valuation_score}. Level: {risk.valuation_risk_level.value}. {risk.recommended_decision}",
+                    status=ExplanationStatus.PASS
+                )
+        except Exception as e:
+            print(f'ERROR: {e}')
+        return None

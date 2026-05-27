@@ -1,3 +1,4 @@
+from typing import Any
 import json
 import time
 from pathlib import Path
@@ -12,7 +13,7 @@ class MaintenanceDoctor:
         self.settings = get_settings()
         self.required_dirs = [
             "logs", "reports", "scenarios", "stress", "drift", "research_lab",
-            "temp", "signals", "cache", "release", "research_ledger", "market_data", "models", "config_registry"
+            "temp", "signals", "cache", "release", "research_ledger", "market_data", "models", "config_registry", "valuation"
         ]
 
     def check_required_dirs(self) -> list[str]:

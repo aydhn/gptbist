@@ -175,3 +175,12 @@ class WhatIfScenarioFactory:
                 )
             ]
         )
+
+    def valuation_filter_on(self) -> WhatIfScenario:
+        return WhatIfScenario(
+            scenario_id=str(uuid.uuid4()),
+            name="Valuation Filter ON",
+            scenario_type=WhatIfScenarioType.SENSITIVITY,
+            description="Excludes extreme expensive candidates",
+            overrides=[WhatIfAssumptionOverride(assumption_type=AssumptionType.USE_VALUATION_SCORE, override_value=True)]
+        )

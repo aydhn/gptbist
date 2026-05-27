@@ -76,6 +76,10 @@ class SymbolScanIssue(BaseModel):
     metadata: Dict[str, Any] = Field(default_factory=dict)
 
 class SymbolScanResult(BaseModel):
+    valuation_score: Optional[float] = None
+    valuation_risk_level: Optional[str] = None
+    valuation_status: Optional[str] = None
+    key_valuation_metrics: Dict[str, Any] = Field(default_factory=dict)
     model_config = {"arbitrary_types_allowed": True}
     symbol: str
     status: ScanCandidateStatus

@@ -6,6 +6,57 @@ from bist_signal_bot.config.profiles import get_profile
 from bist_signal_bot.config.secrets import settings_safe_dump
 
 class Settings(BaseSettings):
+
+    # ------------------------------------------------------------------------------
+    # Valuation Intelligence (Phase 82)
+    # ------------------------------------------------------------------------------
+    ENABLE_VALUATION: bool = True
+    VALUATION_DIR_NAME: str = "valuation"
+    VALUATION_RESEARCH_ONLY: bool = True
+    VALUATION_SAVE_RESULTS: bool = True
+
+    VALUATION_USE_ADJUSTED_CLOSE: bool = True
+    VALUATION_REQUIRE_SHARES_OUTSTANDING: bool = False
+    VALUATION_MARKET_INPUT_STALE_DAYS: int = 30
+
+    VALUATION_CALCULATE_PE: bool = True
+    VALUATION_CALCULATE_PB: bool = True
+    VALUATION_CALCULATE_EV_EBITDA: bool = True
+    VALUATION_CALCULATE_EV_SALES: bool = True
+    VALUATION_CALCULATE_FCF_YIELD: bool = True
+    VALUATION_DENOMINATOR_EPSILON: float = 1e-9
+    VALUATION_EXTREME_MULTIPLE_ABS_WARN: float = 1000.0
+
+    VALUATION_MIN_HISTORY_POINTS: int = 8
+    VALUATION_EXTREME_CHEAP_PERCENTILE: float = 10.0
+    VALUATION_CHEAP_PERCENTILE: float = 25.0
+    VALUATION_EXPENSIVE_PERCENTILE: float = 75.0
+    VALUATION_EXTREME_EXPENSIVE_PERCENTILE: float = 90.0
+
+    VALUATION_MIN_PEER_COUNT: int = 3
+    VALUATION_USE_SECTOR_PEERS: bool = True
+
+    VALUATION_SCORE_WEIGHT_HISTORICAL: float = 0.40
+    VALUATION_SCORE_WEIGHT_PEER: float = 0.35
+    VALUATION_SCORE_WEIGHT_QUALITY: float = 0.15
+    VALUATION_SCORE_WEIGHT_DATA_QUALITY: float = 0.10
+    VALUATION_VALUE_TRAP_QUALITY_THRESHOLD: float = 40.0
+    VALUATION_EXPENSIVE_RISK_THRESHOLD: float = 75.0
+
+    SCANNER_INCLUDE_VALUATION_CONTEXT: bool = True
+    SCANNER_VALUATION_METADATA_ONLY: bool = True
+
+    PORTFOLIO_USE_VALUATION_SCORE: bool = True
+    PORTFOLIO_VALUATION_WEIGHT: float = 0.10
+
+    RUNTIME_VALUATION_CONTEXT_ENABLED: bool = True
+
+    SCHEDULER_ENABLE_VALUATION_WEEKLY: bool = False
+
+    REPORT_INCLUDE_VALUATION: bool = True
+
+    RESEARCH_AUTO_LOG_VALUATION: bool = False
+
     # Financial Statement Intelligence
     ENABLE_FINANCIALS: bool = True
     FINANCIALS_DIR_NAME: str = "financials"
