@@ -85,6 +85,10 @@ def _clamp_score(v: float | None) -> float | None:
     return max(0.0, min(100.0, float(v)))
 
 class OutcomeRecord(BaseModel):
+    valuation_score_bucket: Optional[str] = None
+    valuation_risk_level: Optional[str] = None
+    historical_valuation_percentile_bucket: Optional[str] = None
+    peer_relative_bucket: Optional[str] = None
     outcome_id: str
     signal_id: str | None = None
     symbol: str

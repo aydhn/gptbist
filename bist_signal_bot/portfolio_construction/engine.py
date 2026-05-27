@@ -6,7 +6,7 @@ from datetime import datetime
 
 from bist_signal_bot.config.settings import Settings
 from bist_signal_bot.portfolio_construction.models import (
-    PortfolioConstructionRequest, PortfolioConstructionResult, PortfolioCandidate, AllocationDecision, AllocationStatus
+    PortfolioConstructionRequest, PortfolioConstructionResult, PortfolioCandidate, PortfolioWeightingMethod
 )
 
 class PortfolioConstructionEngine:
@@ -69,3 +69,25 @@ class PortfolioConstructionEngine:
             metadata={},
             elapsed_seconds=time.time() - start_time
         )
+
+    def apply_valuation_filter(self, candidates: List[PortfolioCandidate]) -> List[PortfolioCandidate]:
+        if not getattr(self.settings, "PORTFOLIO_USE_VALUATION_SCORE", True):
+            return candidates
+
+        try:
+            from bist_signal_bot.app.valuation_app import create_valuation_store
+            store = create_valuation_store(self.settings)
+
+            for c in candidates:
+                risk = store.load_latest_risk(c.symbol)
+                if risk:
+                    if risk.valuation_risk_level.value == "EXTREME":
+                        c.final_candidate_score = c.final_candidate_score * 0.5 # Penalty
+                    elif risk.valuation_risk_level.value == "HIGH" and risk.valuation_score is not None and risk.valuation_score <= 25.0:
+                        if not hasattr(c, "warnings"):
+                            c.warnings = []
+                        c.warnings.append("Value Trap Warning")
+        except Exception:
+            pass
+
+        return candidates

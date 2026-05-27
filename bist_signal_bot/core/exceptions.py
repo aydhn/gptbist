@@ -1590,3 +1590,27 @@ class FinancialSectorCompareError(FinancialsError):
 
 class FinancialStorageError(FinancialsError):
     pass
+
+class ValuationError(BistSignalBotError):
+    pass
+
+class ValuationInputError(ValuationError):
+    pass
+
+class ValuationMultipleError(ValuationError):
+    pass
+
+class ValuationBandError(ValuationError):
+    pass
+
+class PeerValuationError(ValuationError):
+    pass
+
+class ValuationRiskError(ValuationError):
+    pass
+
+class ValuationScoringError(ValuationError):
+    pass
+
+class ValuationStorageError(ValuationError):
+    pass

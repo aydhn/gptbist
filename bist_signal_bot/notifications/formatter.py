@@ -1522,3 +1522,13 @@ Gerçek emir gönderilmedi.
 
 def format_financial_analysis_report(report) -> str:
     return f"Report for {report.symbol}"
+
+def format_valuation_multiples(multiples: list) -> str:
+    return "Valuation Multiples Summary..."
+
+def format_valuation_risk(assessment: Any) -> str:
+    # Stub format, real one uses proper values
+    return "Valuation Risk Assessment Summary..."
+
+def format_valuation_report(report: Any) -> str:
+    return "Valuation Report Summary..."

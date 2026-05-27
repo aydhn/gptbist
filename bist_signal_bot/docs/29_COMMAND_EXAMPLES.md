@@ -80,3 +80,7 @@ python -m bist_signal_bot event-calendar recent --limit 10 --json
 # Config
 python -m bist_signal_bot event-calendar config
 ```
+
+## Valuation Intelligence
+`python -m bist_signal_bot valuation compute ASELS --save`
+`python -m bist_signal_bot valuation risk ASELS --json`

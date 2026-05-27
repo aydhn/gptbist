@@ -244,6 +244,33 @@ def run_cli(argv: list[str] | None = None) -> int:
 
 
 
+
+    if args_to_parse and args_to_parse[0] == 'valuation':
+        import argparse
+        parser = argparse.ArgumentParser()
+        subparsers = parser.add_subparsers(dest="command")
+        from bist_signal_bot.cli.parsers import add_valuation_parser
+        add_valuation_parser(subparsers)
+        args, _ = parser.parse_known_args(['valuation'] + args_to_parse[1:])
+        # Now we delegate to the functions mapped earlier or write a delegator wrapper
+        from bist_signal_bot.cli.valuation_commands import (
+            cmd_valuation_compute, cmd_valuation_show, cmd_valuation_multiples,
+            cmd_valuation_bands, cmd_valuation_compare_peers, cmd_valuation_risk,
+            cmd_valuation_report, cmd_valuation_recent, cmd_valuation_config
+        )
+        ctx = bootstrap_app()
+        val_cmd = args.val_command
+        if val_cmd == "compute": return cmd_valuation_compute(args, ctx)
+        elif val_cmd == "show": return cmd_valuation_show(args, ctx)
+        elif val_cmd == "multiples": return cmd_valuation_multiples(args, ctx)
+        elif val_cmd == "bands": return cmd_valuation_bands(args, ctx)
+        elif val_cmd == "compare-peers": return cmd_valuation_compare_peers(args, ctx)
+        elif val_cmd == "risk": return cmd_valuation_risk(args, ctx)
+        elif val_cmd == "report": return cmd_valuation_report(args, ctx)
+        elif val_cmd == "recent": return cmd_valuation_recent(args, ctx)
+        elif val_cmd == "config": return cmd_valuation_config(args, ctx)
+        return 0
+
     if args_to_parse and args_to_parse[0] == 'what-if':
         import argparse
         parser = argparse.ArgumentParser()

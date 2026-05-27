@@ -476,3 +476,11 @@ def get_financials_dir(settings=None) -> Path:
     fin_dir = data_dir / settings.FINANCIALS_DIR_NAME
     fin_dir.mkdir(parents=True, exist_ok=True)
     return fin_dir
+
+def get_valuation_dir(settings=None) -> Path:
+    settings = settings or get_settings()
+    base = get_data_dir(settings)
+    dname = getattr(settings, "VALUATION_DIR_NAME", "valuation")
+    path = base / dname
+    path.mkdir(parents=True, exist_ok=True)
+    return path

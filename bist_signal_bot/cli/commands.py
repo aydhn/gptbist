@@ -22,6 +22,8 @@ from bist_signal_bot.data.mock_provider import MockMarketDataProvider
 import argparse
 
 from bist_signal_bot.cli.ensemble_commands import setup_ensemble_parser, handle_ensemble_command
+from bist_signal_bot.cli.valuation_commands import *
+from bist_signal_bot.cli.parsers import add_valuation_parser
 
 import sys
 import platform

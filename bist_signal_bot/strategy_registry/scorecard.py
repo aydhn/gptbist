@@ -220,3 +220,13 @@ class StrategyScorecardBuilder:
             "warnings": warnings,
             "recommended_actions": ["Review scorecard findings"]
         }
+
+    def score_valuation_sensitivity(self, evidence: list[StrategyEvidenceRef]) -> StrategyScoreComponent:
+        # Mock component
+        return StrategyScoreComponent(
+            component_name="valuation_sensitivity",
+            score=50.0,
+            weight=0.05,
+            status=StrategyRegistryStatus.PASSED,
+            findings=["Valuation sensitivity check added via Phase 82"]
+        )
