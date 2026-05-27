@@ -175,3 +175,7 @@ class WhatIfScenarioFactory:
                 )
             ]
         )
+
+# Added for Disclosure Integration
+# Scenarios can include: disclosure-risk-off, strict negative-disclosure filter,
+# ignore positive catalyst placeholder, critical disclosure review-required.

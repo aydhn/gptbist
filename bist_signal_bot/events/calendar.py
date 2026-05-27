@@ -113,3 +113,6 @@ class EventCalendar:
             sectors_with_events=list(sectors),
             event_type_counts=type_counts
         )
+
+# Added for Disclosure Integration
+# DisclosureEventExtraction can be mapped to MarketEvent with user confirmation

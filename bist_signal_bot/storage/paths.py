@@ -466,3 +466,11 @@ def get_events_dir(settings=None) -> Path:
     dir_path = base / events_dir_name
     dir_path.mkdir(parents=True, exist_ok=True)
     return dir_path
+
+def get_disclosures_dir(settings=None) -> Path:
+    from bist_signal_bot.config.settings import Settings
+    if settings is None:
+        settings = Settings()
+    path = get_data_dir(settings) / getattr(settings, "DISCLOSURES_DIR_NAME", "disclosures")
+    path.mkdir(parents=True, exist_ok=True)
+    return path

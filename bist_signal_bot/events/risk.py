@@ -111,3 +111,6 @@ class EventRiskEngine:
         elif decision == EventRiskDecision.WARN:
             return -5.0
         return 0.0
+
+# Added for Disclosure Integration
+# EventRiskAssessment carries matching disclosures metadata

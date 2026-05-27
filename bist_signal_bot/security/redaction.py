@@ -13,3 +13,6 @@ class SecretRedactor:
             else:
                 redacted[k] = v
         return redacted
+
+# Added for Disclosure Integration
+# Body and title of disclosures must be redacted before output

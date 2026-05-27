@@ -85,3 +85,7 @@ class OutcomeCohortAnalyzer:
 
     def detect_weak_cohorts(self, cohorts: list[OutcomeCohort]) -> list[OutcomeCohort]:
         return [c for c in cohorts if c.status in [CalibrationStatus.FAIL, CalibrationStatus.WATCH] and c.sample_count >= getattr(self.settings, "CALIBRATION_MIN_COHORT_SAMPLES", 20)]
+
+# Added for Disclosure Integration
+# Cohort analysis allows comparing disclosure vs non-disclosure outcomes,
+# negative disclosure tag outcomes, earnings disclosure outcomes

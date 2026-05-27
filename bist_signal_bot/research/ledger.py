@@ -101,7 +101,7 @@ class ResearchLedger:
             "runs": [e.run.summary() for e in entries]
         }
 
-    def log_whatif_run(self, result: Any, tags: list[str] | None = None) -> ResearchEvent:
+    def log_whatif_run(self, result: Any, tags: list[str] | None = None) -> "ResearchEvent":
         metrics = {
             "elapsed_seconds": getattr(result, "elapsed_seconds", 0.0),
             "status": getattr(result, "status", "UNKNOWN")

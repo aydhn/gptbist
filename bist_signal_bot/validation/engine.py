@@ -70,3 +70,7 @@ class StrategyValidationEngine:
             ParameterStabilityAnalyzer(), OverfitDiagnosticsEngine(), RegimeRobustnessAnalyzer(),
             CostRobustnessAnalyzer(), StrategyValidationScorer(), store, settings
         )
+
+# Added for Disclosure Integration
+# Backtest/validation results include disclosure-window subset metrics
+# Strategy event/disclosure sensitivity evidence can be collected

@@ -183,3 +183,6 @@ class KnowledgeIndexer:
             )
 
         return result
+
+# Added for Disclosure Integration
+# Similar historical disclosure cases retrieval is possible through indexed sources

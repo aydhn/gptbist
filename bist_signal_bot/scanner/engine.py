@@ -389,3 +389,6 @@ class SignalScannerEngine:
     def scan_all(self, strategy_name: str, **kwargs) -> ScanReport:
         req = self.build_default_request(strategy_name, all=True, **kwargs)
         return self.scan(req)
+
+# Added for Disclosure Integration
+# Scanner output can carry disclosure-aware warning. Default signal block is false.

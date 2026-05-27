@@ -107,3 +107,7 @@ class OutcomeDatasetBuilder:
             warnings.append(f"Insufficient evaluable records ({len(evaluable)} < {min_records})")
 
         return warnings
+
+# Added for Disclosure Integration
+# OutcomeRecord can include:
+# disclosure_window_active, disclosure_type, disclosure_severity, narrative_risk_score

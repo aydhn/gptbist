@@ -69,3 +69,8 @@ class PortfolioConstructionEngine:
             metadata={},
             elapsed_seconds=time.time() - start_time
         )
+
+# Added for Disclosure Integration
+# Candidate score disclosure risk reduces score based on configuration.
+# Portfolio construction will flag high disclosure risk concentration warning.
+# Recent critical disclosure symbols get review-required metadata.

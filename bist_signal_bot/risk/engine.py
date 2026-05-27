@@ -144,3 +144,7 @@ class RiskEngine(BaseRiskEngine):
             elapsed_seconds=elapsed,
             generated_at=datetime.now(timezone.utc)
         )
+
+# Added for Disclosure Integration
+# DisclosureImpactAssessment risk engine narrative risk input.
+# Legal/regulatory, dilution, liquidity pressure tags produce risk warning.

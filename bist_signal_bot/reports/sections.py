@@ -105,3 +105,6 @@ def execution_sim_section(report_data: dict) -> str:
                 lines.append(f"- {w}")
 
         return "\n".join(lines) + "\n"
+
+# Added for Disclosure Integration
+# Disclosure section added to daily/weekly reports

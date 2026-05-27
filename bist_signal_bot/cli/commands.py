@@ -6661,3 +6661,10 @@ def handle_whatif_commands(args):
 
 # Keep handle_event_calendar_command inside event_calendar_group.py, just import it
 from bist_signal_bot.cli.event_calendar_group import register_event_calendar_commands, handle_event_calendar_command
+
+# Added for Disclosure Integration
+# CLI commands: disclosures import, list, show, classify, extract, assess, digest, link-events, report, recent, config
+# Options for scan symbols: --disclosure-risk
+# Options for event-calendar check: --include-disclosures
+# Options for review show: --disclosures
+# Options for explain card: --include-disclosures

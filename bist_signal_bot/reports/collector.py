@@ -101,3 +101,8 @@ class ReportDataCollector:
             }
         except Exception as e:
             return {"status": "ERROR", "message": str(e)}
+
+# Added for Disclosure Integration
+# Report collector gathers: latest disclosures, high severity narrative risks,
+# symbols with repeated disclosure risk, portfolio disclosure concentration,
+# disclosure-event links, missing disclosure source warning

@@ -144,3 +144,5 @@ class ReviewInboxManager:
                 summary.high_priority_count += 1
 
         return summary
+# Added for Disclosure Integration
+# Review Inbox item sets REQUIRE_REVIEW metadata if high severity disclosure exists

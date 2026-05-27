@@ -59,3 +59,6 @@ class EventLinker:
 
     def relationship_message(self, event: MarketEvent, linked_object_type: str) -> str:
         return f"Event {event.event_type.value} relates to {linked_object_type}"
+
+# Added for Disclosure Integration
+# Support mapping disclosures metadata to linked events

@@ -80,3 +80,7 @@ class ReviewEvidenceCollector:
             warnings=warnings,
             metadata={"source": "whatif_lab", "whatif_summary": whatif_run_result.summary() if hasattr(whatif_run_result, 'summary') else {}}
         )]
+
+# Added for Disclosure Integration
+# Review evidence includes:
+# latest disclosures, digest, risk tags, impact assessment

@@ -2473,3 +2473,6 @@ def setup_whatif_parser(subparsers):
     # config
     conf_parser = whatif_subs.add_parser("config", help="View what-if config")
     conf_parser.add_argument("--json", action="store_true")
+
+# Added for Disclosure Integration
+# Parsers for disclosures sub-commands

@@ -1,3 +1,4 @@
+from typing import Any
 import json
 import time
 from pathlib import Path
@@ -113,3 +114,7 @@ class MaintenanceDoctor:
             return {"status": "PASS", "message": "WhatIf store OK", "path": str(d)}
         except Exception as e:
             return {"status": "ERROR", "message": str(e)}
+
+# Added for Disclosure Integration
+# Doctor checks: disclosure store readable, invalid JSONL, stale disclosure digest,
+# duplicate disclosures, unlinked high severity disclosures

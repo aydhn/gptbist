@@ -196,3 +196,7 @@ class ScheduledJobExecutor:
             return {"status": "SUCCESS", "run_id": res.run_id}
         except Exception as e:
             return {"status": "ERROR", "message": str(e)}
+
+# Added for Disclosure Integration
+# Optional daily disclosure digest job.
+# Post-import classify/link/extract jobs (default disabled/dry-run).

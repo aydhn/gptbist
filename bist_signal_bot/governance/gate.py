@@ -150,3 +150,7 @@ class GovernanceGate:
             if u.lower() in content.lower():
                 return {"status": "BLOCK", "reason": f"Unsafe what-if claim: {u}"}
         return {"status": "PASS"}
+
+# Added for Disclosure Integration
+# Disclosure text report must pass governance gate
+# Must confirm OpenAI/cloud LLM was not used

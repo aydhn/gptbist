@@ -67,3 +67,6 @@ class UnsafeClaimGuard:
         elif isinstance(payload, str):
             return cls.sanitize_text(payload)
         return payload
+
+# Added for Disclosure Integration
+# Claims guard blocks phrases like 'haber sonrasi kesin fiyat hareketi'

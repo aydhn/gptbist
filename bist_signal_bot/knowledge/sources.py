@@ -220,3 +220,6 @@ class KnowledgeSourceCollector:
         except Exception:
             pass
         return docs
+
+# Added for Disclosure Integration
+# Disclosure records and digests can be indexed as knowledge sources

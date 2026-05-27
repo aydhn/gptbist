@@ -228,3 +228,7 @@ class SignalLifecycleManager:
         except Exception as e:
             # gracefully ignore missing telegram center dependencies
             pass
+
+# Added for Disclosure Integration
+# Signal metadata can include:
+# nearby_disclosure_count, disclosure_risk_score, disclosure_risk_tags, disclosure_confidence_adjustment

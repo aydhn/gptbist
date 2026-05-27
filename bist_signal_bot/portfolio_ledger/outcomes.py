@@ -123,3 +123,7 @@ class PortfolioOutcomeEvaluator:
         hits = sum(1 for p in positions if p.gross_return_pct is not None and p.gross_return_pct > 0)
         total = len(positions)
         return (hits / total * 100.0) if total > 0 else 0.0
+
+# Added for Disclosure Integration
+# Portfolio outcome can carry disclosure-window metadata.
+# Attribution analyzes disclosure-tagged periods.

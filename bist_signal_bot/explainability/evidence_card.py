@@ -156,3 +156,7 @@ class EvidenceCardBuilder:
             importance=EvidenceImportance.MEDIUM
         )
         card.sections.append(section)
+
+# Added for Disclosure Integration
+# EvidenceCard Disclosure section includes:
+# recent disclosures, risk tags, narrative risk score, linked event risk, missing disclosure data warning

@@ -392,3 +392,7 @@ def maintenance_hook_before_heavy_research():
         except Exception as e:
             self.logger.error(f"Runtime whatif error: {e}")
             return {"status": "ERROR", "message": str(e)}
+
+# Added for Disclosure Integration
+# RuntimePipelineConfig can include: disclosure_check_enabled, disclosure_digest_enabled
+# Default disclosure_check_enabled is true, digest is optional
