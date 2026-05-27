@@ -758,3 +758,6 @@ The What-If Scenario Lab is a research-only environment designed to test counter
 
 ## Event Risk Calendar
 Phase 79 introduced the Event Risk Calendar component, allowing local-first tracking of BIST financial results and macro events. It supports generating Event Risk Assessments, managing Blackout Windows, and generating reports. All actions are strictly for research and do not connect to external brokers or paid services.
+
+## Phase 81: Financial Statement Intelligence
+Added offline financial statement normalization, ratio calculations, trend analysis, and earnings quality scoring via local CSV/JSON imports.

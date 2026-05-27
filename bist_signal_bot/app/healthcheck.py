@@ -23,6 +23,14 @@ def run_healthcheck(settings=None, as_json=False):
             "policy_manager_capable": True
         },
 
+        "financials": {
+            "enabled": getattr(settings, "ENABLE_FINANCIALS", True),
+            "importer_capable": True,
+            "normalizer_capable": True,
+            "ratio_capable": True,
+            "quality_capable": True,
+            "store_capable": True
+        },
         "disclosures": {
             "enabled": getattr(settings, "ENABLE_DISCLOSURE_INTELLIGENCE", True),
             "importer_capable": True,
@@ -48,3 +56,4 @@ def run_healthcheck(settings=None, as_json=False):
         print(f"What-If Lab Enabled: {res['whatif_lab']['enabled']}")
         print(f"Event Calendar Enabled: {res['events']['enabled']}")
         print(f"Disclosure Intelligence Enabled: {res['disclosures']['enabled']}")
+    print(f"Financials enabled: {res['financials']['enabled']}")

@@ -466,3 +466,13 @@ def get_events_dir(settings=None) -> Path:
     dir_path = base / events_dir_name
     dir_path.mkdir(parents=True, exist_ok=True)
     return dir_path
+
+
+def get_financials_dir(settings=None) -> Path:
+    from bist_signal_bot.config.settings import get_settings
+    if settings is None:
+        settings = get_settings()
+    data_dir = get_data_dir(settings)
+    fin_dir = data_dir / settings.FINANCIALS_DIR_NAME
+    fin_dir.mkdir(parents=True, exist_ok=True)
+    return fin_dir
