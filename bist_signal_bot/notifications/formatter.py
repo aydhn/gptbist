@@ -1499,3 +1499,26 @@ def format_event_calendar_snapshot(snapshot: Any) -> str:
     msg += f"• High Severity: {snapshot.high_severity_count}\n"
     msg += "\n*This snapshot is research-only metadata. No real orders were sent.*\n"
     return msg
+
+def format_financial_statement(statement) -> str:
+    return f"Statement: {statement.symbol} {statement.fiscal_year} {statement.fiscal_period}"
+
+def format_financial_ratios(ratios) -> str:
+    return f"Ratios for {len(ratios)} metrics"
+
+def format_earnings_quality(assessment) -> str:
+    return f"""
+BIST Bot Finansal Özet
+
+Sembol: {assessment.symbol}
+Dönem: {assessment.fiscal_year}{assessment.fiscal_period}
+Earnings Quality Score: {assessment.overall_quality_score}
+Status: {assessment.status.value}
+
+Bu çıktı araştırma amaçlı finansal tablo özetidir.
+Yatırım tavsiyesi değildir.
+Gerçek emir gönderilmedi.
+"""
+
+def format_financial_analysis_report(report) -> str:
+    return f"Report for {report.symbol}"

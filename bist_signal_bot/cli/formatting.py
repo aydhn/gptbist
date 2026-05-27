@@ -122,7 +122,11 @@ def format_pattern_batch_result(result) -> str:
 
     return "\n".join(lines)
 
-import pandas as pd
+try:
+    import pandas as pd
+except ImportError:
+    pd = None
+
 
 def format_multi_timeframe_result(result) -> str:
     lines = [

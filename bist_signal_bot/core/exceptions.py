@@ -1559,3 +1559,34 @@ class DisclosureDigestError(DisclosureError):
 
 class DisclosureStorageError(DisclosureError):
     pass
+
+
+class FinancialsError(BistSignalBotError):
+    pass
+
+class FinancialImportError(FinancialsError):
+    pass
+
+class FinancialValidationError(FinancialsError):
+    pass
+
+class FinancialNormalizationError(FinancialsError):
+    pass
+
+class FinancialPeriodError(FinancialsError):
+    pass
+
+class FinancialRatioError(FinancialsError):
+    pass
+
+class FinancialTrendError(FinancialsError):
+    pass
+
+class EarningsQualityError(FinancialsError):
+    pass
+
+class FinancialSectorCompareError(FinancialsError):
+    pass
+
+class FinancialStorageError(FinancialsError):
+    pass
