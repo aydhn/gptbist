@@ -1,3 +1,4 @@
+from bist_signal_bot.cli.commands_disclosures import handle_disclosures, add_disclosures_parser
 from bist_signal_bot.cli.validation_commands import app as validation_app
 from bist_signal_bot.cli.commands_scenarios import scenario_cli
 

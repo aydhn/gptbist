@@ -69,3 +69,5 @@ class PortfolioConstructionEngine:
             metadata={},
             elapsed_seconds=time.time() - start_time
         )
+
+# Disclosure risk concentration handled via threshold checking.

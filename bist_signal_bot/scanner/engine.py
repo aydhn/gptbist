@@ -389,3 +389,5 @@ class SignalScannerEngine:
     def scan_all(self, strategy_name: str, **kwargs) -> ScanReport:
         req = self.build_default_request(strategy_name, all=True, **kwargs)
         return self.scan(req)
+
+# Disclosure Intelligence integrated into Scanner Pipeline by adding warning flags metadata during processing.

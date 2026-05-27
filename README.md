@@ -758,3 +758,9 @@ The What-If Scenario Lab is a research-only environment designed to test counter
 
 ## Event Risk Calendar
 Phase 79 introduced the Event Risk Calendar component, allowing local-first tracking of BIST financial results and macro events. It supports generating Event Risk Assessments, managing Blackout Windows, and generating reports. All actions are strictly for research and do not connect to external brokers or paid services.
+
+## Disclosure Intelligence (Narrative & Risk)
+The BIST Signal Bot includes an offline Disclosure Intelligence module (added in Phase 80).
+It allows you to import and analyze raw text disclosures, KAP summaries, or corporate updates without making external API calls (no OpenAI, no scraping).
+The engine categorizes texts, generates research-only risk tags, and links events to instruments locally.
+This is purely for historical backtesting and insight metadata; **it does not constitute financial advice nor trigger real market orders.**

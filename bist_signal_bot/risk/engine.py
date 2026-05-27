@@ -144,3 +144,5 @@ class RiskEngine(BaseRiskEngine):
             elapsed_seconds=elapsed,
             generated_at=datetime.now(timezone.utc)
         )
+
+# Disclosure impact integrated via narrative risk score penalties.

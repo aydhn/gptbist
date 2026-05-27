@@ -25,17 +25,20 @@ def ensure_dir(path: Path) -> Path:
     return path
 
 def get_data_dir(settings: Settings | None = None) -> Path:
-    s = settings or default_settings
+    from bist_signal_bot.config.settings import get_settings
+    s = settings or get_settings()
     return PROJECT_ROOT / s.DATA_DIR
 
 def get_market_data_dir(settings: Settings | None = None) -> Path:
-    s = settings or default_settings
+    from bist_signal_bot.config.settings import get_settings
+    s = settings or get_settings()
     data_dir = get_data_dir(s)
     return data_dir / s.MARKET_DATA_DIR_NAME
 
 def get_ohlcv_dir(vendor: DataVendor | str, timeframe: Timeframe | str, settings: Settings | None = None) -> Path:
     market_data_dir = get_market_data_dir(settings)
-    s = settings or default_settings
+    from bist_signal_bot.config.settings import get_settings
+    s = settings or get_settings()
 
     v_str = vendor.value.lower() if isinstance(vendor, DataVendor) else str(vendor).lower()
     tf_str = timeframe.value if isinstance(timeframe, Timeframe) else str(timeframe)
@@ -54,53 +57,63 @@ def get_ohlcv_file_path(symbol: str, vendor: DataVendor | str, timeframe: Timefr
     return dir_path / f"{internal_symbol}.{ext}"
 
 def get_metadata_dir(settings: Settings | None = None) -> Path:
-    s = settings or default_settings
+    from bist_signal_bot.config.settings import get_settings
+    s = settings or get_settings()
     market_data_dir = get_market_data_dir(settings)
     return market_data_dir / s.METADATA_DIR_NAME
 
 def get_market_data_index_path(settings: Settings | None = None) -> Path:
-    s = settings or default_settings
+    from bist_signal_bot.config.settings import get_settings
+    s = settings or get_settings()
     meta_dir = get_metadata_dir(settings)
     return meta_dir / s.MARKET_DATA_INDEX_FILE
 
 def get_universe_dir(settings: Settings | None = None) -> Path:
-    s = settings or default_settings
+    from bist_signal_bot.config.settings import get_settings
+    s = settings or get_settings()
     data_dir = get_data_dir(s)
     return ensure_dir(data_dir / s.UNIVERSE_DIR_NAME)
 
 def get_universe_file_path(settings: Settings | None = None) -> Path:
-    s = settings or default_settings
+    from bist_signal_bot.config.settings import get_settings
+    s = settings or get_settings()
     universe_dir = get_universe_dir(s)
     return universe_dir / s.UNIVERSE_FILE_NAME
 
 def get_watchlists_dir(settings: Settings | None = None) -> Path:
-    s = settings or default_settings
+    from bist_signal_bot.config.settings import get_settings
+    s = settings or get_settings()
     universe_dir = get_universe_dir(s)
     return ensure_dir(universe_dir / s.WATCHLISTS_DIR_NAME)
 
 def get_universe_snapshots_dir(settings: Settings | None = None) -> Path:
-    s = settings or default_settings
+    from bist_signal_bot.config.settings import get_settings
+    s = settings or get_settings()
     universe_dir = get_universe_dir(s)
     return ensure_dir(universe_dir / s.UNIVERSE_SNAPSHOTS_DIR_NAME)
 
 
 def get_corporate_actions_dir(settings: Settings | None = None) -> Path:
-    s = settings or default_settings
+    from bist_signal_bot.config.settings import get_settings
+    s = settings or get_settings()
     data_dir = get_data_dir(s)
     return ensure_dir(data_dir / s.CORPORATE_ACTIONS_DIR_NAME)
 
 def get_corporate_actions_file_path(settings: Settings | None = None) -> Path:
-    s = settings or default_settings
+    from bist_signal_bot.config.settings import get_settings
+    s = settings or get_settings()
     ca_dir = get_corporate_actions_dir(s)
     return ca_dir / s.CORPORATE_ACTIONS_FILE_NAME
 
 def get_adjusted_market_data_dir(settings: Settings | None = None) -> Path:
-    s = settings or default_settings
+    from bist_signal_bot.config.settings import get_settings
+    s = settings or get_settings()
     market_data_dir = get_market_data_dir(s)
     return ensure_dir(market_data_dir / "ohlcv_adjusted")
 
 def get_backtest_results_dir(settings: Settings | None = None) -> Path:
-    s = settings or default_settings
+    from bist_signal_bot.config.settings import get_settings
+    s = settings or get_settings()
     reports_dir = PROJECT_ROOT / s.REPORTS_DIR
     return ensure_dir(reports_dir / "backtests")
 
@@ -466,3 +479,9 @@ def get_events_dir(settings=None) -> Path:
     dir_path = base / events_dir_name
     dir_path.mkdir(parents=True, exist_ok=True)
     return dir_path
+
+def get_disclosures_dir(settings=None) -> Path:
+    s = settings or get_settings()
+    d = get_data_dir() / getattr(s, "DISCLOSURES_DIR_NAME", "disclosures")
+    d.mkdir(parents=True, exist_ok=True)
+    return d

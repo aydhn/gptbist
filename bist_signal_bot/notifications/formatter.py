@@ -1499,3 +1499,46 @@ def format_event_calendar_snapshot(snapshot: Any) -> str:
     msg += f"• High Severity: {snapshot.high_severity_count}\n"
     msg += "\n*This snapshot is research-only metadata. No real orders were sent.*\n"
     return msg
+
+
+def format_disclosure_record(record: Any) -> str:
+    msg = "BIST Bot Disclosure Record\n\n"
+    msg += f"Sembol: {', '.join(record.symbols) if record.symbols else 'N/A'}\n"
+    msg += f"Tip: {record.disclosure_type.value}\n"
+    msg += f"Başlık: {record.title}\n"
+    msg += f"Severity: {record.severity.value}\n"
+    msg += f"Sentiment: {record.sentiment.value}\n"
+    msg += f"Risk Tags: {', '.join(t for t in record.tags) if record.tags else 'N/A'}\n\n"
+    msg += "Bu çıktı araştırma amaçlı duyuru özetidir.\n"
+    msg += "Yatırım tavsiyesi değildir.\n"
+    msg += "Gerçek emir gönderilmedi.\n"
+    return msg
+
+def format_disclosure_impact_assessment(assessment: Any) -> str:
+    msg = "BIST Bot Disclosure Impact Assessment\n\n"
+    msg += f"Sembol: {', '.join(assessment.symbols) if assessment.symbols else 'N/A'}\n"
+    msg += f"Tip: {assessment.disclosure_type.value}\n"
+    msg += f"Severity: {assessment.severity.value}\n"
+    msg += f"Sentiment: {assessment.sentiment.value}\n"
+    msg += f"Narrative Risk Score: {assessment.narrative_risk_score if assessment.narrative_risk_score is not None else 'N/A'}\n"
+    tags = [t.tag_type.value for t in assessment.risk_tags] if assessment.risk_tags else []
+    msg += f"Risk Tags: {', '.join(tags) if tags else 'N/A'}\n\n"
+    msg += "Bu çıktı araştırma amaçlı duyuru özetidir.\n"
+    msg += "Yatırım tavsiyesi değildir.\n"
+    msg += "Gerçek emir gönderilmedi.\n"
+    return msg
+
+def format_disclosure_digest(digest: Any) -> str:
+    msg = "BIST Bot Disclosure Digest\n\n"
+    msg += f"Başlık: {digest.title}\n"
+    msg += f"Özet: {digest.summary}\n\n"
+    msg += "Önemli Noktalar:\n"
+    for kp in digest.key_points:
+        msg += f"- {kp}\n"
+    msg += "\n"
+    msg += f"Semboller: {', '.join(digest.symbols_covered)}\n"
+    msg += f"High Severity Count: {digest.high_severity_count}\n\n"
+    msg += "Bu çıktı araştırma amaçlı duyuru özetidir.\n"
+    msg += "Yatırım tavsiyesi değildir.\n"
+    msg += "Gerçek emir gönderilmedi.\n"
+    return msg
