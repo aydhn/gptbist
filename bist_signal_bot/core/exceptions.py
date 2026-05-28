@@ -1614,3 +1614,14 @@ class ValuationScoringError(ValuationError):
 
 class ValuationStorageError(ValuationError):
     pass
+
+
+class FactorError(Exception): pass
+class FactorInputError(FactorError): pass
+class FactorScoringError(FactorError): pass
+class FactorExposureError(FactorError): pass
+class SectorRotationError(FactorError): pass
+class ThemeExposureError(FactorError): pass
+class FactorCrowdingError(FactorError): pass
+class FactorAttributionError(FactorError): pass
+class FactorStorageError(FactorError): pass

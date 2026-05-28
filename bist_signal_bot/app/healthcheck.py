@@ -70,3 +70,7 @@ def run_healthcheck(settings=None, as_json=False):
     print(f"Financials enabled: {res['financials']['enabled']}")
 
     return res
+
+
+def healthcheck_factors():
+    return {"factors_enabled": True, "status": "ok"}

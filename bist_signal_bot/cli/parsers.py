@@ -2571,3 +2571,5 @@ def add_valuation_parser(subparsers):
 
     cfg = sub.add_parser("config", help="Show valuation config")
     cfg.add_argument("--json", action="store_true")
+
+# Factors CLI parser will be registered here

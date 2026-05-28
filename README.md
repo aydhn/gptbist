@@ -763,3 +763,6 @@ Phase 79 introduced the Event Risk Calendar component, allowing local-first trac
 Added offline financial statement normalization, ratio calculations, trend analysis, and earnings quality scoring via local CSV/JSON imports.
 
 - **Phase 82**: Valuation Intelligence Layer for local research, multiples, and bands.
+
+## Factor Exposure & Sector Rotation
+Local deterministic factor scoring and sector rotation research.

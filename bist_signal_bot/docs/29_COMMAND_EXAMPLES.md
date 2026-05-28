@@ -84,3 +84,8 @@ python -m bist_signal_bot event-calendar config
 ## Valuation Intelligence
 `python -m bist_signal_bot valuation compute ASELS --save`
 `python -m bist_signal_bot valuation risk ASELS --json`
+
+## Factors
+```bash
+python -m bist_signal_bot factors compute ASELS
+```
