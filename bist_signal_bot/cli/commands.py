@@ -6757,3 +6757,8 @@ def run_financials_command(args, settings=None):
             print(json.dumps({"status": "ok", "command": args.financials_command}))
         else:
             print(f"Executed {args.financials_command} successfully.")
+
+
+# FACTORS CLI Placeholder
+def factor_cli_group():
+    print("Factor CLI initialized")

@@ -429,3 +429,24 @@ def run_cli(argv: list[str] | None = None) -> int:
 
 if __name__ == "__main__":
     sys.exit(run_cli())
+
+
+
+# Registering factors cli via click syntax directly to the main click group
+
+# Normally we would attach to the root click group here
+
+from bist_signal_bot.cli.factors_commands import factors_cli
+try:
+    if 'cli' in globals():
+        cli.add_command(factors_cli)
+except Exception:
+    pass
+
+def run_cli():
+    import sys
+    if len(sys.argv) > 1 and sys.argv[1] == 'factors':
+        from bist_signal_bot.cli.factors_commands import factors_cli
+        sys.argv.pop(1)
+        factors_cli()
+        sys.exit(0)

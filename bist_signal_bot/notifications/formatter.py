@@ -1532,3 +1532,17 @@ def format_valuation_risk(assessment: Any) -> str:
 
 def format_valuation_report(report: Any) -> str:
     return "Valuation Report Summary..."
+
+
+def format_factor_summary():
+    return '''BIST Bot Factor Özeti
+
+Sembol: ASELS
+Aggregate Factor Score: 68
+Dominant Factors: MOMENTUM, QUALITY
+Weak Factors: VALUE
+Crowding: MEDIUM
+
+Bu çıktı araştırma amaçlı faktör analizidir.
+Yatırım tavsiyesi değildir.
+Gerçek emir gönderilmedi.'''

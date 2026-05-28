@@ -484,3 +484,8 @@ def get_valuation_dir(settings=None) -> Path:
     path = base / dname
     path.mkdir(parents=True, exist_ok=True)
     return path
+
+
+from pathlib import Path
+def get_factors_dir(settings=None) -> Path:
+    return Path("data/factors")
