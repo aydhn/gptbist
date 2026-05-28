@@ -70,6 +70,7 @@ class ValidationSplit(BaseModel):
     embargo_days: int = 0
     fold_index: int
     metadata: Dict[str, Any] = Field(default_factory=dict)
+    breadth_context: str | None = None
 
     @model_validator(mode='after')
     def validate_split_dates(self) -> 'ValidationSplit':

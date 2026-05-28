@@ -766,3 +766,10 @@ Added offline financial statement normalization, ratio calculations, trend analy
 
 ## Factor Exposure & Sector Rotation
 Local deterministic factor scoring and sector rotation research.
+
+### Phase 84: Market Breadth & Index Internals
+- Deterministc computation of Advance/Decline, Participation, New Highs/Lows, and Volume Breadth using local OHLCV data.
+- Sector breadth scoring to identify leading and lagging clusters.
+- Divergence detection (Index up vs Breadth down) and Regime classification.
+- Full integration into Scanner, Portfolio Construction, and Explainability Evidence Cards.
+- CLI: `python -m bist_signal_bot breadth [compute|report|regime|divergence|participation]`

@@ -150,6 +150,9 @@ class SectorRotationScore:
     warnings: List[str] = field(default_factory=list)
     disclaimer: str = "Sector rotation score is research-only. It does not predict future sector performance. No real order was sent."
     metadata: dict = field(default_factory=dict)
+    sector_breadth_score: Optional[float] = None
+    above_ma_50_pct: Optional[float] = None
+    advance_percent: Optional[float] = None
 
 @dataclass
 class ThemeDefinition:

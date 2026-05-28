@@ -162,6 +162,7 @@ class StrategyScorecard:
     warnings: list[str] = field(default_factory=list)
     disclaimer: str = "Strategy scorecard is research-only. It does not approve real trading. No real order was sent."
     metadata: dict[str, Any] = field(default_factory=dict)
+    breadth_sensitivity_score: float | None = None
 
     def summary(self) -> dict[str, Any]:
         return {

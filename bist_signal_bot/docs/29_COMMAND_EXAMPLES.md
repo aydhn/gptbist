@@ -89,3 +89,35 @@ python -m bist_signal_bot event-calendar config
 ```bash
 python -m bist_signal_bot factors compute ASELS
 ```
+
+### Market Breadth & Index Internals
+```bash
+python -m bist_signal_bot breadth compute
+python -m bist_signal_bot breadth compute --symbols ASELS THYAO GARAN
+python -m bist_signal_bot breadth compute --save --json
+python -m bist_signal_bot breadth show
+python -m bist_signal_bot breadth show --json
+python -m bist_signal_bot breadth advance-decline
+python -m bist_signal_bot breadth advance-decline --json
+python -m bist_signal_bot breadth participation
+python -m bist_signal_bot breadth participation --json
+python -m bist_signal_bot breadth high-low
+python -m bist_signal_bot breadth high-low --json
+python -m bist_signal_bot breadth volume
+python -m bist_signal_bot breadth volume --json
+python -m bist_signal_bot breadth sector
+python -m bist_signal_bot breadth sector --sector BANKACILIK --json
+python -m bist_signal_bot breadth divergence
+python -m bist_signal_bot breadth divergence --json
+python -m bist_signal_bot breadth regime
+python -m bist_signal_bot breadth regime --json
+python -m bist_signal_bot breadth report
+python -m bist_signal_bot breadth report --latest --json
+python -m bist_signal_bot breadth recent
+python -m bist_signal_bot breadth recent --limit 10 --json
+python -m bist_signal_bot breadth config
+python -m bist_signal_bot scan symbols ASELS THYAO --source local_file --strategy moving_average_trend --breadth-context
+python -m bist_signal_bot portfolio-construct build --symbols ASELS THYAO GARAN --method HYBRID --breadth-aware
+python -m bist_signal_bot review show ITEM_ID --breadth
+python -m bist_signal_bot explain card --symbol ASELS --strategy moving_average_trend --include-breadth
+```

@@ -116,6 +116,10 @@ class OutcomeRecord(BaseModel):
     liquidity_status: str | None = None
     warnings: list[str] = Field(default_factory=list)
     metadata: dict[str, Any] = Field(default_factory=dict)
+    breadth_regime_label: str | None = None
+    breadth_score_bucket: str | None = None
+    participation_bucket: str | None = None
+    divergence_active: bool | None = None
 
     @field_validator("symbol", mode="before")
     def normalize_symbol(cls, v: str) -> str:

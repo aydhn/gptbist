@@ -489,3 +489,9 @@ def get_valuation_dir(settings=None) -> Path:
 from pathlib import Path
 def get_factors_dir(settings=None) -> Path:
     return Path("data/factors")
+
+def get_breadth_dir(settings: Settings | None = None) -> Path:
+    settings = settings or Settings()
+    breadth_dir = get_data_dir(settings) / settings.BREADTH_DIR_NAME
+    breadth_dir.mkdir(parents=True, exist_ok=True)
+    return breadth_dir

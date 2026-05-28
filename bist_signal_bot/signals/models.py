@@ -70,6 +70,11 @@ class SignalCandidate(BaseModel):
     feature_snapshot: dict[str, Any] = Field(default_factory=dict)
     params: dict[str, Any] = Field(default_factory=dict)
     metadata: dict[str, Any] = Field(default_factory=dict)
+    breadth_context_id: str | None = None
+    breadth_regime_label: str | None = None
+    participation_score: float | None = None
+    sector_breadth_status: str | None = None
+    divergence_warning: str | None = None
     disclaimer: str = "Research signal candidate only. Not investment advice. No order was sent."
 
     @field_validator("symbol", mode='before')

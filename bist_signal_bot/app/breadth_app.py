@@ -1,54 +1,48 @@
-from datetime import datetime
-from typing import Any
 from pathlib import Path
+from bist_signal_bot.config.settings import Settings
+from bist_signal_bot.breadth.storage import BreadthStore
+from bist_signal_bot.breadth.universe import BreadthUniverseBuilder
+from bist_signal_bot.breadth.inputs import BreadthInputBuilder
+from bist_signal_bot.breadth.advance_decline import AdvanceDeclineCalculator
+from bist_signal_bot.breadth.participation import ParticipationAnalyzer
+from bist_signal_bot.breadth.high_low import HighLowBreadthAnalyzer
+from bist_signal_bot.breadth.volume_breadth import VolumeBreadthAnalyzer
+from bist_signal_bot.breadth.sector_breadth import SectorBreadthAnalyzer
+from bist_signal_bot.breadth.divergence import BreadthDivergenceDetector
+from bist_signal_bot.breadth.regime import BreadthRegimeClassifier
+from bist_signal_bot.breadth.scoring import BreadthScorer
+from bist_signal_bot.data.data_service import MarketDataService
+from bist_signal_bot.instruments.master import InstrumentMaster
 
-from bist_signal_bot.breadth.models import BreadthAnalysisRequest, BreadthAnalysisResult
-from bist_signal_bot.breadth.engine import BreadthEngine
-from bist_signal_bot.core.exceptions import BreadthValidationError
+def create_breadth_store(settings: Settings | None = None, base_dir: Path | None = None) -> BreadthStore:
+    return BreadthStore(settings=settings, base_dir=base_dir)
 
-class BreadthApp:
-    def __init__(self, engine: BreadthEngine | None = None, settings=None):
-        self.settings = settings
-        if engine:
-            self.engine = engine
-        else:
-            self.engine = BreadthEngine.from_settings(settings)
+def create_breadth_universe_builder(settings: Settings | None = None, instrument_master: InstrumentMaster | None = None) -> BreadthUniverseBuilder:
+    return BreadthUniverseBuilder(settings=settings, instrument_master=instrument_master)
 
-    def generate_snapshot(
-        self,
-        symbols: list[str],
-        universe_name: str = "CUSTOM",
-        benchmark_symbol: str | None = None,
-        source: str = "local_file",
-        timeframe: str = "1d",
-        as_of_date: datetime | None = None,
-        save_snapshot: bool = True
-    ) -> BreadthAnalysisResult:
-        if not symbols:
-            raise BreadthValidationError("At least one symbol must be provided.")
+def create_breadth_input_builder(settings: Settings | None = None, data_service: MarketDataService | None = None) -> BreadthInputBuilder:
+    return BreadthInputBuilder(settings=settings, data_service=data_service)
 
-        req = BreadthAnalysisRequest(
-            symbols=symbols,
-            universe_name=universe_name,
-            benchmark_symbol=benchmark_symbol,
-            source=source,
-            timeframe=timeframe,
-            as_of_date=as_of_date,
-            save_snapshot=save_snapshot,
-            include_relative_strength=True,
-            include_sector_rotation=True,
-            include_fundamentals=False
-        )
+def create_advance_decline_calculator(settings: Settings | None = None) -> AdvanceDeclineCalculator:
+    return AdvanceDeclineCalculator(settings=settings)
 
-        return self.engine.analyze(req)
+def create_participation_analyzer(settings: Settings | None = None) -> ParticipationAnalyzer:
+    return ParticipationAnalyzer(settings=settings)
 
-    def get_leaders(self, top_n: int = 20) -> list[dict[str, Any]]:
-        leaders = self.engine.leaders(top_n=top_n)
-        return [l.model_dump(mode='json') for l in leaders]
+def create_high_low_breadth_analyzer(settings: Settings | None = None) -> HighLowBreadthAnalyzer:
+    return HighLowBreadthAnalyzer(settings=settings)
 
-    def get_laggards(self, bottom_n: int = 20) -> list[dict[str, Any]]:
-        laggards = self.engine.laggards(bottom_n=bottom_n)
-        return [l.model_dump(mode='json') for l in laggards]
+def create_volume_breadth_analyzer(settings: Settings | None = None) -> VolumeBreadthAnalyzer:
+    return VolumeBreadthAnalyzer(settings=settings)
 
-    def get_recent_snapshots(self, limit: int = 20) -> list[dict[str, Any]]:
-        return self.engine.store.list_recent_snapshots(limit=limit)
+def create_sector_breadth_analyzer(settings: Settings | None = None) -> SectorBreadthAnalyzer:
+    return SectorBreadthAnalyzer(settings=settings)
+
+def create_breadth_divergence_detector(settings: Settings | None = None) -> BreadthDivergenceDetector:
+    return BreadthDivergenceDetector(settings=settings)
+
+def create_breadth_regime_classifier(settings: Settings | None = None) -> BreadthRegimeClassifier:
+    return BreadthRegimeClassifier(settings=settings)
+
+def create_breadth_scorer(settings: Settings | None = None) -> BreadthScorer:
+    return BreadthScorer(settings=settings)

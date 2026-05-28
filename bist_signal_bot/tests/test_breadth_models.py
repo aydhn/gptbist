@@ -1,25 +1,42 @@
+import pytest
 from datetime import datetime
-from bist_signal_bot.breadth.models import BreadthSnapshot, BreadthStatus, RelativeStrengthScore, SectorRotationScore, CrossSectionalRankItem, BreadthRegime, BreadthAnalysisRequest
+from bist_signal_bot.breadth.models import (
+    BreadthUniverseSnapshot, BreadthScope, BreadthInputRow
+)
 
-def test_breadth_snapshot_summary():
-    snap = BreadthSnapshot(
-        snapshot_id="123",
-        as_of_date=datetime(2025, 1, 1),
-        universe_name="LIQUID",
-        symbols=["ASELS", "THYAO"],
-        composite_score=75.5,
-        status=BreadthStatus.STRONG,
+def test_breadth_universe_snapshot_normalizes_symbols():
+    snapshot = BreadthUniverseSnapshot(
+        universe_id="123",
+        name="TEST",
+        as_of=datetime.now(),
+        scope=BreadthScope.MARKET,
+        symbols=["asels", "Thyao"],
+        sectors={},
+        active_count=2
     )
-    res = snap.summary()
-    assert res["universe_name"] == "LIQUID"
-    assert res["status"] == "STRONG"
-    assert res["composite_score"] == 75.5
+    assert snapshot.symbols == ["ASELS", "THYAO"]
 
-def test_relative_strength_score_creation():
-    rs = RelativeStrengthScore(
-        symbol="ASELS",
-        as_of_date=datetime(2025,1,1),
-        composite_score=80.0
+def test_breadth_universe_snapshot_negative_active_count():
+    snapshot = BreadthUniverseSnapshot(
+        universe_id="123",
+        name="TEST",
+        as_of=datetime.now(),
+        scope=BreadthScope.MARKET,
+        symbols=[],
+        sectors={},
+        active_count=-5
     )
-    assert rs.symbol == "ASELS"
-    assert rs.composite_score == 80.0
+    assert snapshot.active_count == 0
+    assert "Empty universe" in snapshot.warnings
+
+def test_breadth_input_row_negative_close():
+    row = BreadthInputRow(
+        row_id="123",
+        symbol="asels",
+        as_of=datetime.now(),
+        close=-10.0,
+        volume=-100.0
+    )
+    assert row.symbol == "ASELS"
+    assert "Negative close price for ASELS" in row.warnings
+    assert "Negative volume for ASELS" in row.warnings

@@ -218,6 +218,9 @@ class PortfolioConstructionResult(BaseModel):
     warnings: list[str] = Field(default_factory=list)
     disclaimer: str = "Portfolio construction result is research-only. It is not investment advice, portfolio management instruction, or an order. No real order was sent."
     metadata: dict[str, Any] = Field(default_factory=dict)
+    portfolio_breadth_alignment_score: float | None = None
+    sector_breadth_concentration_warning: str | None = None
+    narrow_market_warning: str | None = None
 
     def summary(self) -> dict[str, Any]:
         return {

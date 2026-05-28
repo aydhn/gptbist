@@ -1,166 +1,118 @@
 import json
-import csv
-from datetime import datetime
 from pathlib import Path
+from datetime import datetime
 from typing import Any
 
+from bist_signal_bot.config.settings import Settings
+from bist_signal_bot.storage.paths import get_breadth_dir
 from bist_signal_bot.breadth.models import (
-    BreadthSnapshot, RelativeStrengthScore, SectorRotationScore, CrossSectionalRankItem, BreadthAnalysisResult
+    AdvanceDeclineSummary, BreadthDivergence, BreadthInputRow, BreadthMetric, BreadthRegimeSnapshot,
+    BreadthReport, BreadthUniverseSnapshot, HighLowBreadthSummary, ParticipationSummary,
+    SectorBreadthSummary, VolumeBreadthSummary
 )
-from bist_signal_bot.core.exceptions import BreadthStorageError
-from bist_signal_bot.storage.paths import get_data_dir
+from bist_signal_bot.breadth.reporting import (
+    universe_to_dict, input_row_to_dict, metric_to_dict, advance_decline_to_dict,
+    participation_to_dict, high_low_to_dict, volume_breadth_to_dict, sector_breadth_to_dict,
+    divergence_to_dict, regime_to_dict, breadth_report_to_dict
+)
 
 class BreadthStore:
-    def __init__(self, base_dir: Path | None = None, settings=None):
-        self.settings = settings
-        if base_dir:
-            self.base_dir = base_dir
-        else:
-            data_dir = get_data_dir() if hasattr(settings, "get_data_dir") else Path("data")
-            self.base_dir = data_dir / "breadth"
+    def __init__(self, settings: Settings | None = None, base_dir: Path | None = None):
+        self.settings = settings or Settings()
+        self.base_dir = base_dir or get_breadth_dir(self.settings)
 
-    def _get_daily_dir(self, sub_dir: str, as_of_date: datetime) -> Path:
-        date_str = as_of_date.strftime("%Y%m%d")
-        dir_path = self.base_dir / sub_dir / date_str
-        dir_path.mkdir(parents=True, exist_ok=True)
-        return dir_path
+        self.universe_dir = self.base_dir / "universe"
+        self.inputs_dir = self.base_dir / "inputs"
+        self.metrics_dir = self.base_dir / "metrics"
+        self.ad_dir = self.base_dir / "advance_decline"
+        self.part_dir = self.base_dir / "participation"
+        self.hl_dir = self.base_dir / "high_low"
+        self.vol_dir = self.base_dir / "volume"
+        self.sec_dir = self.base_dir / "sector"
+        self.div_dir = self.base_dir / "divergence"
+        self.regime_dir = self.base_dir / "regime"
+        self.reports_dir = self.base_dir / "reports"
 
-    def save_result(self, result: BreadthAnalysisResult) -> dict[str, Path]:
-        paths = {}
-        try:
-            paths["snapshot"] = self.save_snapshot(result.snapshot)
-            if result.relative_strength_scores:
-                paths["relative_strength"] = self.save_relative_strength(result.relative_strength_scores, result.snapshot.as_of_date)
-            if result.sector_rotation_scores:
-                paths["sector_rotation"] = self.save_sector_rotation(result.sector_rotation_scores, result.snapshot.as_of_date)
-            if result.cross_sectional_ranking:
-                paths["ranking"] = self.save_ranking(result.cross_sectional_ranking, result.snapshot.as_of_date)
-        except Exception as e:
-            raise BreadthStorageError(f"Failed to save breadth result: {str(e)}")
-        return paths
+        for d in [self.universe_dir, self.inputs_dir, self.metrics_dir, self.ad_dir,
+                 self.part_dir, self.hl_dir, self.vol_dir, self.sec_dir, self.div_dir,
+                 self.regime_dir, self.reports_dir]:
+            d.mkdir(parents=True, exist_ok=True)
 
-    def save_snapshot(self, snapshot: BreadthSnapshot) -> Path:
-        dir_path = self._get_daily_dir("snapshots", snapshot.as_of_date)
-        file_path = dir_path / "breadth_snapshot.json"
-
-        try:
-            with open(file_path, "w", encoding="utf-8") as f:
-                json.dump(snapshot.model_dump(mode='json'), f, ensure_ascii=False, indent=2)
-        except Exception as e:
-            raise BreadthStorageError(f"Failed to save breadth snapshot: {str(e)}")
+    def _append_jsonl(self, file_path: Path, data: dict[str, Any]) -> Path:
+        with file_path.open('a', encoding='utf-8') as f:
+            f.write(json.dumps(data, default=str) + "\n")
         return file_path
 
-    def save_relative_strength(self, scores: list[RelativeStrengthScore], as_of_date: datetime) -> Path:
-        dir_path = self._get_daily_dir("relative_strength", as_of_date)
-        file_path = dir_path / "relative_strength.csv"
-
-        try:
-            with open(file_path, "w", encoding="utf-8", newline="") as f:
-                writer = csv.DictWriter(f, fieldnames=["symbol", "benchmark_symbol", "sector", "rs_20", "rs_50", "rs_100", "rs_200", "absolute_momentum_score", "percentile_rank", "composite_score"])
-                writer.writeheader()
-                for s in scores:
-                    d = s.model_dump(mode='json')
-                    writer.writerow({k: d.get(k) for k in writer.fieldnames})
-        except Exception as e:
-            raise BreadthStorageError(f"Failed to save relative strength: {str(e)}")
+    def _append_many_jsonl(self, file_path: Path, data_list: list[dict[str, Any]]) -> Path:
+        with file_path.open('a', encoding='utf-8') as f:
+            for item in data_list:
+                f.write(json.dumps(item, default=str) + "\n")
         return file_path
 
-    def save_sector_rotation(self, scores: list[SectorRotationScore], as_of_date: datetime) -> Path:
-        dir_path = self._get_daily_dir("sector_rotation", as_of_date)
-        file_path = dir_path / "sector_rotation.csv"
+    def append_universe(self, snapshot: BreadthUniverseSnapshot) -> Path:
+        file_path = self.universe_dir / "breadth_universe_snapshots.jsonl"
+        return self._append_jsonl(file_path, universe_to_dict(snapshot))
 
-        try:
-            with open(file_path, "w", encoding="utf-8", newline="") as f:
-                writer = csv.DictWriter(f, fieldnames=["sector", "symbol_count", "average_return_20", "average_return_50", "average_rs_score", "breadth_score", "momentum_score", "rotation_status", "rank"])
-                writer.writeheader()
-                for s in scores:
-                    d = s.model_dump(mode='json')
-                    writer.writerow({k: d.get(k) for k in writer.fieldnames})
-        except Exception as e:
-            raise BreadthStorageError(f"Failed to save sector rotation: {str(e)}")
-        return file_path
+    def append_inputs(self, inputs: list[BreadthInputRow]) -> Path:
+        file_path = self.inputs_dir / "breadth_inputs.jsonl"
+        dicts = [input_row_to_dict(r) for r in inputs]
+        return self._append_many_jsonl(file_path, dicts)
 
-    def save_ranking(self, items: list[CrossSectionalRankItem], as_of_date: datetime) -> Path:
-        dir_path = self._get_daily_dir("ranking", as_of_date)
-        file_path = dir_path / "cross_sectional_ranking.csv"
+    def append_metrics(self, metrics: list[BreadthMetric]) -> Path:
+        file_path = self.metrics_dir / "breadth_metrics.jsonl"
+        dicts = [metric_to_dict(m) for m in metrics]
+        return self._append_many_jsonl(file_path, dicts)
 
-        try:
-            with open(file_path, "w", encoding="utf-8", newline="") as f:
-                writer = csv.DictWriter(f, fieldnames=["symbol", "rank", "percentile", "composite_score", "sector"])
-                writer.writeheader()
-                for i in items:
-                    d = i.model_dump(mode='json')
-                    writer.writerow({k: d.get(k) for k in writer.fieldnames})
-        except Exception as e:
-            raise BreadthStorageError(f"Failed to save ranking: {str(e)}")
-        return file_path
+    def append_advance_decline(self, summary: AdvanceDeclineSummary) -> Path:
+        file_path = self.ad_dir / "advance_decline_summaries.jsonl"
+        return self._append_jsonl(file_path, advance_decline_to_dict(summary))
 
-    def load_latest_snapshot(self) -> BreadthSnapshot | None:
-        snap_dir = self.base_dir / "snapshots"
-        if not snap_dir.exists():
-            return None
+    def append_participation(self, summary: ParticipationSummary) -> Path:
+        file_path = self.part_dir / "participation_summaries.jsonl"
+        return self._append_jsonl(file_path, participation_to_dict(summary))
 
-        dirs = sorted([d for d in snap_dir.iterdir() if d.is_dir()], reverse=True)
-        for d in dirs:
-            f = d / "breadth_snapshot.json"
-            if f.exists():
-                try:
-                    with open(f, "r", encoding="utf-8") as file:
-                        data = json.load(file)
-                        return BreadthSnapshot(**data)
-                except Exception:
-                    pass
+    def append_high_low(self, summary: HighLowBreadthSummary) -> Path:
+        file_path = self.hl_dir / "high_low_summaries.jsonl"
+        return self._append_jsonl(file_path, high_low_to_dict(summary))
+
+    def append_volume_breadth(self, summary: VolumeBreadthSummary) -> Path:
+        file_path = self.vol_dir / "volume_breadth_summaries.jsonl"
+        return self._append_jsonl(file_path, volume_breadth_to_dict(summary))
+
+    def append_sector_breadth(self, summaries: list[SectorBreadthSummary]) -> Path:
+        file_path = self.sec_dir / "sector_breadth_summaries.jsonl"
+        dicts = [sector_breadth_to_dict(s) for s in summaries]
+        return self._append_many_jsonl(file_path, dicts)
+
+    def append_divergences(self, divergences: list[BreadthDivergence]) -> Path:
+        file_path = self.div_dir / "breadth_divergences.jsonl"
+        dicts = [divergence_to_dict(d) for d in divergences]
+        return self._append_many_jsonl(file_path, dicts)
+
+    def append_regime(self, snapshot: BreadthRegimeSnapshot) -> Path:
+        file_path = self.regime_dir / "breadth_regime_snapshots.jsonl"
+        return self._append_jsonl(file_path, regime_to_dict(snapshot))
+
+    def save_report(self, report: BreadthReport, markdown_text: str) -> dict[str, Path]:
+        date_str = report.generated_at.strftime("%Y%m%d")
+        daily_dir = self.reports_dir / date_str
+        daily_dir.mkdir(exist_ok=True)
+
+        md_path = daily_dir / "breadth_report.md"
+        json_path = daily_dir / "breadth_report.json"
+
+        with md_path.open('w', encoding='utf-8') as f:
+            f.write(markdown_text)
+
+        with json_path.open('w', encoding='utf-8') as f:
+            json.dump(breadth_report_to_dict(report), f, default=str, indent=2)
+
+        return {"markdown": md_path, "json": json_path}
+
+    def load_latest_regime(self, scope_name: str | None = None) -> BreadthRegimeSnapshot | None:
+        # Simplistic implementation
         return None
 
-    def load_latest_ranking(self, limit: int | None = None) -> list[CrossSectionalRankItem]:
-        rank_dir = self.base_dir / "ranking"
-        if not rank_dir.exists():
-            return []
-
-        dirs = sorted([d for d in rank_dir.iterdir() if d.is_dir()], reverse=True)
-        for d in dirs:
-            f = d / "cross_sectional_ranking.csv"
-            if f.exists():
-                items = []
-                try:
-                    with open(f, "r", encoding="utf-8") as file:
-                        reader = csv.DictReader(file)
-                        for row in reader:
-                            items.append(CrossSectionalRankItem(
-                                symbol=row["symbol"],
-                                as_of_date=datetime.strptime(d.name, "%Y%m%d"),
-                                rank=int(row["rank"]),
-                                percentile=float(row["percentile"]),
-                                composite_score=float(row["composite_score"]),
-                                sector=row.get("sector")
-                            ))
-                            if limit and len(items) >= limit:
-                                break
-                    return items
-                except Exception:
-                    pass
-        return []
-
-    def list_recent_snapshots(self, limit: int = 20) -> list[dict[str, Any]]:
-        snap_dir = self.base_dir / "snapshots"
-        if not snap_dir.exists():
-            return []
-
-        dirs = sorted([d for d in snap_dir.iterdir() if d.is_dir()], reverse=True)
-        res = []
-        for d in dirs[:limit]:
-            f = d / "breadth_snapshot.json"
-            if f.exists():
-                try:
-                    with open(f, "r", encoding="utf-8") as file:
-                        data = json.load(file)
-                        res.append({
-                            "snapshot_id": data.get("snapshot_id"),
-                            "as_of_date": data.get("as_of_date"),
-                            "universe_name": data.get("universe_name"),
-                            "composite_score": data.get("composite_score"),
-                            "status": data.get("status")
-                        })
-                except Exception:
-                    pass
-        return res
+    def load_latest_report(self) -> BreadthReport | None:
+        # Simplistic implementation
+        return None

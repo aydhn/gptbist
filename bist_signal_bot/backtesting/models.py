@@ -145,6 +145,7 @@ class BacktestResult:
     symbol: str | None = None
     equity_curve: pd.DataFrame = field(default_factory=pd.DataFrame)
     metadata: dict[str, Any] = field(default_factory=dict)
+    breadth_regime_subset_metrics: dict[str, Any] = field(default_factory=dict)
     disclaimer: str = "Backtest research output only. Past performance does not guarantee future results. Not investment advice. No order was sent."
 
     def trade_count(self) -> int:
