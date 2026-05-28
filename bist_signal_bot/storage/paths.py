@@ -495,3 +495,12 @@ def get_breadth_dir(settings: Settings | None = None) -> Path:
     breadth_dir = get_data_dir(settings) / settings.BREADTH_DIR_NAME
     breadth_dir.mkdir(parents=True, exist_ok=True)
     return breadth_dir
+
+def get_macro_dir(settings: Settings | None = None) -> Path:
+    """Returns the macro context directory path."""
+    if settings is None:
+        from bist_signal_bot.config.settings import get_settings
+        settings = get_settings()
+    macro_dir = get_data_dir(settings) / settings.MACRO_DIR_NAME
+    macro_dir.mkdir(parents=True, exist_ok=True)
+    return macro_dir

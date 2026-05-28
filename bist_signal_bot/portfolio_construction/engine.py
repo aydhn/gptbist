@@ -10,8 +10,9 @@ from bist_signal_bot.portfolio_construction.models import (
 )
 
 class PortfolioConstructionEngine:
-    def __init__(self, settings: Settings | None = None):
+    def __init__(self, settings: Settings | None = None, macro_store=None):
         self.settings = settings or Settings()
+        self.macro_store = macro_store
         self.risk_engine = None
 
     def build_portfolio(self, request: PortfolioConstructionRequest) -> PortfolioConstructionResult:
