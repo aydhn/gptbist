@@ -5,6 +5,15 @@ def run_healthcheck(settings=None, as_json=False):
     settings = settings or get_settings()
     res = {
         "status": "pass",
+        "breadth": {
+            "enabled": getattr(settings, "ENABLE_BREADTH", True),
+            "universe_builder_capable": True,
+            "input_builder_capable": True,
+            "ad_calculator_capable": True,
+            "participation_analyzer_capable": True,
+            "sector_breadth_capable": True,
+            "store_capable": True
+        },
         "portfolio_ledger": {
             "enabled": getattr(settings, "ENABLE_PORTFOLIO_LEDGER", True),
             "store_capable": True,

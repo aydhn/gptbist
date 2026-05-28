@@ -1701,6 +1701,58 @@ class Settings(BaseSettings):
     # Reports & Research
     REPORT_INCLUDE_PORTFOLIO_LEDGER: bool = True
     RESEARCH_AUTO_LOG_PORTFOLIO_LEDGER: bool = False
+
+    # Market Breadth / Index Internals
+    ENABLE_BREADTH: bool = True
+    BREADTH_DIR_NAME: str = "breadth"
+    BREADTH_RESEARCH_ONLY: bool = True
+    BREADTH_SAVE_RESULTS: bool = True
+
+    # Breadth Universe
+    BREADTH_DEFAULT_UNIVERSE_NAME: str = "BIST_ACTIVE"
+    BREADTH_MIN_UNIVERSE_SIZE: int = 20
+    BREADTH_EXCLUDE_INACTIVE_SYMBOLS: bool = True
+
+    # Breadth Inputs
+    BREADTH_MA_WINDOWS: str = "20,50,200"
+    BREADTH_HIGH_LOW_SHORT_WINDOW: int = 20
+    BREADTH_HIGH_LOW_LONG_WINDOW: int = 252
+    BREADTH_REQUIRE_VOLUME: bool = False
+
+    # Breadth Scoring
+    BREADTH_STRONG_THRESHOLD: float = 70.0
+    BREADTH_WEAK_THRESHOLD: float = 35.0
+    BREADTH_DIVERGENCE_WARN_SCORE: float = 60.0
+    BREADTH_LOW_PARTICIPATION_THRESHOLD: float = 40.0
+    BREADTH_BREADTH_THRUST_THRESHOLD: float = 65.0
+
+    # Sector Breadth
+    BREADTH_SECTOR_MIN_SYMBOLS: int = 3
+    BREADTH_SECTOR_LEADING_THRESHOLD: float = 70.0
+    BREADTH_SECTOR_LAGGING_THRESHOLD: float = 35.0
+
+    # Scanner Integration
+    SCANNER_INCLUDE_BREADTH_CONTEXT: bool = True
+    SCANNER_BREADTH_METADATA_ONLY: bool = True
+    SCANNER_BREADTH_CONFIDENCE_ADJUSTMENT_ENABLED: bool = True
+    SCANNER_BREADTH_WEAK_ADJUSTMENT: float = -5.0
+    SCANNER_BREADTH_DIVERGENCE_ADJUSTMENT: float = -8.0
+
+    # Portfolio Integration
+    PORTFOLIO_USE_BREADTH_CONTEXT: bool = True
+    PORTFOLIO_BREADTH_WEIGHT: float = 0.05
+    PORTFOLIO_NARROW_MARKET_WARNING_ENABLED: bool = True
+
+    # Runtime / Scheduler
+    RUNTIME_BREADTH_CONTEXT_ENABLED: bool = True
+    SCHEDULER_ENABLE_BREADTH_DAILY: bool = False
+
+    # Reports
+    REPORT_INCLUDE_BREADTH: bool = True
+
+    # Research
+    RESEARCH_AUTO_LOG_BREADTH: bool = False
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
 

@@ -1625,3 +1625,36 @@ class ThemeExposureError(FactorError): pass
 class FactorCrowdingError(FactorError): pass
 class FactorAttributionError(FactorError): pass
 class FactorStorageError(FactorError): pass
+
+class BreadthError(BistSignalBotError):
+    pass
+
+class BreadthUniverseError(BreadthError):
+    pass
+
+class BreadthInputError(BreadthError):
+    pass
+
+class AdvanceDeclineError(BreadthError):
+    pass
+
+class ParticipationError(BreadthError):
+    pass
+
+class HighLowBreadthError(BreadthError):
+    pass
+
+class VolumeBreadthError(BreadthError):
+    pass
+
+class SectorBreadthError(BreadthError):
+    pass
+
+class BreadthDivergenceError(BreadthError):
+    pass
+
+class BreadthRegimeError(BreadthError):
+    pass
+
+class BreadthStorageError(BreadthError):
+    pass

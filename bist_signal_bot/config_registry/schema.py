@@ -112,7 +112,47 @@ class ConfigSchemaBuilder:
 
         # Add flags to definition map
         self._definitions = {d.key: d for d in defs}
+
+        defs.append(ConfigDefinition(
+            key="ENABLE_BREADTH",
+            module=ConfigModule.SYSTEM,
+            value_type=ConfigValueType.BOOLEAN,
+            default_value=True,
+            safety_level=ConfigSafetyLevel.SAFE,
+            description="Enable Market Breadth and Index Internals"
+        ))
+        defs.append(ConfigDefinition(
+            key="BREADTH_STRONG_THRESHOLD",
+            module=ConfigModule.SYSTEM,
+            value_type=ConfigValueType.FLOAT,
+            default_value=70.0,
+            safety_level=ConfigSafetyLevel.SAFE,
+            description="Threshold for strong breadth score",
+            min_value=0.0,
+            max_value=100.0
+        ))
+        defs.append(ConfigDefinition(
+            key="BREADTH_WEAK_THRESHOLD",
+            module=ConfigModule.SYSTEM,
+            value_type=ConfigValueType.FLOAT,
+            default_value=35.0,
+            safety_level=ConfigSafetyLevel.SAFE,
+            description="Threshold for weak breadth score",
+            min_value=0.0,
+            max_value=100.0
+        ))
+        defs.append(ConfigDefinition(
+            key="BREADTH_DIVERGENCE_WARN_SCORE",
+            module=ConfigModule.SYSTEM,
+            value_type=ConfigValueType.FLOAT,
+            default_value=60.0,
+            safety_level=ConfigSafetyLevel.SAFE,
+            description="Threshold to trigger divergence warning",
+            min_value=0.0,
+            max_value=100.0
+        ))
         return defs
+
 
     def definition_for_key(self, key: str) -> ConfigDefinition | None:
         if not self._definitions:

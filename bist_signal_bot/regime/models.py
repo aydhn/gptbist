@@ -112,6 +112,10 @@ class RegimeClassification(BaseModel):
     generated_at: datetime = Field(default_factory=datetime.now)
     disclaimer: str = "Market regime research output only. Not investment advice. No order was sent."
     metadata: dict[str, Any] = Field(default_factory=dict)
+    breadth_regime_label: str | None = None
+    breadth_score: float | None = None
+    participation_score: float | None = None
+    divergence_warning: str | None = None
 
     def summary(self) -> dict[str, Any]:
         return {

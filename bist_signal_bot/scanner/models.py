@@ -149,6 +149,11 @@ class ScanReport(BaseModel):
     output_files: Dict[str, str] = Field(default_factory=dict)
     disclaimer: str = "Signal scan research output only. Not investment advice. No real order was sent."
     metadata: Dict[str, Any] = Field(default_factory=dict)
+    breadth_regime_id: str | None = None
+    breadth_score: float | None = None
+    market_participation_score: float | None = None
+    sector_breadth_score: float | None = None
+    breadth_divergence_warning: str | None = None
 
     def summary(self) -> Dict[str, Any]:
         return {

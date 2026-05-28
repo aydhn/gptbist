@@ -241,6 +241,9 @@ class PortfolioOutcomeResult(BaseModel):
         "Past simulated performance does not guarantee future outcomes. No real order was sent."
     )
     metadata: dict[str, Any] = Field(default_factory=dict)
+    breadth_regime_at_entry: str | None = None
+    breadth_score_bucket: str | None = None
+    divergence_active: bool | None = None
 
 
 class RebalanceTrackingResult(BaseModel):

@@ -96,6 +96,7 @@ class RuntimePipelineConfig(BaseModel):
     session_policy: SessionPolicy = SessionPolicy.ONLY_DURING_SESSION
     continue_on_error: bool = True
     metadata: Dict[str, Any] = Field(default_factory=dict)
+    breadth_context_enabled: bool = True
 
 class RuntimeJobResult(BaseModel):
     job_id: str

@@ -1,22 +1,19 @@
+import pytest
 from datetime import datetime
-import tempfile
 from pathlib import Path
+from bist_signal_bot.breadth.models import BreadthRegimeSnapshot, BreadthRegimeLabel, BreadthScope
 from bist_signal_bot.breadth.storage import BreadthStore
-from bist_signal_bot.breadth.models import BreadthSnapshot
+from bist_signal_bot.config.settings import Settings
 
-def test_breadth_storage():
-    with tempfile.TemporaryDirectory() as td:
-        store = BreadthStore(base_dir=Path(td))
-        snap = BreadthSnapshot(
-            snapshot_id="test1",
-            as_of_date=datetime(2024,1,1),
-            universe_name="U",
-            symbols=["S1"]
-        )
-        p = store.save_snapshot(snap)
-        assert p.exists()
+def test_breadth_store_append(tmp_path):
+    settings = Settings()
+    store = BreadthStore(settings=settings, base_dir=tmp_path)
 
-        loaded = store.load_latest_snapshot()
-        assert loaded is not None
-        assert loaded.snapshot_id == "test1"
-        assert loaded.symbols == ["S1"]
+    snapshot = BreadthRegimeSnapshot(
+        regime_id="1", as_of=datetime.now(), scope=BreadthScope.MARKET, scope_name="M",
+        label=BreadthRegimeLabel.BROAD_ADVANCE
+    )
+
+    path = store.append_regime(snapshot)
+    assert path.exists()
+    assert path.stat().st_size > 0

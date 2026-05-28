@@ -1,198 +1,282 @@
+from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from typing import Any
 
-from pydantic import BaseModel, Field
 
-class BreadthStatus(str, Enum):
+class BreadthStatus(Enum):
     STRONG = "STRONG"
-    HEALTHY = "HEALTHY"
+    POSITIVE = "POSITIVE"
     NEUTRAL = "NEUTRAL"
+    NEGATIVE = "NEGATIVE"
     WEAK = "WEAK"
-    STRESSED = "STRESSED"
+    DIVERGENT = "DIVERGENT"
+    WATCH = "WATCH"
+    INSUFFICIENT_DATA = "INSUFFICIENT_DATA"
+    ERROR = "ERROR"
     UNKNOWN = "UNKNOWN"
 
-class BreadthMetricType(str, Enum):
-    ADVANCE_DECLINE = "ADVANCE_DECLINE"
-    PERCENT_ABOVE_MA = "PERCENT_ABOVE_MA"
-    NEW_HIGH_LOW = "NEW_HIGH_LOW"
+
+class BreadthScope(Enum):
+    MARKET = "MARKET"
+    INDEX = "INDEX"
+    SECTOR = "SECTOR"
+    UNIVERSE = "UNIVERSE"
+    PORTFOLIO = "PORTFOLIO"
+    CUSTOM = "CUSTOM"
+    UNKNOWN = "UNKNOWN"
+
+
+class BreadthMetricType(Enum):
+    ADVANCE_DECLINE_RATIO = "ADVANCE_DECLINE_RATIO"
+    NET_ADVANCES = "NET_ADVANCES"
+    ADVANCE_PERCENT = "ADVANCE_PERCENT"
+    ABOVE_MA_20 = "ABOVE_MA_20"
+    ABOVE_MA_50 = "ABOVE_MA_50"
+    ABOVE_MA_200 = "ABOVE_MA_200"
+    NEW_HIGH_20D = "NEW_HIGH_20D"
+    NEW_LOW_20D = "NEW_LOW_20D"
+    NEW_HIGH_52W = "NEW_HIGH_52W"
+    NEW_LOW_52W = "NEW_LOW_52W"
+    UP_VOLUME_RATIO = "UP_VOLUME_RATIO"
+    DOWN_VOLUME_RATIO = "DOWN_VOLUME_RATIO"
     VOLUME_BREADTH = "VOLUME_BREADTH"
-    MOMENTUM_BREADTH = "MOMENTUM_BREADTH"
-    RELATIVE_STRENGTH = "RELATIVE_STRENGTH"
-    SECTOR_ROTATION = "SECTOR_ROTATION"
-    CROSS_SECTIONAL_RANK = "CROSS_SECTIONAL_RANK"
-    COMPOSITE = "COMPOSITE"
+    PARTICIPATION_SCORE = "PARTICIPATION_SCORE"
+    BREADTH_THRUST = "BREADTH_THRUST"
+    DIVERGENCE_SCORE = "DIVERGENCE_SCORE"
+    SECTOR_BREADTH_SCORE = "SECTOR_BREADTH_SCORE"
+    CUSTOM = "CUSTOM"
 
-class RelativeStrengthMode(str, Enum):
-    VS_BENCHMARK = "VS_BENCHMARK"
-    VS_SECTOR = "VS_SECTOR"
-    VS_UNIVERSE = "VS_UNIVERSE"
-    ABSOLUTE_MOMENTUM = "ABSOLUTE_MOMENTUM"
-    COMPOSITE = "COMPOSITE"
 
-class SectorRotationStatus(str, Enum):
-    LEADING = "LEADING"
-    IMPROVING = "IMPROVING"
-    WEAKENING = "WEAKENING"
-    LAGGING = "LAGGING"
-    NEUTRAL = "NEUTRAL"
+class BreadthRegimeLabel(Enum):
+    BROAD_ADVANCE = "BROAD_ADVANCE"
+    NARROW_ADVANCE = "NARROW_ADVANCE"
+    BROAD_DECLINE = "BROAD_DECLINE"
+    NARROW_DECLINE = "NARROW_DECLINE"
+    MIXED = "MIXED"
+    DIVERGENCE_WARNING = "DIVERGENCE_WARNING"
+    LOW_PARTICIPATION = "LOW_PARTICIPATION"
+    INSUFFICIENT_DATA = "INSUFFICIENT_DATA"
     UNKNOWN = "UNKNOWN"
 
-class RankingDirection(str, Enum):
-    HIGHER_IS_BETTER = "HIGHER_IS_BETTER"
-    LOWER_IS_BETTER = "LOWER_IS_BETTER"
 
-class BreadthMetric(BaseModel):
-    metric_name: str
+class BreadthDivergenceType(Enum):
+    INDEX_UP_BREADTH_DOWN = "INDEX_UP_BREADTH_DOWN"
+    INDEX_DOWN_BREADTH_UP = "INDEX_DOWN_BREADTH_UP"
+    PRICE_NEW_HIGH_BREADTH_NOT_CONFIRMING = "PRICE_NEW_HIGH_BREADTH_NOT_CONFIRMING"
+    PRICE_NEW_LOW_BREADTH_NOT_CONFIRMING = "PRICE_NEW_LOW_BREADTH_NOT_CONFIRMING"
+    SECTOR_DIVERGENCE = "SECTOR_DIVERGENCE"
+    VOLUME_DIVERGENCE = "VOLUME_DIVERGENCE"
+    NONE = "NONE"
+    UNKNOWN = "UNKNOWN"
+
+
+@dataclass
+class BreadthUniverseSnapshot:
+    universe_id: str
+    name: str
+    as_of: datetime
+    scope: BreadthScope
+    symbols: list[str]
+    sectors: dict[str, str]
+    active_count: int
+    excluded_symbols: list[str] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+    def __post_init__(self):
+        self.symbols = [s.upper() for s in self.symbols]
+        self.active_count = max(0, self.active_count)
+        if self.active_count == 0 and "Empty universe" not in self.warnings:
+            self.warnings.append("Empty universe")
+
+
+@dataclass
+class BreadthInputRow:
+    row_id: str
+    symbol: str
+    as_of: datetime
+    sector: str | None = None
+    close: float | None = None
+    previous_close: float | None = None
+    volume: float | None = None
+    turnover: float | None = None
+    ma_20: float | None = None
+    ma_50: float | None = None
+    ma_200: float | None = None
+    high_20d: float | None = None
+    low_20d: float | None = None
+    high_252d: float | None = None
+    low_252d: float | None = None
+    return_1d_pct: float | None = None
+    warnings: list[str] = field(default_factory=list)
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+    def __post_init__(self):
+        self.symbol = self.symbol.upper()
+        if self.close is not None and self.close < 0:
+            self.warnings.append(f"Negative close price for {self.symbol}")
+        if self.volume is not None and self.volume < 0:
+            self.warnings.append(f"Negative volume for {self.symbol}")
+
+
+@dataclass
+class BreadthMetric:
+    metric_id: str
     metric_type: BreadthMetricType
-    value: float | int | str | None = None
+    scope: BreadthScope
+    scope_name: str
+    as_of: datetime
+    value: float | None = None
+    numerator: float | None = None
+    denominator: float | None = None
     status: BreadthStatus = BreadthStatus.UNKNOWN
-    threshold: float | None = None
-    sample_size: int = 0
-    as_of_date: datetime
-    warnings: list[str] = Field(default_factory=list)
-    metadata: dict[str, Any] = Field(default_factory=dict)
+    warnings: list[str] = field(default_factory=list)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-class BreadthSnapshot(BaseModel):
-    snapshot_id: str
-    as_of_date: datetime
-    universe_name: str
-    symbols: list[str]
-    benchmark_symbol: str | None = None
-    metrics: list[BreadthMetric] = Field(default_factory=list)
-    advance_count: int | None = None
-    decline_count: int | None = None
-    unchanged_count: int | None = None
-    percent_above_ma: dict[str, float] = Field(default_factory=dict)
-    new_high_count: dict[str, int] = Field(default_factory=dict)
-    new_low_count: dict[str, int] = Field(default_factory=dict)
+
+@dataclass
+class AdvanceDeclineSummary:
+    summary_id: str
+    scope: BreadthScope
+    scope_name: str
+    as_of: datetime
+    advances: int
+    declines: int
+    unchanged: int
+    net_advances: int
+    advance_decline_ratio: float | None = None
+    advance_percent: float | None = None
+    status: BreadthStatus = BreadthStatus.UNKNOWN
+    warnings: list[str] = field(default_factory=list)
+    disclaimer: str = "Advance/decline summary is research-only market breadth metadata. It is not investment advice. No real order was sent."
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class ParticipationSummary:
+    participation_id: str
+    scope: BreadthScope
+    scope_name: str
+    as_of: datetime
+    above_ma_20_pct: float | None = None
+    above_ma_50_pct: float | None = None
+    above_ma_200_pct: float | None = None
+    positive_return_pct: float | None = None
+    participation_score: float | None = None
+    breadth_thrust_score: float | None = None
+    status: BreadthStatus = BreadthStatus.UNKNOWN
+    warnings: list[str] = field(default_factory=list)
+    disclaimer: str = "Participation summary is research-only market breadth metadata. It is not investment advice. No real order was sent."
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class HighLowBreadthSummary:
+    highlow_id: str
+    scope: BreadthScope
+    scope_name: str
+    as_of: datetime
+    new_high_20d_count: int
+    new_low_20d_count: int
+    new_high_52w_count: int
+    new_low_52w_count: int
+    high_low_spread: int
+    high_low_score: float | None = None
+    status: BreadthStatus = BreadthStatus.UNKNOWN
+    warnings: list[str] = field(default_factory=list)
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class VolumeBreadthSummary:
+    volume_breadth_id: str
+    scope: BreadthScope
+    scope_name: str
+    as_of: datetime
+    up_volume: float | None = None
+    down_volume: float | None = None
+    unchanged_volume: float | None = None
+    up_volume_ratio: float | None = None
+    down_volume_ratio: float | None = None
     volume_breadth_score: float | None = None
-    momentum_breadth_score: float | None = None
-    composite_score: float = 0.0
     status: BreadthStatus = BreadthStatus.UNKNOWN
-    warnings: list[str] = Field(default_factory=list)
-    disclaimer: str = "Breadth snapshot is research-only. Not investment advice. No real order was sent."
-    metadata: dict[str, Any] = Field(default_factory=dict)
+    warnings: list[str] = field(default_factory=list)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def summary(self) -> dict[str, Any]:
-        return {
-            "snapshot_id": self.snapshot_id,
-            "as_of_date": self.as_of_date.isoformat(),
-            "universe_name": self.universe_name,
-            "symbols_count": len(self.symbols),
-            "benchmark_symbol": self.benchmark_symbol,
-            "composite_score": self.composite_score,
-            "status": self.status.value,
-            "warnings_count": len(self.warnings),
-        }
 
-    def safe_public_dict(self) -> dict[str, Any]:
-        return {
-            "snapshot_id": self.snapshot_id,
-            "as_of_date": self.as_of_date.isoformat(),
-            "universe_name": self.universe_name,
-            "symbols_count": len(self.symbols),
-            "benchmark_symbol": self.benchmark_symbol,
-            "composite_score": self.composite_score,
-            "status": self.status.value,
-            "advance_count": self.advance_count,
-            "decline_count": self.decline_count,
-            "percent_above_ma": self.percent_above_ma,
-            "new_high_count": self.new_high_count,
-            "new_low_count": self.new_low_count,
-            "volume_breadth_score": self.volume_breadth_score,
-            "disclaimer": self.disclaimer
-        }
-
-class RelativeStrengthScore(BaseModel):
-    symbol: str
-    benchmark_symbol: str | None = None
-    sector: str | None = None
-    as_of_date: datetime
-    rs_20: float | None = None
-    rs_50: float | None = None
-    rs_100: float | None = None
-    rs_200: float | None = None
-    absolute_momentum_score: float | None = None
-    relative_momentum_score: float | None = None
-    percentile_rank: float | None = None
-    composite_score: float = 0.0
-    warnings: list[str] = Field(default_factory=list)
-    metadata: dict[str, Any] = Field(default_factory=dict)
-
-class SectorRotationScore(BaseModel):
+@dataclass
+class SectorBreadthSummary:
+    sector_breadth_id: str
     sector: str
-    as_of_date: datetime
-    symbol_count: int = 0
-    average_return_20: float | None = None
-    average_return_50: float | None = None
-    average_rs_score: float | None = None
+    as_of: datetime
+    symbols_count: int
+    advance_percent: float | None = None
+    above_ma_50_pct: float | None = None
+    above_ma_200_pct: float | None = None
+    up_volume_ratio: float | None = None
+    sector_breadth_score: float | None = None
+    status: BreadthStatus = BreadthStatus.UNKNOWN
+    leading_symbols: list[str] = field(default_factory=list)
+    lagging_symbols: list[str] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
+    disclaimer: str = "Sector breadth summary is research-only metadata. It is not investment advice. No real order was sent."
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class BreadthDivergence:
+    divergence_id: str
+    as_of: datetime
+    scope: BreadthScope
+    scope_name: str
+    divergence_type: BreadthDivergenceType
+    index_return_pct: float | None = None
+    breadth_change_pct: float | None = None
+    participation_change_pct: float | None = None
+    divergence_score: float | None = None
+    status: BreadthStatus = BreadthStatus.UNKNOWN
+    message: str = ""
+    warnings: list[str] = field(default_factory=list)
+    disclaimer: str = "Breadth divergence is research-only. It does not predict price direction. No real order was sent."
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class BreadthRegimeSnapshot:
+    regime_id: str
+    as_of: datetime
+    scope: BreadthScope
+    scope_name: str
+    label: BreadthRegimeLabel
     breadth_score: float | None = None
-    fundamental_composite_avg: float | None = None
-    momentum_score: float | None = None
-    rotation_status: SectorRotationStatus = SectorRotationStatus.UNKNOWN
-    rank: int | None = None
-    warnings: list[str] = Field(default_factory=list)
-    metadata: dict[str, Any] = Field(default_factory=dict)
+    participation_score: float | None = None
+    volume_breadth_score: float | None = None
+    divergence_score: float | None = None
+    sector_confirmation_score: float | None = None
+    status: BreadthStatus = BreadthStatus.UNKNOWN
+    warnings: list[str] = field(default_factory=list)
+    disclaimer: str = "Breadth regime snapshot is research-only market context. It is not investment advice. No real order was sent."
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-class CrossSectionalRankItem(BaseModel):
-    symbol: str
-    as_of_date: datetime
-    rank: int
-    percentile: float
-    composite_score: float
-    components: dict[str, float | None] = Field(default_factory=dict)
-    sector: str | None = None
-    warnings: list[str] = Field(default_factory=list)
-    metadata: dict[str, Any] = Field(default_factory=dict)
 
-class BreadthRegime(BaseModel):
-    as_of_date: datetime
-    status: BreadthStatus
-    composite_score: float
-    risk_modifier: float
-    signal_policy: str
-    reasons: list[str] = Field(default_factory=list)
-    warnings: list[str] = Field(default_factory=list)
-    metadata: dict[str, Any] = Field(default_factory=dict)
+@dataclass
+class BreadthReport:
+    report_id: str
+    generated_at: datetime
+    scope: BreadthScope
+    scope_name: str
+    universe: BreadthUniverseSnapshot | None = None
+    advance_decline: AdvanceDeclineSummary | None = None
+    participation: ParticipationSummary | None = None
+    high_low: HighLowBreadthSummary | None = None
+    volume_breadth: VolumeBreadthSummary | None = None
+    sector_breadth: list[SectorBreadthSummary] = field(default_factory=list)
+    divergences: list[BreadthDivergence] = field(default_factory=list)
+    regime: BreadthRegimeSnapshot | None = None
+    metrics: list[BreadthMetric] = field(default_factory=list)
+    key_findings: list[str] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
+    disclaimer: str = "Breadth report is research-only. It is not investment advice, portfolio advice, or an order instruction. No real order was sent."
+    metadata: dict[str, Any] = field(default_factory=dict)
 
-class BreadthAnalysisRequest(BaseModel):
-    symbols: list[str]
-    benchmark_symbol: str | None = None
-    universe_name: str
-    source: str
-    timeframe: str
-    as_of_date: datetime | None = None
-    lookback_days: int = 260
-    include_relative_strength: bool = True
-    include_sector_rotation: bool = True
-    include_fundamentals: bool = False
-    save_snapshot: bool = True
-    metadata: dict[str, Any] = Field(default_factory=dict)
-
-class BreadthAnalysisResult(BaseModel):
-    request: BreadthAnalysisRequest
-    snapshot: BreadthSnapshot
-    relative_strength_scores: list[RelativeStrengthScore] = Field(default_factory=list)
-    sector_rotation_scores: list[SectorRotationScore] = Field(default_factory=list)
-    cross_sectional_ranking: list[CrossSectionalRankItem] = Field(default_factory=list)
-    regime: BreadthRegime | None = None
-    output_files: dict[str, str] = Field(default_factory=dict)
-    elapsed_seconds: float = 0.0
-    warnings: list[str] = Field(default_factory=list)
-    disclaimer: str = "Breadth analysis output only. Not investment advice. No real order was sent."
-    metadata: dict[str, Any] = Field(default_factory=dict)
-
-    def summary(self) -> dict[str, Any]:
-        return {
-            "request_universe": self.request.universe_name,
-            "snapshot_id": self.snapshot.snapshot_id,
-            "composite_score": self.snapshot.composite_score,
-            "status": self.snapshot.status.value,
-            "regime_status": self.regime.status.value if self.regime else None,
-            "rs_count": len(self.relative_strength_scores),
-            "sector_count": len(self.sector_rotation_scores),
-            "rank_count": len(self.cross_sectional_ranking),
-            "elapsed_seconds": self.elapsed_seconds,
-            "warnings_count": len(self.warnings),
-        }

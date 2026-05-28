@@ -114,6 +114,7 @@ class AdaptiveStrategyCandidate(BaseModel):
     reasons: list[str] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)
     metadata: dict[str, Any] = Field(default_factory=dict)
+    breadth_regime_alignment: str | None = None
 
     def summary(self) -> dict[str, Any]:
         return {

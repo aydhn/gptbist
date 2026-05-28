@@ -1546,3 +1546,59 @@ Crowding: MEDIUM
 Bu çıktı araştırma amaçlı faktör analizidir.
 Yatırım tavsiyesi değildir.
 Gerçek emir gönderilmedi.'''
+
+from bist_signal_bot.breadth.models import AdvanceDeclineSummary, BreadthRegimeSnapshot, SectorBreadthSummary, BreadthReport
+
+def format_breadth_regime(snapshot: BreadthRegimeSnapshot) -> str:
+    msg = f"BIST Bot Breadth Regime\n\n"
+    msg += f"Regime: {snapshot.label.value}\n"
+    msg += f"Status: {snapshot.status.value}\n"
+    msg += f"Breadth Score: {snapshot.breadth_score}\n"
+    msg += f"Participation Score: {snapshot.participation_score}\n"
+    msg += f"\nBu çıktı araştırma amaçlı piyasa iç yapı analizidir.\n"
+    msg += f"Yatırım tavsiyesi değildir.\n"
+    msg += f"Gerçek emir gönderilmedi.\n"
+    return msg
+
+def format_advance_decline(summary: AdvanceDeclineSummary) -> str:
+    msg = f"BIST Bot Advance/Decline\n\n"
+    msg += f"Advances: {summary.advances}\n"
+    msg += f"Declines: {summary.declines}\n"
+    msg += f"Unchanged: {summary.unchanged}\n"
+    msg += f"AD Ratio: {summary.advance_decline_ratio}\n"
+    msg += f"\nBu çıktı araştırma amaçlı piyasa iç yapı analizidir.\n"
+    msg += f"Yatırım tavsiyesi değildir.\n"
+    msg += f"Gerçek emir gönderilmedi.\n"
+    return msg
+
+def format_sector_breadth(summaries: list[SectorBreadthSummary]) -> str:
+    msg = f"BIST Bot Sector Breadth\n\n"
+    for s in summaries:
+         msg += f"- {s.sector}: Score {s.sector_breadth_score}, AD {s.advance_percent}%\n"
+    msg += f"\nBu çıktı araştırma amaçlı piyasa iç yapı analizidir.\n"
+    msg += f"Yatırım tavsiyesi değildir.\n"
+    msg += f"Gerçek emir gönderilmedi.\n"
+    return msg
+
+def format_breadth_report(report: BreadthReport) -> str:
+    msg = f"BIST Bot Breadth Özeti\n\n"
+
+    if report.regime:
+        msg += f"Regime: {report.regime.label.value}\n"
+        msg += f"Breadth Score: {report.regime.breadth_score}\n"
+
+    if report.participation:
+        msg += f"Participation Score: {report.participation.participation_score}\n"
+
+    if report.advance_decline:
+        msg += f"AD Ratio: {report.advance_decline.advance_decline_ratio}\n"
+
+    if report.divergences:
+        msg += f"Divergence Warning: Var ({len(report.divergences)})\n"
+    else:
+        msg += f"Divergence Warning: Yok\n"
+
+    msg += f"\nBu çıktı araştırma amaçlı piyasa iç yapı analizidir.\n"
+    msg += f"Yatırım tavsiyesi değildir.\n"
+    msg += f"Gerçek emir gönderilmedi.\n"
+    return msg
