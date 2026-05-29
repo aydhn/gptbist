@@ -1761,3 +1761,29 @@ class ReviewPatternError(ReviewWorkflowError):
 
 class ReviewWorkflowStorageError(ReviewWorkflowError):
     pass
+
+
+class OpsError(BistSignalBotError):
+    pass
+class OpsObservabilityError(OpsError):
+    pass
+class OpsStoreCheckError(OpsError):
+    pass
+class OpsStalenessError(OpsError):
+    pass
+class OpsIncidentError(OpsError):
+    pass
+class OpsRunbookError(OpsError):
+    pass
+class OpsBackupError(OpsError):
+    pass
+class OpsRestoreError(OpsError):
+    pass
+class OpsRetentionError(OpsError):
+    pass
+class OpsMigrationError(OpsError):
+    pass
+class OpsReadinessError(OpsError):
+    pass
+class OpsStorageError(OpsError):
+    pass
