@@ -22,6 +22,7 @@ from bist_signal_bot.core.exceptions import MLInferenceError
 
 logger = logging.getLogger(__name__)
 
+# ContextFusion can collect from this engine's outputs
 class MLInferenceEngine:
     def __init__(self,
                  model_registry: MLModelRegistry,

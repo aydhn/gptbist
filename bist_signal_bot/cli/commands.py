@@ -20,6 +20,7 @@ from bist_signal_bot.data.adjustments import PriceAdjustmentEngine
 from bist_signal_bot.data.models import CorporateAction, CorporateActionType, AdjustmentPolicy
 from bist_signal_bot.data.mock_provider import MockMarketDataProvider
 import argparse
+from bist_signal_bot.cli.context_commands import setup_context_parser, handle_context_command
 
 from bist_signal_bot.cli.ensemble_commands import setup_ensemble_parser, handle_ensemble_command
 from bist_signal_bot.cli.valuation_commands import *
@@ -62,7 +63,11 @@ def cmd_symbols(args, app_context: ApplicationContext) -> int:
 
     if getattr(args, "yfinance", False):
         res = [getattr(s, "yfinance_ticker", str(s) + ".IS") for s in symbols]
+
+    elif args.command == "context":
+        handle_context_command(args)
     else:
+
         res = [{"symbol": getattr(s, "symbol", str(s)), "name": getattr(s, "name", ""), "group": getattr(s, "group", "")} for s in symbols]
 
     print_output(res, as_json=args.json)

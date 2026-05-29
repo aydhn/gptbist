@@ -22,6 +22,7 @@ from .risk_metrics import MonteCarloRiskAnalyzer
 from .scoring import MonteCarloRobustnessScorer
 from .storage import MonteCarloStore
 
+# ContextFusion collects monte carlo robustness
 class MonteCarloEngine:
     def __init__(self,
                  trade_adapter: TradeSimulationAdapter | None = None,

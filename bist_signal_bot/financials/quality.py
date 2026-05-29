@@ -5,6 +5,7 @@ from bist_signal_bot.financials.models import (
     FinancialQualityStatus
 )
 
+# ContextFusion collects earnings quality
 class EarningsQualityAnalyzer:
     def __init__(self, settings=None):
         self.settings = settings

@@ -1602,3 +1602,40 @@ def format_breadth_report(report: BreadthReport) -> str:
     msg += f"Yatırım tavsiyesi değildir.\n"
     msg += f"Gerçek emir gönderilmedi.\n"
     return msg
+
+
+from bist_signal_bot.context_fusion.models import UnifiedContextSnapshot, ContextConflict, EvidenceGap, ContextFusionReport
+
+def format_unified_context_snapshot(snapshot: UnifiedContextSnapshot) -> str:
+    msg = "BIST Bot Unified Context Özeti\n\n"
+    msg += f"Sembol: {snapshot.symbol}\n"
+    if snapshot.composite_score:
+        msg += f"Composite Research Score: {snapshot.composite_score.adjusted_score:.2f} ({snapshot.composite_score.final_status.value})\n"
+    msg += f"Conflicts: {len(snapshot.conflicts)}\n"
+    msg += f"Evidence Gaps: {len(snapshot.evidence_gaps)}\n"
+    msg += f"Key Supports: {', '.join(snapshot.key_supports) if snapshot.key_supports else 'None'}\n"
+    msg += f"Key Pressures: {', '.join(snapshot.key_pressures) if snapshot.key_pressures else 'None'}\n\n"
+    msg += "Bu çıktı araştırma amaçlı birleşik bağlam özetidir.\nYatırım tavsiyesi değildir.\nGerçek emir gönderilmedi."
+    return msg
+
+def format_context_conflicts(conflicts: list[ContextConflict]) -> str:
+    msg = "BIST Bot Context Conflicts\n\n"
+    for c in conflicts:
+        msg += f"[{c.severity.value}] {c.conflict_type.value}: {c.message}\n"
+    return msg
+
+def format_evidence_gaps(gaps: list[EvidenceGap]) -> str:
+    msg = "BIST Bot Evidence Gaps\n\n"
+    for g in gaps:
+        msg += f"[{g.severity.value}] {g.gap_type.value} ({g.layer.value}): {g.message}\n"
+    return msg
+
+def format_context_fusion_report(report: ContextFusionReport) -> str:
+    msg = f"BIST Bot Context Fusion Report ({report.generated_at.strftime('%Y-%m-%d')})\n\n"
+    msg += f"Total Snapshots: {len(report.snapshots)}\n"
+    msg += f"Total Conflicts: {len(report.conflicts)}\n"
+    msg += f"Total Gaps: {len(report.evidence_gaps)}\n\n"
+    for f in report.key_findings:
+        msg += f"- {f}\n"
+    msg += "\n" + report.disclaimer
+    return msg

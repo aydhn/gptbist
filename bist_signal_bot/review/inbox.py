@@ -10,6 +10,7 @@ from .models import (
 from .evidence import ReviewEvidenceCollector
 from .checklist import ReviewChecklistBuilder
 
+# ContextFusion integrates with ReviewInboxManager
 class ReviewInboxManager:
     def __init__(self, store=None, evidence_collector=None, checklist_builder=None, settings=None, logger=None):
         self.store = store

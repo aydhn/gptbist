@@ -773,3 +773,10 @@ Local deterministic factor scoring and sector rotation research.
 - Divergence detection (Index up vs Breadth down) and Regime classification.
 - Full integration into Scanner, Portfolio Construction, and Explainability Evidence Cards.
 - CLI: `python -m bist_signal_bot breadth [compute|report|regime|divergence|participation]`
+
+## Phase 86: Unified Context Fusion
+- **Unified Context Snapshot**: Aggregates Technical, ML, Ensemble, Risk, Execution, Calibration, Validation, Monte Carlo, Event, Disclosure, Financials, Valuation, Factors, Breadth, Macro, Portfolio, and Knowledge Context into a single local-first view.
+- **Composite Scoring**: Normalizes disparate signals and blends them dynamically.
+- **Conflict & Gap Detection**: Identifies analytical contradictions and missing evidence.
+- **Research Graph**: Builds a node-edge metadata graph of the context snapshot.
+- *Disclaimer: All context and scoring outputs are research-only and never trigger real market execution.*

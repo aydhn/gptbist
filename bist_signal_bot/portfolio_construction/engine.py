@@ -9,6 +9,7 @@ from bist_signal_bot.portfolio_construction.models import (
     PortfolioConstructionRequest, PortfolioConstructionResult, PortfolioCandidate, PortfolioWeightingMethod
 )
 
+# ContextFusion collects portfolio construction context
 class PortfolioConstructionEngine:
     def __init__(self, settings: Settings | None = None, macro_store=None):
         self.settings = settings or Settings()

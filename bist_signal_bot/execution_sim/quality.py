@@ -3,6 +3,7 @@ import uuid
 
 from bist_signal_bot.execution_sim.models import SimulatedFill, ExecutionQualityReport, SimulatedFillStatus, SimulatedOrderSide
 
+# ContextFusion collects execution costs/liquidity
 class ExecutionQualityAnalyzer:
     def __init__(self, settings: Any | None = None):
         self.settings = settings

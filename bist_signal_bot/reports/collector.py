@@ -4,6 +4,7 @@ from datetime import datetime
 from bist_signal_bot.config.settings import Settings, get_settings
 from bist_signal_bot.reports.models import ReportConfig, ReportDataBundle, ReportType
 
+# ContextFusion integrates with ReportDataCollector
 class ReportDataCollector:
     def __init__(self, settings: Settings | None = None, logger: logging.Logger | None = None):
         self.settings = settings or get_settings()

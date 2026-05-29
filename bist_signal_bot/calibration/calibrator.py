@@ -8,6 +8,7 @@ from bist_signal_bot.calibration.bins import CalibrationBinBuilder
 from bist_signal_bot.calibration.metrics import CalibrationMetricsCalculator
 from bist_signal_bot.calibration.reliability import ReliabilityCurveBuilder
 
+# ContextFusion collects calibration reliability
 class SignalCalibrator:
     def __init__(self, settings: Settings | None = None, bin_builder: CalibrationBinBuilder | None = None, metrics_calc: CalibrationMetricsCalculator | None = None, curve_builder: ReliabilityCurveBuilder | None = None):
         self.settings = settings or Settings()

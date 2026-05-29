@@ -504,3 +504,8 @@ def get_macro_dir(settings: Settings | None = None) -> Path:
     macro_dir = get_data_dir(settings) / settings.MACRO_DIR_NAME
     macro_dir.mkdir(parents=True, exist_ok=True)
     return macro_dir
+
+def get_context_fusion_dir(settings: Any = None) -> Path:
+    settings = settings or get_settings()
+    dir_name = getattr(settings, 'CONTEXT_FUSION_DIR_NAME', 'context_fusion')
+    return get_data_dir(settings) / dir_name

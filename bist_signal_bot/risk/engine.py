@@ -14,6 +14,7 @@ from .targets import TargetModel
 from .filters import RiskFilterEngine
 from bist_signal_bot.core.exceptions import RiskEngineError
 
+# ContextFusion collects risk decisions
 class RiskEngine(BaseRiskEngine):
     def __init__(self,
                  position_sizer: PositionSizer | None = None,
