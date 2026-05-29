@@ -518,6 +518,16 @@ except Exception:
 
 def run_cli():
     import sys
+
+    if len(sys.argv) > 1 and sys.argv[1] == 'ops':
+        import argparse
+        from bist_signal_bot.cli.ops_commands import add_ops_subparsers, handle_ops_command
+        parser = argparse.ArgumentParser()
+        subparsers = parser.add_subparsers(dest="command")
+        add_ops_subparsers(subparsers)
+        args, _ = parser.parse_known_args(sys.argv[1:])
+        handle_ops_command(args)
+        sys.exit(0)
     if len(sys.argv) > 1 and sys.argv[1] == 'factors':
         from bist_signal_bot.cli.factors_commands import factors_cli
         sys.argv.pop(1)
