@@ -1670,3 +1670,20 @@ def format_review_signoff(signoff: ReviewSignoffRequest) -> str:
 
 def format_review_workflow_report(report: ReviewWorkflowReport) -> str:
     return "Report summary"
+
+def format_qa_check_results(results: list) -> str: return "QA checks summary"
+def format_smoke_test_results(results: list) -> str: return "Smoke tests summary"
+def format_regression_matrix(result) -> str: return "Regression matrix summary"
+def format_release_gate_result(result) -> str:
+    return f"""BIST Bot QA / Release Gate Özeti
+Decision: {result.decision.value}
+Status: {result.status.value}
+Checks: {len(result.check_results)}
+Smoke Failures: {len([s for s in result.smoke_results if s.status == 'FAIL'])}
+Blocking Reasons: {len(result.blocking_reasons)}
+Warnings: {len(result.warnings)}
+
+Bu çıktı yazılım kalite kontrol özetidir.
+Yatırım tavsiyesi değildir.
+Gerçek emir gönderilmedi."""
+def format_qa_report(report) -> str: return "QA report summary"

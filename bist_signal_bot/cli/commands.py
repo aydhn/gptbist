@@ -6820,3 +6820,94 @@ def handle_review_workflow(args, settings=None):
         print("Recent review cases")
     elif args.rw_command == "config":
         print("Review workflow config")
+
+import typer
+
+qa_app = typer.Typer(name="qa", help="Quality Assurance and Release Gate operations")
+
+@qa_app.command("fixtures")
+def qa_fixtures():
+    print("QA fixtures")
+
+@qa_app.command("scenarios")
+def qa_scenarios():
+    print("QA scenarios")
+
+@qa_app.command("replay")
+def qa_replay():
+    print("QA replay")
+
+@qa_app.command("smoke")
+def qa_smoke():
+    print("QA smoke")
+
+@qa_app.command("regression")
+def qa_regression():
+    print("QA regression")
+
+@qa_app.command("release-gate")
+def qa_release_gate():
+    print("QA release gate")
+
+@qa_app.command("safety")
+def qa_safety():
+    print("QA safety checks")
+
+@qa_app.command("no-external-calls")
+def qa_no_external_calls():
+    print("QA no external calls check")
+
+@qa_app.command("reproducibility")
+def qa_reproducibility():
+    print("QA reproducibility pack builder")
+
+@qa_app.command("coverage")
+def qa_coverage():
+    print("QA coverage matrix")
+
+@qa_app.command("report")
+def qa_report():
+    print("QA report")
+
+@qa_app.command("recent")
+def qa_recent():
+    print("QA recent runs")
+
+@qa_app.command("config")
+def qa_config():
+    print("QA config")
+
+
+
+def handle_qa_command(args, settings=None):
+    from bist_signal_bot.cli.formatting import print_output
+
+    if getattr(args, "qa_command", None) == "fixtures":
+        print_output({"status": "qa fixtures"}, as_json=getattr(args, "json", False))
+    elif getattr(args, "qa_command", None) == "scenarios":
+        print_output({"status": "qa scenarios"}, as_json=getattr(args, "json", False))
+    elif getattr(args, "qa_command", None) == "replay":
+        print_output({"status": "qa replay"}, as_json=getattr(args, "json", False))
+    elif getattr(args, "qa_command", None) == "smoke":
+        print_output({"status": "qa smoke"}, as_json=getattr(args, "json", False))
+    elif getattr(args, "qa_command", None) == "regression":
+        print_output({"status": "qa regression"}, as_json=getattr(args, "json", False))
+    elif getattr(args, "qa_command", None) == "release-gate":
+        print_output({"status": "qa release gate"}, as_json=getattr(args, "json", False))
+    elif getattr(args, "qa_command", None) == "safety":
+        print_output({"status": "qa safety checks"}, as_json=getattr(args, "json", False))
+    elif getattr(args, "qa_command", None) == "no-external-calls":
+        print_output({"status": "qa no external calls"}, as_json=getattr(args, "json", False))
+    elif getattr(args, "qa_command", None) == "reproducibility":
+        print_output({"status": "qa reproducibility"}, as_json=getattr(args, "json", False))
+    elif getattr(args, "qa_command", None) == "coverage":
+        print_output({"status": "qa coverage"}, as_json=getattr(args, "json", False))
+    elif getattr(args, "qa_command", None) == "report":
+        print_output({"status": "qa report"}, as_json=getattr(args, "json", False))
+    elif getattr(args, "qa_command", None) == "recent":
+        print_output({"status": "qa recent runs"}, as_json=getattr(args, "json", False))
+    elif getattr(args, "qa_command", None) == "config":
+        print_output({"status": "qa config"}, as_json=getattr(args, "json", False))
+    else:
+        print_output({"error": "Unknown QA command"}, as_json=getattr(args, "json", False))
+    return 0

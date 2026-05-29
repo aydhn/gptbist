@@ -13,6 +13,46 @@ class BistSignalBotError(Exception):
         self.context = context or {}
         self.recoverable = recoverable
 
+
+class QAError(BistSignalBotError):
+    pass
+
+class QAFixtureError(QAError):
+    pass
+
+class SyntheticDataError(QAError):
+    pass
+
+class QAScenarioError(QAError):
+    pass
+
+class ScenarioReplayError(QAError):
+    pass
+
+class SmokeTestError(QAError):
+    pass
+
+class RegressionMatrixError(QAError):
+    pass
+
+class ReleaseGateError(QAError):
+    pass
+
+class ReproducibilityError(QAError):
+    pass
+
+class QASafetyCheckError(QAError):
+    pass
+
+class NoExternalCallError(QAError):
+    pass
+
+class QACoverageMatrixError(QAError):
+    pass
+
+class QAStorageError(QAError):
+    pass
+
 class ConfigurationError(BistSignalBotError):
     """Raised when there is a configuration issue."""
     pass

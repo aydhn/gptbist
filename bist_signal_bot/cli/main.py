@@ -328,6 +328,78 @@ def run_cli(argv: list[str] | None = None) -> int:
         data_quality()
         return 0
 
+
+    if args_to_parse and args_to_parse[0] == 'qa':
+        import argparse
+        parser = argparse.ArgumentParser()
+        subparsers = parser.add_subparsers(dest="qa_command")
+
+        fix_p = subparsers.add_parser("fixtures")
+        fix_subs = fix_p.add_subparsers(dest="action")
+        fix_subs.add_parser("validate")
+        fix_build = fix_subs.add_parser("build-synthetic")
+        fix_build.add_argument("--output", default=".qa_tmp/fixtures")
+        fix_man = fix_subs.add_parser("manifest")
+        fix_man.add_argument("--json", action="store_true")
+
+        scen_p = subparsers.add_parser("scenarios")
+        scen_subs = scen_p.add_subparsers(dest="action")
+        scen_subs.add_parser("list")
+        scen_show = scen_subs.add_parser("show")
+        scen_show.add_argument("name")
+        scen_show.add_argument("--json", action="store_true")
+
+        rep_p = subparsers.add_parser("replay")
+        rep_p.add_argument("--scenario")
+        rep_p.add_argument("--all", action="store_true")
+        rep_p.add_argument("--json", action="store_true")
+
+        smoke_p = subparsers.add_parser("smoke")
+        smoke_p.add_argument("--critical-only", action="store_true")
+        smoke_p.add_argument("--json", action="store_true")
+
+        reg_p = subparsers.add_parser("regression")
+        reg_p.add_argument("--json", action="store_true")
+
+        rel_p = subparsers.add_parser("release-gate")
+        rel_p.add_argument("--skip-pytest", action="store_true")
+        rel_p.add_argument("--json", action="store_true")
+
+        saf_p = subparsers.add_parser("safety")
+        saf_p.add_argument("--json", action="store_true")
+
+        noe_p = subparsers.add_parser("no-external-calls")
+        noe_p.add_argument("--json", action="store_true")
+
+        repr_p = subparsers.add_parser("reproducibility")
+        repr_subs = repr_p.add_subparsers(dest="action")
+        repr_build = repr_subs.add_parser("build")
+        repr_build.add_argument("--json", action="store_true")
+
+        cov_p = subparsers.add_parser("coverage")
+        cov_p.add_argument("--json", action="store_true")
+
+        repo_p = subparsers.add_parser("report")
+        repo_p.add_argument("--latest", action="store_true")
+        repo_p.add_argument("--json", action="store_true")
+
+        rec_p = subparsers.add_parser("recent")
+        rec_p.add_argument("--limit", type=int, default=10)
+        rec_p.add_argument("--json", action="store_true")
+
+        cfg_p = subparsers.add_parser("config")
+        cfg_p.add_argument("--json", action="store_true")
+
+        args, _ = parser.parse_known_args(args_to_parse[1:])
+        from bist_signal_bot.cli.commands import handle_qa_command
+        try:
+            from bist_signal_bot.config.settings import Settings
+            s = Settings()
+            return handle_qa_command(args, s)
+        except Exception as e:
+            print(f"QA Error: {e}")
+        return 1
+
     args = parse_args(argv)
 
 
@@ -388,6 +460,7 @@ def run_cli(argv: list[str] | None = None) -> int:
         "scenario": lambda a, c: __import__("bist_signal_bot.cli.commands").cli(sys.argv[1:], prog_name="bist_signal_bot"),
 
 
+                "qa": lambda a, c: __import__("bist_signal_bot.cli.commands", fromlist=["handle_qa_command"]).handle_qa_command(a, c.settings),
         "research": lambda a, c: __import__("bist_signal_bot.cli.commands_research", fromlist=["handle_research_commands"]).handle_research_commands(a, c.settings),
         "breadth": lambda a, c: __import__("bist_signal_bot.cli.commands_breadth", fromlist=["handle_breadth_commands"]).handle_breadth_commands(a, c.settings),
         "release": lambda a, c: __import__("bist_signal_bot.cli.commands", fromlist=["handle_release_command"]).handle_release_command(a, c.settings),
