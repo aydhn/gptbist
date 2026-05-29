@@ -1,3 +1,5 @@
+
+from bist_signal_bot.review_workflow.models import ReviewCase, ReviewChecklistItem, DecisionJournalEntry, ReviewSignoffRequest, ReviewWorkflowReport
 from typing import Any
 
 
@@ -1639,3 +1641,32 @@ def format_context_fusion_report(report: ContextFusionReport) -> str:
         msg += f"- {f}\n"
     msg += "\n" + report.disclaimer
     return msg
+
+
+def format_review_case(case: ReviewCase) -> str:
+    playbooks = ", ".join(case.playbook_ids) if case.playbook_ids else "None"
+    return f'''BIST Bot Review Workflow Özeti
+
+Case: {case.case_id}
+Symbol: {case.symbol}
+Priority: {case.priority.name}
+Status: {case.status.name}
+Playbooks: {playbooks}
+Signoff: {case.signoff_status.name}
+Disposition: {case.disposition.name}
+
+Bu çıktı araştırma amaçlı analist inceleme özetidir.
+Yatırım tavsiyesi değildir.
+Gerçek emir gönderilmedi.'''
+
+def format_review_checklist(items: list[ReviewChecklistItem]) -> str:
+    return "Checklist summary"
+
+def format_decision_journal(entries: list[DecisionJournalEntry]) -> str:
+    return "Journal summary"
+
+def format_review_signoff(signoff: ReviewSignoffRequest) -> str:
+    return "Signoff summary"
+
+def format_review_workflow_report(report: ReviewWorkflowReport) -> str:
+    return "Report summary"

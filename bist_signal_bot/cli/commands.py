@@ -6767,3 +6767,56 @@ def run_financials_command(args, settings=None):
 # FACTORS CLI Placeholder
 def factor_cli_group():
     print("Factor CLI initialized")
+
+
+def handle_review_workflow(args, settings=None):
+    if args.rw_command == "create":
+        from bist_signal_bot.app.review_workflow_app import create_review_case_builder
+        builder = create_review_case_builder()
+        if args.symbol:
+            case = builder.create_case_for_symbol(args.symbol, args.strategy)
+        else:
+            print("Snapshot/Signal ID support mocked for testing")
+            return
+        if args.json:
+            import json
+            from bist_signal_bot.review_workflow.reporting import review_case_to_dict
+            print(json.dumps(review_case_to_dict(case), indent=2))
+        else:
+            print(f"Created case {case.case_id} for {case.symbol}")
+
+    elif args.rw_command == "list":
+        print("Listing review cases (mock)")
+    elif args.rw_command == "show":
+        print(f"Showing case {args.case_id} (mock)")
+    elif args.rw_command == "checklist":
+        print(f"Checklist for {args.case_id} (mock)")
+    elif args.rw_command == "journal":
+        if args.add_note:
+            print(f"Added note to {args.case_id}: {args.add_note}")
+        else:
+            print(f"Journal for {args.case_id}")
+    elif args.rw_command == "disposition":
+        print(f"Set disposition {args.set} for {args.case_id}")
+    elif args.rw_command == "signoff":
+        if args.request:
+            print(f"Requested signoff for {args.id}")
+        elif args.approve:
+            print(f"Approved signoff {args.id}")
+        elif args.reject:
+            print(f"Rejected signoff {args.id}")
+    elif args.rw_command == "data-actions":
+        if args.resolve:
+            print(f"Resolved action {args.resolve}")
+        else:
+            print("Listing data actions")
+    elif args.rw_command == "close":
+        print(f"Closed case {args.case_id}")
+    elif args.rw_command == "patterns":
+        print("Detected patterns")
+    elif args.rw_command == "report":
+        print("Review workflow report")
+    elif args.rw_command == "recent":
+        print("Recent review cases")
+    elif args.rw_command == "config":
+        print("Review workflow config")

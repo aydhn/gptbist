@@ -1511,6 +1511,7 @@ def build_parser() -> argparse.ArgumentParser:
         p_dq = subparsers.add_parser("data-quality", help="Data quality operations")
         p_dq.add_argument("dummy", nargs="*")
 
+    add_review_workflow_parser(subparsers)
     return parser
 
 
@@ -2573,3 +2574,75 @@ def add_valuation_parser(subparsers):
     cfg.add_argument("--json", action="store_true")
 
 # Factors CLI parser will be registered here
+
+
+def add_review_workflow_parser(subparsers):
+    review_workflow_parser = subparsers.add_parser("review-workflow", help="Manage Analyst Review Workflow")
+    rw_subparsers = review_workflow_parser.add_subparsers(dest="rw_command", help="Review workflow subcommands")
+
+    rw_create = rw_subparsers.add_parser("create", help="Create review case")
+    rw_create.add_argument("--symbol", help="Symbol to review")
+    rw_create.add_argument("--strategy", help="Strategy name")
+    rw_create.add_argument("--snapshot-id", help="Snapshot ID")
+    rw_create.add_argument("--signal-id", help="Signal ID")
+    rw_create.add_argument("--save", action="store_true", help="Save the case")
+    rw_create.add_argument("--json", action="store_true", help="JSON output")
+
+    rw_list = rw_subparsers.add_parser("list", help="List review cases")
+    rw_list.add_argument("--status", help="Filter by status")
+    rw_list.add_argument("--symbol", help="Filter by symbol")
+    rw_list.add_argument("--json", action="store_true", help="JSON output")
+
+    rw_show = rw_subparsers.add_parser("show", help="Show review case")
+    rw_show.add_argument("case_id", help="Case ID")
+    rw_show.add_argument("--json", action="store_true", help="JSON output")
+
+    rw_checklist = rw_subparsers.add_parser("checklist", help="Show case checklist")
+    rw_checklist.add_argument("case_id", help="Case ID")
+    rw_checklist.add_argument("--json", action="store_true", help="JSON output")
+
+    rw_journal = rw_subparsers.add_parser("journal", help="Manage decision journal")
+    rw_journal.add_argument("case_id", help="Case ID")
+    rw_journal.add_argument("--add-note", help="Note to append")
+    rw_journal.add_argument("--actor", help="Actor adding note")
+    rw_journal.add_argument("--json", action="store_true", help="JSON output")
+
+    rw_disposition = rw_subparsers.add_parser("disposition", help="Set case disposition")
+    rw_disposition.add_argument("case_id", help="Case ID")
+    rw_disposition.add_argument("--set", help="Disposition to set")
+    rw_disposition.add_argument("--note", help="Journal note")
+    rw_disposition.add_argument("--json", action="store_true", help="JSON output")
+
+    rw_signoff = rw_subparsers.add_parser("signoff", help="Manage signoffs")
+    rw_signoff.add_argument("id", help="Case ID or Signoff ID")
+    rw_signoff.add_argument("--request", action="store_true", help="Request signoff")
+    rw_signoff.add_argument("--approve", action="store_true", help="Approve signoff")
+    rw_signoff.add_argument("--reject", action="store_true", help="Reject signoff")
+    rw_signoff.add_argument("--reason", help="Reason for request or rejection")
+    rw_signoff.add_argument("--actor", help="Actor signing off")
+
+    rw_data_actions = rw_subparsers.add_parser("data-actions", help="Manage data actions")
+    rw_data_actions.add_argument("--case-id", help="Filter by case ID")
+    rw_data_actions.add_argument("--resolve", help="Action ID to resolve")
+    rw_data_actions.add_argument("--note", help="Resolution note")
+    rw_data_actions.add_argument("--json", action="store_true", help="JSON output")
+
+    rw_close = rw_subparsers.add_parser("close", help="Close case")
+    rw_close.add_argument("case_id", help="Case ID")
+    rw_close.add_argument("--disposition", help="Final disposition")
+    rw_close.add_argument("--note", help="Closure note")
+    rw_close.add_argument("--json", action="store_true", help="JSON output")
+
+    rw_patterns = rw_subparsers.add_parser("patterns", help="Detect patterns")
+    rw_patterns.add_argument("--symbol", help="Filter by symbol")
+    rw_patterns.add_argument("--json", action="store_true", help="JSON output")
+
+    rw_report = rw_subparsers.add_parser("report", help="Generate workflow report")
+    rw_report.add_argument("--json", action="store_true", help="JSON output")
+
+    rw_recent = rw_subparsers.add_parser("recent", help="Show recent cases")
+    rw_recent.add_argument("--limit", type=int, default=10, help="Limit")
+    rw_recent.add_argument("--json", action="store_true", help="JSON output")
+
+    rw_config = rw_subparsers.add_parser("config", help="Show workflow config")
+    rw_config.add_argument("--json", action="store_true", help="JSON output")

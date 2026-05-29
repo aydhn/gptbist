@@ -1,3 +1,4 @@
+from typing import Optional
 from typing import Any
 from pathlib import Path
 
@@ -509,3 +510,10 @@ def get_context_fusion_dir(settings: Any = None) -> Path:
     settings = settings or get_settings()
     dir_name = getattr(settings, 'CONTEXT_FUSION_DIR_NAME', 'context_fusion')
     return get_data_dir(settings) / dir_name
+
+def get_review_workflow_dir(settings: Optional[Settings] = None) -> Path:
+    data_dir = get_data_dir(settings)
+    dir_name = getattr(settings, "REVIEW_WORKFLOW_DIR_NAME", "review_workflow") if settings else "review_workflow"
+    d = data_dir / dir_name
+    d.mkdir(parents=True, exist_ok=True)
+    return d

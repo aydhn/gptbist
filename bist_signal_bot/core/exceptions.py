@@ -1691,3 +1691,33 @@ class ContextSnapshotError(ContextFusionError):
 
 class ContextFusionStorageError(ContextFusionError):
     pass
+
+class ReviewWorkflowError(BistSignalBotError):
+    pass
+
+class ReviewCaseError(ReviewWorkflowError):
+    pass
+
+class ReviewPlaybookError(ReviewWorkflowError):
+    pass
+
+class ReviewChecklistError(ReviewWorkflowError):
+    pass
+
+class ReviewPriorityError(ReviewWorkflowError):
+    pass
+
+class DecisionJournalError(ReviewWorkflowError):
+    pass
+
+class ReviewSignoffError(ReviewWorkflowError):
+    pass
+
+class ReviewDataActionError(ReviewWorkflowError):
+    pass
+
+class ReviewPatternError(ReviewWorkflowError):
+    pass
+
+class ReviewWorkflowStorageError(ReviewWorkflowError):
+    pass

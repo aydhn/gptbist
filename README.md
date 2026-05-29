@@ -780,3 +780,9 @@ Local deterministic factor scoring and sector rotation research.
 - **Conflict & Gap Detection**: Identifies analytical contradictions and missing evidence.
 - **Research Graph**: Builds a node-edge metadata graph of the context snapshot.
 - *Disclaimer: All context and scoring outputs are research-only and never trigger real market execution.*
+
+## Analyst Review Workflow (Phase 87)
+Local-first review case management. Read `docs/59_ANALYST_REVIEW_WORKFLOW.md` for details.
+
+## Analyst Review Workflow (Phase 87)
+Local-first review case management. Read `docs/59_ANALYST_REVIEW_WORKFLOW.md` for details.
