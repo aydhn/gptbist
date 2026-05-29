@@ -83,6 +83,12 @@ class SymbolScanResult(BaseModel):
     model_config = {"arbitrary_types_allowed": True}
     symbol: str
     status: ScanCandidateStatus
+    unified_context_snapshot_id: Optional[str] = None
+    composite_research_score: Optional[float] = None
+    context_status: Optional[str] = None
+    conflict_count: int = 0
+    evidence_gap_count: int = 0
+    required_review_reasons: List[str] = Field(default_factory=list)
     signal: Optional[SignalCandidate] = None
     risk_decision: Optional[RiskDecision] = None
     portfolio_status: Optional[str] = None
@@ -131,6 +137,12 @@ class ScanReport(BaseModel):
     model_config = {"arbitrary_types_allowed": True}
     request: ScanRequest
     status: ScanStatus = ScanStatus.EMPTY
+    unified_context_snapshot_id: Optional[str] = None
+    composite_research_score: Optional[float] = None
+    context_status: Optional[str] = None
+    conflict_count: int = 0
+    evidence_gap_count: int = 0
+    required_review_reasons: List[str] = Field(default_factory=list)
     total_symbols: int = 0
     processed_symbols: int = 0
     passed_count: int = 0

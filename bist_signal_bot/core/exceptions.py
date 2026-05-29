@@ -1658,3 +1658,36 @@ class BreadthRegimeError(BreadthError):
 
 class BreadthStorageError(BreadthError):
     pass
+
+class ContextFusionError(BistSignalBotError):
+    pass
+
+class ContextSourceError(ContextFusionError):
+    pass
+
+class ContextCollectionError(ContextFusionError):
+    pass
+
+class ContextNormalizationError(ContextFusionError):
+    pass
+
+class ContextWeightingError(ContextFusionError):
+    pass
+
+class ContextConflictError(ContextFusionError):
+    pass
+
+class EvidenceGapError(ContextFusionError):
+    pass
+
+class ResearchGraphError(ContextFusionError):
+    pass
+
+class CompositeScoringError(ContextFusionError):
+    pass
+
+class ContextSnapshotError(ContextFusionError):
+    pass
+
+class ContextFusionStorageError(ContextFusionError):
+    pass

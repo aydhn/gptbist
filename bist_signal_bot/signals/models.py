@@ -250,6 +250,11 @@ class TrackedSignal(BaseModel):
     expensive_metric_count: Optional[int] = None
     cheap_metric_count: Optional[int] = None
     signal_id: str
+    unified_context_snapshot_id: Optional[str] = None
+    composite_research_score: Optional[float] = None
+    context_conflict_count: int = 0
+    context_gap_count: int = 0
+
     fingerprint_id: str
     symbol: str
     strategy_name: Optional[str] = None
@@ -302,6 +307,11 @@ class TrackedSignal(BaseModel):
 class SignalLifecycleEvent(BaseModel):
     event_id: str
     signal_id: str
+    unified_context_snapshot_id: Optional[str] = None
+    composite_research_score: Optional[float] = None
+    context_conflict_count: int = 0
+    context_gap_count: int = 0
+
     event_type: SignalLifecycleEventType
     previous_state: Optional[SignalLifecycleState] = None
     new_state: Optional[SignalLifecycleState] = None
@@ -336,6 +346,11 @@ class AlertEvaluationResult(BaseModel):
 class WatchlistEntry(BaseModel):
     watchlist_id: str
     signal_id: str
+    unified_context_snapshot_id: Optional[str] = None
+    composite_research_score: Optional[float] = None
+    context_conflict_count: int = 0
+    context_gap_count: int = 0
+
     symbol: str
     strategy_name: Optional[str] = None
     added_at: datetime
@@ -356,6 +371,11 @@ class ResearchExitRule(BaseModel):
 class ResearchExitSimulation(BaseModel):
     simulation_id: str
     signal_id: str
+    unified_context_snapshot_id: Optional[str] = None
+    composite_research_score: Optional[float] = None
+    context_conflict_count: int = 0
+    context_gap_count: int = 0
+
     symbol: str
     started_at: datetime
     evaluated_at: datetime

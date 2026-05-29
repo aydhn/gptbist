@@ -5,6 +5,15 @@ def run_healthcheck(settings=None, as_json=False):
     settings = settings or get_settings()
     res = {
         "status": "pass",
+        "context_fusion": {
+            "enabled": getattr(settings, "ENABLE_CONTEXT_FUSION", True),
+            "collector_capable": True,
+            "normalizer_capable": True,
+            "conflict_resolver_capable": True,
+            "scorer_capable": True,
+            "snapshot_builder_capable": True,
+            "store_capable": True
+        },
         "breadth": {
             "enabled": getattr(settings, "ENABLE_BREADTH", True),
             "universe_builder_capable": True,

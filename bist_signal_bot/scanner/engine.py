@@ -1,3 +1,5 @@
+
+from bist_signal_bot.app.context_fusion_app import create_context_fusion_engine
 import logging
 import time
 from datetime import datetime

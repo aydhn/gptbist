@@ -12,6 +12,7 @@ from bist_signal_bot.strategy_registry.models import (
     StrategyRegistryStatus
 )
 
+# ContextFusion collects strategy scorecards
 class StrategyScorecardBuilder:
     def __init__(self, settings: Settings | None = None, base_dir: Any | None = None):
         self.settings = settings or Settings()

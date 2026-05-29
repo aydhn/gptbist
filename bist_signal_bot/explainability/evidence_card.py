@@ -15,6 +15,9 @@ class EvidenceCardBuilder:
         self.settings = settings
         self.base_dir = base_dir
 
+    def section_unified_context(self, snapshot: Any) -> Any:
+        pass
+
     def build_card(self, explanation: SignalExplanation) -> EvidenceCard:
         sections = []
         sections.append(self.section_summary(explanation))

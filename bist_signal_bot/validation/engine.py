@@ -16,6 +16,7 @@ from bist_signal_bot.validation.scoring import StrategyValidationScorer
 from bist_signal_bot.validation.storage import ValidationStore
 from bist_signal_bot.config.settings import Settings
 
+# ContextFusion collects validation overfit warnings
 class StrategyValidationEngine:
     def __init__(
         self, split_builder, walk_forward_validator, purged_cv_validator,

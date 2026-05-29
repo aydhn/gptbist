@@ -20,6 +20,7 @@ from bist_signal_bot.ensemble.storage import EnsembleStore
 
 logger = logging.getLogger(__name__)
 
+# ContextFusion can collect consensus and conflicts from here
 class EnsembleEngine:
     def __init__(
         self,

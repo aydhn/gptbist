@@ -1753,6 +1753,136 @@ class Settings(BaseSettings):
     # Research
     RESEARCH_AUTO_LOG_BREADTH: bool = False
 
+
+    # ------------------------------------------------------------------------------
+    # Unified Context Fusion (Phase 86)
+    # ------------------------------------------------------------------------------
+    ENABLE_CONTEXT_FUSION: bool = True
+    CONTEXT_FUSION_DIR_NAME: str = "context_fusion"
+    CONTEXT_FUSION_RESEARCH_ONLY: bool = True
+    CONTEXT_FUSION_SAVE_RESULTS: bool = True
+    CONTEXT_FUSION_BUILD_RESEARCH_GRAPH: bool = True
+
+    # Collection
+    CONTEXT_FUSION_COLLECT_TECHNICAL: bool = True
+    CONTEXT_FUSION_COLLECT_ML: bool = True
+    CONTEXT_FUSION_COLLECT_ENSEMBLE: bool = True
+    CONTEXT_FUSION_COLLECT_RISK: bool = True
+    CONTEXT_FUSION_COLLECT_EXECUTION: bool = True
+    CONTEXT_FUSION_COLLECT_CALIBRATION: bool = True
+    CONTEXT_FUSION_COLLECT_VALIDATION: bool = True
+    CONTEXT_FUSION_COLLECT_EVENTS: bool = True
+    CONTEXT_FUSION_COLLECT_DISCLOSURES: bool = True
+    CONTEXT_FUSION_COLLECT_FINANCIALS: bool = True
+    CONTEXT_FUSION_COLLECT_VALUATION: bool = True
+    CONTEXT_FUSION_COLLECT_FACTORS: bool = True
+    CONTEXT_FUSION_COLLECT_BREADTH: bool = True
+    CONTEXT_FUSION_COLLECT_MACRO: bool = True
+    CONTEXT_FUSION_COLLECT_PORTFOLIO: bool = True
+    CONTEXT_FUSION_COLLECT_KNOWLEDGE: bool = True
+
+    # Weights
+    CONTEXT_WEIGHT_TECHNICAL_SIGNAL: float = 0.15
+    CONTEXT_WEIGHT_ML: float = 0.08
+    CONTEXT_WEIGHT_ENSEMBLE: float = 0.10
+    CONTEXT_WEIGHT_RISK: float = 0.10
+    CONTEXT_WEIGHT_EXECUTION: float = 0.05
+    CONTEXT_WEIGHT_CALIBRATION: float = 0.10
+    CONTEXT_WEIGHT_VALIDATION: float = 0.08
+    CONTEXT_WEIGHT_MONTE_CARLO: float = 0.06
+    CONTEXT_WEIGHT_STRATEGY_REGISTRY: float = 0.08
+    CONTEXT_WEIGHT_EVENT_RISK: float = 0.05
+    CONTEXT_WEIGHT_DISCLOSURE: float = 0.04
+    CONTEXT_WEIGHT_FINANCIALS: float = 0.04
+    CONTEXT_WEIGHT_VALUATION: float = 0.04
+    CONTEXT_WEIGHT_FACTORS: float = 0.04
+    CONTEXT_WEIGHT_BREADTH: float = 0.04
+    CONTEXT_WEIGHT_MACRO: float = 0.04
+    CONTEXT_WEIGHT_PORTFOLIO: float = 0.05
+    CONTEXT_WEIGHT_KNOWLEDGE: float = 0.02
+
+    # Scoring
+    CONTEXT_CONFLICT_PENALTY_LOW: float = 2.0
+    CONTEXT_CONFLICT_PENALTY_MEDIUM: float = 5.0
+    CONTEXT_CONFLICT_PENALTY_HIGH: float = 10.0
+    CONTEXT_CONFLICT_PENALTY_CRITICAL: float = 15.0
+    CONTEXT_EVIDENCE_GAP_PENALTY_LOW: float = 1.0
+    CONTEXT_EVIDENCE_GAP_PENALTY_MEDIUM: float = 3.0
+    CONTEXT_EVIDENCE_GAP_PENALTY_HIGH: float = 6.0
+    CONTEXT_STRONG_SUPPORT_THRESHOLD: float = 75.0
+    CONTEXT_PRESSURE_THRESHOLD: float = 40.0
+    CONTEXT_CONFLICTED_MAX_SCORE: float = 65.0
+
+    # Freshness
+    CONTEXT_STALE_TECHNICAL_DAYS: int = 3
+    CONTEXT_STALE_CALIBRATION_DAYS: int = 30
+    CONTEXT_STALE_FINANCIALS_DAYS: int = 120
+    CONTEXT_STALE_VALUATION_DAYS: int = 30
+    CONTEXT_STALE_BREADTH_DAYS: int = 5
+    CONTEXT_STALE_MACRO_DAYS: int = 10
+
+    @field_validator(
+        "CONTEXT_WEIGHT_TECHNICAL_SIGNAL", "CONTEXT_WEIGHT_ML", "CONTEXT_WEIGHT_ENSEMBLE",
+        "CONTEXT_WEIGHT_RISK", "CONTEXT_WEIGHT_EXECUTION", "CONTEXT_WEIGHT_CALIBRATION",
+        "CONTEXT_WEIGHT_VALIDATION", "CONTEXT_WEIGHT_MONTE_CARLO", "CONTEXT_WEIGHT_STRATEGY_REGISTRY",
+        "CONTEXT_WEIGHT_EVENT_RISK", "CONTEXT_WEIGHT_DISCLOSURE", "CONTEXT_WEIGHT_FINANCIALS",
+        "CONTEXT_WEIGHT_VALUATION", "CONTEXT_WEIGHT_FACTORS", "CONTEXT_WEIGHT_BREADTH",
+        "CONTEXT_WEIGHT_MACRO", "CONTEXT_WEIGHT_PORTFOLIO", "CONTEXT_WEIGHT_KNOWLEDGE",
+        mode="after"
+    )
+    def check_context_weight_range(cls, v):
+        if v < 0.0 or v > 1.0:
+            raise ValueError(f"Context weight must be between 0.0 and 1.0, got {v}")
+        return v
+
+    @field_validator(
+        "CONTEXT_CONFLICT_PENALTY_LOW", "CONTEXT_CONFLICT_PENALTY_MEDIUM",
+        "CONTEXT_CONFLICT_PENALTY_HIGH", "CONTEXT_CONFLICT_PENALTY_CRITICAL",
+        "CONTEXT_EVIDENCE_GAP_PENALTY_LOW", "CONTEXT_EVIDENCE_GAP_PENALTY_MEDIUM",
+        "CONTEXT_EVIDENCE_GAP_PENALTY_HIGH",
+        mode="after"
+    )
+    def check_context_penalty(cls, v):
+        if v < 0.0:
+            raise ValueError(f"Penalty must be >= 0, got {v}")
+        return v
+
+    @field_validator(
+        "CONTEXT_STRONG_SUPPORT_THRESHOLD", "CONTEXT_PRESSURE_THRESHOLD", "CONTEXT_CONFLICTED_MAX_SCORE",
+        mode="after"
+    )
+    def check_context_threshold(cls, v):
+        if v < 0.0 or v > 100.0:
+            raise ValueError(f"Threshold must be between 0.0 and 100.0, got {v}")
+        return v
+
+    @field_validator(
+        "CONTEXT_STALE_TECHNICAL_DAYS", "CONTEXT_STALE_CALIBRATION_DAYS", "CONTEXT_STALE_FINANCIALS_DAYS",
+        "CONTEXT_STALE_VALUATION_DAYS", "CONTEXT_STALE_BREADTH_DAYS", "CONTEXT_STALE_MACRO_DAYS",
+        mode="after"
+    )
+    def check_context_stale_days(cls, v):
+        if v <= 0:
+            raise ValueError(f"Stale days must be > 0, got {v}")
+        return v
+
+
+    # Context Fusion Ext
+    SCANNER_INCLUDE_CONTEXT_FUSION: bool = True
+    SCANNER_CONTEXT_METADATA_ONLY: bool = True
+
+    REVIEW_REQUIRE_ON_CRITICAL_CONTEXT_CONFLICT: bool = True
+    REVIEW_REQUIRE_ON_HIGH_EVIDENCE_GAP: bool = False
+
+    RUNTIME_CONTEXT_FUSION_ENABLED: bool = True
+    RUNTIME_CONTEXT_FUSION_SAVE_SNAPSHOTS: bool = True
+
+    SCHEDULER_ENABLE_CONTEXT_FUSION_DAILY: bool = False
+
+    REPORT_INCLUDE_CONTEXT_FUSION: bool = True
+
+    RESEARCH_AUTO_LOG_CONTEXT_FUSION: bool = False
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
 
