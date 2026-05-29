@@ -534,3 +534,9 @@ def get_review_workflow_dir(settings: Optional[Settings] = None) -> Path:
 def get_qa_dir(settings=None) -> Path:
     base = Path.cwd()
     return base / "data" / "qa"
+
+def get_bootstrap_dir(settings: 'Settings | None' = None) -> Path:
+    base = get_base_dir(settings)
+    if settings and hasattr(settings, 'BOOTSTRAP_DIR_NAME') and settings.BOOTSTRAP_DIR_NAME:
+        return base / settings.BOOTSTRAP_DIR_NAME
+    return base / "bootstrap"
