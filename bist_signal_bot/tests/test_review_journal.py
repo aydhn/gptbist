@@ -1,24 +1,20 @@
-import pytest
-from bist_signal_bot.review.journal import DecisionJournal
-from bist_signal_bot.review.storage import ReviewStore
-from bist_signal_bot.review.models import ReviewDecision, ReviewDecisionType, ReviewItemStatus, ReviewItem, ReviewItemSource
-from datetime import datetime, timezone
-import uuid
+from bist_signal_bot.review_workflow.journal import DecisionJournal
 
-@pytest.fixture
-def store(tmp_path):
-    return ReviewStore(base_dir=tmp_path)
+def test_append_entry():
+    journal = DecisionJournal()
+    entry = journal.append_entry("case-1", "Test note", "analyst")
+    assert entry.case_id == "case-1"
+    assert entry.note == "Test note"
+    assert entry.actor == "analyst"
 
-@pytest.fixture
-def journal(store):
-    return DecisionJournal(store=store)
+def test_append_entry_trade_language_block():
+    journal = DecisionJournal()
+    entry = journal.append_entry("case-1", "trade approved for ASELS")
+    assert "[REDACTED_UNSAFE_CLAIM]" in entry.note
 
-def test_journal_append(journal):
-    item = ReviewItem(item_id="i1", source=ReviewItemSource.MANUAL, symbol="ASELS", title="T", summary="S", created_at=datetime.now(timezone.utc), updated_at=datetime.now(timezone.utc))
-    decision = ReviewDecision(decision_id="d1", item_id="i1", decision_type=ReviewDecisionType.WATCH_ONLY, new_status=ReviewItemStatus.WATCH_ONLY, decided_at=datetime.now(timezone.utc), reason="r")
-
-    entry = journal.append_from_decision(decision, item)
-    assert entry.symbol == "ASELS"
-
-    entries = journal.list_entries(symbol="ASELS")
-    assert len(entries) == 1
+def test_correction_entry():
+    journal = DecisionJournal()
+    entry = journal.correct_entry("entry-1", "Fixed note")
+    assert entry.correction_of == "entry-1"
+    assert entry.entry_type == "CORRECTION"
+    assert "Fixed note" in entry.note

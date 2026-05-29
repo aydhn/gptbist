@@ -5,6 +5,14 @@ def run_healthcheck(settings=None, as_json=False):
     settings = settings or get_settings()
     res = {
         "status": "pass",
+        "review_workflow": {
+            "enabled": True,
+            "store_capable": True,
+            "playbook_registry_capable": True,
+            "case_builder_capable": True,
+            "journal_capable": True,
+            "signoff_capable": True
+        },
         "context_fusion": {
             "enabled": getattr(settings, "ENABLE_CONTEXT_FUSION", True),
             "collector_capable": True,

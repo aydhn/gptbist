@@ -1,31 +1,24 @@
-import pytest
-from bist_signal_bot.review.models import ReviewItem, ReviewItemSource, ChecklistItemStatus, ReviewChecklistItem
-from bist_signal_bot.review.checklist import ReviewChecklistBuilder
-from datetime import datetime, timezone
+from bist_signal_bot.review_workflow.checklist import ReviewChecklistBuilder
+from bist_signal_bot.review_workflow.playbooks import ReviewPlaybookRegistry
+from bist_signal_bot.review_workflow.models import ChecklistItemStatus
 
-def test_default_checklist():
+def test_build_standard_checklist():
     builder = ReviewChecklistBuilder()
-    item = ReviewItem(
-        item_id="1", source=ReviewItemSource.MANUAL, symbol="A", title="T", summary="S",
-        created_at=datetime.now(timezone.utc), updated_at=datetime.now(timezone.utc)
-    )
-    c = builder.build_default_checklist(item, [])
-    assert len(c.items) == 12
-    assert c.items[0].name == "data_quality_checked"
-    assert c.items[0].required is True
+    items = builder.standard_signal_items("case-1")
+    assert len(items) == 4
+    assert items[0].title == "Context Snapshot Up-to-date"
 
-def test_checklist_overall_status_fail():
+def test_build_playbook_checklist():
     builder = ReviewChecklistBuilder()
-    items = [
-        ReviewChecklistItem(item_id="1", name="a", status=ChecklistItemStatus.PASS, required=True),
-        ReviewChecklistItem(item_id="1", name="b", status=ChecklistItemStatus.FAIL, required=True)
-    ]
-    assert builder.overall_status(items) == ChecklistItemStatus.FAIL
+    registry = ReviewPlaybookRegistry()
+    playbooks = registry.select_playbooks(conflicts=["MACRO_PRESSURE"])
+    items = builder.build_checklist("case-1", playbooks)
+    assert len(items) > 4
+    assert any(item.title == "Macro Pressure Check" for item in items)
 
-def test_checklist_overall_status_warn():
+def test_completion_rate():
     builder = ReviewChecklistBuilder()
-    items = [
-        ReviewChecklistItem(item_id="1", name="a", status=ChecklistItemStatus.PASS, required=True),
-        ReviewChecklistItem(item_id="1", name="b", status=ChecklistItemStatus.FAIL, required=False)
-    ]
-    assert builder.overall_status(items) == ChecklistItemStatus.WARN
+    items = builder.standard_signal_items("case-1")
+    items[0].status = ChecklistItemStatus.PASSED
+    rate = builder.completion_rate(items)
+    assert rate == 25.0

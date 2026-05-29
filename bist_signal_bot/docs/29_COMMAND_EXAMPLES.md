@@ -1,123 +1,46 @@
 # Command Examples
 
-Deployment commands:
-- `python -m bist_signal_bot deploy profiles`
-- `python -m bist_signal_bot deploy doctor`
-- `python -m bist_signal_bot deploy init-dirs --dry-run`
-- `python -m bist_signal_bot deploy env-template --profile RESEARCH_ONLY`
-- `python -m bist_signal_bot deploy first-run --dry-run`
-- `python -m bist_signal_bot deploy smoke-test`
-- `python -m bist_signal_bot deploy runbook`
-- `python -m bist_signal_bot deploy platform-commands`
-- `python -m bist_signal_bot deploy latest`
+## Analyst Review Workflow
 
-### Portfolio Construction (Phase 76)
+Create a new case:
 ```bash
-python -m bist_signal_bot portfolio-construct build --symbols ASELS THYAO GARAN --method HYBRID
-python -m bist_signal_bot portfolio-construct compare --methods EQUAL_WEIGHT SCORE_WEIGHTED HYBRID
-python -m bist_signal_bot portfolio-construct rebalance --latest
-python -m bist_signal_bot portfolio-construct report --latest --json
+python -m bist_signal_bot review-workflow create --symbol ASELS
+python -m bist_signal_bot review-workflow create --symbol ASELS --strategy moving_average_trend --save
 ```
 
-### What-If Scenario Lab
+List open cases:
 ```bash
-python -m bist_signal_bot what-if run --source latest-portfolio-construction
-python -m bist_signal_bot what-if compare --latest
-python -m bist_signal_bot what-if sensitivity --assumption COMMISSION_BPS --source latest-portfolio-construction
-python -m bist_signal_bot what-if capital-scale --notionals 50000 100000 250000
-python -m bist_signal_bot what-if policy --preset conservative-liquidity
-python -m bist_signal_bot what-if report --latest
+python -m bist_signal_bot review-workflow list
+python -m bist_signal_bot review-workflow list --status OPEN
 ```
 
-## Event Calendar Examples
-
+Show a case and its checklist:
 ```bash
-# Import events
-python -m bist_signal_bot event-calendar import --file data/imports/events.csv --dry-run
-python -m bist_signal_bot event-calendar import --file data/imports/events.csv --confirm
-
-# List events
-python -m bist_signal_bot event-calendar list
-python -m bist_signal_bot event-calendar list --symbol ASELS
-python -m bist_signal_bot event-calendar list --type EARNINGS --json
-
-# Show details
-python -m bist_signal_bot event-calendar show EVENT_ID
-python -m bist_signal_bot event-calendar show EVENT_ID --json
-
-# Upcoming
-python -m bist_signal_bot event-calendar upcoming --days 30
-python -m bist_signal_bot event-calendar upcoming --symbol ASELS --json
-
-# Active Windows
-python -m bist_signal_bot event-calendar windows
-python -m bist_signal_bot event-calendar windows --symbol ASELS --json
-
-# Risk Check
-python -m bist_signal_bot event-calendar check ASELS
-python -m bist_signal_bot event-calendar check ASELS --strategy moving_average_trend --json
-
-# Portfolio Check
-python -m bist_signal_bot event-calendar portfolio-check --symbols ASELS THYAO GARAN
-python -m bist_signal_bot event-calendar portfolio-check --portfolio-id PORTFOLIO_ID --json
-
-# Policies
-python -m bist_signal_bot event-calendar policies
-python -m bist_signal_bot event-calendar policies --json
-
-# Snapshot
-python -m bist_signal_bot event-calendar snapshot
-python -m bist_signal_bot event-calendar snapshot --json
-
-# Report
-python -m bist_signal_bot event-calendar report
-python -m bist_signal_bot event-calendar report --latest --json
-
-# Recent
-python -m bist_signal_bot event-calendar recent
-python -m bist_signal_bot event-calendar recent --limit 10 --json
-
-# Config
-python -m bist_signal_bot event-calendar config
+python -m bist_signal_bot review-workflow show CASE_ID
+python -m bist_signal_bot review-workflow checklist CASE_ID
 ```
 
-## Valuation Intelligence
-`python -m bist_signal_bot valuation compute ASELS --save`
-`python -m bist_signal_bot valuation risk ASELS --json`
-
-## Factors
+Manage Decision Journal and Disposition:
 ```bash
-python -m bist_signal_bot factors compute ASELS
+python -m bist_signal_bot review-workflow journal CASE_ID --add-note "Context reviewed; macro pressure remains active." --actor analyst
+python -m bist_signal_bot review-workflow disposition CASE_ID --set RESEARCH_WATCH --note "Conflicts remain unresolved."
 ```
 
-### Market Breadth & Index Internals
+Sign-offs and Data Actions:
 ```bash
-python -m bist_signal_bot breadth compute
-python -m bist_signal_bot breadth compute --symbols ASELS THYAO GARAN
-python -m bist_signal_bot breadth compute --save --json
-python -m bist_signal_bot breadth show
-python -m bist_signal_bot breadth show --json
-python -m bist_signal_bot breadth advance-decline
-python -m bist_signal_bot breadth advance-decline --json
-python -m bist_signal_bot breadth participation
-python -m bist_signal_bot breadth participation --json
-python -m bist_signal_bot breadth high-low
-python -m bist_signal_bot breadth high-low --json
-python -m bist_signal_bot breadth volume
-python -m bist_signal_bot breadth volume --json
-python -m bist_signal_bot breadth sector
-python -m bist_signal_bot breadth sector --sector BANKACILIK --json
-python -m bist_signal_bot breadth divergence
-python -m bist_signal_bot breadth divergence --json
-python -m bist_signal_bot breadth regime
-python -m bist_signal_bot breadth regime --json
-python -m bist_signal_bot breadth report
-python -m bist_signal_bot breadth report --latest --json
-python -m bist_signal_bot breadth recent
-python -m bist_signal_bot breadth recent --limit 10 --json
-python -m bist_signal_bot breadth config
-python -m bist_signal_bot scan symbols ASELS THYAO --source local_file --strategy moving_average_trend --breadth-context
-python -m bist_signal_bot portfolio-construct build --symbols ASELS THYAO GARAN --method HYBRID --breadth-aware
-python -m bist_signal_bot review show ITEM_ID --breadth
-python -m bist_signal_bot explain card --symbol ASELS --strategy moving_average_trend --include-breadth
+python -m bist_signal_bot review-workflow signoff CASE_ID --request --reason "Critical context conflict"
+python -m bist_signal_bot review-workflow signoff SIGNOFF_ID --approve --actor lead_analyst
+python -m bist_signal_bot review-workflow data-actions --resolve ACTION_ID --note "Financials imported"
+```
+
+Reporting and Patterns:
+```bash
+python -m bist_signal_bot review-workflow patterns
+python -m bist_signal_bot review-workflow report
+```
+
+Full pipeline examples with `context build` and `scan symbols`:
+```bash
+python -m bist_signal_bot context build --symbol ASELS --save --create-review-case
+python -m bist_signal_bot scan symbols ASELS THYAO --source local_file --strategy moving_average_trend --context-fusion --review-workflow
 ```
