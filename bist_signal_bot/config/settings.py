@@ -6,6 +6,48 @@ from bist_signal_bot.config.profiles import get_profile
 from bist_signal_bot.config.secrets import settings_safe_dump
 
 class Settings(BaseSettings):
+    ENABLE_QA: bool = True
+    QA_DIR_NAME: str = "qa"
+    QA_RESEARCH_ONLY: bool = True
+    QA_SAVE_RESULTS: bool = True
+    QA_MODE_DEFAULT_BASE_DIR: str = ".qa_tmp"
+    QA_FIXTURE_ROOT: str = "bist_signal_bot/tests/fixtures/qa"
+    QA_SYNTHETIC_SEED: int = 42
+    QA_SYNTHETIC_SYMBOLS: str = "ASELS,THYAO,GARAN,BIMAS,EREGL,TUPRS,KCHOL,AKBNK"
+    QA_SYNTHETIC_START_DATE: str = "2024-01-01"
+    QA_SYNTHETIC_PERIODS: int = 260
+    QA_BLOCK_NETWORK_CALLS: bool = True
+    QA_BLOCK_BROKER_CALLS: bool = True
+    QA_BLOCK_OPENAI_CALLS: bool = True
+    QA_BLOCK_TELEGRAM_SENDS: bool = True
+    QA_BLOCK_REAL_ORDER_LANGUAGE: bool = True
+    QA_DISALLOW_REAL_DATA_PATHS_IN_TESTS: bool = True
+    QA_SMOKE_TIMEOUT_SECONDS: int = 30
+    QA_SMOKE_REQUIRE_JSON_COMMANDS: bool = True
+    QA_SMOKE_FAIL_ON_STDERR: bool = False
+    QA_REQUIRED_MODULES: str = "CORE,DATA,SCANNER,SIGNALS,CALIBRATION,PORTFOLIO_CONSTRUCTION,CONTEXT_FUSION,REVIEW_WORKFLOW,REPORTS,SECURITY,CLI"
+    QA_REGRESSION_FAIL_ON_REQUIRED_FAIL: bool = True
+    QA_REGRESSION_ALLOW_WATCH: bool = True
+    QA_RELEASE_GATE_RUN_PYTEST: bool = True
+    QA_RELEASE_GATE_RUN_SMOKE: bool = True
+    QA_RELEASE_GATE_RUN_SAFETY: bool = True
+    QA_RELEASE_GATE_RUN_NO_EXTERNAL_CALLS: bool = True
+    QA_RELEASE_GATE_RUN_DOCS: bool = True
+    QA_RELEASE_GATE_BLOCK_ON_SAFETY_FAIL: bool = True
+    QA_RELEASE_GATE_BLOCK_ON_NO_REAL_ORDER_FAIL: bool = True
+    QA_SAFE_LANGUAGE_REQUIRED: bool = True
+    QA_DISCLAIMER_REQUIRED: bool = True
+    QA_TARGET_PRICE_BLOCK_ENABLED: bool = True
+    QA_INVESTMENT_ADVICE_BLOCK_ENABLED: bool = True
+    QA_BUILD_REPRODUCIBILITY_PACK: bool = True
+    QA_INCLUDE_ENVIRONMENT_SUMMARY: bool = True
+    QA_INCLUDE_CONFIG_SNAPSHOT: bool = True
+    QA_INCLUDE_FIXTURE_CHECKSUMS: bool = True
+    RUNTIME_QA_MODE: bool = False
+    SCHEDULER_ENABLE_QA_WEEKLY: bool = False
+    REPORT_INCLUDE_QA: bool = True
+    RESEARCH_AUTO_LOG_QA: bool = False
+
 
     # ------------------------------------------------------------------------------
     # Valuation Intelligence (Phase 82)

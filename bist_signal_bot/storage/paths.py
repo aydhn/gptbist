@@ -517,3 +517,7 @@ def get_review_workflow_dir(settings: Optional[Settings] = None) -> Path:
     d = data_dir / dir_name
     d.mkdir(parents=True, exist_ok=True)
     return d
+
+def get_qa_dir(settings=None) -> Path:
+    base = Path.cwd()
+    return base / "data" / "qa"

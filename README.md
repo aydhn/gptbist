@@ -786,3 +786,7 @@ Local-first review case management. Read `docs/59_ANALYST_REVIEW_WORKFLOW.md` fo
 
 ## Analyst Review Workflow (Phase 87)
 Local-first review case management. Read `docs/59_ANALYST_REVIEW_WORKFLOW.md` for details.
+
+## QA & Release Readiness
+The system includes an end-to-end deterministic test harness and release gate. It uses synthetic fixtures to ensure code changes don't break the pipeline.
+No real order is sent, no live external APIs are hit.
