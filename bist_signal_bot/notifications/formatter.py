@@ -1750,3 +1750,18 @@ Bu çıktı yerel veri yönetişimi özetidir.
 Yatırım tavsiyesi değildir.
 İşlem uygunluğu anlamına gelmez.
 Gerçek emir gönderilmedi."""
+
+def format_feature_store_report(report):
+    return "Feature Store Report\n\nNot investment advice."
+
+def format_feature_set(feature_set):
+    return f"Feature Set: {feature_set.name}"
+
+def format_feature_quality_assessment(assessment):
+    return f"Quality: {assessment.status.value}"
+
+def format_feature_drift_findings(findings):
+    return f"Drift Findings: {len(findings)}"
+
+def format_feature_leakage_findings(findings):
+    return f"Leakage Findings: {len(findings)}"

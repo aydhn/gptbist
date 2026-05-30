@@ -561,3 +561,10 @@ def get_data_catalog_dir(settings: Settings | None = None) -> Path:
     catalog_dir = get_data_dir(settings) / settings.DATA_CATALOG_DIR_NAME
     catalog_dir.mkdir(parents=True, exist_ok=True)
     return catalog_dir
+
+def get_feature_store_dir(settings=None) -> Path:
+    from bist_signal_bot.config.settings import Settings
+    s = settings or Settings()
+    path = get_data_dir(s) / getattr(s, "FEATURE_STORE_DIR_NAME", "feature_store")
+    path.mkdir(parents=True, exist_ok=True)
+    return path

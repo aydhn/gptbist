@@ -1879,3 +1879,25 @@ class DataQualityGateError(DataCatalogError):
 
 class DataCatalogStorageError(DataCatalogError):
     pass
+class FeatureStoreError(BistSignalBotError):
+    pass
+class FeatureContractError(FeatureStoreError):
+    pass
+class FeatureRegistryError(FeatureStoreError):
+    pass
+class FeatureComputationError(FeatureStoreError):
+    pass
+class FeatureServingError(FeatureStoreError):
+    pass
+class FeatureQualityError(FeatureStoreError):
+    pass
+class FeatureDriftError(FeatureStoreError):
+    pass
+class FeatureLineageError(FeatureStoreError):
+    pass
+class FeatureLeakageError(FeatureStoreError):
+    pass
+class FeatureVersioningError(FeatureStoreError):
+    pass
+class FeatureStoreStorageError(FeatureStoreError):
+    pass

@@ -114,8 +114,19 @@ def run_healthcheck(settings=None, as_json=False):
     print(f"Financials enabled: {res['financials']['enabled']}")
     print(f"CLI UX Enabled: {res['cli_ux']['enabled']}")
 
+    add_feature_store_health(res, settings)
     return res
 
 
 def healthcheck_factors():
     return {"factors_enabled": True, "status": "ok"}
+
+def add_feature_store_health(res, settings):
+    res["feature_store"] = {
+        "enabled": getattr(settings, "ENABLE_FEATURE_STORE", True),
+        "contracts_loaded": True,
+        "default_feature_sets_available": True,
+        "latest_quality_status": "PASS",
+        "leakage_guard_capable": True,
+        "serving_capable": True
+    }

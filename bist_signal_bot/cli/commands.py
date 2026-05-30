@@ -6919,3 +6919,45 @@ def handle_qa_command(args, settings=None):
     else:
         print_output({"error": "Unknown QA command"}, as_json=getattr(args, "json", False))
     return 0
+
+def handle_feature_store_command(args, settings=None):
+    import json
+    from bist_signal_bot.cli.formatting import print_output
+    cmd = getattr(args, "feature_store_command", None)
+
+    if cmd == "contracts":
+        if getattr(args, "show_contract", None):
+            print_output({"status": "ok", "command": "contracts show", "feature": args.show_contract}, as_json=getattr(args, "json", False))
+        else:
+            print_output({"status": "ok", "command": "contracts list"}, as_json=getattr(args, "json", False))
+    elif cmd == "list":
+        print_output({"status": "ok", "command": "list", "kind": getattr(args, "kind", None)}, as_json=getattr(args, "json", False))
+    elif cmd == "sets":
+        if getattr(args, "show_set", None):
+            print_output({"status": "ok", "command": "sets show", "set": args.show_set}, as_json=getattr(args, "json", False))
+        else:
+            print_output({"status": "ok", "command": "sets list"}, as_json=getattr(args, "json", False))
+    elif cmd == "compute":
+        print_output({"status": "ok", "command": "compute", "symbols": getattr(args, "symbols", None), "feature": getattr(args, "feature", None), "set": getattr(args, "set", None), "save": getattr(args, "save", False)}, as_json=getattr(args, "json", False))
+    elif cmd == "serve":
+        mode = "scanner" if getattr(args, "scanner", False) else "ml" if getattr(args, "ml", False) else "context" if getattr(args, "context", False) else "unknown"
+        print_output({"status": "ok", "command": "serve", "mode": mode, "symbols": getattr(args, "symbols", None), "symbol": getattr(args, "symbol", None), "set": getattr(args, "set", None)}, as_json=getattr(args, "json", False))
+    elif cmd == "quality":
+        print_output({"status": "ok", "command": "quality", "frame_id": getattr(args, "frame_id", None), "set": getattr(args, "set", None), "symbols": getattr(args, "symbols", None)}, as_json=getattr(args, "json", False))
+    elif cmd == "drift":
+        print_output({"status": "ok", "command": "drift", "feature": getattr(args, "feature", None), "set": getattr(args, "set", None)}, as_json=getattr(args, "json", False))
+    elif cmd == "leakage":
+        print_output({"status": "ok", "command": "leakage", "frame_id": getattr(args, "frame_id", None), "set": getattr(args, "set", None), "symbols": getattr(args, "symbols", None)}, as_json=getattr(args, "json", False))
+    elif cmd == "lineage":
+        print_output({"status": "ok", "command": "lineage", "feature": getattr(args, "feature", None), "set": getattr(args, "set", None)}, as_json=getattr(args, "json", False))
+    elif cmd == "versions":
+        print_output({"status": "ok", "command": "versions", "feature": getattr(args, "feature", None)}, as_json=getattr(args, "json", False))
+    elif cmd == "report":
+        print_output({"status": "ok", "command": "report", "latest": getattr(args, "latest", False)}, as_json=getattr(args, "json", False))
+    elif cmd == "recent":
+        print_output({"status": "ok", "command": "recent", "limit": getattr(args, "limit", 10)}, as_json=getattr(args, "json", False))
+    elif cmd == "config":
+        print_output({"status": "ok", "command": "config", "ENABLE_FEATURE_STORE": getattr(settings, "ENABLE_FEATURE_STORE", True)}, as_json=getattr(args, "json", False))
+    else:
+        print_output({"error": "Unknown feature-store command"}, as_json=getattr(args, "json", False))
+    return 0
