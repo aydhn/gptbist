@@ -6,6 +6,55 @@ from bist_signal_bot.config.profiles import get_profile
 from bist_signal_bot.config.secrets import settings_safe_dump
 
 class Settings(BaseSettings):
+
+    # CLI UX Settings
+    ENABLE_CLI_UX: bool = True
+    CLI_UX_DIR_NAME: str = "cli_ux"
+    CLI_UX_RESEARCH_ONLY: bool = True
+    CLI_UX_SAVE_RESULTS: bool = True
+
+    # CLI UX Output
+    CLI_OUTPUT_ENVELOPE_ENABLED: bool = True
+    CLI_OUTPUT_DEFAULT_MODE: str = "TEXT"
+    CLI_JSON_SORT_KEYS: bool = True
+    CLI_JSON_INDENT: int = 2
+    CLI_REDACT_OUTPUT_SECRETS: bool = True
+    CLI_INCLUDE_DISCLAIMER: bool = True
+
+    # CLI UX Exit Codes
+    CLI_STABLE_EXIT_CODES: bool = True
+    CLI_FAIL_ON_SCHEMA_INVALID: bool = False
+    CLI_SAFETY_BLOCK_EXIT_CODE: int = 5
+    CLI_CONFIRM_REQUIRED_EXIT_CODE: int = 6
+
+    # CLI UX Contracts
+    CLI_OUTPUT_CONTRACTS_ENABLED: bool = True
+    CLI_CONTRACT_COMPATIBILITY_CHECK_ENABLED: bool = True
+    CLI_CONTRACT_DRIFT_STATUS: str = "WATCH"
+
+    # CLI UX Aliases
+    CLI_ALIASES_ENABLED: bool = True
+    CLI_ALIAS_PREFIX: str = "bt"
+    CLI_DEPRECATED_ALIAS_WARN: bool = True
+
+    # CLI UX Workflow
+    CLI_WORKFLOW_RUNNER_ENABLED: bool = True
+    CLI_WORKFLOW_DEFAULT_DRY_RUN: bool = True
+    CLI_WORKFLOW_STOP_ON_FAIL: bool = True
+    CLI_WORKFLOW_SAVE_RUNS: bool = True
+    CLI_WORKFLOW_TIMEOUT_SECONDS: int = 120
+    CLI_WORKFLOW_BLOCK_DESTRUCTIVE_WITHOUT_CONFIRM: bool = True
+
+    # CLI UX Errors
+    CLI_SAFE_ERRORS_ENABLED: bool = True
+    CLI_ERROR_INCLUDE_DOCS_REF: bool = True
+    CLI_ERROR_INCLUDE_SUGGESTED_FIX: bool = True
+    CLI_ERROR_TECHNICAL_DETAILS_VERBOSE_ONLY: bool = True
+
+    # CLI UX Integrations
+    RUNTIME_CLI_OUTPUT_CONTRACTS_ENABLED: bool = True
+    REPORT_INCLUDE_CLI_UX: bool = True
+    RESEARCH_AUTO_LOG_CLI_UX: bool = False
     # Bootstrap
     ENABLE_BOOTSTRAP: bool = True
     BOOTSTRAP_DIR_NAME: str = "bootstrap"

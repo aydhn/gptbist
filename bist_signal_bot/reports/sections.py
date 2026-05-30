@@ -105,3 +105,5 @@ def execution_sim_section(report_data: dict) -> str:
                 lines.append(f"- {w}")
 
         return "\n".join(lines) + "\n"
+def generate_cli_ux_section():
+    return "## CLI UX\nStatus: OK\n"

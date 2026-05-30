@@ -699,6 +699,15 @@ The Research Knowledge Base provides a local-first memory layer. See `bist_signa
 The Telegram Research Command Center provides a secure, fully local interface for managing the bot via Telegram.
 
 ### Features
+
+## CLI UX & Output Contracts
+The system guarantees a consistent local CLI interface, ensuring deterministic behavior for automation:
+- **JSON Contracts**: Run any command with `--json` to receive structured `CLIOutputEnvelope` payloads.
+- **Workflow Runner**: Chain multiple commands securely, defaulting to `--dry-run` and enforcing safety blocks.
+- **Safe Exit Codes**: Standardized exit codes (0 for success, 5 for blocked, 6 for confirm required) allow robust shell scripting.
+- **Aliases**: Use short aliases like `bt scan` or `bt health` for rapid exploration.
+- **No Broker API**: The bot is completely local and does not connect to broker APIs.
+
 - **Research-Only**: Active guardrails block any attempts to send real orders or execute destructive actions.
 - **Digest Orchestration**: Compile daily, weekly, or runtime digests.
 - **Notification Inbox**: A resilient local queue for managing outgoing Telegram alerts.

@@ -1787,3 +1787,37 @@ class OpsReadinessError(OpsError):
     pass
 class OpsStorageError(OpsError):
     pass
+
+class CLIUXError(BistSignalBotError):
+    """Base exception for CLI UX operations."""
+    pass
+
+class CLIOutputContractError(CLIUXError):
+    pass
+
+class CLIOutputSchemaError(CLIUXError):
+    pass
+
+class CLIExitCodeError(CLIUXError):
+    pass
+
+class CLIUserFacingError(CLIUXError):
+    pass
+
+class CLIAliasError(CLIUXError):
+    pass
+
+class WorkflowRunnerError(CLIUXError):
+    pass
+
+class RecipeExecutorError(CLIUXError):
+    pass
+
+class CommandRegistryError(CLIUXError):
+    pass
+
+class CLICompatibilityError(CLIUXError):
+    pass
+
+class CLIUXStorageError(CLIUXError):
+    pass

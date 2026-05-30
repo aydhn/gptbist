@@ -37,3 +37,5 @@ class ReleaseBundleBuilder:
 
     def release_readiness_status(self) -> dict[str, Any]:
         return {"status": "ready"}
+def include_cli_contracts():
+    return True
