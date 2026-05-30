@@ -1821,3 +1821,31 @@ class CLICompatibilityError(CLIUXError):
 
 class CLIUXStorageError(CLIUXError):
     pass
+
+class DocsHubError(BISTBotError):
+    """Base class for Docs Hub errors."""
+    pass
+
+class DocsIndexError(DocsHubError):
+    pass
+
+class DocsSearchError(DocsHubError):
+    pass
+
+class ArchitectureMapError(DocsHubError):
+    pass
+
+class CommandCookbookError(DocsHubError):
+    pass
+
+class TroubleshootingKBError(DocsHubError):
+    pass
+
+class DocsCoverageError(DocsHubError):
+    pass
+
+class MVPHandoffError(DocsHubError):
+    pass
+
+class DocsHubStorageError(DocsHubError):
+    pass

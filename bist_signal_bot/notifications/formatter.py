@@ -1696,3 +1696,28 @@ def format_cli_compatibility(result) -> str:
 
 def format_cli_ux_report(report) -> str:
     return f"CLI UX Report Generated: {len(report.contracts)} contracts, {len(report.aliases)} aliases"
+
+    def format_docs_index(self, index) -> str:
+        return f"Docs Index Built: {index.total_pages} pages.\nLocal metadata only. No real orders sent."
+
+    def format_docs_coverage(self, result) -> str:
+        lines = [
+            "BIST Bot Docs Hub Özeti",
+            "",
+            f"Docs Coverage: {result.coverage_score}",
+            f"Missing Docs: {len(result.missing_docs)}",
+            f"Commands Without Examples: {len(result.commands_without_examples)}",
+            f"Unsafe Language Findings: {len(result.unsafe_language_findings)}",
+            f"Handoff: {result.status.name}",
+            "",
+            "Bu çıktı yerel dokümantasyon kalite özetidir.",
+            "Yatırım tavsiyesi değildir.",
+            "Gerçek emir gönderilmedi."
+        ]
+        return "\n".join(lines)
+
+    def format_mvp_handoff(self, manifest) -> str:
+        return f"MVP Handoff Created: QA Status {manifest.qa_status}\nLocal metadata only. No real orders sent."
+
+    def format_docs_hub_report(self, report) -> str:
+        return f"Docs Hub Report Generated\nLocal metadata only. No real orders sent."

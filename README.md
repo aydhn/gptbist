@@ -799,3 +799,14 @@ Local-first review case management. Read `docs/59_ANALYST_REVIEW_WORKFLOW.md` fo
 ## QA & Release Readiness
 The system includes an end-to-end deterministic test harness and release gate. It uses synthetic fixtures to ensure code changes don't break the pipeline.
 No real order is sent, no live external APIs are hit.
+
+## Documentation Hub
+The Documentation Hub provides a local-first, research-only architecture map, command cookbook, troubleshooting knowledge base, and MVP handoff tracking.
+
+Run the following commands to explore:
+- `python -m bist_signal_bot docs-hub index`
+- `python -m bist_signal_bot docs-hub architecture`
+- `python -m bist_signal_bot docs-hub cookbook`
+- `python -m bist_signal_bot docs-hub troubleshoot`
+- `python -m bist_signal_bot docs-hub coverage`
+- `python -m bist_signal_bot docs-hub handoff`
