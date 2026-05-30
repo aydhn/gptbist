@@ -540,3 +540,10 @@ def get_bootstrap_dir(settings: 'Settings | None' = None) -> Path:
     if settings and hasattr(settings, 'BOOTSTRAP_DIR_NAME') and settings.BOOTSTRAP_DIR_NAME:
         return base / settings.BOOTSTRAP_DIR_NAME
     return base / "bootstrap"
+
+def get_cli_ux_dir(settings: 'Settings | None' = None) -> Path:
+    from bist_signal_bot.config.settings import get_settings
+    settings = settings or get_settings()
+    d = get_data_dir(settings) / getattr(settings, "CLI_UX_DIR_NAME", "cli_ux")
+    d.mkdir(parents=True, exist_ok=True)
+    return d

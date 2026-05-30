@@ -1687,3 +1687,12 @@ Bu çıktı yazılım kalite kontrol özetidir.
 Yatırım tavsiyesi değildir.
 Gerçek emir gönderilmedi."""
 def format_qa_report(report) -> str: return "QA report summary"
+
+def format_cli_workflow_run(run) -> str:
+    return f"Workflow {run.workflow_name} completed with status {run.status.value}"
+
+def format_cli_compatibility(result) -> str:
+    return f"CLI Compatibility: {result.status.value}"
+
+def format_cli_ux_report(report) -> str:
+    return f"CLI UX Report Generated: {len(report.contracts)} contracts, {len(report.aliases)} aliases"

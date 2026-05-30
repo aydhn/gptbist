@@ -1,3 +1,4 @@
+from bist_signal_bot.cli_ux.cli_parser import add_cli_ux_subparser, handle_cli_ux
 
 def cmd_instruments(args, app_context):
     import sys
@@ -128,6 +129,7 @@ def run_cli(argv: list[str] | None = None) -> int:
         from bist_signal_bot.cli.calibration_cli import setup_calibration_parser, handle_calibration_command
         parser = argparse.ArgumentParser()
         subparsers = parser.add_subparsers(dest="command")
+        add_cli_ux_subparser(subparsers)
         setup_calibration_parser(subparsers)
 
         args, _ = parser.parse_known_args(args_to_parse)
@@ -187,6 +189,7 @@ def run_cli(argv: list[str] | None = None) -> int:
         import argparse
         parser = argparse.ArgumentParser()
         subparsers = parser.add_subparsers(dest="command")
+        add_cli_ux_subparser(subparsers)
         from bist_signal_bot.cli.parsers import add_config_registry_parser
         add_config_registry_parser(subparsers)
 
@@ -204,6 +207,7 @@ def run_cli(argv: list[str] | None = None) -> int:
         import argparse
         parser = argparse.ArgumentParser()
         subparsers = parser.add_subparsers(dest="command")
+        add_cli_ux_subparser(subparsers)
         from bist_signal_bot.cli.parsers import add_governance_parser, add_config_registry_parser
         from bist_signal_bot.cli.event_calendar_group import register_event_calendar_commands
         register_event_calendar_commands(subparsers)
@@ -219,6 +223,7 @@ def run_cli(argv: list[str] | None = None) -> int:
         import argparse
         parser = argparse.ArgumentParser()
         subparsers = parser.add_subparsers(dest="command")
+        add_cli_ux_subparser(subparsers)
         from bist_signal_bot.cli.event_calendar_group import register_event_calendar_commands
         register_event_calendar_commands(subparsers)
         args, _ = parser.parse_known_args(["event-calendar"] + args_to_parse[1:])
@@ -249,6 +254,7 @@ def run_cli(argv: list[str] | None = None) -> int:
         import argparse
         parser = argparse.ArgumentParser()
         subparsers = parser.add_subparsers(dest="command")
+        add_cli_ux_subparser(subparsers)
         from bist_signal_bot.cli.parsers import add_valuation_parser
         add_valuation_parser(subparsers)
         args, _ = parser.parse_known_args(['valuation'] + args_to_parse[1:])
@@ -275,6 +281,7 @@ def run_cli(argv: list[str] | None = None) -> int:
         import argparse
         parser = argparse.ArgumentParser()
         subparsers = parser.add_subparsers(dest="command")
+        add_cli_ux_subparser(subparsers)
         from bist_signal_bot.cli.parsers import setup_whatif_parser
         setup_whatif_parser(subparsers)
         args, _ = parser.parse_known_args(['what-if'] + args_to_parse[1:])
@@ -286,6 +293,7 @@ def run_cli(argv: list[str] | None = None) -> int:
         import argparse
         parser = argparse.ArgumentParser()
         subparsers = parser.add_subparsers(dest="command")
+        add_cli_ux_subparser(subparsers)
         from bist_signal_bot.cli.explain import setup_parser
         setup_parser(subparsers)
         args, _ = parser.parse_known_args(args_to_parse)
@@ -411,6 +419,7 @@ def run_cli(argv: list[str] | None = None) -> int:
 
     # Audit log
     commands = {
+        'cli-ux': handle_cli_ux,
         'scheduler': lambda args, ctx: __import__('bist_signal_bot.cli.scheduler_cli', fromlist=['']).handle_scheduler(args),
         "healthcheck": cmd_healthcheck,
         "config": cmd_config,
@@ -519,11 +528,21 @@ except Exception:
 def run_cli():
     import sys
 
+    if len(sys.argv) > 1 and sys.argv[1] == 'cli-ux':
+        import argparse
+        from bist_signal_bot.cli_ux.cli_parser import add_cli_ux_subparser, handle_cli_ux
+        parser = argparse.ArgumentParser()
+        subparsers = parser.add_subparsers(dest="command")
+        add_cli_ux_subparser(subparsers)
+        args, _ = parser.parse_known_args(sys.argv[1:])
+        handle_cli_ux(args)
+        sys.exit(0)
     if len(sys.argv) > 1 and sys.argv[1] == 'ops':
         import argparse
         from bist_signal_bot.cli.ops_commands import add_ops_subparsers, handle_ops_command
         parser = argparse.ArgumentParser()
         subparsers = parser.add_subparsers(dest="command")
+        add_cli_ux_subparser(subparsers)
         add_ops_subparsers(subparsers)
         args, _ = parser.parse_known_args(sys.argv[1:])
         handle_ops_command(args)

@@ -76,6 +76,16 @@ def run_healthcheck(settings=None, as_json=False):
             "event_extractor_capable": True,
             "store_capable": True
         },
+
+        "cli_ux": {
+            "enabled": getattr(settings, "ENABLE_CLI_UX", True),
+            "contracts_capable": True,
+            "schemas_capable": True,
+            "aliases_capable": True,
+            "workflow_runner_capable": True,
+            "store_capable": True
+        },
+
         "whatif_lab": {
             "enabled": getattr(settings, "ENABLE_WHATIF_LAB", True),
             "scenario_factory_capable": True,
@@ -94,6 +104,7 @@ def run_healthcheck(settings=None, as_json=False):
         print(f"Event Calendar Enabled: {res['events']['enabled']}")
         print(f"Disclosure Intelligence Enabled: {res['disclosures']['enabled']}")
     print(f"Financials enabled: {res['financials']['enabled']}")
+    print(f"CLI UX Enabled: {res['cli_ux']['enabled']}")
 
     return res
 

@@ -4,3 +4,8 @@ def is_safe_claim(text: str) -> bool:
         if kw in text.lower():
             return False
     return True
+
+class UnsafeClaimGuard:
+    @staticmethod
+    def is_safe_claim(text: str) -> bool:
+        return is_safe_claim(text)

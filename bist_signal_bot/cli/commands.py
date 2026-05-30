@@ -3983,7 +3983,7 @@ def handle_security_command(args, settings):
 def handle_quality_command(args, settings):
     import json
     import sys
-from bist_signal_bot.cli.bootstrap_cli import handle_bootstrap
+    from bist_signal_bot.cli.bootstrap_cli import handle_bootstrap
 
     from bist_signal_bot.app.quality_app import create_quality_gate_runner, create_quality_config_from_settings, create_smoke_quality_config
     from bist_signal_bot.quality.models import QualitySuite, QualityGateLevel
@@ -5591,7 +5591,7 @@ def route_lab_command(args, app_context) -> int:
 
 def execute_maintenance(args):
     import sys
-from bist_signal_bot.cli.bootstrap_cli import handle_bootstrap
+    from bist_signal_bot.cli.bootstrap_cli import handle_bootstrap
 
     from bist_signal_bot.cli.commands_maintenance import run_maintenance_cli
 
@@ -6081,7 +6081,7 @@ def run_kb_config(args, settings=None):
 @cli.command(name='scheduler')
 def run_scheduler():
     import sys
-from bist_signal_bot.cli.bootstrap_cli import handle_bootstrap
+    from bist_signal_bot.cli.bootstrap_cli import handle_bootstrap
 
     from bist_signal_bot.cli.scheduler_cli import handle_scheduler
     import argparse
