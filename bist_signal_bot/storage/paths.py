@@ -552,3 +552,12 @@ def get_docs_hub_dir(settings=None) -> Path:
     from bist_signal_bot.config.settings import Settings
     s = settings or Settings()
     return get_data_dir(s) / s.DOCS_HUB_DIR_NAME
+
+def get_data_catalog_dir(settings: Settings | None = None) -> Path:
+    """Gets the data catalog directory path."""
+    if settings is None:
+        from bist_signal_bot.config.settings import get_settings
+        settings = get_settings()
+    catalog_dir = get_data_dir(settings) / settings.DATA_CATALOG_DIR_NAME
+    catalog_dir.mkdir(parents=True, exist_ok=True)
+    return catalog_dir

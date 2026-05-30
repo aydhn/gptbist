@@ -7,6 +7,56 @@ from bist_signal_bot.config.secrets import settings_safe_dump
 
 class Settings(BaseSettings):
 
+    # --- Data Catalog / Data Quality ---
+    ENABLE_DATA_CATALOG: bool = Field(default=True)
+    DATA_CATALOG_DIR_NAME: str = Field(default="data_catalog")
+    DATA_CATALOG_RESEARCH_ONLY: bool = Field(default=True)
+    DATA_CATALOG_SAVE_RESULTS: bool = Field(default=True)
+
+    DATA_CATALOG_LOAD_DEFAULT_CONTRACTS: bool = Field(default=True)
+    DATA_CATALOG_CONTRACT_VERSION: str = Field(default="1.0")
+    DATA_CATALOG_FAIL_ON_MISSING_REQUIRED_COLUMNS: bool = Field(default=True)
+
+    DATA_CATALOG_PROFILE_MAX_ROWS: int = Field(default=100000, gt=0)
+    DATA_CATALOG_PROFILE_NUMERIC_RANGES: bool = Field(default=True)
+    DATA_CATALOG_PROFILE_DATE_RANGES: bool = Field(default=True)
+    DATA_CATALOG_PROFILE_NULL_RATIOS: bool = Field(default=True)
+    DATA_CATALOG_PROFILE_DUPLICATES: bool = Field(default=True)
+
+    DATA_QUALITY_PASS_SCORE: float = Field(default=80.0, ge=0.0, le=100.0)
+    DATA_QUALITY_WATCH_SCORE: float = Field(default=60.0, ge=0.0, le=100.0)
+    DATA_QUALITY_FAIL_SCORE: float = Field(default=40.0, ge=0.0, le=100.0)
+    DATA_QUALITY_MAX_NULL_RATIO: float = Field(default=0.20, ge=0.0, le=1.0)
+    DATA_QUALITY_DUPLICATE_WARN_THRESHOLD: int = Field(default=0, ge=0)
+    DATA_QUALITY_OUTLIER_CHECK_ENABLED: bool = Field(default=True)
+
+    DATA_CATALOG_DEFAULT_FRESHNESS_DAYS: int = Field(default=30, gt=0)
+    DATA_CATALOG_OHLCV_FRESHNESS_DAYS: int = Field(default=7, gt=0)
+    DATA_CATALOG_MACRO_FRESHNESS_DAYS: int = Field(default=10, gt=0)
+    DATA_CATALOG_BREADTH_FRESHNESS_DAYS: int = Field(default=5, gt=0)
+    DATA_CATALOG_FINANCIALS_FRESHNESS_DAYS: int = Field(default=120, gt=0)
+    DATA_CATALOG_REPORTS_FRESHNESS_DAYS: int = Field(default=14, gt=0)
+
+    DATA_QUALITY_GATES_ENABLED: bool = Field(default=True)
+    DATA_QUALITY_GATE_REQUIRED_SCORE: float = Field(default=70.0, ge=0.0, le=100.0)
+    DATA_QUALITY_GATE_BLOCK_ON_CRITICAL_SCHEMA_DRIFT: bool = Field(default=True)
+    DATA_QUALITY_GATE_BLOCK_ON_MISSING_REQUIRED_DATASET: bool = Field(default=False)
+
+    DATA_LINEAGE_ENABLED: bool = Field(default=True)
+    DATA_LINEAGE_DETECT_ORPHANS: bool = Field(default=True)
+
+    RUNTIME_DATA_CATALOG_ENABLED: bool = Field(default=True)
+    RUNTIME_DATA_QUALITY_WARN_ONLY: bool = Field(default=True)
+
+    QA_INCLUDE_DATA_CATALOG: bool = Field(default=True)
+    QA_DATA_CATALOG_FAIL_ON_BLOCKED_GATE: bool = Field(default=True)
+
+    OPS_INCLUDE_DATA_CATALOG: bool = Field(default=True)
+
+    REPORT_INCLUDE_DATA_CATALOG: bool = Field(default=True)
+
+    RESEARCH_AUTO_LOG_DATA_CATALOG: bool = Field(default=False)
+
     # CLI UX Settings
     ENABLE_CLI_UX: bool = True
     CLI_UX_DIR_NAME: str = "cli_ux"
