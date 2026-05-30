@@ -1849,3 +1849,33 @@ class MVPHandoffError(DocsHubError):
 
 class DocsHubStorageError(DocsHubError):
     pass
+
+class DataCatalogError(BistSignalBotError):
+    pass
+
+class DatasetContractError(DataCatalogError):
+    pass
+
+class DatasetRegistryError(DataCatalogError):
+    pass
+
+class DatasetProfilerError(DataCatalogError):
+    pass
+
+class DataQualityError(DataCatalogError):
+    pass
+
+class SchemaDriftError(DataCatalogError):
+    pass
+
+class DataLineageError(DataCatalogError):
+    pass
+
+class SourceProvenanceError(DataCatalogError):
+    pass
+
+class DataQualityGateError(DataCatalogError):
+    pass
+
+class DataCatalogStorageError(DataCatalogError):
+    pass

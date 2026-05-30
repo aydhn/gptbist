@@ -1721,3 +1721,32 @@ def format_cli_ux_report(report) -> str:
 
     def format_docs_hub_report(self, report) -> str:
         return f"Docs Hub Report Generated\nLocal metadata only. No real orders sent."
+
+def format_dataset_record(record) -> str:
+    return f"Dataset {record.name} ({record.dataset_kind.value}) Status: {record.status.value}"
+
+def format_data_quality_assessment(assessment) -> str:
+    return f"Data Quality [Score: {assessment.quality_score}] Status: {assessment.status.value}"
+
+def format_schema_drift_findings(findings: list) -> str:
+    return f"Schema Drift Findings: {len(findings)}"
+
+def format_data_quality_gate(result) -> str:
+    return f"Gate {result.gate_name} - Status: {result.status.value} (Score: {result.actual_score})"
+
+def format_data_catalog_report(report) -> str:
+    low_quality = len([a for a in report.assessments if a.status.value in ("FAIL", "BLOCKED")])
+    stale = len([d for d in report.datasets if d.status.value == "STALE"])
+    latest_gate = report.gates[0].status.value if report.gates else "UNKNOWN"
+    return f"""BIST Bot Data Catalog Özeti
+
+Datasets: {len(report.datasets)}
+Low Quality: {low_quality}
+Schema Drift: {len(report.drift_findings)}
+Latest Gate: {latest_gate}
+Stale Datasets: {stale}
+
+Bu çıktı yerel veri yönetişimi özetidir.
+Yatırım tavsiyesi değildir.
+İşlem uygunluğu anlamına gelmez.
+Gerçek emir gönderilmedi."""

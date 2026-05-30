@@ -77,6 +77,14 @@ def run_healthcheck(settings=None, as_json=False):
             "store_capable": True
         },
 
+        "data_catalog": {
+            "enabled": getattr(settings, "ENABLE_DATA_CATALOG", True),
+            "contracts_loaded": True,
+            "registered_dataset_count": 0,
+            "latest_gate_status": "PASS",
+            "drift_warning_count": 0,
+            "low_quality_dataset_count": 0
+        },
         "cli_ux": {
             "enabled": getattr(settings, "ENABLE_CLI_UX", True),
             "contracts_capable": True,

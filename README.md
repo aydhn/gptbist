@@ -800,6 +800,15 @@ Local-first review case management. Read `docs/59_ANALYST_REVIEW_WORKFLOW.md` fo
 The system includes an end-to-end deterministic test harness and release gate. It uses synthetic fixtures to ensure code changes don't break the pipeline.
 No real order is sent, no live external APIs are hit.
 
+## Data Catalog & Data Quality
+Data Catalog manages local datasets, enforces schema contracts, computes data quality scores, and tracks schema drift and data lineage completely offline.
+
+Run the following commands to explore:
+- `python -m bist_signal_bot data-catalog contracts`
+- `python -m bist_signal_bot data-catalog list`
+- `python -m bist_signal_bot data-catalog quality --all`
+- `python -m bist_signal_bot data-catalog report`
+
 ## Documentation Hub
 The Documentation Hub provides a local-first, research-only architecture map, command cookbook, troubleshooting knowledge base, and MVP handoff tracking.
 
