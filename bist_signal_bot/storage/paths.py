@@ -547,3 +547,8 @@ def get_cli_ux_dir(settings: 'Settings | None' = None) -> Path:
     d = get_data_dir(settings) / getattr(settings, "CLI_UX_DIR_NAME", "cli_ux")
     d.mkdir(parents=True, exist_ok=True)
     return d
+
+def get_docs_hub_dir(settings=None) -> Path:
+    from bist_signal_bot.config.settings import Settings
+    s = settings or Settings()
+    return get_data_dir(s) / s.DOCS_HUB_DIR_NAME

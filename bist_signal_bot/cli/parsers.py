@@ -808,6 +808,10 @@ def build_parser() -> argparse.ArgumentParser:
     setup_explain_parser(subparsers)
     setup_calibration_parser(subparsers)
     add_portfolio_construct_parser(subparsers)
+    try:
+        add_docs_hub_parser(subparsers)
+    except NameError:
+        pass
     from bist_signal_bot.cli.portfolio_ledger_commands import setup_portfolio_ledger_parser
     setup_portfolio_ledger_parser(subparsers)
     add_telegram_center_parser(subparsers)
@@ -2285,6 +2289,10 @@ def add_config_registry_parser(subparsers):
 
 def add_execution_sim_parser(subparsers):
     add_portfolio_construct_parser(subparsers)
+    try:
+        add_docs_hub_parser(subparsers)
+    except NameError:
+        pass
     from bist_signal_bot.cli.portfolio_ledger_commands import setup_portfolio_ledger_parser
     setup_portfolio_ledger_parser(subparsers)
     p = subparsers.add_parser("execution-sim", help="Execution Simulation utilities")
@@ -2338,9 +2346,17 @@ def add_execution_sim_parser(subparsers):
 
 def add_strategy_registry_parser(subparsers):
     add_portfolio_construct_parser(subparsers)
+    try:
+        add_docs_hub_parser(subparsers)
+    except NameError:
+        pass
     from bist_signal_bot.cli.portfolio_ledger_commands import setup_portfolio_ledger_parser
     setup_portfolio_ledger_parser(subparsers)
     add_portfolio_construct_parser(subparsers)
+    try:
+        add_docs_hub_parser(subparsers)
+    except NameError:
+        pass
     from bist_signal_bot.cli.portfolio_ledger_commands import setup_portfolio_ledger_parser
     setup_portfolio_ledger_parser(subparsers)
     registry_parser = subparsers.add_parser("strategy-registry", help="Manage Strategy Registry")
@@ -2646,3 +2662,51 @@ def add_review_workflow_parser(subparsers):
 
     rw_config = rw_subparsers.add_parser("config", help="Show workflow config")
     rw_config.add_argument("--json", action="store_true", help="JSON output")
+
+def add_docs_hub_parser(subparsers):
+    parser = subparsers.add_parser("docs-hub", help="Documentation Hub")
+    sub = parser.add_subparsers(dest="dh_command", required=True)
+
+    idx = sub.add_parser("index", help="Index local documentation")
+    idx.add_argument("--save", action="store_true", help="Save the index")
+    idx.add_argument("--json", action="store_true", help="JSON output")
+
+    src = sub.add_parser("search", help="Search local documentation")
+    src.add_argument("query", type=str, help="Search query")
+    src.add_argument("--audience", type=str, help="Audience filter")
+    src.add_argument("--json", action="store_true", help="JSON output")
+
+    show = sub.add_parser("show", help="Show document")
+    show.add_argument("path", type=str, help="Path to document")
+    show.add_argument("--json", action="store_true", help="JSON output")
+
+    arch = sub.add_parser("architecture", help="Show architecture map")
+    arch.add_argument("--mermaid", action="store_true", help="Mermaid output")
+    arch.add_argument("--json", action="store_true", help="JSON output")
+
+    cook = sub.add_parser("cookbook", help="Show command cookbook")
+    cook.add_argument("--profile", type=str, help="Profile filter")
+    cook.add_argument("--module", type=str, help="Module filter")
+    cook.add_argument("--json", action="store_true", help="JSON output")
+
+    tr = sub.add_parser("troubleshoot", help="Show troubleshooting KB")
+    tr.add_argument("query", type=str, nargs="?", help="Search query")
+    tr.add_argument("--json", action="store_true", help="JSON output")
+
+    cov = sub.add_parser("coverage", help="Analyze documentation coverage")
+    cov.add_argument("--json", action="store_true", help="JSON output")
+
+    hand = sub.add_parser("handoff", help="Generate MVP handoff manifest")
+    hand.add_argument("--save", action="store_true", help="Save handoff")
+    hand.add_argument("--json", action="store_true", help="JSON output")
+
+    rep = sub.add_parser("report", help="Generate Docs Hub report")
+    rep.add_argument("--latest", action="store_true", help="Load latest report")
+    rep.add_argument("--json", action="store_true", help="JSON output")
+
+    rec = sub.add_parser("recent", help="Show recent docs hub actions")
+    rec.add_argument("--limit", type=int, default=10, help="Max rows")
+    rec.add_argument("--json", action="store_true", help="JSON output")
+
+    cfg = sub.add_parser("config", help="Show docs hub configuration")
+    cfg.add_argument("--json", action="store_true", help="JSON output")
