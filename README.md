@@ -829,3 +829,10 @@ The system includes a local, fully offline Feature Store that computes, versions
 - Governance Gates: Enforces model cards, validation metrics, and leakage checks before promotion to Active Research.
 - Integrity: Ensures models are never used for real trade execution.
 - Integrations: Fully integrated with ML inference, Strategy Registry, QA, and Ops layers.
+
+## Research Monitoring & Champion/Challenger (Phase 96)
+- **Strategy & Model Health:** Tracks performance over time.
+- **Performance & Calibration Decay:** Detects degradation from baseline metrics.
+- **Champion/Challenger:** Compares models/strategies to suggest promotions based on statistical significance.
+- **Alerts & Watchlist:** Routes warnings and degradation alerts without triggering live trading actions.
+- **CLI Commands:** Use `python -m bist_signal_bot monitoring status` or `report` to view current state.

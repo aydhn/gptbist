@@ -1,198 +1,238 @@
-import uuid
-import logging
-from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional
+import math
+from datetime import datetime
+from typing import Any
+from bist_signal_bot.monitoring.models import MonitoringMetric, MonitoringObjectType, MonitoringWindow, MonitoringStatus
 
-from bist_signal_bot.config.settings import Settings
-from bist_signal_bot.monitoring.models import MonitoringMetric, MonitoringComponent, MetricType
-from bist_signal_bot.monitoring.storage import MonitoringStore
-from bist_signal_bot.runtime.models import RuntimePipelineResult, RuntimeJobResult
-
-class MetricsCollector:
-    def __init__(self, storage: Optional[MonitoringStore] = None, settings: Optional[Settings] = None, logger: Optional[logging.Logger] = None):
-        self.settings = settings or Settings()
-        self.storage = storage or MonitoringStore(self.settings)
-        self.logger = logger or logging.getLogger(__name__)
-
-    def record_metric(self, component: MonitoringComponent, name: str, value: Any, metric_type: MetricType, unit: str | None = None, tags: dict[str, str] | None = None, metadata: dict[str, Any] | None = None) -> MonitoringMetric:
-        metric = MonitoringMetric(
-            metric_id=str(uuid.uuid4()),
-            timestamp=datetime.utcnow(),
-            component=component,
-            name=name,
-            metric_type=metric_type,
-            value=value,
-            unit=unit,
-            tags=tags or {},
-            metadata=metadata or {}
-        )
-
-        try:
-            self.storage.append_metric(metric)
-        except Exception as e:
-            self.logger.error(f"Failed to save metric {name}: {e}")
-
-        return metric
-
-    def record_runtime_result(self, result: RuntimePipelineResult) -> List[MonitoringMetric]:
+class MonitoringMetricCalculator:
+    def calculate_metrics(self, object_type: MonitoringObjectType, object_id: str, outcomes: list[Any], as_of: datetime | None = None) -> list[MonitoringMetric]:
+        as_of = as_of or datetime.now()
         metrics = []
 
-        metrics.append(self.record_metric(
-            component=MonitoringComponent.RUNTIME,
-            name="runtime_elapsed_seconds",
-            value=result.elapsed_seconds,
-            metric_type=MetricType.TIMER,
-            unit="seconds",
-            tags={"run_id": result.run_id, "trigger": result.trigger.value}
+        # Example implementations; would be tailored to specific outcomes
+        wr = self.win_rate(outcomes)
+        metrics.append(MonitoringMetric(
+            metric_id=f"win_rate_{object_id}",
+            object_type=object_type,
+            object_id=object_id,
+            metric_name="win_rate",
+            window=MonitoringWindow.SHORT,
+            value=wr,
+            sample_count=len(outcomes),
+            as_of=as_of,
+            status=self.status_from_metric("win_rate", wr, None, len(outcomes))
         ))
 
-        is_success = result.status.value in ["SUCCESS", "PARTIAL_SUCCESS"]
-        metrics.append(self.record_metric(
-            component=MonitoringComponent.RUNTIME,
-            name="runtime_success",
-            value=is_success,
-            metric_type=MetricType.STATUS,
-            tags={"run_id": result.run_id, "status": result.status.value}
+        ex = self.expectancy(outcomes)
+        metrics.append(MonitoringMetric(
+            metric_id=f"expectancy_{object_id}",
+            object_type=object_type,
+            object_id=object_id,
+            metric_name="expectancy",
+            window=MonitoringWindow.SHORT,
+            value=ex,
+            sample_count=len(outcomes),
+            as_of=as_of,
+            status=self.status_from_metric("expectancy", ex, None, len(outcomes))
         ))
 
-        total_jobs = len(result.job_results)
-        success_jobs = sum(1 for j in result.job_results if j.status.value == "SUCCESS")
-        failed_jobs = sum(1 for j in result.job_results if j.status.value == "FAILED")
-
-        metrics.append(self.record_metric(
-            component=MonitoringComponent.RUNTIME,
-            name="runtime_total_jobs",
-            value=total_jobs,
-            metric_type=MetricType.COUNTER,
-            tags={"run_id": result.run_id}
+        pf = self.profit_factor(outcomes)
+        metrics.append(MonitoringMetric(
+            metric_id=f"profit_factor_{object_id}",
+            object_type=object_type,
+            object_id=object_id,
+            metric_name="profit_factor",
+            window=MonitoringWindow.SHORT,
+            value=pf,
+            sample_count=len(outcomes),
+            as_of=as_of,
+            status=self.status_from_metric("profit_factor", pf, None, len(outcomes))
         ))
 
-        metrics.append(self.record_metric(
-            component=MonitoringComponent.RUNTIME,
-            name="runtime_success_jobs",
-            value=success_jobs,
-            metric_type=MetricType.COUNTER,
-            tags={"run_id": result.run_id}
-        ))
+        returns = [getattr(o, 'return_pct', 0.0) for o in outcomes if hasattr(o, 'return_pct')]
+        if not returns and outcomes and isinstance(outcomes[0], float):
+            returns = outcomes
 
-        metrics.append(self.record_metric(
-            component=MonitoringComponent.RUNTIME,
-            name="runtime_failed_jobs",
-            value=failed_jobs,
-            metric_type=MetricType.COUNTER,
-            tags={"run_id": result.run_id}
-        ))
-
-        if result.scan_report_summary:
-            metrics.append(self.record_metric(
-                component=MonitoringComponent.SCANNER,
-                name="scanner_processed_symbols",
-                value=result.scan_report_summary.get("total_symbols", 0),
-                metric_type=MetricType.COUNTER,
-                tags={"run_id": result.run_id}
-            ))
-            metrics.append(self.record_metric(
-                component=MonitoringComponent.SCANNER,
-                name="scanner_passed_count",
-                value=result.scan_report_summary.get("passed_count", 0),
-                metric_type=MetricType.COUNTER,
-                tags={"run_id": result.run_id}
-            ))
-            metrics.append(self.record_metric(
-                component=MonitoringComponent.SCANNER,
-                name="scanner_error_count",
-                value=result.scan_report_summary.get("error_count", 0),
-                metric_type=MetricType.COUNTER,
-                tags={"run_id": result.run_id}
-            ))
-
-        if result.paper_result_summary:
-            metrics.append(self.record_metric(
-                component=MonitoringComponent.PAPER,
-                name="paper_fills_count",
-                value=result.paper_result_summary.get("fills_generated", 0),
-                metric_type=MetricType.COUNTER,
-                tags={"run_id": result.run_id}
-            ))
-
-        if result.output_files:
-            metrics.append(self.record_metric(
-                component=MonitoringComponent.STORAGE,
-                name="output_files_count",
-                value=len(result.output_files),
-                metric_type=MetricType.COUNTER,
-                tags={"run_id": result.run_id}
-            ))
-
-        return metrics
-
-    def record_job_result(self, result: RuntimeJobResult) -> List[MonitoringMetric]:
-        metrics = []
-
-        component = MonitoringComponent.RUNTIME
-        if "SCAN" in result.job_type.value:
-            component = MonitoringComponent.SCANNER
-        elif "PAPER" in result.job_type.value:
-            component = MonitoringComponent.PAPER
-        elif "TELEGRAM" in result.job_type.value:
-            component = MonitoringComponent.TELEGRAM
-
-        metrics.append(self.record_metric(
-            component=component,
-            name=f"job_elapsed_{result.job_type.value.lower()}",
-            value=result.elapsed_seconds,
-            metric_type=MetricType.TIMER,
-            unit="seconds",
-            tags={"job_type": result.job_type.value, "status": result.status.value}
-        ))
-
-        metrics.append(self.record_metric(
-            component=component,
-            name=f"job_success_{result.job_type.value.lower()}",
-            value=result.status.value == "SUCCESS",
-            metric_type=MetricType.STATUS,
-            tags={"job_type": result.job_type.value}
+        dd = self.max_drawdown_from_returns(returns)
+        metrics.append(MonitoringMetric(
+            metric_id=f"max_drawdown_{object_id}",
+            object_type=object_type,
+            object_id=object_id,
+            metric_name="max_drawdown",
+            window=MonitoringWindow.SHORT,
+            value=dd,
+            sample_count=len(returns),
+            as_of=as_of,
+            status=self.status_from_metric("max_drawdown", dd, None, len(returns))
         ))
 
         return metrics
 
-    def aggregate_recent_metrics(self, metrics: List[MonitoringMetric], window_minutes: int) -> dict[str, Any]:
-        if not metrics:
-            return {}
+    def win_rate(self, outcomes: list[Any]) -> float | None:
+        if not outcomes:
+            return None
 
-        cutoff = datetime.utcnow() - timedelta(minutes=window_minutes)
-        recent = [m for m in metrics if m.timestamp >= cutoff]
+        wins = 0
+        total = 0
+        for out in outcomes:
+            val = getattr(out, 'return_pct', None)
+            if val is None and isinstance(out, (float, int)):
+                val = float(out)
+            if val is not None and not math.isnan(val):
+                total += 1
+                if val > 0:
+                    wins += 1
 
-        return self.metric_summary(recent)
+        if total == 0:
+            return None
+        return wins / total
 
-    def metric_summary(self, metrics: List[MonitoringMetric]) -> dict[str, Any]:
-        summary = {
-            "total_count": len(metrics),
-            "counters": {},
-            "timers": {"avg": {}, "max": {}},
-            "statuses": {}
-        }
+    def average_return(self, outcomes: list[Any]) -> float | None:
+        if not outcomes:
+            return None
+        total_ret = 0.0
+        count = 0
+        for out in outcomes:
+            val = getattr(out, 'return_pct', None)
+            if val is None and isinstance(out, (float, int)):
+                val = float(out)
+            if val is not None and not math.isnan(val):
+                total_ret += val
+                count += 1
+        if count == 0:
+            return None
+        return total_ret / count
 
-        timers_data = {}
+    def expectancy(self, outcomes: list[Any]) -> float | None:
+        if not outcomes:
+            return None
 
-        for m in metrics:
-            if m.metric_type == MetricType.COUNTER:
-                summary["counters"][m.name] = summary["counters"].get(m.name, 0) + (m.value if isinstance(m.value, (int, float)) else 1)
-            elif m.metric_type == MetricType.TIMER:
-                if m.name not in timers_data:
-                    timers_data[m.name] = []
-                timers_data[m.name].append(m.value if isinstance(m.value, (int, float)) else 0.0)
-            elif m.metric_type == MetricType.STATUS:
-                if m.name not in summary["statuses"]:
-                    summary["statuses"][m.name] = {"true": 0, "false": 0}
-                if m.value is True:
-                    summary["statuses"][m.name]["true"] += 1
-                else:
-                    summary["statuses"][m.name]["false"] += 1
+        wins = []
+        losses = []
 
-        for name, values in timers_data.items():
-            if values:
-                summary["timers"]["avg"][name] = sum(values) / len(values)
-                summary["timers"]["max"][name] = max(values)
+        for out in outcomes:
+            val = getattr(out, 'return_pct', None)
+            if val is None and isinstance(out, (float, int)):
+                val = float(out)
+            if val is not None and not math.isnan(val):
+                if val > 0:
+                    wins.append(val)
+                elif val < 0:
+                    losses.append(val)
 
-        return summary
+        total = len(wins) + len(losses)
+        if total == 0:
+            return None
+
+        win_rate = len(wins) / total
+        loss_rate = len(losses) / total
+
+        avg_win = sum(wins) / len(wins) if wins else 0.0
+        avg_loss = abs(sum(losses) / len(losses)) if losses else 0.0
+
+        return (win_rate * avg_win) - (loss_rate * avg_loss)
+
+    def profit_factor(self, outcomes: list[Any]) -> float | None:
+        if not outcomes:
+            return None
+
+        gross_profit = 0.0
+        gross_loss = 0.0
+
+        for out in outcomes:
+            val = getattr(out, 'return_pct', None)
+            if val is None and isinstance(out, (float, int)):
+                val = float(out)
+            if val is not None and not math.isnan(val):
+                if val > 0:
+                    gross_profit += val
+                elif val < 0:
+                    gross_loss += abs(val)
+
+        if gross_loss == 0.0:
+            return float('inf') if gross_profit > 0 else None
+
+        return gross_profit / gross_loss
+
+    def max_drawdown_from_returns(self, returns: list[float]) -> float | None:
+        if not returns:
+            return None
+
+        peak = 1.0
+        current_eq = 1.0
+        max_dd = 0.0
+
+        for ret in returns:
+            if not math.isnan(ret):
+                current_eq *= (1 + ret)
+                if current_eq > peak:
+                    peak = current_eq
+                dd = (peak - current_eq) / peak
+                if dd > max_dd:
+                    max_dd = dd
+
+        return max_dd
+
+    def sharpe_like_score(self, returns: list[float]) -> float | None:
+        if not returns:
+            return None
+
+        valid_rets = [r for r in returns if not math.isnan(r)]
+        if not valid_rets:
+            return None
+
+        avg_ret = sum(valid_rets) / len(valid_rets)
+        variance = sum((r - avg_ret) ** 2 for r in valid_rets) / len(valid_rets)
+        std_dev = math.sqrt(variance)
+
+        if std_dev == 0:
+            return None
+
+        return avg_ret / std_dev
+
+    def calibration_reliability(self, outcomes: list[Any]) -> float | None:
+        if not outcomes:
+            return None
+
+        # Mock calculation for reliability based on outcomes matching expected values.
+        # This requires more complex logic to map expected vs actual.
+        # For MVP we will just return a score based on variance.
+        valid_rets = []
+        for out in outcomes:
+            val = getattr(out, 'return_pct', None)
+            if val is None and isinstance(out, (float, int)):
+                val = float(out)
+            if val is not None and not math.isnan(val):
+                valid_rets.append(val)
+
+        if len(valid_rets) < 2:
+            return None
+
+        avg = sum(valid_rets) / len(valid_rets)
+        variance = sum((r - avg) ** 2 for r in valid_rets) / len(valid_rets)
+        # Closer to 0 variance is more reliable, let's inverse it 0-1 range.
+        rel = 1.0 / (1.0 + variance)
+        return rel
+
+    def status_from_metric(self, metric_name: str, value: float | None, baseline: float | None, sample_count: int | None) -> MonitoringStatus:
+        if sample_count is None or sample_count < 30:
+            return MonitoringStatus.INSUFFICIENT_DATA
+
+        if value is None:
+            return MonitoringStatus.UNKNOWN
+
+        if baseline is not None:
+            # Check decay
+            if value < baseline * 0.8: # 20% drop
+                return MonitoringStatus.DEGRADED
+            elif value < baseline * 0.9: # 10% drop
+                return MonitoringStatus.WATCH
+
+        # Static thresholds
+        if metric_name == "win_rate":
+            if value < 0.4: return MonitoringStatus.DEGRADED
+            if value < 0.5: return MonitoringStatus.WATCH
+        elif metric_name == "profit_factor":
+            if value < 1.0: return MonitoringStatus.DEGRADED
+            if value < 1.2: return MonitoringStatus.WATCH
+
+        return MonitoringStatus.PASS

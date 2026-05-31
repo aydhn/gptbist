@@ -1,149 +1,154 @@
 import json
-import logging
 from pathlib import Path
-from datetime import datetime
-from typing import Any, List, Optional
-
-from bist_signal_bot.config.settings import Settings
-from bist_signal_bot.storage.paths import get_monitoring_dir
-from bist_signal_bot.monitoring.models import (
-    HeartbeatRecord, MonitoringMetric, MonitoringAlert,
-    DiagnosticCheckResult, MonitoringSnapshot
+from bist_signal_bot.storage.paths import (
+    get_metrics_path,
+    get_snapshots_path,
+    get_decay_path,
+    get_champion_challenger_path,
+    get_alerts_path,
+    get_watchlist_path,
+    get_report_dir
 )
-from bist_signal_bot.core.exceptions import MonitoringStorageError
+from bist_signal_bot.monitoring.models import (
+    MonitoringMetric, MonitoringSnapshot, PerformanceDecayFinding,
+    ChampionChallengerComparison, MonitoringAlert, MonitoringWatchlistItem,
+    MonitoringReport, MonitoringObjectType
+)
 
 class MonitoringStore:
-    def __init__(self, settings: Optional[Settings] = None, logger: Optional[logging.Logger] = None):
-        self.settings = settings or Settings()
-        self.logger = logger or logging.getLogger(__name__)
-        self.base_dir = get_monitoring_dir(self.settings)
+    def _append_jsonl(self, path: Path, data: dict):
+        # We assume data handles datetime serialization, but let's be safe.
+        # Simple local file operations.
+        with path.open("a", encoding="utf-8") as f:
+            f.write(json.dumps(data, default=str) + "\n")
 
-    def get_monitoring_dir(self) -> Path:
-        return self.base_dir
+    def append_metrics(self, metrics: list[MonitoringMetric]) -> Path:
+        path = get_metrics_path()
+        for m in metrics:
+            self._append_jsonl(path, m.model_dump(mode='json'))
+        return path
 
-    def _append_jsonl(self, file_path: Path, data: dict) -> Path:
-        try:
-            file_path.parent.mkdir(parents=True, exist_ok=True)
-            with open(file_path, "a", encoding="utf-8") as f:
-                f.write(json.dumps(data, ensure_ascii=False) + "\n")
-            return file_path
-        except Exception as e:
-            self.logger.error(f"Failed to append to {file_path}: {e}")
-            raise MonitoringStorageError(f"Failed to append JSONL: {e}")
-
-    def append_heartbeat(self, record: HeartbeatRecord) -> Path:
-        path = self.base_dir / "heartbeats.jsonl"
-        return self._append_jsonl(path, record.model_dump(mode="json"))
-
-    def append_metric(self, metric: MonitoringMetric) -> Path:
-        path = self.base_dir / "metrics.jsonl"
-        return self._append_jsonl(path, metric.model_dump(mode="json"))
-
-    def append_alert(self, alert: MonitoringAlert) -> Path:
-        path = self.base_dir / "alerts.jsonl"
-        return self._append_jsonl(path, alert.model_dump(mode="json"))
-
-    def _load_jsonl(self, file_path: Path, model_cls: Any, limit: int) -> List[Any]:
-        if not file_path.exists():
+    def load_metrics(self, object_type: MonitoringObjectType | None = None, object_id: str | None = None, limit: int = 10000) -> list[MonitoringMetric]:
+        path = get_metrics_path()
+        if not path.exists():
             return []
-
-        results = []
-        try:
-            with open(file_path, "r", encoding="utf-8") as f:
-                lines = f.readlines()
-
-            for line in reversed(lines):
-                if len(results) >= limit:
-                    break
-                line = line.strip()
-                if not line:
+        res = []
+        with path.open("r", encoding="utf-8") as f:
+            for line in f:
+                d = json.loads(line)
+                if object_type and d.get("object_type") != object_type.value:
                     continue
-                try:
-                    data = json.loads(line)
-                    results.append(model_cls(**data))
-                except Exception as e:
-                    self.logger.warning(f"Skipping malformed JSONL line in {file_path}: {e}")
+                if object_id and d.get("object_id") != object_id:
+                    continue
+                res.append(MonitoringMetric(**d))
+        return res[-limit:]
 
-        except Exception as e:
-            self.logger.error(f"Error reading {file_path}: {e}")
+    def append_snapshot(self, snapshot: MonitoringSnapshot) -> Path:
+        path = get_snapshots_path()
+        self._append_jsonl(path, snapshot.model_dump(mode='json'))
+        return path
 
-        return results
+    def load_snapshots(self, object_type: MonitoringObjectType | None = None, object_id: str | None = None, limit: int = 10000) -> list[MonitoringSnapshot]:
+        path = get_snapshots_path()
+        if not path.exists():
+            return []
+        res = []
+        with path.open("r", encoding="utf-8") as f:
+            for line in f:
+                d = json.loads(line)
+                if object_type and d.get("object_type") != object_type.value:
+                    continue
+                if object_id and d.get("object_id") != object_id:
+                    continue
+                res.append(MonitoringSnapshot(**d))
+        return res[-limit:]
 
-    def load_recent_heartbeats(self, limit: int = 100) -> List[HeartbeatRecord]:
-        path = self.base_dir / "heartbeats.jsonl"
-        return self._load_jsonl(path, HeartbeatRecord, limit)
+    def load_latest_snapshot(self, object_type: MonitoringObjectType, object_id: str) -> MonitoringSnapshot | None:
+        snaps = self.load_snapshots(object_type, object_id, limit=1)
+        return snaps[0] if snaps else None
 
-    def load_recent_metrics(self, limit: int = 1000) -> List[MonitoringMetric]:
-        path = self.base_dir / "metrics.jsonl"
-        return self._load_jsonl(path, MonitoringMetric, limit)
+    def append_decay_findings(self, findings: list[PerformanceDecayFinding]) -> Path:
+        path = get_decay_path()
+        for f in findings:
+            self._append_jsonl(path, f.model_dump(mode='json'))
+        return path
 
-    def load_recent_alerts(self, limit: int = 100) -> List[MonitoringAlert]:
-        path = self.base_dir / "alerts.jsonl"
-        return self._load_jsonl(path, MonitoringAlert, limit)
+    def load_decay_findings(self, object_id: str | None = None, limit: int = 10000) -> list[PerformanceDecayFinding]:
+        path = get_decay_path()
+        if not path.exists():
+            return []
+        res = []
+        with path.open("r", encoding="utf-8") as f:
+            for line in f:
+                d = json.loads(line)
+                if object_id and d.get("object_id") != object_id:
+                    continue
+                res.append(PerformanceDecayFinding(**d))
+        return res[-limit:]
 
-    def save_snapshot(self, snapshot: MonitoringSnapshot) -> Path:
-        date_str = snapshot.generated_at.strftime("%Y%m%d")
-        path = self.base_dir / "snapshots" / date_str / "monitoring_snapshot.json"
-        path.parent.mkdir(parents=True, exist_ok=True)
-        try:
-            with open(path, "w", encoding="utf-8") as f:
-                f.write(snapshot.model_dump_json(indent=2))
-            return path
-        except Exception as e:
-            raise MonitoringStorageError(f"Failed to save snapshot: {e}")
+    def append_champion_challenger(self, comparison: ChampionChallengerComparison) -> Path:
+        path = get_champion_challenger_path()
+        self._append_jsonl(path, comparison.model_dump(mode='json'))
+        return path
 
-    def save_diagnostics(self, checks: List[DiagnosticCheckResult]) -> Path:
-        if not checks:
-            date_str = datetime.utcnow().strftime("%Y%m%d")
-        else:
-            date_str = checks[0].generated_at.strftime("%Y%m%d")
+    def load_champion_challenger(self, limit: int = 10000) -> list[ChampionChallengerComparison]:
+        path = get_champion_challenger_path()
+        if not path.exists():
+            return []
+        res = []
+        with path.open("r", encoding="utf-8") as f:
+            for line in f:
+                d = json.loads(line)
+                res.append(ChampionChallengerComparison(**d))
+        return res[-limit:]
 
-        path = self.base_dir / "diagnostics" / date_str / "diagnostics.json"
-        path.parent.mkdir(parents=True, exist_ok=True)
+    def append_alerts(self, alerts: list[MonitoringAlert]) -> Path:
+        path = get_alerts_path()
+        for a in alerts:
+            self._append_jsonl(path, a.model_dump(mode='json'))
+        return path
 
-        data = [c.model_dump(mode="json") for c in checks]
-        try:
-            with open(path, "w", encoding="utf-8") as f:
-                json.dump(data, f, indent=2, ensure_ascii=False)
-            return path
-        except Exception as e:
-            raise MonitoringStorageError(f"Failed to save diagnostics: {e}")
+    def load_alerts(self, object_id: str | None = None, acknowledged: bool | None = None, limit: int = 10000) -> list[MonitoringAlert]:
+        path = get_alerts_path()
+        if not path.exists():
+            return []
+        res = []
+        with path.open("r", encoding="utf-8") as f:
+            for line in f:
+                d = json.loads(line)
+                if object_id and d.get("object_id") != object_id:
+                    continue
+                if acknowledged is not None and d.get("acknowledged") != acknowledged:
+                    continue
+                res.append(MonitoringAlert(**d))
+        return res[-limit:]
 
-    def save_report_markdown(self, snapshot: MonitoringSnapshot) -> Path:
-        from bist_signal_bot.monitoring.reporting import format_monitoring_report_markdown
-        date_str = snapshot.generated_at.strftime("%Y%m%d")
-        path = self.base_dir / "reports" / date_str / "monitoring_report.md"
-        path.parent.mkdir(parents=True, exist_ok=True)
+    def append_watchlist_item(self, item: MonitoringWatchlistItem) -> Path:
+        path = get_watchlist_path()
+        self._append_jsonl(path, item.model_dump(mode='json'))
+        return path
 
-        content = format_monitoring_report_markdown(snapshot)
-        try:
-            with open(path, "w", encoding="utf-8") as f:
-                f.write(content)
-            return path
-        except Exception as e:
-            raise MonitoringStorageError(f"Failed to save report markdown: {e}")
+    def load_watchlist(self, limit: int = 10000) -> list[MonitoringWatchlistItem]:
+        path = get_watchlist_path()
+        if not path.exists():
+            return []
+        res = []
+        with path.open("r", encoding="utf-8") as f:
+            for line in f:
+                d = json.loads(line)
+                res.append(MonitoringWatchlistItem(**d))
+        return res[-limit:]
 
-    def cleanup_old_monitoring_files(self, retention_days: int) -> dict[str, Any]:
-        result = {"removed_files": 0, "errors": 0}
-        if retention_days <= 0:
-            return result
+    def save_report(self, report: MonitoringReport, markdown_text: str) -> dict[str, Path]:
+        date_str = report.generated_at.strftime("%Y%m%d")
+        report_dir = get_report_dir(date_str)
+        md_path = report_dir / "monitoring_report.md"
+        json_path = report_dir / "monitoring_report.json"
 
-        now = datetime.utcnow().timestamp()
-        max_age_secs = retention_days * 86400
+        with md_path.open("w", encoding="utf-8") as f:
+            f.write(markdown_text)
 
-        for root_folder in ["snapshots", "diagnostics", "reports"]:
-            dir_path = self.base_dir / root_folder
-            if not dir_path.exists():
-                continue
+        with json_path.open("w", encoding="utf-8") as f:
+            json.dump(report.model_dump(mode='json'), f, default=str, indent=2)
 
-            for file_path in dir_path.rglob("*"):
-                if file_path.is_file():
-                    try:
-                        if now - file_path.stat().st_mtime > max_age_secs:
-                            file_path.unlink()
-                            result["removed_files"] += 1
-                    except Exception as e:
-                        self.logger.warning(f"Failed to delete {file_path}: {e}")
-                        result["errors"] += 1
-
-        return result
+        return {"markdown": md_path, "json": json_path}

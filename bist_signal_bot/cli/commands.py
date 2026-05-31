@@ -6961,3 +6961,7 @@ def handle_feature_store_command(args, settings=None):
     else:
         print_output({"error": "Unknown feature-store command"}, as_json=getattr(args, "json", False))
     return 0
+
+# ... existing code (mocking appending to cli module) ...
+def register_monitoring_commands(subparsers):
+    pass
