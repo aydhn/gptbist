@@ -1,4 +1,16 @@
-from enum import Enum
+import os
+import re
+from pathlib import Path
+
+# Create directories
+os.makedirs("bist_signal_bot/monitoring", exist_ok=True)
+os.makedirs("bist_signal_bot/tests", exist_ok=True)
+os.makedirs("bist_signal_bot/docs", exist_ok=True)
+os.makedirs("bist_signal_bot/examples", exist_ok=True)
+
+# 1. monitoring/models.py
+with open("bist_signal_bot/monitoring/models.py", "w") as f:
+    f.write('''from enum import Enum
 from pydantic import BaseModel, Field
 from datetime import datetime
 from typing import Any, Optional, List, Dict
@@ -166,3 +178,145 @@ class MonitoringReport(BaseModel):
     warnings: List[str] = Field(default_factory=list)
     disclaimer: str = "Monitoring report is local research monitoring output only. It is not investment advice, portfolio advice, or a trading instruction. No real order was sent."
     metadata: Dict[str, Any] = Field(default_factory=dict)
+''')
+
+# 2. Update core/exceptions.py
+try:
+    with open("bist_signal_bot/core/exceptions.py", "r") as f:
+        exceptions_content = f.read()
+
+    new_exceptions = '''
+class ResearchMonitoringError(BistSignalBotError):
+    """Base exception for research monitoring errors."""
+    pass
+
+class MonitoringMetricError(ResearchMonitoringError):
+    pass
+
+class MonitoringCollectorError(ResearchMonitoringError):
+    pass
+
+class PerformanceDecayError(ResearchMonitoringError):
+    pass
+
+class ChampionChallengerError(ResearchMonitoringError):
+    pass
+
+class MonitoringHealthError(ResearchMonitoringError):
+    pass
+
+class MonitoringAlertError(ResearchMonitoringError):
+    pass
+
+class MonitoringEscalationError(ResearchMonitoringError):
+    pass
+
+class MonitoringWatchlistError(ResearchMonitoringError):
+    pass
+
+class MonitoringStorageError(ResearchMonitoringError):
+    pass
+'''
+    if "ResearchMonitoringError" not in exceptions_content:
+        with open("bist_signal_bot/core/exceptions.py", "a") as f:
+            f.write(new_exceptions)
+except Exception as e:
+    print(f"Error updating exceptions: {e}")
+
+# 3. Update core/audit.py
+try:
+    with open("bist_signal_bot/core/audit.py", "r") as f:
+        audit_content = f.read()
+
+    if "MONITORING_METRICS_CALCULATED" not in audit_content:
+        audit_content = audit_content.replace(
+            "class AuditEventType(str, Enum):",
+            "class AuditEventType(str, Enum):\n    MONITORING_METRICS_CALCULATED = 'MONITORING_METRICS_CALCULATED'\n    MONITORING_SNAPSHOT_CREATED = 'MONITORING_SNAPSHOT_CREATED'\n    PERFORMANCE_DECAY_DETECTED = 'PERFORMANCE_DECAY_DETECTED'\n    CHAMPION_CHALLENGER_COMPARED = 'CHAMPION_CHALLENGER_COMPARED'\n    MONITORING_ALERT_CREATED = 'MONITORING_ALERT_CREATED'\n    MONITORING_ALERT_ACKNOWLEDGED = 'MONITORING_ALERT_ACKNOWLEDGED'\n    MONITORING_ESCALATED_TO_REVIEW = 'MONITORING_ESCALATED_TO_REVIEW'\n    MONITORING_WATCHLIST_UPDATED = 'MONITORING_WATCHLIST_UPDATED'\n    MONITORING_REPORT_CREATED = 'MONITORING_REPORT_CREATED'"
+        )
+        with open("bist_signal_bot/core/audit.py", "w") as f:
+            f.write(audit_content)
+except Exception as e:
+    print(f"Error updating audit: {e}")
+
+# 4. Update config/settings.py
+try:
+    with open("bist_signal_bot/config/settings.py", "r") as f:
+        settings_content = f.read()
+
+    new_settings = '''
+    # Monitoring
+    ENABLE_RESEARCH_MONITORING: bool = True
+    MONITORING_DIR_NAME: str = "monitoring"
+    MONITORING_RESEARCH_ONLY: bool = True
+    MONITORING_SAVE_RESULTS: bool = True
+    MONITORING_SHORT_WINDOW: int = 30
+    MONITORING_MEDIUM_WINDOW: int = 90
+    MONITORING_LONG_WINDOW: int = 252
+    MONITORING_MIN_SAMPLE: int = 30
+    MONITORING_ENABLE_WIN_RATE: bool = True
+    MONITORING_ENABLE_EXPECTANCY: bool = True
+    MONITORING_ENABLE_PROFIT_FACTOR: bool = True
+    MONITORING_ENABLE_DRAWDOWN: bool = True
+    MONITORING_ENABLE_CALIBRATION_RELIABILITY: bool = True
+    MONITORING_DECAY_ENABLED: bool = True
+    MONITORING_DECAY_WARN_SCORE: float = 40.0
+    MONITORING_DECAY_FAIL_SCORE: float = 70.0
+    MONITORING_PERFORMANCE_DECAY_THRESHOLD: float = 0.15
+    MONITORING_CALIBRATION_DECAY_THRESHOLD: float = 0.10
+    MONITORING_HEALTH_DEGRADED_THRESHOLD: float = 50.0
+    MONITORING_HEALTH_WATCH_THRESHOLD: float = 65.0
+    MONITORING_CHAMPION_CHALLENGER_ENABLED: bool = True
+    MONITORING_CHALLENGER_MIN_SAMPLE: int = 50
+    MONITORING_CHALLENGER_PROMOTION_MARGIN: float = 5.0
+    MONITORING_CHALLENGER_REQUIRES_REVIEW: bool = True
+    MONITORING_ALERTS_ENABLED: bool = True
+    MONITORING_AUTO_CREATE_REVIEW_CASES: bool = False
+    MONITORING_ROUTE_ALERTS_TO_REVIEW: bool = True
+    MONITORING_ROUTE_ALERTS_TO_REPORTS: bool = True
+    MONITORING_ACK_REQUIRED_FOR_CRITICAL: bool = True
+    MONITORING_WATCHLIST_ENABLED: bool = True
+    MONITORING_AUTO_WATCH_DEGRADED: bool = True
+    RUNTIME_MONITORING_ENABLED: bool = True
+    RUNTIME_MONITORING_WARN_ONLY: bool = True
+    QA_INCLUDE_MONITORING: bool = True
+    QA_MONITORING_FAIL_ON_BLOCKED_RESEARCH: bool = True
+    OPS_INCLUDE_MONITORING: bool = True
+    REPORT_INCLUDE_MONITORING: bool = True
+    RESEARCH_AUTO_LOG_MONITORING: bool = False
+'''
+    if "ENABLE_RESEARCH_MONITORING" not in settings_content:
+        # insert before class ends or just before last config definition
+        # For simplicity, append just before the Settings config class
+        settings_content = re.sub(
+            r"(class Settings\(BaseSettings\):.*?)(    class Config:)",
+            r"\1" + new_settings + r"\n\2",
+            settings_content,
+            flags=re.DOTALL
+        )
+        with open("bist_signal_bot/config/settings.py", "w") as f:
+            f.write(settings_content)
+except Exception as e:
+    print(f"Error updating settings: {e}")
+
+# 5. update storage/paths.py
+try:
+    with open("bist_signal_bot/storage/paths.py", "r") as f:
+        paths_content = f.read()
+
+    if "get_monitoring_dir" not in paths_content:
+        paths_content += '''
+def get_monitoring_dir(settings=None) -> Path:
+    from bist_signal_bot.config.settings import get_settings
+    if settings is None:
+        settings = get_settings()
+    data_dir = get_data_dir(settings)
+    d = data_dir / settings.MONITORING_DIR_NAME
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+'''
+        with open("bist_signal_bot/storage/paths.py", "w") as f:
+            f.write(paths_content)
+except Exception as e:
+    print(f"Error updating paths: {e}")
+
+print("Basic setup done.")

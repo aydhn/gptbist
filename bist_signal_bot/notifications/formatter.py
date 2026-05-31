@@ -1768,3 +1768,19 @@ def format_feature_drift_findings(findings):
 
 def format_feature_leakage_findings(findings):
     return f"Leakage Findings: {len(findings)}"
+
+# Monitoring Notification Formatter
+def format_monitoring_snapshot(snapshot: 'MonitoringSnapshot') -> str:
+    return f"Monitoring Snapshot: {snapshot.object_id} - {snapshot.status}"
+
+def format_performance_decay_findings(findings: list) -> str:
+    return f"Decay Findings: {len(findings)}"
+
+def format_champion_challenger(comparison: 'ChampionChallengerComparison') -> str:
+    return f"Champion/Challenger: {comparison.decision}"
+
+def format_monitoring_alert(alert: 'MonitoringAlert') -> str:
+    return f"Alert: {alert.title} - {alert.severity}"
+
+def format_monitoring_report(report: 'MonitoringReport') -> str:
+    return f"Monitoring Report: {len(report.snapshots)} snapshots"
