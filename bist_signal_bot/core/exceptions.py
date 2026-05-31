@@ -1934,3 +1934,34 @@ class ModelGovernanceError(ModelRegistryError):
 
 class ModelRegistryStorageError(ModelRegistryError):
     pass
+
+class ResearchMonitoringError(BistSignalBotError):
+    """Base exception for research monitoring errors."""
+    pass
+
+class MonitoringMetricError(ResearchMonitoringError):
+    pass
+
+class MonitoringCollectorError(ResearchMonitoringError):
+    pass
+
+class PerformanceDecayError(ResearchMonitoringError):
+    pass
+
+class ChampionChallengerError(ResearchMonitoringError):
+    pass
+
+class MonitoringHealthError(ResearchMonitoringError):
+    pass
+
+class MonitoringAlertError(ResearchMonitoringError):
+    pass
+
+class MonitoringEscalationError(ResearchMonitoringError):
+    pass
+
+class MonitoringWatchlistError(ResearchMonitoringError):
+    pass
+
+class MonitoringStorageError(ResearchMonitoringError):
+    pass

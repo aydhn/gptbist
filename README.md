@@ -829,3 +829,14 @@ The system includes a local, fully offline Feature Store that computes, versions
 - Governance Gates: Enforces model cards, validation metrics, and leakage checks before promotion to Active Research.
 - Integrity: Ensures models are never used for real trade execution.
 - Integrations: Fully integrated with ML inference, Strategy Registry, QA, and Ops layers.
+
+## Research Monitoring (Phase 96)
+- **Monitoring amacı**: Strateji ve modellerin sağlık durumunu araştırma amaçlı izler.
+- **Strategy/model health**: Performans düşüşlerini skorlar ile takip eder.
+- **Performance decay**: Baseline'a göre sapmaları tespit eder.
+- **Calibration decay**: Kalibrasyon parametrelerindeki bozulmaları saptar.
+- **Champion/challenger**: Yeni stratejileri mevcutları ile araştırma çerçevesinde karşılaştırır.
+- **Alerts/watchlist**: İzlenmesi gereken uyarıları bildirir.
+- **Review workflow entegrasyonu**: Kritik düşüşlerde Analyst Review ister.
+- **QA/Ops entegrasyonu**: İzleme skorları QA release gate testlerini etkiler.
+- **CLI monitoring kullanımı**: CLI ile `python -m bist_signal_bot monitoring` ile izleme yapılabilir.
