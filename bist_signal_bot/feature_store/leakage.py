@@ -86,3 +86,13 @@ class FeatureLeakageGuard:
         if any(f.severity == "HIGH" for f in findings):
             return FeatureQualityStatus.FAIL
         return FeatureQualityStatus.WATCH
+
+    def to_model_governance_status(self, fq_status: FeatureQualityStatus) -> str:
+        from bist_signal_bot.model_registry.models import ModelGovernanceStatus
+        if fq_status == FeatureQualityStatus.BLOCKED:
+            return ModelGovernanceStatus.BLOCKED
+        if fq_status == FeatureQualityStatus.FAIL:
+            return ModelGovernanceStatus.FAIL
+        if fq_status == FeatureQualityStatus.WATCH:
+            return ModelGovernanceStatus.WATCH
+        return ModelGovernanceStatus.PASS

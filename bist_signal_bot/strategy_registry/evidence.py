@@ -1,3 +1,4 @@
+from bist_signal_bot.app.model_registry_app import create_local_model_registry, create_model_governance_engine
 import uuid
 from datetime import datetime, UTC
 from typing import Any
@@ -9,6 +10,22 @@ from bist_signal_bot.strategy_registry.models import (
 from bist_signal_bot.strategy_registry.storage import StrategyRegistryStore
 
 class StrategyEvidenceCollector:
+    def collect_model_evidence(self, model_id: str) -> dict[str, Any]:
+        evidence = {}
+        try:
+            reg = create_local_model_registry(self.settings)
+            gov = create_model_governance_engine(self.settings)
+
+            model = reg.get_model(model_id)
+            if model:
+                evidence["model_status"] = model.status.value
+                assessment = gov.assess_model(model_id)
+                evidence["model_governance_status"] = assessment.status.value
+                evidence["model_blocking_reasons"] = assessment.blocking_reasons
+        except Exception as e:
+            self.logger.warning(f"Failed to collect model evidence: {e}")
+        return evidence
+
     def __init__(self, settings: Settings | None = None, base_dir: Any | None = None):
         self.settings = settings or Settings()
         self.store = StrategyRegistryStore(self.settings, base_dir)

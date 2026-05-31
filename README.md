@@ -822,3 +822,10 @@ Run the following commands to explore:
 
 ## Local Feature Store
 The system includes a local, fully offline Feature Store that computes, versions, and serves predictive features for ML inference, backtesting, and signal scanning. It enforces strict leakage checks, drift detection, and quality gates, while retaining the research-only mandate (no real orders are executed).
+
+
+## Phase 95: Local Model Registry & Governance (v1)
+- Model Tracking: Tracks models, versions, artifacts, and experiments entirely offline.
+- Governance Gates: Enforces model cards, validation metrics, and leakage checks before promotion to Active Research.
+- Integrity: Ensures models are never used for real trade execution.
+- Integrations: Fully integrated with ML inference, Strategy Registry, QA, and Ops layers.

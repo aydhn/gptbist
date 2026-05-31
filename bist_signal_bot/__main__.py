@@ -1,3 +1,4 @@
+from bist_signal_bot.cli.model_registry import add_model_registry_parser, execute_model_registry_command
 import sys
 
 def main():
@@ -64,6 +65,17 @@ def main():
         if cmd == "scan" and len(sys.argv) > 2 and sys.argv[2] == "symbols":
             print('{"status": "ok", "command": "scan", "feature_store": true}')
             sys.exit(0)
+
+
+        if cmd == "model-registry":
+            import argparse
+            parser = argparse.ArgumentParser()
+            sub = parser.add_subparsers(dest="command")
+            add_model_registry_parser(sub)
+
+            from bist_signal_bot.config.settings import get_settings
+            args = parser.parse_args(sys.argv[1:])
+            execute_model_registry_command(args, get_settings())
 
     print("BIST Signal Bot OK")
 

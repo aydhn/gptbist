@@ -1,3 +1,4 @@
+from bist_signal_bot.model_registry.models import ModelGovernanceStatus
 import pandas as pd
 from datetime import datetime
 from enum import Enum

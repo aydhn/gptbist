@@ -123,6 +123,27 @@ class MLInferenceEngine:
             estimator, preprocessor, artifact_dict = self.load_artifact(input_data.config)
             model_id = input_data.config.model_id or input_data.config.model_path or "unknown"
 
+            # Governance Check
+            if getattr(self.settings, "RUNTIME_MODEL_REGISTRY_ENABLED", False):
+                try:
+                    gov_engine = create_model_governance_engine(self.settings)
+                    assessment = gov_engine.assess_model(model_id)
+                    if assessment.status == ModelGovernanceStatus.BLOCKED or \
+                       (assessment.status == ModelGovernanceStatus.FAIL and getattr(self.settings, "RUNTIME_INFERENCE_BLOCK_GOVERNANCE_FAIL", False)):
+                        reasons.append(f"Model {model_id} governance blocked/failed")
+                        from bist_signal_bot.ml.inference.models import MLFeatureAlignmentResult, MLFeatureAlignmentStatus
+                        dummy_align = MLFeatureAlignmentResult(status=MLFeatureAlignmentStatus.FAILED)
+                        res = self._create_error_result(input_data, dummy_align, reasons, warnings, start_time, generated_at)
+                        res.governance_status = assessment.status
+                        return res
+
+                    # Warning logic
+                    if assessment.status == ModelGovernanceStatus.WATCH and getattr(self.settings, "RUNTIME_INFERENCE_WARN_ON_MODEL_DRIFT", True):
+                        warnings.append(f"Model {model_id} is on WATCH status")
+                except Exception as e:
+                    self.logger.warning(f"Failed to check model governance: {e}")
+
+
             # 1. Prepare features
             df_live = self.build_live_features(input_data.symbol, input_data.data, artifact_dict, input_data.timeframe)
             if input_data.config.latest_only:
@@ -185,6 +206,9 @@ class MLInferenceEngine:
 
             res = MLInferenceResult(
                 symbol=input_data.symbol,
+                governance_status=assessment.status if 'assessment' in locals() else None,
+                validation_status=assessment.validation_status if 'assessment' in locals() else None,
+                calibration_status=assessment.calibration_status if 'assessment' in locals() else None,
                 model_id=model_id,
                 prediction_direction=direction,
                 prediction_value=pred_val,

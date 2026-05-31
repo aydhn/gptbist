@@ -1901,3 +1901,36 @@ class FeatureVersioningError(FeatureStoreError):
     pass
 class FeatureStoreStorageError(FeatureStoreError):
     pass
+
+class ModelRegistryError(BistSignalBotError):
+    pass
+
+class ModelExperimentError(ModelRegistryError):
+    pass
+
+class ModelArtifactError(ModelRegistryError):
+    pass
+
+class ModelCardError(ModelRegistryError):
+    pass
+
+class ModelValidationGovernanceError(ModelRegistryError):
+    pass
+
+class ModelCalibrationGovernanceError(ModelRegistryError):
+    pass
+
+class ModelPromotionError(ModelRegistryError):
+    pass
+
+class ModelDriftError(ModelRegistryError):
+    pass
+
+class ModelLineageError(ModelRegistryError):
+    pass
+
+class ModelGovernanceError(ModelRegistryError):
+    pass
+
+class ModelRegistryStorageError(ModelRegistryError):
+    pass

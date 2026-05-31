@@ -568,3 +568,11 @@ def get_feature_store_dir(settings=None) -> Path:
     path = get_data_dir(s) / getattr(s, "FEATURE_STORE_DIR_NAME", "feature_store")
     path.mkdir(parents=True, exist_ok=True)
     return path
+
+def get_model_registry_dir(settings: Any = None) -> Path:
+    from bist_signal_bot.config.settings import Settings
+    if not settings:
+        settings = Settings()
+    base = get_data_dir() / getattr(settings, "MODEL_REGISTRY_DIR_NAME", "model_registry")
+    base.mkdir(parents=True, exist_ok=True)
+    return base

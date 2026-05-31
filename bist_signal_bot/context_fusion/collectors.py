@@ -10,6 +10,19 @@ from bist_signal_bot.context_fusion.models import (
 logger = logging.getLogger(__name__)
 
 class ContextCollector:
+    def collect_model_context(self, model_id: str) -> dict[str, Any]:
+        context = {"source": "MODEL_REGISTRY"}
+        try:
+            from bist_signal_bot.app.model_registry_app import create_model_governance_engine
+            gov = create_model_governance_engine(self.settings)
+            assessment = gov.assess_model(model_id)
+            context["model_governance_status"] = assessment.status.value
+            context["validation_status"] = assessment.validation_status.value if assessment.validation_status else "UNKNOWN"
+            context["calibration_status"] = assessment.calibration_status.value if assessment.calibration_status else "UNKNOWN"
+        except Exception as e:
+            self.logger.warning(f"Failed to collect model context: {e}")
+        return context
+
     def __init__(self, settings: Settings | None = None, base_dir: Any | None = None):
         self.settings = settings or Settings()
         self.base_dir = base_dir

@@ -1,3 +1,4 @@
+from typing import Any
 
 import json
 from pathlib import Path
@@ -10,6 +11,22 @@ from bist_signal_bot.security.path_guard import PathGuard
 from bist_signal_bot.ops.models import StoreIntegrityResult, OpsStatus
 
 class StoreIntegrityChecker:
+    def check_model_registry_dirs(self) -> dict[str, Any]:
+        if not getattr(self.settings, "ENABLE_MODEL_REGISTRY", False):
+            return {"status": "SKIPPED"}
+
+        try:
+            from bist_signal_bot.storage.paths import get_model_registry_dir
+            base = get_model_registry_dir(self.settings)
+            dirs = ["models", "experiments", "artifacts", "cards", "validation", "calibration", "promotion", "drift", "lineage", "governance", "reports"]
+            missing = [d for d in dirs if not (base / d).exists()]
+            return {
+                "status": "PASS" if not missing else "WARN",
+                "missing_dirs": missing
+            }
+        except Exception as e:
+            return {"status": "FAIL", "error": str(e)}
+
     def __init__(self, settings: Settings | None = None, base_dir: Path | None = None):
         self.settings = settings
         self.base_dir = base_dir or get_data_dir()
