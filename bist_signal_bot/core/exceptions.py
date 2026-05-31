@@ -1965,3 +1965,30 @@ class MonitoringWatchlistError(ResearchMonitoringError):
 
 class MonitoringStorageError(ResearchMonitoringError):
     pass
+
+class LeaderboardError(BistSignalBotError):
+    pass
+
+class BenchmarkCohortError(LeaderboardError):
+    pass
+
+class LeaderboardCollectorError(LeaderboardError):
+    pass
+
+class LeaderboardScoringError(LeaderboardError):
+    pass
+
+class CandidateRankingError(LeaderboardError):
+    pass
+
+class CandidateComparisonError(LeaderboardError):
+    pass
+
+class SelectionPolicyError(LeaderboardError):
+    pass
+
+class CandidateSelectionError(LeaderboardError):
+    pass
+
+class LeaderboardStorageError(LeaderboardError):
+    pass

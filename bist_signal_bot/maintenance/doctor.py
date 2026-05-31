@@ -1,4 +1,4 @@
-def run_doctor(settings=None, as_json=False, data_catalog=False):
+def run_doctor(settings=None, as_json=False, data_catalog=False, feature_store=False, leaderboard=False):
     res = {
         "status": "healthy",
         "checks": [

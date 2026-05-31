@@ -6,6 +6,31 @@ def main():
         cmd = sys.argv[1]
 
 
+
+        if cmd == "leaderboard":
+            from bist_signal_bot.cli.leaderboard_commands import add_leaderboard_parser
+            import argparse
+            import json
+
+            parser = argparse.ArgumentParser()
+            sub = parser.add_subparsers(dest="command")
+            add_leaderboard_parser(sub)
+
+            args = parser.parse_args(sys.argv[1:])
+
+            if hasattr(args, "func"):
+                env = args.func(args)
+                if env.output_mode.value == "JSON":
+                    print(json.dumps(env.payload, indent=2, default=str))
+                else:
+                    if hasattr(env, "metadata") and "message" in env.metadata:
+                        print(env.metadata["message"])
+                    elif hasattr(env, "errors") and env.errors:
+                        print(env.errors[0])
+
+                sys.exit(env.exit_code)
+            sys.exit(1)
+
         if cmd == "monitoring":
             import argparse
             from bist_signal_bot.cli.commands import run_monitoring_cli
@@ -104,7 +129,7 @@ def main():
             args = parser.parse_args(sys.argv[1:])
             execute_model_registry_command(args, get_settings())
 
-    print("BIST Signal Bot OK")
+
 
 if __name__ == "__main__":
     main()

@@ -576,3 +576,11 @@ def get_model_registry_dir(settings: Any = None) -> Path:
     base = get_data_dir() / getattr(settings, "MODEL_REGISTRY_DIR_NAME", "model_registry")
     base.mkdir(parents=True, exist_ok=True)
     return base
+
+def get_leaderboard_dir(settings=None) -> Path:
+    from bist_signal_bot.config.settings import get_settings
+    if settings is None:
+        settings = get_settings()
+    d = Path(settings.DATA_DIR) / settings.LEADERBOARD_DIR_NAME
+    d.mkdir(parents=True, exist_ok=True)
+    return d
