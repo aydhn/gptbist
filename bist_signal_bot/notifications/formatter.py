@@ -49,6 +49,9 @@ def format_round_trip_cost_breakdown(cost: RoundTripCostBreakdown) -> str:
     return msg
 
 class NotificationFormatter:
+    def format_model_record(self, model: Any) -> str:
+        return f"BIST Bot Model Registry Özeti\n\nModel: {model.model_name}\nVersion: {model.version}\nStatus: {model.status.value}\n\nBu çıktı yerel model yönetişimi özetidir.\nYatırım tavsiyesi değildir.\nİşlem uygunluğu anlamına gelmez.\nGerçek emir gönderilmedi."
+
 
     def format_risk_decision(self, decision) -> str:
         lines = [
