@@ -819,3 +819,6 @@ Run the following commands to explore:
 - `python -m bist_signal_bot docs-hub troubleshoot`
 - `python -m bist_signal_bot docs-hub coverage`
 - `python -m bist_signal_bot docs-hub handoff`
+
+## Local Feature Store
+The system includes a local, fully offline Feature Store that computes, versions, and serves predictive features for ML inference, backtesting, and signal scanning. It enforces strict leakage checks, drift detection, and quality gates, while retaining the research-only mandate (no real orders are executed).

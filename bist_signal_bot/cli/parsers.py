@@ -2710,3 +2710,74 @@ def add_docs_hub_parser(subparsers):
 
     cfg = sub.add_parser("config", help="Show docs hub configuration")
     cfg.add_argument("--json", action="store_true", help="JSON output")
+
+def add_feature_store_parser(subparsers):
+    parser = subparsers.add_parser("feature-store", help="Local Feature Store and Governance")
+    sub = parser.add_subparsers(dest="feature_store_command", required=True)
+
+    contracts = sub.add_parser("contracts", help="Manage feature contracts")
+    contracts.add_argument("show", nargs="?", default=None)
+    contracts.add_argument("show_contract", nargs="?", default=None)
+    contracts.add_argument("--json", action="store_true")
+
+    lst = sub.add_parser("list", help="List registered features")
+    lst.add_argument("--kind", type=str, help="Filter by kind (e.g., TECHNICAL)")
+    lst.add_argument("--json", action="store_true")
+
+    sets = sub.add_parser("sets", help="Manage feature sets")
+    sets.add_argument("show_set", nargs="?", type=str, help="Feature set name to show")
+    sets.add_argument("--json", action="store_true")
+
+    compute = sub.add_parser("compute", help="Compute features or feature sets")
+    compute.add_argument("--symbol", type=str, help="Compute single feature for symbol")
+    compute.add_argument("--feature", type=str, help="Feature name to compute")
+    compute.add_argument("--symbols", type=str, nargs="+", help="Compute feature set for symbols")
+    compute.add_argument("--set", type=str, help="Feature set name")
+    compute.add_argument("--save", action="store_true")
+    compute.add_argument("--json", action="store_true")
+
+    serve = sub.add_parser("serve", help="Serve feature frames")
+    serve.add_argument("--scanner", action="store_true", help="Serve for scanner")
+    serve.add_argument("--ml", action="store_true", help="Serve for ML")
+    serve.add_argument("--context", action="store_true", help="Serve for context")
+    serve.add_argument("--symbol", type=str, help="Symbol for context")
+    serve.add_argument("--symbols", type=str, nargs="+", help="Symbols for scanner/ml")
+    serve.add_argument("--set", type=str, help="Feature set name")
+    serve.add_argument("--json", action="store_true")
+
+    quality = sub.add_parser("quality", help="Assess feature quality")
+    quality.add_argument("--frame-id", type=str, help="Assess existing frame")
+    quality.add_argument("--set", type=str, help="Assess new frame for set")
+    quality.add_argument("--symbols", type=str, nargs="+", help="Symbols for new frame")
+    quality.add_argument("--json", action="store_true")
+
+    drift = sub.add_parser("drift", help="Detect feature drift")
+    drift.add_argument("--feature", type=str, help="Feature name")
+    drift.add_argument("--set", type=str, help="Feature set name")
+    drift.add_argument("--json", action="store_true")
+
+    leakage = sub.add_parser("leakage", help="Guard against feature leakage")
+    leakage.add_argument("--frame-id", type=str, help="Check existing frame")
+    leakage.add_argument("--set", type=str, help="Check new frame for set")
+    leakage.add_argument("--symbols", type=str, nargs="+", help="Symbols for new frame")
+    leakage.add_argument("--json", action="store_true")
+
+    lineage = sub.add_parser("lineage", help="Track feature lineage")
+    lineage.add_argument("feature", nargs="?", type=str, help="Feature name")
+    lineage.add_argument("--set", type=str, help="Feature set name")
+    lineage.add_argument("--json", action="store_true")
+
+    versions = sub.add_parser("versions", help="Manage feature versions")
+    versions.add_argument("feature", nargs="?", type=str, help="Feature name")
+    versions.add_argument("--json", action="store_true")
+
+    report = sub.add_parser("report", help="Generate feature store report")
+    report.add_argument("--latest", action="store_true")
+    report.add_argument("--json", action="store_true")
+
+    recent = sub.add_parser("recent", help="Show recent feature store activity")
+    recent.add_argument("--limit", type=int, default=10)
+    recent.add_argument("--json", action="store_true")
+
+    config = sub.add_parser("config", help="Show feature store config")
+    config.add_argument("--json", action="store_true")
