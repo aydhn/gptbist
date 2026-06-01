@@ -7,6 +7,10 @@ def main():
 
 
 
+        if cmd == "final-audit":
+            from bist_signal_bot.cli.final_audit_cli import main as fa_main
+            sys.exit(fa_main(sys.argv[2:]))
+
         if cmd == "orchestrator":
             from bist_signal_bot.cli.research_orchestrator_cli import main as ro_main
             sys.exit(ro_main(sys.argv[2:]))

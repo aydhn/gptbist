@@ -590,3 +590,12 @@ def get_research_orchestrator_dir(settings=None) -> Path:
     path = base / "research_orchestrator"
     path.mkdir(parents=True, exist_ok=True)
     return path
+
+def get_final_audit_dir(settings: Any | None = None) -> Path:
+    from bist_signal_bot.config.settings import get_settings
+    if settings is None:
+        settings = get_settings()
+    data_dir = get_data_dir(settings)
+    final_audit_dir = data_dir / getattr(settings, "FINAL_AUDIT_DIR_NAME", "final_audit")
+    final_audit_dir.mkdir(parents=True, exist_ok=True)
+    return final_audit_dir

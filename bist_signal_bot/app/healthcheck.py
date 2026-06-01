@@ -1,4 +1,5 @@
 from bist_signal_bot.config.settings import get_settings
+from typing import Any
 import json
 
 def run_healthcheck(settings=None, as_json=False):
@@ -48,8 +49,6 @@ def run_healthcheck(settings=None, as_json=False):
             "risk_engine_capable": True,
             "policy_manager_capable": True
         },
-
-
         "valuation": {
             "enabled": getattr(settings, "ENABLE_VALUATION", True),
             "market_input_builder_capable": True,
@@ -59,7 +58,6 @@ def run_healthcheck(settings=None, as_json=False):
             "risk_engine_capable": True,
             "store_capable": True
         },
-
         "financials": {
             "enabled": getattr(settings, "ENABLE_FINANCIALS", True),
             "importer_capable": True,
@@ -76,7 +74,6 @@ def run_healthcheck(settings=None, as_json=False):
             "event_extractor_capable": True,
             "store_capable": True
         },
-
         "data_catalog": {
             "enabled": getattr(settings, "ENABLE_DATA_CATALOG", True),
             "contracts_loaded": True,
@@ -93,7 +90,6 @@ def run_healthcheck(settings=None, as_json=False):
             "workflow_runner_capable": True,
             "store_capable": True
         },
-
         "whatif_lab": {
             "enabled": getattr(settings, "ENABLE_WHATIF_LAB", True),
             "scenario_factory_capable": True,
@@ -103,6 +99,10 @@ def run_healthcheck(settings=None, as_json=False):
         }
     }
 
+    add_feature_store_health(res, settings)
+    add_research_orchestrator_health(res, settings)
+    append_final_audit_health(res, settings)
+
     if as_json:
         print(json.dumps(res, indent=2))
     else:
@@ -111,13 +111,13 @@ def run_healthcheck(settings=None, as_json=False):
         print(f"What-If Lab Enabled: {res['whatif_lab']['enabled']}")
         print(f"Event Calendar Enabled: {res['events']['enabled']}")
         print(f"Disclosure Intelligence Enabled: {res['disclosures']['enabled']}")
-    print(f"Financials enabled: {res['financials']['enabled']}")
-    print(f"CLI UX Enabled: {res['cli_ux']['enabled']}")
+        print(f"Financials enabled: {res['financials']['enabled']}")
+        print(f"CLI UX Enabled: {res['cli_ux']['enabled']}")
+        if "final_audit" in res:
+            print(f"Final Audit Enabled: {res['final_audit']['enabled']}")
+            print(f"Final Audit Status: {res['final_audit']['acceptance_status']}")
 
-    add_feature_store_health(res, settings)
-    add_research_orchestrator_health(res, settings)
     return res
-
 
 def healthcheck_factors():
     return {"factors_enabled": True, "status": "ok"}
@@ -133,7 +133,6 @@ def add_research_orchestrator_health(res, settings):
     }
 
 def add_feature_store_health(res, settings):
-    add_research_orchestrator_health(res, settings)
     res["feature_store"] = {
         "enabled": getattr(settings, "ENABLE_FEATURE_STORE", True),
         "contracts_loaded": True,
@@ -142,3 +141,25 @@ def add_feature_store_health(res, settings):
         "leakage_guard_capable": True,
         "serving_capable": True
     }
+
+def append_final_audit_health(report: dict, settings: Any):
+    if not getattr(settings, "ENABLE_FINAL_AUDIT", True):
+        return
+
+    try:
+        from bist_signal_bot.app.final_audit_app import create_final_audit_store
+        store = create_final_audit_store(settings=settings)
+        latest_cand = store.load_latest_release_candidate()
+        latest_gng = store.load_latest_go_no_go()
+        acc = store.load_latest_acceptance_suite()
+        sec = store.load_latest_security_audit()
+
+        report["final_audit"] = {
+            "enabled": True,
+            "latest_candidate_status": latest_cand.stage.value if latest_cand else None,
+            "latest_go_no_go": latest_gng.decision.value if latest_gng else None,
+            "acceptance_status": acc.status.value if acc else None,
+            "security_audit_status": "PASS" if sec and not sec.blocked_findings else ("BLOCKED" if sec else None)
+        }
+    except Exception:
+        pass

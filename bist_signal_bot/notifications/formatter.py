@@ -1799,3 +1799,59 @@ def format_research_run_manifest(manifest) -> str:
 
 def format_research_orchestrator_report(report) -> str:
     return f"Report Generated: {report.generated_at}\nRuns: {len(report.runs)}\nDisclaimer: {report.disclaimer}"
+
+    def format_final_acceptance_suite(self, suite: Any) -> str:
+        lines = [
+            f"BIST Bot Final Audit Acceptance: {suite.suite_id}",
+            f"Status: {suite.status}",
+            f"Total: {suite.total_count} | Pass: {suite.pass_count} | Fail: {suite.fail_count} | Blocked: {suite.blocked_count} | Watch: {suite.watch_count}",
+            "",
+            "Disclaimer:",
+            suite.disclaimer
+        ]
+        return "\n".join(lines)
+
+    def format_final_security_audit(self, result: Any) -> str:
+        lines = [
+            f"BIST Bot Final Security Audit: {result.audit_id}",
+            f"Blocked Findings: {len(result.blocked_findings)}",
+            "",
+            "Disclaimer:",
+            result.disclaimer
+        ]
+        return "\n".join(lines)
+
+    def format_release_candidate_manifest(self, candidate: Any) -> str:
+        lines = [
+            f"BIST Bot Release Candidate: {candidate.candidate_id}",
+            f"Stage: {candidate.stage}",
+            "",
+            "Disclaimer:",
+            candidate.disclaimer
+        ]
+        return "\n".join(lines)
+
+    def format_go_no_go_decision(self, decision: Any) -> str:
+        lines = [
+            f"BIST Bot Go/No-Go Decision: {decision.decision_id}",
+            f"Decision: {decision.decision}",
+            f"Status: {decision.status}",
+            "",
+            "Disclaimer:",
+            decision.disclaimer
+        ]
+        return "\n".join(lines)
+
+    def format_final_audit_report(self, report: Any) -> str:
+        lines = [
+            "BIST Bot Final Audit Report",
+            f"Decision: {report.go_no_go.decision if report.go_no_go else 'UNKNOWN'}",
+            f"Acceptance: {report.acceptance_suite.status if report.acceptance_suite else 'UNKNOWN'}",
+            f"Security: {report.security_audit.safe_language_status if report.security_audit else 'UNKNOWN'}",
+            "",
+            "Bu çıktı yerel yazılım release governance özetidir.",
+            "Yatırım tavsiyesi değildir.",
+            "İşlem uygunluğu anlamına gelmez.",
+            "Gerçek emir gönderilmedi."
+        ]
+        return "\n".join(lines)
