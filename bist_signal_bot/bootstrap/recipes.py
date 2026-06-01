@@ -40,3 +40,18 @@ class CommandRecipeRegistry:
         for s in sorted(recipe.steps, key=lambda x: x.order):
             md += f"### {s.order}. {s.title}\n{s.description}\n`{s.command}`\n\n"
         return md
+
+# Adding mock recipes to the existing recipes mapping if it exists, otherwise just declare them
+def add_research_orchestrator_recipes(recipes_dict: dict):
+    recipes_dict["quick_research_scan_campaign"] = {
+        "command": "python -m bist_signal_bot orchestrator run --campaign QUICK_RESEARCH_SCAN --symbols ASELS THYAO --dry-run",
+        "description": "Run a quick research scan using the Orchestrator."
+    }
+    recipes_dict["full_research_pipeline_dry_run"] = {
+        "command": "python -m bist_signal_bot orchestrator run --campaign FULL_RESEARCH_PIPELINE --symbols ASELS THYAO --dry-run",
+        "description": "Run the full research pipeline safely in dry-run mode."
+    }
+    recipes_dict["qa_ops_release_campaign"] = {
+        "command": "python -m bist_signal_bot orchestrator run --campaign QA_OPS_RELEASE_CHECK --dry-run",
+        "description": "Run the release check QA and Ops campaign via Orchestrator."
+    }

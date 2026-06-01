@@ -584,3 +584,9 @@ def get_leaderboard_dir(settings=None) -> Path:
     d = Path(settings.DATA_DIR) / settings.LEADERBOARD_DIR_NAME
     d.mkdir(parents=True, exist_ok=True)
     return d
+
+def get_research_orchestrator_dir(settings=None) -> Path:
+    base = get_data_dir(settings)
+    path = base / "research_orchestrator"
+    path.mkdir(parents=True, exist_ok=True)
+    return path
