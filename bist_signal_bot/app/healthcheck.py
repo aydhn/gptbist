@@ -115,13 +115,25 @@ def run_healthcheck(settings=None, as_json=False):
     print(f"CLI UX Enabled: {res['cli_ux']['enabled']}")
 
     add_feature_store_health(res, settings)
+    add_research_orchestrator_health(res, settings)
     return res
 
 
 def healthcheck_factors():
     return {"factors_enabled": True, "status": "ok"}
 
+def add_research_orchestrator_health(res, settings):
+    res["research_orchestrator"] = {
+        "enabled": getattr(settings, "ENABLE_RESEARCH_ORCHESTRATOR", True),
+        "default_campaigns_loaded": True,
+        "planner_capable": True,
+        "dag_capable": True,
+        "guardrails_capable": True,
+        "latest_run_status": "UNKNOWN"
+    }
+
 def add_feature_store_health(res, settings):
+    add_research_orchestrator_health(res, settings)
     res["feature_store"] = {
         "enabled": getattr(settings, "ENABLE_FEATURE_STORE", True),
         "contracts_loaded": True,

@@ -1784,3 +1784,18 @@ def format_monitoring_alert(alert: 'MonitoringAlert') -> str:
 
 def format_monitoring_report(report: 'MonitoringReport') -> str:
     return f"Monitoring Report: {len(report.snapshots)} snapshots"
+
+def format_research_run_plan(plan) -> str:
+    return f"BIST Bot Research Orchestrator Özeti\nCampaign: {plan.campaign_type.value}\nMode: {plan.execution_mode.value}\nStatus: {plan.status.value}\nTasks: {len(plan.tasks)}\n\nBu çıktı yerel araştırma workflow özetidir.\nYatırım tavsiyesi değildir.\nİşlem uygunluğu anlamına gelmez.\nGerçek emir gönderilmedi."
+
+def format_research_run(run) -> str:
+    return f"Research Run: {run.run_id}\nStatus: {run.status.value}\nTasks: {len(run.task_results)}\nDisclaimer: {run.disclaimer}"
+
+def format_research_campaign(campaign) -> str:
+    return f"Campaign: {campaign.name}\nType: {campaign.campaign_type.value}\nDisclaimer: {campaign.disclaimer}"
+
+def format_research_run_manifest(manifest) -> str:
+    return f"Manifest: {manifest.manifest_id}\nRun: {manifest.run_id}\nDisclaimer: {manifest.disclaimer}"
+
+def format_research_orchestrator_report(report) -> str:
+    return f"Report Generated: {report.generated_at}\nRuns: {len(report.runs)}\nDisclaimer: {report.disclaimer}"

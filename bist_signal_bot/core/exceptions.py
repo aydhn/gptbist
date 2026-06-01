@@ -1992,3 +1992,33 @@ class CandidateSelectionError(LeaderboardError):
 
 class LeaderboardStorageError(LeaderboardError):
     pass
+
+class ResearchOrchestratorError(BistSignalBotError):
+    pass
+
+class ResearchRunPlanError(ResearchOrchestratorError):
+    pass
+
+class ResearchDAGError(ResearchOrchestratorError):
+    pass
+
+class ResearchExecutionError(ResearchOrchestratorError):
+    pass
+
+class ResearchCampaignError(ResearchOrchestratorError):
+    pass
+
+class ResearchDependencyError(ResearchOrchestratorError):
+    pass
+
+class ResearchGuardrailError(ResearchOrchestratorError):
+    pass
+
+class ResearchManifestError(ResearchOrchestratorError):
+    pass
+
+class ResearchReplayError(ResearchOrchestratorError):
+    pass
+
+class ResearchOrchestratorStorageError(ResearchOrchestratorError):
+    pass

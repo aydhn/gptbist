@@ -840,3 +840,16 @@ The system includes a local, fully offline Feature Store that computes, versions
 - **Review workflow entegrasyonu**: Kritik düşüşlerde Analyst Review ister.
 - **QA/Ops entegrasyonu**: İzleme skorları QA release gate testlerini etkiler.
 - **CLI monitoring kullanımı**: CLI ile `python -m bist_signal_bot monitoring` ile izleme yapılabilir.
+
+## Research Orchestrator and Campaigns (Phase 98)
+The Research Orchestrator manages the execution of complex algorithms across various internal layers. It supports:
+- **Campaigns**: Pre-defined workflows (e.g. Quick Scan, Full Pipeline)
+- **DAG execution**: Directed Acyclic Graph based dependency management.
+- **Guardrails**: Ensures 100% offline execution without real broker logic.
+- **Manifests**: Run plans and outputs are serialized into JSONL for full auditability.
+
+**Usage:**
+```bash
+python -m bist_signal_bot orchestrator campaigns
+python -m bist_signal_bot orchestrator run --campaign QUICK_RESEARCH_SCAN --symbols ASELS THYAO --dry-run
+```

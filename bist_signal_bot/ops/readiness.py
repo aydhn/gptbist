@@ -1,9 +1,11 @@
-def check_readiness(include_data_catalog=False, include_feature_store=False):
+def check_readiness(include_data_catalog=False, include_feature_store=False, include_orchestrator=False):
     res = {"status": "PASS", "checks": []}
     if include_data_catalog:
         res["data_catalog"] = "PASS"
     if include_feature_store:
         res["feature_store"] = "PASS"
+    if include_orchestrator:
+        res["research_orchestrator"] = "PASS"
     return res
 
 class ReadinessChecker:
@@ -23,3 +25,9 @@ class ReadinessChecker:
             return {"status": "PASS", "message": f"{len(contracts)} contracts loaded"}
         except Exception as e:
             return {"status": "FAIL", "message": f"Feature Store readiness check failed: {e}"}
+
+    def check_research_orchestrator_readiness(self) -> dict:
+        """
+        Mock Ops check for Research Orchestrator readiness.
+        """
+        return {"status": "PASS", "message": "Research Orchestrator is ready."}

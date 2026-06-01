@@ -101,7 +101,7 @@ class ResearchLedger:
             "runs": [e.run.summary() for e in entries]
         }
 
-    def log_whatif_run(self, result: Any, tags: list[str] | None = None) -> ResearchEvent:
+    def log_whatif_run(self, result: Any, tags: list[str] | None = None) -> Any:
         metrics = {
             "elapsed_seconds": getattr(result, "elapsed_seconds", 0.0),
             "status": getattr(result, "status", "UNKNOWN")
@@ -109,7 +109,7 @@ class ResearchLedger:
         if hasattr(result, "comparison") and result.comparison:
             metrics["best_scenario_id"] = result.comparison.best_scenario_id
 
-        event = ResearchEvent(
+        event = dict(
             event_id=str(uuid.uuid4()),
             event_type=ResearchEventType.WHATIF_RUN,
             source_id=getattr(result, "run_id", "unknown"),

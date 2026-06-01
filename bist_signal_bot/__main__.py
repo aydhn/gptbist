@@ -7,6 +7,10 @@ def main():
 
 
 
+        if cmd == "orchestrator":
+            from bist_signal_bot.cli.research_orchestrator_cli import main as ro_main
+            sys.exit(ro_main(sys.argv[2:]))
+
         if cmd == "leaderboard":
             from bist_signal_bot.cli.leaderboard_commands import add_leaderboard_parser
             import argparse

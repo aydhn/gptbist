@@ -132,3 +132,13 @@ class CLIWorkflowRunner:
             return CLIStatus.WARNING
 
         return CLIStatus.SUCCESS
+
+    def run_research_orchestrator(self, plan: dict) -> dict:
+        """
+        Mock workflow runner for Research Orchestrator.
+        """
+        return {
+            "status": "success",
+            "message": "Research Orchestrator run simulated.",
+            "data": {"plan_id": plan.get("plan_id"), "status": "PASS"}
+        }
