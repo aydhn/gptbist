@@ -7006,3 +7006,163 @@ def run_monitoring_cli(args):
         print(json.dumps(res) if getattr(args, "json", False) else "Monitoring config safe.")
     else:
         print("Invalid monitoring command.")
+
+def handle_final_handoff_command(args, settings=None):
+    from bist_signal_bot.cli.formatting import print_output
+    from bist_signal_bot.app.final_handoff_app import (
+        create_final_handoff_builder,
+        create_final_release_pack_builder,
+        create_operator_playbook_builder,
+        create_developer_playbook_builder,
+        create_final_command_map_builder,
+        create_final_module_map_builder,
+        create_post_release_roadmap_builder,
+        create_maintenance_cadence_builder,
+        create_final_handoff_store
+    )
+    from bist_signal_bot.final_handoff.reporting import (
+        handoff_manifest_to_dict, format_handoff_manifest_text,
+        release_pack_to_dict, format_release_pack_text,
+        operator_playbook_to_dict, format_operator_playbook_markdown,
+        developer_playbook_to_dict, format_developer_playbook_markdown,
+        command_entry_to_dict, format_command_map_text,
+        module_summary_to_dict, format_module_map_text,
+        roadmap_item_to_dict, format_roadmap_markdown,
+        maintenance_task_to_dict, format_maintenance_markdown,
+        handoff_report_to_dict, format_final_handoff_report_markdown
+    )
+    from bist_signal_bot.final_handoff.models import FinalHandoffReport
+
+    cmd = getattr(args, "handoff_command", None)
+    is_json = getattr(args, "json", False)
+
+    if not settings.ENABLE_FINAL_HANDOFF:
+        print_output({"error": "Final Handoff module is disabled in settings"}, as_json=is_json)
+        return 1
+
+    store = create_final_handoff_store(settings=settings)
+
+    if cmd == "build":
+        builder = create_final_handoff_builder(settings=settings)
+        manifest = builder.build_handoff()
+        if getattr(args, "save", False):
+            store.append_manifest(manifest)
+        if is_json:
+            print_output(handoff_manifest_to_dict(manifest), as_json=True)
+        else:
+            print(format_handoff_manifest_text(manifest))
+
+    elif cmd == "show":
+        manifest = store.load_latest_manifest()
+        if not manifest:
+            print_output({"error": "No final handoff manifest found"}, as_json=is_json)
+            return 1
+        if is_json:
+            print_output(handoff_manifest_to_dict(manifest), as_json=True)
+        else:
+            print(format_handoff_manifest_text(manifest))
+
+    elif cmd == "release-pack":
+        builder = create_final_release_pack_builder(settings=settings)
+        pack = builder.build_release_pack()
+        if getattr(args, "save", False):
+            store.append_release_pack(pack)
+        if is_json:
+            print_output(release_pack_to_dict(pack), as_json=True)
+        else:
+            print(format_release_pack_text(pack))
+
+    elif cmd == "operator-playbook":
+        builder = create_operator_playbook_builder(settings=settings)
+        playbook = builder.build_playbook()
+        store.append_operator_playbook(playbook)
+        if is_json:
+            print_output(operator_playbook_to_dict(playbook), as_json=True)
+        else:
+            print(format_operator_playbook_markdown(playbook))
+
+    elif cmd == "developer-playbook":
+        builder = create_developer_playbook_builder(settings=settings)
+        playbook = builder.build_playbook()
+        store.append_developer_playbook(playbook)
+        if is_json:
+            print_output(developer_playbook_to_dict(playbook), as_json=True)
+        else:
+            print(format_developer_playbook_markdown(playbook))
+
+    elif cmd == "command-map":
+        builder = create_final_command_map_builder(settings=settings)
+        entries = builder.build_command_map()
+        if getattr(args, "audience", None):
+            from bist_signal_bot.final_handoff.models import HandoffAudience
+            try:
+                aud = HandoffAudience(args.audience)
+                entries = builder.filter_by_audience(entries, aud)
+            except ValueError:
+                pass
+        store.save_command_map(entries)
+        if is_json:
+            print_output([command_entry_to_dict(e) for e in entries], as_json=True)
+        else:
+            print(format_command_map_text(entries))
+
+    elif cmd == "module-map":
+        builder = create_final_module_map_builder(settings=settings)
+        modules = builder.build_module_map()
+        store.save_module_map(modules)
+        if is_json:
+            print_output([module_summary_to_dict(m) for m in modules], as_json=True)
+        else:
+            print(format_module_map_text(modules))
+
+    elif cmd == "roadmap":
+        builder = create_post_release_roadmap_builder(settings=settings)
+        items = builder.build_roadmap()
+        store.save_roadmap(items)
+        if is_json:
+            print_output([roadmap_item_to_dict(i) for i in items], as_json=True)
+        else:
+            print(format_roadmap_markdown(items))
+
+    elif cmd == "maintenance":
+        builder = create_maintenance_cadence_builder(settings=settings)
+        tasks = builder.build_tasks()
+        if getattr(args, "cadence", None):
+             tasks = [t for t in tasks if t.cadence.value == args.cadence]
+        store.save_maintenance_tasks(tasks)
+        if is_json:
+            print_output([maintenance_task_to_dict(t) for t in tasks], as_json=True)
+        else:
+            print(format_maintenance_markdown(tasks))
+
+    elif cmd == "report":
+        manifest = store.load_latest_manifest()
+        pack = store.load_latest_release_pack()
+        op = store.load_latest_operator_playbook()
+        dev = store.load_latest_developer_playbook()
+        roadmap = store.load_roadmap()
+        maint = store.load_maintenance_tasks()
+
+        report = FinalHandoffReport(
+            report_id="REPORT-1",
+            manifest=manifest,
+            release_pack=pack,
+            operator_playbook=op,
+            developer_playbook=dev,
+            roadmap_items=roadmap,
+            maintenance_tasks=maint
+        )
+        if is_json:
+            print_output(handoff_report_to_dict(report), as_json=True)
+        else:
+            print(format_final_handoff_report_markdown(report))
+
+    elif cmd == "recent":
+        print_output({"status": "ok", "message": "Recent command executed"}, as_json=is_json)
+
+    elif cmd == "config":
+        print_output({"status": "ok", "config": "safe"}, as_json=is_json)
+
+    else:
+        print_output({"error": "Unknown final-handoff command"}, as_json=is_json)
+    return 0

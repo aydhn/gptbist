@@ -1855,3 +1855,78 @@ def format_research_orchestrator_report(report) -> str:
             "Gerçek emir gönderilmedi."
         ]
         return "\n".join(lines)
+
+def format_final_handoff_manifest(manifest: Any) -> str:
+    lines = [
+        "BIST Bot Final Handoff Özeti",
+        "",
+        f"Final Status: {manifest.final_status.value}",
+        f"Go/No-Go: {manifest.go_no_go_decision or 'UNKNOWN'}",
+        f"Modules: {len(manifest.module_summaries)}",
+        f"Roadmap Items: {len(manifest.roadmap_items)}",
+        f"Maintenance Tasks: {len(manifest.maintenance_tasks)}",
+        "",
+        "Bu çıktı yerel yazılım handoff özetidir.",
+        "Yatırım tavsiyesi değildir.",
+        "İşlem uygunluğu anlamına gelmez.",
+        "Gerçek emir gönderilmedi."
+    ]
+    return "\n".join(lines)
+
+def format_final_release_pack(pack: Any) -> str:
+    lines = [
+        "BIST Bot Release Pack Özeti",
+        "",
+        f"Stage: {pack.stage.value}",
+        f"Go/No-Go: {pack.go_no_go_decision or 'UNKNOWN'}",
+        f"Included Docs: {len(pack.included_docs)}",
+        f"Included Reports: {len(pack.included_reports)}",
+        "",
+        "Bu çıktı yerel yazılım artifact özetidir.",
+        "Yatırım tavsiyesi değildir.",
+        "İşlem uygunluğu anlamına gelmez.",
+        "Gerçek emir gönderilmedi."
+    ]
+    return "\n".join(lines)
+
+def format_operator_playbook(playbook: Any) -> str:
+    lines = [
+        "BIST Bot Operator Playbook Özeti",
+        "",
+        f"Title: {playbook.title}",
+        f"Daily Tasks: {len(playbook.daily_routine)}",
+        f"Emergency Checks: {len(playbook.emergency_checks)}",
+        "",
+        "Bu çıktı yerel yazılım bakım yönergesidir.",
+        "Yatırım tavsiyesi değildir.",
+        "İşlem uygunluğu anlamına gelmez.",
+        "Gerçek emir gönderilmedi."
+    ]
+    return "\n".join(lines)
+
+def format_post_release_roadmap(items: list) -> str:
+    lines = [
+        "BIST Bot Post-Release Roadmap Özeti",
+        "",
+        f"Total Items: {len(items)}",
+        "",
+        "Bu çıktı yerel yazılım yol haritasıdır.",
+        "Yatırım tavsiyesi değildir.",
+        "İşlem uygunluğu anlamına gelmez.",
+        "Gerçek emir gönderilmedi."
+    ]
+    return "\n".join(lines)
+
+def format_final_handoff_report(report: Any) -> str:
+    lines = [
+        "BIST Bot Final Handoff Report",
+        "",
+        f"Status: {report.manifest.final_status.value if report.manifest else 'UNKNOWN'}",
+        f"Pack Stage: {report.release_pack.stage.value if report.release_pack else 'UNKNOWN'}",
+        "",
+        "Bu çıktı yerel yazılım release documentation özetidir.",
+        "Yatırım tavsiyesi değildir.",
+        "İşlem uygunluğu anlamına gelmez.",
+        "Gerçek emir gönderilmedi."
+    ]
+    return "\n".join(lines)

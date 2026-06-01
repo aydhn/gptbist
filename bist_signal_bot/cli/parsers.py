@@ -2781,3 +2781,50 @@ def add_feature_store_parser(subparsers):
 
     config = sub.add_parser("config", help="Show feature store config")
     config.add_argument("--json", action="store_true")
+
+def add_final_handoff_parser(subparsers):
+    parser = subparsers.add_parser("final-handoff", help="Final MVP Handoff and Release")
+    sub = parser.add_subparsers(dest="handoff_command", required=True)
+
+    build = sub.add_parser("build", help="Build final handoff manifest")
+    build.add_argument("--save", action="store_true", help="Save the manifest")
+    build.add_argument("--json", action="store_true", help="JSON output")
+
+    show = sub.add_parser("show", help="Show final handoff manifest")
+    show.add_argument("--latest", action="store_true", help="Load the latest manifest")
+    show.add_argument("--json", action="store_true", help="JSON output")
+
+    rp = sub.add_parser("release-pack", help="Build and show final release pack")
+    rp.add_argument("--save", action="store_true", help="Save the release pack")
+    rp.add_argument("--json", action="store_true", help="JSON output")
+
+    op = sub.add_parser("operator-playbook", help="Generate operator playbook")
+    op.add_argument("--json", action="store_true", help="JSON output")
+
+    dp = sub.add_parser("developer-playbook", help="Generate developer playbook")
+    dp.add_argument("--json", action="store_true", help="JSON output")
+
+    cm = sub.add_parser("command-map", help="Generate final command map")
+    cm.add_argument("--audience", type=str, help="Filter by audience (USER, OPERATOR, DEVELOPER, ALL)")
+    cm.add_argument("--json", action="store_true", help="JSON output")
+
+    mm = sub.add_parser("module-map", help="Generate final module map")
+    mm.add_argument("--json", action="store_true", help="JSON output")
+
+    rm = sub.add_parser("roadmap", help="Generate post-release roadmap")
+    rm.add_argument("--json", action="store_true", help="JSON output")
+
+    maint = sub.add_parser("maintenance", help="Generate maintenance tasks")
+    maint.add_argument("--cadence", type=str, help="Filter by cadence (DAILY, WEEKLY, MONTHLY, ON_DEMAND)")
+    maint.add_argument("--json", action="store_true", help="JSON output")
+
+    rep = sub.add_parser("report", help="Generate final handoff report")
+    rep.add_argument("--latest", action="store_true", help="Load latest report data")
+    rep.add_argument("--json", action="store_true", help="JSON output")
+
+    rec = sub.add_parser("recent", help="Show recent handoff actions")
+    rec.add_argument("--limit", type=int, default=10, help="Max rows")
+    rec.add_argument("--json", action="store_true", help="JSON output")
+
+    cfg = sub.add_parser("config", help="Show final handoff configuration")
+    cfg.add_argument("--json", action="store_true", help="JSON output")

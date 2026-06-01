@@ -2,28 +2,29 @@ from bist_signal_bot.cli_ux.cli_parser import add_cli_ux_subparser, handle_cli_u
 
 def cmd_instruments(args, app_context):
     import sys
-    from bist_signal_bot.cli.commands import instruments
+    from bist_signal_bot.cli.commands import handle_final_handoff_command, instruments
     # Strip everything before 'instruments'
     idx = sys.argv.index('instruments')
     instruments.main(args=sys.argv[idx+1:])
 
 def cmd_corporate_actions_wrap(args, app_context):
     import sys
-    from bist_signal_bot.cli.commands import corporate_actions
+    from bist_signal_bot.cli.commands import handle_final_handoff_command, corporate_actions
     idx = sys.argv.index('corporate-actions')
     corporate_actions.main(args=sys.argv[idx+1:])
 
 def cmd_data_quality_wrap(args, app_context):
     import sys
-    from bist_signal_bot.cli.commands import data_quality
+    from bist_signal_bot.cli.commands import handle_final_handoff_command, data_quality
     idx = sys.argv.index('data-quality')
     data_quality.main(args=sys.argv[idx+1:])
 
 import sys
 
 from bist_signal_bot.app.bootstrap import bootstrap_app
-from bist_signal_bot.cli.parsers import parse_args
-from bist_signal_bot.cli.commands import run_scheduler
+from bist_signal_bot.cli.parsers import add_final_handoff_parser, parse_args
+from bist_signal_bot.cli.commands import handle_final_handoff_command, run_scheduler
+from bist_signal_bot.cli.commands import handle_final_handoff_command
 from bist_signal_bot.cli.commands import (
 
     handle_governance_command,
@@ -61,7 +62,7 @@ logger = get_logger("bist_signal_bot.cli")
 
 
 def dispatch_strategies(args, ctx) -> int:
-    from bist_signal_bot.cli.commands import cmd_strategies_list, cmd_strategies_run, cmd_strategies_batch
+    from bist_signal_bot.cli.commands import handle_final_handoff_command, cmd_strategies_list, cmd_strategies_run, cmd_strategies_batch
     if args.strategies_cmd == "list":
         return cmd_strategies_list(args, ctx)
     elif args.strategies_cmd == "run":
@@ -74,7 +75,7 @@ def dispatch_strategies(args, ctx) -> int:
 
 
 def dispatch_validate_backtest(args, ctx) -> int:
-    from bist_signal_bot.cli.commands import handle_validate_backtest
+    from bist_signal_bot.cli.commands import handle_final_handoff_command, handle_validate_backtest
     handle_validate_backtest(args)
     return 0
 
@@ -89,17 +90,17 @@ def dispatch_costs(args, ctx) -> int:
     return 0
 
 def dispatch_security(args, ctx) -> int:
-    from bist_signal_bot.cli.commands import handle_security_command
+    from bist_signal_bot.cli.commands import handle_final_handoff_command, handle_security_command
     handle_security_command(args, ctx.settings)
     return 0
 
 def dispatch_quality(args, ctx) -> int:
-    from bist_signal_bot.cli.commands import handle_quality_command
+    from bist_signal_bot.cli.commands import handle_final_handoff_command, handle_quality_command
     handle_quality_command(args, ctx.settings)
     return 0
 
 def dispatch_benchmarks(args, ctx) -> int:
-    from bist_signal_bot.cli.commands import cmd_benchmarks_list, cmd_benchmarks_run, cmd_benchmarks_batch, cmd_benchmarks_default
+    from bist_signal_bot.cli.commands import handle_final_handoff_command, cmd_benchmarks_list, cmd_benchmarks_run, cmd_benchmarks_batch, cmd_benchmarks_default
     if args.benchmarks_cmd == "list":
         return cmd_benchmarks_list(args, ctx)
     elif args.benchmarks_cmd == "run":
@@ -112,7 +113,7 @@ def dispatch_benchmarks(args, ctx) -> int:
 
 
 def dispatch_risk(args, ctx) -> int:
-    from bist_signal_bot.cli.commands import handle_risk_commands
+    from bist_signal_bot.cli.commands import handle_final_handoff_command, handle_risk_commands
     ctx.logger = logger
     return handle_risk_commands(args, ctx)
 
@@ -148,7 +149,7 @@ def run_cli(argv: list[str] | None = None) -> int:
         import argparse
         root_parser = argparse.ArgumentParser()
         root_subs = root_parser.add_subparsers(dest="command")
-        from bist_signal_bot.cli.parsers import add_portfolio_construct_parser
+        from bist_signal_bot.cli.parsers import add_final_handoff_parser, add_portfolio_construct_parser
         add_portfolio_construct_parser(root_subs)
         args, unknown = root_parser.parse_known_args(args_to_parse)
 
@@ -160,7 +161,7 @@ def run_cli(argv: list[str] | None = None) -> int:
         return 0
 
     if args_to_parse and args_to_parse[0] == 'review':
-        from bist_signal_bot.cli.commands import review
+        from bist_signal_bot.cli.commands import handle_final_handoff_command, review
         import sys
         sys.argv = [sys.argv[0]] + args_to_parse[1:]
         review()
@@ -171,11 +172,11 @@ def run_cli(argv: list[str] | None = None) -> int:
         import argparse
         parser = argparse.ArgumentParser()
         subparsers = parser.add_subparsers(dest="registry_command")
-        from bist_signal_bot.cli.parsers import add_strategy_registry_parser
+        from bist_signal_bot.cli.parsers import add_final_handoff_parser, add_strategy_registry_parser
         add_strategy_registry_parser(subparsers)
 
         args, _ = parser.parse_known_args(['strategy-registry'] + args_to_parse[1:])
-        from bist_signal_bot.cli.commands import handle_strategy_registry
+        from bist_signal_bot.cli.commands import handle_final_handoff_command, handle_strategy_registry
         try:
              from bist_signal_bot.config.settings import Settings
              s = Settings()
@@ -190,7 +191,7 @@ def run_cli(argv: list[str] | None = None) -> int:
         parser = argparse.ArgumentParser()
         subparsers = parser.add_subparsers(dest="command")
         add_cli_ux_subparser(subparsers)
-        from bist_signal_bot.cli.parsers import add_config_registry_parser
+        from bist_signal_bot.cli.parsers import add_final_handoff_parser, add_config_registry_parser
         add_config_registry_parser(subparsers)
 
         args, _ = parser.parse_known_args(['config-registry'] + args_to_parse[1:])
@@ -208,14 +209,14 @@ def run_cli(argv: list[str] | None = None) -> int:
         parser = argparse.ArgumentParser()
         subparsers = parser.add_subparsers(dest="command")
         add_cli_ux_subparser(subparsers)
-        from bist_signal_bot.cli.parsers import add_governance_parser, add_config_registry_parser
+        from bist_signal_bot.cli.parsers import add_final_handoff_parser, add_governance_parser, add_config_registry_parser
         from bist_signal_bot.cli.event_calendar_group import register_event_calendar_commands
         register_event_calendar_commands(subparsers)
         add_governance_parser(subparsers)
 
         # Fake parse just for governance
         args, _ = parser.parse_known_args(['governance'] + args_to_parse[1:])
-        from bist_signal_bot.cli.commands import handle_governance_command
+        from bist_signal_bot.cli.commands import handle_final_handoff_command, handle_governance_command
         handle_governance_command(args)
         return 0
 
@@ -255,7 +256,7 @@ def run_cli(argv: list[str] | None = None) -> int:
         parser = argparse.ArgumentParser()
         subparsers = parser.add_subparsers(dest="command")
         add_cli_ux_subparser(subparsers)
-        from bist_signal_bot.cli.parsers import add_valuation_parser
+        from bist_signal_bot.cli.parsers import add_final_handoff_parser, add_valuation_parser
         add_valuation_parser(subparsers)
         args, _ = parser.parse_known_args(['valuation'] + args_to_parse[1:])
         # Now we delegate to the functions mapped earlier or write a delegator wrapper
@@ -282,10 +283,10 @@ def run_cli(argv: list[str] | None = None) -> int:
         parser = argparse.ArgumentParser()
         subparsers = parser.add_subparsers(dest="command")
         add_cli_ux_subparser(subparsers)
-        from bist_signal_bot.cli.parsers import setup_whatif_parser
+        from bist_signal_bot.cli.parsers import add_final_handoff_parser, setup_whatif_parser
         setup_whatif_parser(subparsers)
         args, _ = parser.parse_known_args(['what-if'] + args_to_parse[1:])
-        from bist_signal_bot.cli.commands import handle_whatif_commands
+        from bist_signal_bot.cli.commands import handle_final_handoff_command, handle_whatif_commands
         return handle_whatif_commands(args)
 
     if args_to_parse and args_to_parse[0] == 'explain':
@@ -308,7 +309,7 @@ def run_cli(argv: list[str] | None = None) -> int:
         return 0
 
     if args_to_parse and args_to_parse[0] == 'docs':
-        from bist_signal_bot.cli.commands import docs_app
+        from bist_signal_bot.cli.commands import handle_final_handoff_command, docs_app
         import sys
         sys.argv = [sys.argv[0]] + args_to_parse[1:]
         docs_app()
@@ -316,21 +317,21 @@ def run_cli(argv: list[str] | None = None) -> int:
 
 
     if args_to_parse and args_to_parse[0] == 'instruments':
-        from bist_signal_bot.cli.commands import instruments
+        from bist_signal_bot.cli.commands import handle_final_handoff_command, instruments
         import sys
         sys.argv = [sys.argv[0]] + args_to_parse[1:]
         instruments()
         return 0
 
     if args_to_parse and args_to_parse[0] == 'corporate-actions':
-        from bist_signal_bot.cli.commands import corporate_actions
+        from bist_signal_bot.cli.commands import handle_final_handoff_command, corporate_actions
         import sys
         sys.argv = [sys.argv[0]] + args_to_parse[1:]
         corporate_actions()
         return 0
 
     if args_to_parse and args_to_parse[0] == 'data-quality':
-        from bist_signal_bot.cli.commands import data_quality
+        from bist_signal_bot.cli.commands import handle_final_handoff_command, data_quality
         import sys
         sys.argv = [sys.argv[0]] + args_to_parse[1:]
         data_quality()
@@ -399,7 +400,7 @@ def run_cli(argv: list[str] | None = None) -> int:
         cfg_p.add_argument("--json", action="store_true")
 
         args, _ = parser.parse_known_args(args_to_parse[1:])
-        from bist_signal_bot.cli.commands import handle_qa_command
+        from bist_signal_bot.cli.commands import handle_final_handoff_command, handle_qa_command
         try:
             from bist_signal_bot.config.settings import Settings
             s = Settings()

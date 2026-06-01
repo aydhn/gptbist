@@ -7,6 +7,20 @@ def main():
 
 
 
+
+        if cmd == "final-handoff":
+            from bist_signal_bot.cli.commands import handle_final_handoff_command
+            import argparse
+            from bist_signal_bot.cli.parsers import add_final_handoff_parser
+            from bist_signal_bot.config.settings import get_settings
+
+            parser = argparse.ArgumentParser()
+            sub = parser.add_subparsers(dest="command")
+            add_final_handoff_parser(sub)
+
+            args = parser.parse_args(sys.argv[1:])
+            sys.exit(handle_final_handoff_command(args, get_settings()))
+
         if cmd == "final-audit":
             from bist_signal_bot.cli.final_audit_cli import main as fa_main
             sys.exit(fa_main(sys.argv[2:]))

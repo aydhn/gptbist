@@ -102,6 +102,7 @@ def run_healthcheck(settings=None, as_json=False):
     add_feature_store_health(res, settings)
     add_research_orchestrator_health(res, settings)
     append_final_audit_health(res, settings)
+    append_final_handoff_health(res, settings)
 
     if as_json:
         print(json.dumps(res, indent=2))
@@ -116,6 +117,9 @@ def run_healthcheck(settings=None, as_json=False):
         if "final_audit" in res:
             print(f"Final Audit Enabled: {res['final_audit']['enabled']}")
             print(f"Final Audit Status: {res['final_audit']['acceptance_status']}")
+        if "final_handoff" in res:
+            print(f"Final Handoff Enabled: {res['final_handoff']['enabled']}")
+            print(f"Final Handoff Status: {res['final_handoff']['latest_handoff_status']}")
 
     return res
 
@@ -160,6 +164,30 @@ def append_final_audit_health(report: dict, settings: Any):
             "latest_go_no_go": latest_gng.decision.value if latest_gng else None,
             "acceptance_status": acc.status.value if acc else None,
             "security_audit_status": "PASS" if sec and not sec.blocked_findings else ("BLOCKED" if sec else None)
+        }
+    except Exception:
+        pass
+
+def append_final_handoff_health(report: dict, settings: Any):
+    if not getattr(settings, "ENABLE_FINAL_HANDOFF", True):
+        return
+
+    try:
+        from bist_signal_bot.app.final_handoff_app import create_final_handoff_store
+        store = create_final_handoff_store(settings=settings)
+        latest_manifest = store.load_latest_manifest()
+        latest_pack = store.load_latest_release_pack()
+        op_playbook = store.load_latest_operator_playbook()
+        dev_playbook = store.load_latest_developer_playbook()
+        command_map = store.load_command_map()
+
+        report["final_handoff"] = {
+            "enabled": True,
+            "latest_handoff_status": latest_manifest.final_status.value if latest_manifest else None,
+            "release_pack_stage": latest_pack.stage.value if latest_pack else None,
+            "operator_playbook_available": bool(op_playbook),
+            "developer_playbook_available": bool(dev_playbook),
+            "command_map_available": bool(command_map)
         }
     except Exception:
         pass

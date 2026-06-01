@@ -5,7 +5,7 @@ from pathlib import Path
 import pandas as pd
 
 from bist_signal_bot.config.settings import Settings
-from bist_signal_bot.config.settings import settings as default_settings
+from bist_signal_bot.config.settings import get_settings
 from bist_signal_bot.core.exceptions import MarketDataStoreError
 from bist_signal_bot.data.models import DataVendor, MarketDataFrame, Timeframe
 from bist_signal_bot.data.symbol_utils import ensure_valid_internal_symbol
@@ -29,7 +29,7 @@ class LocalMarketDataStore:
     """Local storage engine for OHLCV data."""
 
     def __init__(self, settings: Settings | None = None, base_dir: Path | None = None):
-        self.settings = settings or default_settings
+        self.settings = settings or get_settings()
         # Not fully supporting injecting a completely separate base_dir in this simple version,
         # but using settings allows tmp_path overrides during testing
         self.index_path = get_market_data_index_path(self.settings)
