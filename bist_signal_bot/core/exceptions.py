@@ -2022,3 +2022,33 @@ class ResearchReplayError(ResearchOrchestratorError):
 
 class ResearchOrchestratorStorageError(ResearchOrchestratorError):
     pass
+
+class FinalAuditError(BistSignalBotError):
+    pass
+
+class FinalAcceptanceError(FinalAuditError):
+    pass
+
+class FinalContractCheckError(FinalAuditError):
+    pass
+
+class FinalIntegrationMatrixError(FinalAuditError):
+    pass
+
+class FinalSecurityAuditError(FinalAuditError):
+    pass
+
+class ReleaseCandidateError(FinalAuditError):
+    pass
+
+class HardeningFreezeError(FinalAuditError):
+    pass
+
+class GoNoGoError(FinalAuditError):
+    pass
+
+class FinalRiskRegisterError(FinalAuditError):
+    pass
+
+class FinalAuditStorageError(FinalAuditError):
+    pass
