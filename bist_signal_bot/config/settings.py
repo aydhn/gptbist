@@ -2926,6 +2926,39 @@ class Settings(BaseSettings):
     REPORT_INCLUDE_MODEL_REGISTRY: bool = True
     RESEARCH_AUTO_LOG_MODEL_REGISTRY: bool = False
 
+
+    # Final Handoff Settings
+    ENABLE_FINAL_HANDOFF: bool = Field(True, description="Enable Final Handoff module")
+    FINAL_HANDOFF_DIR_NAME: str = Field("final_handoff", description="Directory name for final handoff files")
+    FINAL_HANDOFF_RESEARCH_ONLY: bool = Field(True, description="Ensure final handoff is marked as research only")
+    FINAL_HANDOFF_SAVE_RESULTS: bool = Field(True, description="Save final handoff results to disk")
+
+    # Release Pack
+    FINAL_HANDOFF_BUILD_RELEASE_PACK: bool = Field(True, description="Build final release pack")
+    FINAL_HANDOFF_RELEASE_PACK_STAGE: str = Field("BUILT", description="Stage of the release pack")
+    FINAL_HANDOFF_INCLUDE_DOCS: bool = Field(True, description="Include docs in release pack")
+    FINAL_HANDOFF_INCLUDE_EXAMPLES: bool = Field(True, description="Include examples in release pack")
+    FINAL_HANDOFF_INCLUDE_REPORTS: bool = Field(True, description="Include reports in release pack")
+    FINAL_HANDOFF_INCLUDE_MANIFESTS: bool = Field(True, description="Include manifests in release pack")
+    FINAL_HANDOFF_INCLUDE_CHECKSUMS: bool = Field(True, description="Include checksums in release pack")
+
+    # Playbooks
+    FINAL_HANDOFF_BUILD_OPERATOR_PLAYBOOK: bool = Field(True, description="Build operator playbook")
+    FINAL_HANDOFF_BUILD_DEVELOPER_PLAYBOOK: bool = Field(True, description="Build developer playbook")
+    FINAL_HANDOFF_BUILD_COMMAND_MAP: bool = Field(True, description="Build final command map")
+    FINAL_HANDOFF_BUILD_MODULE_MAP: bool = Field(True, description="Build final module map")
+    FINAL_HANDOFF_BUILD_ROADMAP: bool = Field(True, description="Build post-release roadmap")
+    FINAL_HANDOFF_BUILD_MAINTENANCE_TASKS: bool = Field(True, description="Build maintenance tasks")
+
+    # Roadmap
+    FINAL_HANDOFF_INCLUDE_PHASE_101_PLUS_ROADMAP: bool = Field(True, description="Include Phase 101+ roadmap items")
+    FINAL_HANDOFF_ROADMAP_DEFAULT_PRIORITY: str = Field("MEDIUM", description="Default priority for roadmap items")
+
+    # Maintenance
+    FINAL_HANDOFF_DAILY_ROUTINE_ENABLED: bool = Field(True, description="Include daily routine in maintenance tasks")
+    FINAL_HANDOFF_WEEKLY_ROUTINE_ENABLED: bool = Field(True, description="Include weekly routine in maintenance tasks")
+    FINAL_HANDOFF_MONTHLY_ROUTINE_ENABLED: bool = Field(True, description="Include monthly routine in maintenance tasks")
+
     # Final Audit Settings
     ENABLE_FINAL_AUDIT: bool = True
     FINAL_AUDIT_DIR_NAME: str = "final_audit"
@@ -2961,10 +2994,15 @@ class Settings(BaseSettings):
     FINAL_GO_NO_GO_WARN_ON_DOCS_WATCH: bool = True
     FINAL_GO_NO_GO_WARN_ON_MONITORING_DEGRADED: bool = True
 
+    RUNTIME_FINAL_HANDOFF_ENABLED: bool = Field(True, description="Enable Final Handoff in Runtime")
     RUNTIME_FINAL_AUDIT_ENABLED: bool = True
+    QA_INCLUDE_FINAL_HANDOFF: bool = Field(True, description="Include Final Handoff in QA checks")
     QA_INCLUDE_FINAL_AUDIT: bool = True
+    OPS_INCLUDE_FINAL_HANDOFF: bool = Field(True, description="Include Final Handoff in Ops checks")
     OPS_INCLUDE_FINAL_AUDIT: bool = True
+    REPORT_INCLUDE_FINAL_HANDOFF: bool = Field(True, description="Include Final Handoff in Reports")
     REPORT_INCLUDE_FINAL_AUDIT: bool = True
+    RESEARCH_AUTO_LOG_FINAL_HANDOFF: bool = Field(False, description="Auto log Final Handoff in Research")
     RESEARCH_AUTO_LOG_FINAL_AUDIT: bool = False
 
 
@@ -2975,3 +3013,4 @@ def get_settings() -> Settings:
     if '_settings_instance' not in globals():
         _settings_instance = Settings()
     return _settings_instance
+settings = get_settings()

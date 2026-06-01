@@ -107,3 +107,40 @@ def execution_sim_section(report_data: dict) -> str:
         return "\n".join(lines) + "\n"
 def generate_cli_ux_section():
     return "## CLI UX\nStatus: OK\n"
+
+def append_final_handoff_section(settings: Any) -> ReportSection:
+    from bist_signal_bot.reports.models import ReportSection, ReportSectionType
+    if not getattr(settings, "ENABLE_FINAL_HANDOFF", True):
+        return ReportSection(
+            section_id="final_handoff",
+            section_type=ReportSectionType.RUNTIME_OPERATIONS,
+            title="Final Handoff",
+            body_markdown="Final Handoff integration disabled."
+        )
+
+    try:
+        from bist_signal_bot.app.final_handoff_app import create_final_handoff_store
+        store = create_final_handoff_store(settings=settings)
+        manifest = store.load_latest_manifest()
+        pack = store.load_latest_release_pack()
+
+        lines = []
+        if manifest:
+            lines.append(f"**Status**: {manifest.final_status.value}")
+            lines.append(f"**Go/No-Go Decision**: {manifest.go_no_go_decision}")
+        if pack:
+            lines.append(f"**Release Pack Stage**: {pack.stage.value}")
+
+        return ReportSection(
+            section_id="final_handoff",
+            section_type=ReportSectionType.RUNTIME_OPERATIONS,
+            title="Final MVP Handoff",
+            body_markdown="\n".join(lines) if lines else "No final handoff data found."
+        )
+    except Exception as e:
+        return ReportSection(
+            section_id="final_handoff",
+            section_type=ReportSectionType.RUNTIME_OPERATIONS,
+            title="Final MVP Handoff",
+            body_markdown=f"Failed to load final handoff data: {e}"
+        )
