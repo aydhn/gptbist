@@ -2781,3 +2781,50 @@ def add_feature_store_parser(subparsers):
 
     config = sub.add_parser("config", help="Show feature store config")
     config.add_argument("--json", action="store_true")
+
+def add_final_handoff_parser(subparsers):
+    parser = subparsers.add_parser("final-handoff", help="Final MVP Handoff commands")
+    sub = parser.add_subparsers(dest="final_handoff_cmd")
+
+    build_p = sub.add_parser("build")
+    build_p.add_argument("--save", action="store_true")
+    build_p.add_argument("--json", action="store_true")
+
+    show_p = sub.add_parser("show")
+    show_p.add_argument("--latest", action="store_true")
+    show_p.add_argument("--json", action="store_true")
+
+    rp_p = sub.add_parser("release-pack")
+    rp_p.add_argument("--save", action="store_true")
+    rp_p.add_argument("--json", action="store_true")
+
+    op_p = sub.add_parser("operator-playbook")
+    op_p.add_argument("--json", action="store_true")
+
+    dp_p = sub.add_parser("developer-playbook")
+    dp_p.add_argument("--json", action="store_true")
+
+    cm_p = sub.add_parser("command-map")
+    cm_p.add_argument("--audience", type=str)
+    cm_p.add_argument("--json", action="store_true")
+
+    mm_p = sub.add_parser("module-map")
+    mm_p.add_argument("--json", action="store_true")
+
+    rm_p = sub.add_parser("roadmap")
+    rm_p.add_argument("--json", action="store_true")
+
+    mt_p = sub.add_parser("maintenance")
+    mt_p.add_argument("--cadence", type=str)
+    mt_p.add_argument("--json", action="store_true")
+
+    rep_p = sub.add_parser("report")
+    rep_p.add_argument("--latest", action="store_true")
+    rep_p.add_argument("--json", action="store_true")
+
+    rec_p = sub.add_parser("recent")
+    rec_p.add_argument("--limit", type=int, default=10)
+    rec_p.add_argument("--json", action="store_true")
+
+    cfg_p = sub.add_parser("config")
+    cfg_p.add_argument("--json", action="store_true")

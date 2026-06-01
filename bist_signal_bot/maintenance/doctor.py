@@ -65,3 +65,23 @@ def append_final_audit_doctor_checks(report: dict, settings: Any):
         }
     except Exception:
         pass
+
+def check_final_handoff_health(settings=None):
+    from bist_signal_bot.app.final_handoff_app import create_final_handoff_store
+    store = create_final_handoff_store(settings)
+    issues = []
+
+    if not store.load_latest_operator_playbook():
+        issues.append("Missing operator playbook.")
+    if not store.load_latest_developer_playbook():
+        issues.append("Missing developer playbook.")
+    if not store.load_command_map():
+        issues.append("Missing final command map.")
+    if not store.load_roadmap():
+        issues.append("Missing roadmap.")
+
+    pack = store.load_latest_release_pack()
+    if not pack or pack.stage.value not in ("HANDOFF_READY", "FROZEN"):
+        issues.append("Release pack incomplete or missing.")
+
+    return issues

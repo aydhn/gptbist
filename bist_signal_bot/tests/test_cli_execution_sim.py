@@ -1,3 +1,7 @@
+import sys
+from unittest.mock import MagicMock
+sys.modules['pandas'] = MagicMock()
+sys.modules['bist_signal_bot.data.models'] = MagicMock()
 import pytest
 import argparse
 from bist_signal_bot.cli.parsers import add_execution_sim_parser

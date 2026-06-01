@@ -47,3 +47,20 @@ def run_release_gate(include_data_catalog=False, include_feature_store=False, in
         Mock QA check for Research Orchestrator.
         """
         return {"status": "PASS", "message": "Research Orchestrator checks passed."}
+
+def check_final_handoff_gate(settings=None):
+    from bist_signal_bot.app.final_handoff_app import create_final_handoff_store
+    store = create_final_handoff_store(settings)
+    manifest = store.load_latest_manifest()
+    pack = store.load_latest_release_pack()
+
+    if not manifest or manifest.final_status.value not in ("PASS", "WATCH"):
+        return "FAIL", "Final handoff manifest missing or not passing."
+
+    if not pack or pack.stage.value not in ("BUILT", "VERIFIED", "FROZEN", "HANDOFF_READY"):
+        return "FAIL", "Release pack incomplete or missing."
+
+    if not store.load_latest_operator_playbook():
+        return "WATCH", "Missing operator playbook."
+
+    return "PASS", "Final handoff artifacts present."

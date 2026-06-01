@@ -1,3 +1,7 @@
+import sys
+from unittest.mock import MagicMock
+sys.modules['pandas'] = MagicMock()
+sys.modules['bist_signal_bot.data.models'] = MagicMock()
 import pytest
 from unittest.mock import MagicMock
 from bist_signal_bot.data.mock_provider import MockMarketDataProvider

@@ -599,3 +599,14 @@ def get_final_audit_dir(settings: Any | None = None) -> Path:
     final_audit_dir = data_dir / getattr(settings, "FINAL_AUDIT_DIR_NAME", "final_audit")
     final_audit_dir.mkdir(parents=True, exist_ok=True)
     return final_audit_dir
+
+from pathlib import Path
+def get_base_data_dir(settings=None) -> Path:
+    return Path('data')
+
+def get_final_handoff_dir(settings=None) -> Path:
+    base = get_base_data_dir(settings)
+    dir_name = getattr(settings, "FINAL_HANDOFF_DIR_NAME", "final_handoff") if settings else "final_handoff"
+    handoff_dir = base / dir_name
+    handoff_dir.mkdir(parents=True, exist_ok=True)
+    return handoff_dir

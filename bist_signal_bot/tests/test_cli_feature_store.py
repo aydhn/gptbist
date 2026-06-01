@@ -1,4 +1,8 @@
 import sys
+from unittest.mock import MagicMock
+sys.modules['pandas'] = MagicMock()
+sys.modules['bist_signal_bot.data.models'] = MagicMock()
+import sys
 from bist_signal_bot.cli.commands import handle_feature_store_command
 class MockArgs:
     feature_store_command = "contracts"

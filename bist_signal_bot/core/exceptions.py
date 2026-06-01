@@ -2052,3 +2052,33 @@ class FinalRiskRegisterError(FinalAuditError):
 
 class FinalAuditStorageError(FinalAuditError):
     pass
+
+class FinalHandoffError(BistSignalBotError):
+    pass
+
+class FinalHandoffBuilderError(FinalHandoffError):
+    pass
+
+class OperatorPlaybookError(FinalHandoffError):
+    pass
+
+class DeveloperPlaybookError(FinalHandoffError):
+    pass
+
+class FinalCommandMapError(FinalHandoffError):
+    pass
+
+class FinalModuleMapError(FinalHandoffError):
+    pass
+
+class PostReleaseRoadmapError(FinalHandoffError):
+    pass
+
+class FinalReleasePackError(FinalHandoffError):
+    pass
+
+class MaintenanceCadenceError(FinalHandoffError):
+    pass
+
+class FinalHandoffStorageError(FinalHandoffError):
+    pass

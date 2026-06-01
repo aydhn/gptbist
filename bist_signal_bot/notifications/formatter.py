@@ -1855,3 +1855,32 @@ def format_research_orchestrator_report(report) -> str:
             "Gerçek emir gönderilmedi."
         ]
         return "\n".join(lines)
+
+def format_final_handoff_manifest(manifest) -> str:
+    lines = [
+        "BIST Bot Final Handoff Özeti",
+        f"Final Status: {manifest.final_status.value}",
+        f"Release Pack: {manifest.release_pack_id or 'N/A'}",
+        f"Go/No-Go: {manifest.go_no_go_decision or 'N/A'}",
+        f"Modules: {len(manifest.module_summaries)}",
+        f"Roadmap Items: {len(manifest.roadmap_items)}",
+        f"Maintenance Tasks: {len(manifest.maintenance_tasks)}",
+        "",
+        "Bu çıktı yerel yazılım handoff özetidir.",
+        "Yatırım tavsiyesi değildir.",
+        "İşlem uygunluğu anlamına gelmez.",
+        "Gerçek emir gönderilmedi."
+    ]
+    return "\n".join(lines)
+
+def format_final_release_pack(pack) -> str:
+    return f"Release Pack Stage: {pack.stage.value}\nNo real order sent."
+
+def format_operator_playbook(playbook) -> str:
+    return f"Operator Playbook: {playbook.title}\nNo real order sent."
+
+def format_post_release_roadmap(items) -> str:
+    return f"Roadmap Items: {len(items)}\nNo real order sent."
+
+def format_final_handoff_report(report) -> str:
+    return f"Handoff Report Generated: {report.generated_at}\nNo real order sent."

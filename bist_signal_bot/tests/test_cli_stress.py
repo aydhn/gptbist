@@ -1,3 +1,7 @@
+import sys
+from unittest.mock import MagicMock
+sys.modules['pandas'] = MagicMock()
+sys.modules['bist_signal_bot.data.models'] = MagicMock()
 import pytest
 from bist_signal_bot.cli.main import run_cli
 from bist_signal_bot.stress.models import StressSeverity

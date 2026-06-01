@@ -163,3 +163,21 @@ def append_final_audit_health(report: dict, settings: Any):
         }
     except Exception:
         pass
+
+def check_final_handoff(settings=None):
+    from bist_signal_bot.app.final_handoff_app import create_final_handoff_store
+    store = create_final_handoff_store(settings)
+    manifest = store.load_latest_manifest()
+    pack = store.load_latest_release_pack()
+    op_playbook = store.load_latest_operator_playbook()
+    dev_playbook = store.load_latest_developer_playbook()
+    command_map = store.load_command_map()
+
+    return {
+        "final_handoff_enabled": getattr(settings, "ENABLE_FINAL_HANDOFF", True),
+        "latest_handoff_status": manifest.final_status.value if manifest else "UNKNOWN",
+        "release_pack_stage": pack.stage.value if pack else "UNKNOWN",
+        "operator_playbook_available": op_playbook is not None,
+        "developer_playbook_available": dev_playbook is not None,
+        "command_map_available": len(command_map) > 0
+    }
