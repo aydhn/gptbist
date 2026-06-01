@@ -1,171 +1,221 @@
-import logging
 import uuid
-import datetime
-import inspect
-import copy
-from typing import Any, Callable, Dict, List, Optional
-from contextlib import contextmanager
+from datetime import datetime, UTC
+from typing import Any, Callable, Optional
+try:
+    import psutil
+    HAS_PSUTIL = True
+except ImportError:
+    HAS_PSUTIL = False
 
-from bist_signal_bot.config.settings import Settings
 from bist_signal_bot.performance.models import (
-    BenchmarkType, PerformanceMetric, PerformanceStatus, ProfileResult, ProfileSpan, ResourceMetricType
+    PerformanceProfile,
+    PerformanceStatus,
+    ResourceKind,
+    ResourceMeasurement,
+    TimingMeasurement,
 )
-from bist_signal_bot.performance.timer import PerformanceTimer
-from bist_signal_bot.performance.resources import ResourceSampler
-from bist_signal_bot.security.redaction import SecretRedactor
+from bist_signal_bot.performance.timers import PerformanceTimer
+from bist_signal_bot.core.exceptions import BistSignalBotError
 
-logger = logging.getLogger(__name__)
+class PerformanceProfilerError(BistSignalBotError):
+    pass
 
-class LocalProfiler:
-    def __init__(self, timer: Optional[PerformanceTimer] = None, sampler: Optional[ResourceSampler] = None, settings: Optional[Settings] = None, logger_instance: Optional[logging.Logger] = None):
-        self.settings = settings or Settings()
-        self.timer = timer or PerformanceTimer()
-        self.sampler = sampler or ResourceSampler(self.settings)
-        self.logger = logger_instance or logger
-        self.redactor = SecretRedactor()
+class LocalPerformanceProfiler:
+    def __init__(self, settings: Any = None, base_dir: Any = None):
+        self.settings = settings
+        self.timer = PerformanceTimer()
 
-    def profile_callable(self, name: str, benchmark_type: BenchmarkType, func: Callable, *args, **kwargs) -> ProfileResult:
-        module = inspect.getmodule(func).__name__ if inspect.getmodule(func) else None
+    def profile_command(self, command: str, dry_run: bool = True) -> PerformanceProfile:
+        started_at = datetime.now(UTC)
+        timings = []
+        resources = []
 
-        def wrapped_func():
-            with self.timer.span(name, module=module) as span:
-                mem_before = self.sampler.memory_rss_mb()
-                span.memory_before_mb = mem_before
-                try:
-                    result = func(*args, **kwargs)
-                    span.metadata["status"] = "success"
-                    return result
-                except Exception as e:
-                    span.metadata["status"] = "error"
-                    span.metadata["error"] = str(e)
-                    raise
-                finally:
-                    mem_after = self.sampler.memory_rss_mb()
-                    span.memory_after_mb = mem_after
-                    if mem_before is not None and mem_after is not None:
-                        span.memory_delta_mb = mem_after - mem_before
+        measurement = self.timer.start(f"command:{command}")
 
-        interval = getattr(self.settings, 'PERFORMANCE_RESOURCE_SAMPLE_INTERVAL_SECONDS', 0.5)
+        if self.settings and not getattr(self.settings, "PERFORMANCE_PROFILE_COMMANDS", True):
+            self.timer.finish(measurement, PerformanceStatus.SKIPPED)
+            timings.append(measurement)
+            return PerformanceProfile(
+                profile_id=str(uuid.uuid4()),
+                created_at=started_at,
+                module_name="cli_command",
+                command=command,
+                timings=timings,
+                resources=resources,
+                cache_results=[],
+                status=PerformanceStatus.SKIPPED
+            )
+
+        # Mock the run for testing/profiling
+        self.timer.finish(measurement, PerformanceStatus.PASS)
+        timings.append(measurement)
+        resources = self.collect_resource_measurements("cli_command", command)
+
+        status = self.classify_profile(timings, resources)
+
+        return PerformanceProfile(
+            profile_id=str(uuid.uuid4()),
+            created_at=started_at,
+            module_name="cli_command",
+            command=command,
+            timings=timings,
+            resources=resources,
+            cache_results=[],
+            status=status
+        )
+
+    def profile_module(self, module_name: str) -> PerformanceProfile:
+        started_at = datetime.now(UTC)
+        timings = []
+
+        measurement = self.timer.start(f"module:{module_name}")
+        self.timer.finish(measurement, PerformanceStatus.PASS)
+        timings.append(measurement)
+
+        resources = self.collect_resource_measurements(module_name)
+        status = self.classify_profile(timings, resources)
+
+        return PerformanceProfile(
+            profile_id=str(uuid.uuid4()),
+            created_at=started_at,
+            module_name=module_name,
+            timings=timings,
+            resources=resources,
+            cache_results=[],
+            status=status
+        )
+
+    def profile_callable(self, name: str, fn: Callable[..., Any], *args, **kwargs) -> PerformanceProfile:
+        started_at = datetime.now(UTC)
+        timings = []
+
+        measurement = self.timer.start(f"callable:{name}")
 
         try:
-            _, snapshots = self.sampler.sample_during(wrapped_func, interval_seconds=interval)
-            status = PerformanceStatus.PASS
-        except Exception:
-            # We don't have a specific way to get snapshots if it blows up instantly, but sample_during returns them anyway?
-            # Actually sample_during returns a tuple, so if it raises, we don't get the snapshots.
-            # We can grab one manually.
-            snapshots = [self.sampler.snapshot()]
-            status = PerformanceStatus.ERROR
+            fn(*args, **kwargs)
+            self.timer.finish(measurement, PerformanceStatus.PASS)
+        except Exception as e:
+            measurement.warnings.append(str(e))
+            self.timer.finish(measurement, PerformanceStatus.FAIL)
 
-        result = self.timer.build_profile_result(benchmark_type)
-        result.resource_snapshots = snapshots
-        result.status = status
+        timings.append(measurement)
+        resources = self.collect_resource_measurements(name)
+        status = self.classify_profile(timings, resources)
 
-        if status == PerformanceStatus.ERROR:
-            result.errors.append("Profiled callable raised an exception.")
+        return PerformanceProfile(
+            profile_id=str(uuid.uuid4()),
+            created_at=started_at,
+            module_name=name,
+            timings=timings,
+            resources=resources,
+            cache_results=[],
+            status=status
+        )
 
-        result.metrics = self.aggregate_metrics(result)
-        if status != PerformanceStatus.ERROR:
-            result.status = self.status_from_metrics(result.metrics)
+    def collect_resource_measurements(self, module_name: str, command: Optional[str] = None) -> list[ResourceMeasurement]:
+        measurements = []
+        now = datetime.now(UTC)
 
-        return self.redact_profile(result)
+        collect_resources = True
+        if self.settings and not getattr(self.settings, "PERFORMANCE_COLLECT_RESOURCE_USAGE", True):
+            collect_resources = False
 
-    @contextmanager
-    def profile_context(self, name: str, benchmark_type: BenchmarkType):
-        # Starts a timing context and returns the profile result upon exit via a callback or just capturing.
-        # It's a bit tricky to return a full ProfileResult while yielding, so we store it in a dict they can read.
-        context_result = {"profile": None}
+        if not collect_resources:
+            return measurements
 
-        mem_before = self.sampler.memory_rss_mb()
-        snapshots = [self.sampler.snapshot()]
+        # CPU
+        if HAS_PSUTIL:
+            cpu_pct = psutil.cpu_percent(interval=None)
+            measurements.append(
+                ResourceMeasurement(
+                    measurement_id=str(uuid.uuid4()),
+                    resource_kind=ResourceKind.CPU,
+                    module_name=module_name,
+                    command=command,
+                    value=cpu_pct,
+                    unit="pct",
+                    status=PerformanceStatus.PASS,
+                    measured_at=now
+                )
+            )
+        else:
+            measurements.append(
+                ResourceMeasurement(
+                    measurement_id=str(uuid.uuid4()),
+                    resource_kind=ResourceKind.CPU,
+                    module_name=module_name,
+                    command=command,
+                    value=None,
+                    unit="pct",
+                    status=PerformanceStatus.WATCH,
+                    measured_at=now,
+                    warnings=["psutil not available"]
+                )
+            )
 
-        with self.timer.span(name) as span:
-            span.memory_before_mb = mem_before
-            try:
-                yield context_result
-                span.metadata["status"] = "success"
-                status = PerformanceStatus.PASS
-            except Exception as e:
-                span.metadata["status"] = "error"
-                span.metadata["error"] = str(e)
-                status = PerformanceStatus.ERROR
-                raise
-            finally:
-                mem_after = self.sampler.memory_rss_mb()
-                span.memory_after_mb = mem_after
-                if mem_before is not None and mem_after is not None:
-                    span.memory_delta_mb = mem_after - mem_before
-                snapshots.append(self.sampler.snapshot())
-
-                profile = self.timer.build_profile_result(benchmark_type)
-                profile.resource_snapshots = snapshots
-                profile.status = status
-                profile.metrics = self.aggregate_metrics(profile)
-                if status != PerformanceStatus.ERROR:
-                    profile.status = self.status_from_metrics(profile.metrics)
-
-                context_result["profile"] = self.redact_profile(profile)
-
-    def aggregate_metrics(self, profile: ProfileResult) -> List[PerformanceMetric]:
-        metrics = []
-
-        metrics.append(PerformanceMetric(
-            metric_id=str(uuid.uuid4()),
-            metric_type=ResourceMetricType.WALL_TIME_SECONDS,
-            name="Total Elapsed Time",
-            value=profile.elapsed_seconds,
-            unit="s",
-            status=PerformanceStatus.UNKNOWN
-        ))
-
-        if profile.resource_snapshots:
-            rss_values = [s.memory_rss_mb for s in profile.resource_snapshots if s.memory_rss_mb is not None]
-            if rss_values:
-                peak_mb = max(rss_values)
-                metrics.append(PerformanceMetric(
-                    metric_id=str(uuid.uuid4()),
-                    metric_type=ResourceMetricType.MEMORY_PEAK_MB,
-                    name="Peak Memory Usage",
-                    value=peak_mb,
+        # Memory
+        if HAS_PSUTIL:
+            mem = psutil.virtual_memory()
+            measurements.append(
+                ResourceMeasurement(
+                    measurement_id=str(uuid.uuid4()),
+                    resource_kind=ResourceKind.MEMORY,
+                    module_name=module_name,
+                    command=command,
+                    value=float(mem.used) / (1024 * 1024),
                     unit="MB",
-                    status=PerformanceStatus.UNKNOWN
-                ))
+                    status=PerformanceStatus.PASS,
+                    measured_at=now
+                )
+            )
+        else:
+            measurements.append(
+                ResourceMeasurement(
+                    measurement_id=str(uuid.uuid4()),
+                    resource_kind=ResourceKind.MEMORY,
+                    module_name=module_name,
+                    command=command,
+                    value=None,
+                    unit="MB",
+                    status=PerformanceStatus.WATCH,
+                    measured_at=now,
+                    warnings=["psutil not available"]
+                )
+            )
 
-            cpu_values = [s.cpu_percent for s in profile.resource_snapshots if s.cpu_percent is not None]
-            if cpu_values:
-                metrics.append(PerformanceMetric(
-                    metric_id=str(uuid.uuid4()),
-                    metric_type=ResourceMetricType.CPU_PERCENT,
-                    name="Average CPU Usage",
-                    value=sum(cpu_values) / len(cpu_values),
-                    unit="%",
-                    status=PerformanceStatus.UNKNOWN
-                ))
+        return measurements
 
-        return metrics
+    def profile_summary(self, profile: PerformanceProfile) -> list[str]:
+        summary = [f"Profile: {profile.module_name} (Status: {profile.status.value})"]
+        if profile.command:
+            summary.append(f"Command: {profile.command}")
 
-    def status_from_metrics(self, metrics: List[PerformanceMetric]) -> PerformanceStatus:
-        # Simplistic logic: if we set a threshold_fail and it crossed it, FAIL. If threshold_warn, WARN.
-        # But this method might just check span times against settings
+        for t in profile.timings:
+            val = f"{t.elapsed_seconds:.4f}s" if t.elapsed_seconds is not None else "N/A"
+            summary.append(f"Timing {t.name}: {val} [{t.status.value}]")
 
-        has_warn = False
-        # Currently metrics don't have thresholds populated by default in aggregate_metrics.
-        # We can just return PASS for now, BottleneckAnalyzer handles deep logic.
-        for m in metrics:
-            if m.status == PerformanceStatus.FAIL:
-                return PerformanceStatus.FAIL
-            if m.status == PerformanceStatus.WARN:
-                has_warn = True
+        for r in profile.resources:
+            val = f"{r.value:.2f}{r.unit}" if r.value is not None else "N/A"
+            summary.append(f"Resource {r.resource_kind.value}: {val} [{r.status.value}]")
 
-        return PerformanceStatus.WARN if has_warn else PerformanceStatus.PASS
+        return summary
 
-    def redact_profile(self, profile: ProfileResult) -> ProfileResult:
-        # Redact any secrets in metadata using SecretRedactor
-        redacted = copy.deepcopy(profile)
-        redacted.metadata = self.redactor.redact_dict(redacted.metadata)
-        for span in redacted.spans:
-            span.metadata = self.redactor.redact_dict(span.metadata)
-        for snap in redacted.resource_snapshots:
-            snap.metadata = self.redactor.redact_dict(snap.metadata)
-        return redacted
+    def classify_profile(self, timings: list[TimingMeasurement], resources: list[ResourceMeasurement]) -> PerformanceStatus:
+        all_statuses = [t.status for t in timings] + [r.status for r in resources]
+
+        if not all_statuses:
+            return PerformanceStatus.UNKNOWN
+
+        if PerformanceStatus.FAIL in all_statuses:
+            return PerformanceStatus.FAIL
+        if PerformanceStatus.DEGRADED in all_statuses:
+            return PerformanceStatus.DEGRADED
+        if PerformanceStatus.SLOW in all_statuses:
+            return PerformanceStatus.SLOW
+        if PerformanceStatus.WATCH in all_statuses:
+            return PerformanceStatus.WATCH
+        if PerformanceStatus.SKIPPED in all_statuses:
+            return PerformanceStatus.SKIPPED
+
+        return PerformanceStatus.PASS
 

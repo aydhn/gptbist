@@ -1,216 +1,174 @@
-import os
-import shutil
-import logging
-from datetime import datetime, timezone
-from pathlib import Path
-from typing import Any
+import hashlib
+import json
+import uuid
+from datetime import datetime, timedelta, UTC
+from typing import Any, Optional
 
 from bist_signal_bot.performance.models import (
-    CacheEntryInfo, CacheReport, CachePolicy
+    CacheEntry,
+    CacheLookupResult,
+    CacheStatus,
 )
-from bist_signal_bot.config.settings import Settings
-from bist_signal_bot.storage.paths import (
-    get_data_dir, get_scans_dir, get_backtest_results_dir, get_optimization_dir,
-    get_ml_feature_store_dir, get_runtime_runs_dir, get_monitoring_dir,
-    get_quality_dir, get_packaging_dir, get_docs_reports_dir
-)
-from bist_signal_bot.security.path_guard import PathGuard
+from bist_signal_bot.core.exceptions import BistSignalBotError
 
-class CacheInspector:
-    def __init__(self, settings: Settings | None = None, base_dir: Path | None = None):
-        from bist_signal_bot.config.settings import get_settings
-        self.settings = settings or get_settings()
-        self.base_dir = base_dir or get_data_dir(self.settings)
-        self.logger = logging.getLogger("bist_signal_bot.performance.cache")
-        self.path_guard = PathGuard([self.base_dir])
+class LocalCacheError(BistSignalBotError):
+    pass
 
-    def _get_target_dirs(self) -> list[Path]:
-        return [
-            self.base_dir / "cache",
-            get_scans_dir(self.settings),
-            get_backtest_results_dir(self.settings),
-            get_optimization_dir(self.settings),
-            get_ml_feature_store_dir(self.settings),
-            get_runtime_runs_dir(self.settings),
-            get_monitoring_dir(self.settings) / "snapshots",
-            get_monitoring_dir(self.settings) / "reports",
-            get_quality_dir(self.settings),
-            get_packaging_dir(self.settings),
-            get_docs_reports_dir(self.settings)
-        ]
+class LocalCacheManager:
+    def __init__(self, settings: Any = None, base_dir: Any = None):
+        self.settings = settings
+        self.base_dir = base_dir
 
-    def _is_protected(self, path: Path) -> bool:
-        name = path.name.lower()
-        if name in [".env", "config.json"]:
-            return True
-        if path.suffix == ".py":
-            return True
+        self.enabled = True
+        self.default_ttl = 86400
+        self.requires_confirm = True
 
-        if self.settings.PERFORMANCE_PROTECT_MODEL_ARTIFACTS and "model" in name and path.suffix in [".pkl", ".joblib", ".pt"]:
-            return True
-        if self.settings.PERFORMANCE_PROTECT_PAPER_LEDGER and "ledger" in name:
-            return True
-        if self.settings.PERFORMANCE_PROTECT_RUNTIME_STATE and "state" in name:
-            return True
-        if self.settings.PERFORMANCE_PROTECT_AUDIT_LOGS and "audit" in name:
-            return True
+        if self.settings:
+            self.enabled = getattr(self.settings, "PERFORMANCE_CACHE_ENABLED", self.enabled)
+            self.default_ttl = getattr(self.settings, "PERFORMANCE_CACHE_DEFAULT_TTL_SECONDS", self.default_ttl)
+            self.requires_confirm = getattr(self.settings, "PERFORMANCE_CACHE_REQUIRES_CONFIRM", self.requires_confirm)
 
-        return False
+        self._memory_store: dict[str, CacheEntry] = {}
+        self._payload_store: dict[str, dict[str, Any]] = {}
 
-    def classify_cache_entry(self, path: Path) -> CacheEntryInfo:
-        try:
-            stat = path.stat()
-            size_mb = stat.st_size / (1024 * 1024)
-            mod_time = datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc)
-            age_days = (datetime.now(timezone.utc) - mod_time).total_seconds() / (24 * 3600)
+    def build_key(self, namespace: str, inputs: dict[str, Any]) -> str:
+        # Sort keys to ensure deterministic ordering
+        sorted_inputs = {k: inputs[k] for k in sorted(inputs.keys())}
+        json_str = json.dumps(sorted_inputs, sort_keys=True)
+        return hashlib.sha256(f"{namespace}:{json_str}".encode()).hexdigest()
 
-            safe_to_delete = True
-            reason = None
+    def get(self, namespace: str, key: str) -> CacheLookupResult:
+        lookup_id = str(uuid.uuid4())
 
-            if self._is_protected(path):
-                safe_to_delete = False
-                reason = "Protected file type or name"
-
-            category = "unknown"
-            if "scans" in path.parts:
-                category = "scans"
-            elif "backtest" in path.parts:
-                category = "backtest"
-            elif "optimization" in path.parts:
-                category = "optimization"
-            elif "ml" in path.parts:
-                category = "ml_features"
-            elif "runtime" in path.parts:
-                category = "runtime"
-            elif "cache" in path.parts:
-                category = "cache"
-            elif "monitoring" in path.parts:
-                category = "monitoring"
-
-            return CacheEntryInfo(
-                path=str(path),
-                size_mb=size_mb,
-                modified_at=mod_time,
-                age_days=age_days,
-                category=category,
-                safe_to_delete=safe_to_delete,
-                reason=reason
+        if not self.enabled:
+            return CacheLookupResult(
+                lookup_id=lookup_id,
+                key=key,
+                namespace=namespace,
+                status=CacheStatus.DISABLED,
+                reason="Cache is disabled"
             )
-        except Exception as e:
-            return CacheEntryInfo(str(path), 0, None, None, "error", False, str(e))
 
-    def scan_cache_dirs(self) -> CacheReport:
-        report = CacheReport(
-            policy=CachePolicy[self.settings.PERFORMANCE_CACHE_POLICY] if isinstance(self.settings.PERFORMANCE_CACHE_POLICY, str) else self.settings.PERFORMANCE_CACHE_POLICY,
-            dry_run=True
+        full_key = f"{namespace}:{key}"
+        entry = self._memory_store.get(full_key)
+
+        if not entry:
+            return CacheLookupResult(
+                lookup_id=lookup_id,
+                key=key,
+                namespace=namespace,
+                status=CacheStatus.MISS,
+                reason="Not found in cache"
+            )
+
+        if self.is_stale(entry):
+            entry.status = CacheStatus.STALE
+            return CacheLookupResult(
+                lookup_id=lookup_id,
+                key=key,
+                namespace=namespace,
+                status=CacheStatus.STALE,
+                entry=entry,
+                reason="Cache entry is stale",
+                warnings=["Recomputation recommended"]
+            )
+
+        return CacheLookupResult(
+            lookup_id=lookup_id,
+            key=key,
+            namespace=namespace,
+            status=CacheStatus.HIT,
+            entry=entry,
+            metadata={"payload": self._payload_store.get(full_key)}
         )
 
-        target_dirs = self._get_target_dirs()
-        for t_dir in target_dirs:
-            if not t_dir.exists() or not t_dir.is_dir():
-                continue
+    def put(self, namespace: str, key: str, payload: dict[str, Any], ttl_seconds: Optional[int] = None, confirm: bool = False) -> CacheEntry:
+        if not self.enabled:
+            return CacheEntry(
+                cache_id=str(uuid.uuid4()),
+                key=key,
+                namespace=namespace,
+                path="",
+                created_at=datetime.now(UTC),
+                status=CacheStatus.DISABLED
+            )
 
-            for root, _, files in os.walk(t_dir):
-                for file in files:
-                    p = Path(root) / file
-                    info = self.classify_cache_entry(p)
-                    report.entries.append(info)
+        if self.requires_confirm and not confirm:
+            # Temporary cache write without confirm
+            entry = CacheEntry(
+                cache_id=str(uuid.uuid4()),
+                key=key,
+                namespace=namespace,
+                path=f"/tmp/cache/{namespace}/{key}.json",
+                created_at=datetime.now(UTC),
+                status=CacheStatus.BYPASS,
+                warnings=["Write bypassed due to lack of confirmation"]
+            )
+            return entry
 
-                    report.total_size_mb += info.size_mb
-                    report.entry_count += 1
+        ttl = ttl_seconds or self.default_ttl
+        now = datetime.now(UTC)
+        expires_at = now + timedelta(seconds=ttl)
 
-                    if info.safe_to_delete:
-                        report.safe_delete_size_mb += info.size_mb
-                        report.safe_delete_count += 1
+        checksum = self.checksum_payload(payload)
+        payload_str = json.dumps(payload)
+        size_bytes = len(payload_str.encode())
 
-        return report
+        entry = CacheEntry(
+            cache_id=str(uuid.uuid4()),
+            key=key,
+            namespace=namespace,
+            path=f"/data/cache/{namespace}/{key}.json", # Mock path
+            created_at=now,
+            expires_at=expires_at,
+            checksum=checksum,
+            status=CacheStatus.HIT,
+            size_bytes=size_bytes
+        )
 
-    def cleanup(self, policy: CachePolicy, max_age_days: int, max_total_size_mb: float | None = None, dry_run: bool = True, confirm: bool = False) -> CacheReport:
-        if not dry_run and not confirm:
-            raise ValueError("confirm must be True when dry_run is False")
+        full_key = f"{namespace}:{key}"
+        self._memory_store[full_key] = entry
+        self._payload_store[full_key] = payload
 
-        report = CacheReport(policy=policy, dry_run=dry_run)
+        return entry
 
-        target_dirs = self._get_target_dirs()
+    def invalidate(self, namespace: str, key: Optional[str] = None, confirm: bool = False) -> list[CacheEntry]:
+        invalidated = []
 
-        all_entries = []
-        for t_dir in target_dirs:
-            if not t_dir.exists() or not t_dir.is_dir():
-                continue
-            for root, _, files in os.walk(t_dir):
-                for file in files:
-                    p = Path(root) / file
-                    info = self.classify_cache_entry(p)
-                    all_entries.append(info)
-                    report.total_size_mb += info.size_mb
-                    report.entry_count += 1
+        if not confirm:
+            return invalidated
 
-        # Filter entries to delete
-        to_delete = []
-        for info in all_entries:
-            if not info.safe_to_delete:
-                continue
+        keys_to_remove = []
+        for full_key, entry in self._memory_store.items():
+            ns, k = full_key.split(":", 1)
+            if ns == namespace and (key is None or k == key):
+                keys_to_remove.append(full_key)
+                entry.status = CacheStatus.INVALID
+                invalidated.append(entry)
 
-            should_delete = False
-            if policy == CachePolicy.CLEAN_OLD:
-                if info.age_days and info.age_days >= max_age_days:
-                    should_delete = True
-            elif policy == CachePolicy.CLEAN_TEMP_ONLY:
-                if "temp" in info.path.lower() or info.path.endswith(".tmp"):
-                    should_delete = True
-            elif policy == CachePolicy.KEEP_ALL:
-                should_delete = False
-            elif policy == CachePolicy.DRY_RUN_ONLY:
-                should_delete = False
+        for k in keys_to_remove:
+            self._memory_store.pop(k, None)
+            self._payload_store.pop(k, None)
 
-            if should_delete:
-                to_delete.append(info)
+        return invalidated
 
-        # Handle CLEAN_LARGE policy
-        if policy == CachePolicy.CLEAN_LARGE and max_total_size_mb is not None:
-            # Sort by age oldest first
-            safe_entries = [e for e in all_entries if e.safe_to_delete]
-            safe_entries.sort(key=lambda x: x.age_days or 0, reverse=True)
+    def list_entries(self, namespace: Optional[str] = None) -> list[CacheEntry]:
+        if not namespace:
+            return list(self._memory_store.values())
 
-            current_size = report.total_size_mb
-            for info in safe_entries:
-                if current_size <= max_total_size_mb:
-                    break
-                to_delete.append(info)
-                current_size -= info.size_mb
+        return [
+            entry for full_key, entry in self._memory_store.items()
+            if full_key.startswith(f"{namespace}:")
+        ]
 
-        for info in to_delete:
-            p = Path(info.path)
-            try:
-                self.path_guard.ensure_safe_path(p)
-            except Exception as e:
-                report.issues.append(f"Unsafe path {p}: {e}")
-                report.skipped_files.append(str(p))
-                continue
+    def is_stale(self, entry: CacheEntry) -> bool:
+        if entry.expires_at is None:
+            return False
+        return datetime.now(UTC) > entry.expires_at
 
-            if not dry_run:
-                try:
-                    p.unlink()
-                    report.deleted_files.append(str(p))
-                    report.safe_delete_count += 1
-                    report.safe_delete_size_mb += info.size_mb
-                except Exception as e:
-                    report.issues.append(f"Failed to delete {p}: {e}")
-                    report.skipped_files.append(str(p))
-            else:
-                report.deleted_files.append(str(p))
-                report.safe_delete_count += 1
-                report.safe_delete_size_mb += info.size_mb
+    def checksum_payload(self, payload: dict[str, Any]) -> str:
+        # Sort keys to ensure deterministic ordering
+        sorted_payload = {k: payload[k] for k in sorted(payload.keys())}
+        json_str = json.dumps(sorted_payload, sort_keys=True)
+        return hashlib.sha256(json_str.encode()).hexdigest()
 
-        # Clean empty dirs if not dry run
-        if not dry_run:
-            for t_dir in target_dirs:
-                if t_dir.exists():
-                    try:
-                        for dirpath, dirnames, filenames in os.walk(t_dir, topdown=False):
-                            if not dirnames and not filenames and dirpath != str(t_dir):
-                                os.rmdir(dirpath)
-                    except Exception as e:
-                        report.issues.append(f"Failed to remove empty dir in {t_dir}: {e}")
-
-        return report

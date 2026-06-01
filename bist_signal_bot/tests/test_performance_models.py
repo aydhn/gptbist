@@ -1,33 +1,34 @@
 import pytest
-from datetime import datetime, timezone
+from datetime import datetime, UTC
+import uuid
+
 from bist_signal_bot.performance.models import (
-    PerformanceMetric, ResourceSnapshot, ProfileSpan, ProfileResult, BenchmarkType, PerformanceStatus, ResourceMetricType
+    PerformanceStatus,
+    ResourceKind,
+    TimingMeasurement,
+    ResourceMeasurement,
 )
 
-def test_performance_metric_validation():
-    m = PerformanceMetric(
-        metric_id="m1",
-        metric_type=ResourceMetricType.CPU_PERCENT,
-        name="test",
-        value=50.0,
-        unit="%",
+def test_timing_measurement_validation():
+    t = TimingMeasurement(
+        timing_id="test-1",
+        name="test-timing",
+        started_at=datetime.now(UTC),
         status=PerformanceStatus.PASS
     )
-    assert m.value == 50.0
+    assert t.status == PerformanceStatus.PASS
+    assert t.elapsed_seconds is None
 
-def test_resource_snapshot_graceful():
-    s = ResourceSnapshot(
-        snapshot_id="s1",
-        captured_at=datetime.now(timezone.utc)
+def test_resource_measurement_validation():
+    r = ResourceMeasurement(
+        measurement_id="res-1",
+        resource_kind=ResourceKind.CPU,
+        module_name="test_mod",
+        value=42.0,
+        unit="pct",
+        status=PerformanceStatus.PASS,
+        measured_at=datetime.now(UTC)
     )
-    assert s.gpu_available is False
-    assert s.cpu_percent is None
+    assert r.value == 42.0
+    assert r.unit == "pct"
 
-def test_profile_span_elapsed():
-    s = ProfileSpan(
-        span_id="sp1",
-        name="test",
-        started_at=datetime.now(timezone.utc),
-        elapsed_seconds=1.5
-    )
-    assert s.elapsed_seconds == 1.5

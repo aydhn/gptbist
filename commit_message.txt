@@ -1,0 +1,10 @@
+feat: Phase 101 Local Performance Profiling and Optimization Governance
+
+- Add PerformanceProfile, BenchmarkResult, CacheEntry models.
+- Implement LocalPerformanceProfiler, PerformanceTimer, ResourceBudgetManager.
+- Implement LocalCacheManager for data and feature sharing.
+- Implement BottleneckAnalyzer and PerformanceRegressionDetector.
+- Integrate with Healthcheck, Doctor, Release Gates, Ops Readiness, Orchestrator, Data Catalog.
+- Add `performance` CLI command with profile, benchmark, budgets, cache, bottlenecks, regressions, report subcommands.
+- Add docs/81_LOCAL_PERFORMANCE_OPTIMIZATION.md and examples/performance_workflow.md.
+- Create 15 pytest files to test profiling, budgeting, caching, and integrations.

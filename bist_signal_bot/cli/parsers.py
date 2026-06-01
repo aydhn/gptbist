@@ -1925,62 +1925,54 @@ def setup_package_parser(subparsers):
     config_parser.add_argument("--json", action="store_true", help="Output JSON format")
 
 
+
 def add_performance_parser(subparsers) -> None:
-    perf_parser = subparsers.add_parser("perf", aliases=["performance"], help="Performance benchmarking and profiling")
+    perf_parser = subparsers.add_parser("performance", aliases=["perf"], help="Local Performance Optimization")
     perf_subs = perf_parser.add_subparsers(dest="perf_command", required=True)
 
-    # resources
-    res_parser = perf_subs.add_parser("resources", help="Show current resource snapshot")
-    res_parser.add_argument("--json", action="store_true", help="Output as JSON")
+    p = perf_subs.add_parser("profile", help="Profile a module or command")
+    p.add_argument("--module", type=str, help="Module to profile")
+    p.add_argument("--command", type=str, help="Command to profile")
+    p.add_argument("--dry-run", action="store_true")
+    p.add_argument("--json", action="store_true")
 
-    # benchmark
-    bench_parser = perf_subs.add_parser("benchmark", help="Run a benchmark")
-    bench_parser.add_argument("benchmark_type", choices=["scanner", "feature-builder", "runtime", "knowledge-index", "backtest", "ml-inference", "report-generation"], help="Type of benchmark")
-    bench_parser.add_argument("--symbols", nargs="+", help="Symbols to use")
-    bench_parser.add_argument("--strategy", help="Strategy to use")
-    bench_parser.add_argument("--sample-size", type=int, default=20, help="Sample size")
-    bench_parser.add_argument("--iterations", type=int, default=3, help="Iterations")
-    bench_parser.add_argument("--synthetic", action="store_true", help="Use synthetic data")
-    bench_parser.add_argument("--json", action="store_true", help="Output JSON")
+    b = perf_subs.add_parser("benchmark", help="Run benchmarks")
+    b.add_argument("--scenario", type=str, help="Benchmark scenario")
+    b.add_argument("--all", action="store_true", help="Run all benchmarks")
+    b.add_argument("--save", action="store_true")
+    b.add_argument("--json", action="store_true")
 
-    # profile
-    prof_parser = perf_subs.add_parser("profile", help="Run a profile")
-    prof_parser.add_argument("benchmark_type", choices=["scanner", "runtime"], help="Type to profile")
-    prof_parser.add_argument("--symbols", nargs="+", help="Symbols")
-    prof_parser.add_argument("--synthetic", action="store_true", help="Use synthetic data")
-    prof_parser.add_argument("--json", action="store_true", help="Output JSON")
+    bu = perf_subs.add_parser("budgets", help="Show resource budgets")
+    bu.add_argument("--json", action="store_true")
 
-    # report
-    rep_parser = perf_subs.add_parser("report", help="Generate performance report")
-    rep_parser.add_argument("--latest", action="store_true", help="Use latest benchmark")
-    rep_parser.add_argument("--json", action="store_true", help="Output JSON")
+    c = perf_subs.add_parser("cache", help="Manage cache")
+    cs = c.add_subparsers(dest="cache_command", required=True)
+    cl = cs.add_parser("list")
+    cl.add_argument("--namespace", type=str)
+    cl.add_argument("--json", action="store_true")
+    ci = cs.add_parser("invalidate")
+    ci.add_argument("--namespace", type=str)
+    ci.add_argument("--confirm", action="store_true")
+    ci.add_argument("--dry-run", action="store_true")
+    ci.add_argument("--json", action="store_true")
 
-    # baseline
-    base_parser = perf_subs.add_parser("baseline", help="Manage baselines")
-    base_subs = base_parser.add_subparsers(dest="base_command", required=True)
-    base_create = base_subs.add_parser("create", help="Create baseline")
-    base_create.add_argument("--benchmark", required=True, help="Benchmark ID")
-    base_create.add_argument("--confirm", action="store_true", help="Confirm creation")
-    base_latest = base_subs.add_parser("latest", help="Show latest baseline")
-    base_list = base_subs.add_parser("list", help="List baselines")
-    base_list.add_argument("--json", action="store_true", help="Output JSON")
+    bt = perf_subs.add_parser("bottlenecks", help="Analyze bottlenecks")
+    bt.add_argument("--json", action="store_true")
 
-    # compare
-    comp_parser = perf_subs.add_parser("compare", help="Compare benchmark to baseline")
-    comp_parser.add_argument("--benchmark", help="Benchmark ID")
-    comp_parser.add_argument("--baseline", help="Baseline ID")
-    comp_parser.add_argument("--latest", action="store_true", help="Compare latest")
-    comp_parser.add_argument("--json", action="store_true", help="Output JSON")
+    r = perf_subs.add_parser("regressions", help="Detect regressions")
+    r.add_argument("--json", action="store_true")
 
-    # bottlenecks
-    bot_parser = perf_subs.add_parser("bottlenecks", help="Analyze bottlenecks")
-    bot_parser.add_argument("--latest", action="store_true", help="Analyze latest benchmark")
-    bot_parser.add_argument("--benchmark", help="Benchmark ID")
-    bot_parser.add_argument("--json", action="store_true", help="Output JSON")
+    rp = perf_subs.add_parser("report", help="Generate performance report")
+    rp.add_argument("--latest", action="store_true")
+    rp.add_argument("--json", action="store_true")
 
-    # config
-    conf_parser = perf_subs.add_parser("config", help="Show performance config")
-    conf_parser.add_argument("--json", action="store_true", help="Output JSON")
+    rc = perf_subs.add_parser("recent", help="Show recent performance actions")
+    rc.add_argument("--limit", type=int, default=10)
+    rc.add_argument("--json", action="store_true")
+
+    cf = perf_subs.add_parser("config", help="Show performance settings")
+    cf.add_argument("--json", action="store_true")
+
 
 def add_research_parser(subparsers) -> None:
     # Research commands

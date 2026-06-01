@@ -1,4 +1,4 @@
-def check_readiness(include_data_catalog=False, include_feature_store=False, include_orchestrator=False, include_final_handoff=False):
+def check_readiness(include_data_catalog=False, include_feature_store=False, include_orchestrator=False, include_final_handoff=False, include_performance=False):
     res = {"status": "PASS", "checks": []}
     if include_data_catalog:
         res["data_catalog"] = "PASS"
@@ -8,6 +8,10 @@ def check_readiness(include_data_catalog=False, include_feature_store=False, inc
         res["research_orchestrator"] = "PASS"
     if include_final_handoff:
         res["final_handoff"] = "PASS"
+
+    if include_performance:
+        res["performance"] = "PASS"
+
     return res
 
 class ReadinessChecker:

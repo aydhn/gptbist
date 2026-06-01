@@ -1930,3 +1930,33 @@ def format_final_handoff_report(report: Any) -> str:
         "Gerçek emir gönderilmedi."
     ]
     return "\n".join(lines)
+
+from bist_signal_bot.performance.models import (
+    PerformanceProfile,
+    BenchmarkResult,
+    BottleneckFinding,
+    PerformanceRegressionFinding,
+    PerformanceReport,
+)
+from bist_signal_bot.performance.reporting import (
+    format_profile_text,
+    format_benchmark_text,
+    format_bottlenecks_text,
+    format_regressions_text,
+    format_performance_report_markdown,
+)
+
+def format_performance_profile(profile: PerformanceProfile) -> str:
+    return format_profile_text(profile)
+
+def format_benchmark_result(result: BenchmarkResult) -> str:
+    return format_benchmark_text(result)
+
+def format_bottleneck_findings(findings: list[BottleneckFinding]) -> str:
+    return format_bottlenecks_text(findings)
+
+def format_performance_regressions(findings: list[PerformanceRegressionFinding]) -> str:
+    return format_regressions_text(findings)
+
+def format_performance_report(report: PerformanceReport) -> str:
+    return format_performance_report_markdown(report)

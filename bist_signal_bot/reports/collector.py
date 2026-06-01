@@ -1,10 +1,14 @@
 from typing import Any
-def run_daily_report(dry_run=False, include_data_catalog=False, include_feature_store=False, include_orchestrator=False):
+def run_daily_report(dry_run=False, include_data_catalog=False, include_feature_store=False, include_orchestrator=False, include_performance=False):
     res = {"report": "daily"}
     if include_data_catalog:
         res["data_catalog_section"] = "included"
     if include_orchestrator:
         res['orchestrator_section'] = 'included'
+
+    if include_performance:
+        res["performance_section"] = "included"
+
     return res
 
 class ReportDataCollector:

@@ -2082,3 +2082,12 @@ class MaintenanceCadenceError(FinalHandoffError):
 
 class FinalHandoffStorageError(FinalHandoffError):
     pass
+
+class PerformanceTimerError(PerformanceError):
+    pass
+class PerformanceProfilerError(PerformanceError):
+    pass
+class ResourceBudgetError(PerformanceError):
+    pass
+class LocalCacheError(PerformanceError):
+    pass

@@ -103,3 +103,6 @@ python -m bist_signal_bot final-handoff build --save --json
 python -m bist_signal_bot final-handoff report --latest
 pytest
 ```
+
+## Local Performance Profiling & Optimization
+The `bist_signal_bot/performance` layer provides resource budgeting, bottleneck analysis, performance regression testing and caching. It enables deterministic local performance tracking ensuring that execution remains fast without trading off safety or deterministic behavior. See `docs/81_LOCAL_PERFORMANCE_OPTIMIZATION.md` for details.

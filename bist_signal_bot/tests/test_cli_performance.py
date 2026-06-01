@@ -1,23 +1,50 @@
 import pytest
-import argparse
+import json
+from argparse import Namespace
 from bist_signal_bot.cli.commands import handle_performance_command
-from bist_signal_bot.config.settings import Settings
 
-class DummyArgs:
-    def __init__(self, **kwargs):
-        for k, v in kwargs.items():
-            setattr(self, k, v)
+def test_cli_performance_profile(capsys):
+    args = Namespace(
+        perf_command="profile",
+        module="test",
+        command=None,
+        json=True
+    )
+    handle_performance_command(args, None)
 
-def test_cli_perf_config(capsys):
-    args = DummyArgs(perf_command="config", json=False)
-    settings = Settings(ENABLE_PERFORMANCE_PROFILING=True)
-    handle_performance_command(args, settings)
     captured = capsys.readouterr()
-    assert "ENABLE_PERFORMANCE_PROFILING" in captured.out
+    output = json.loads(captured.out)
 
-def test_cli_perf_resources_json(capsys):
-    args = DummyArgs(perf_command="resources", json=True)
-    settings = Settings(ENABLE_PERFORMANCE_PROFILING=True)
-    handle_performance_command(args, settings)
+    assert output["status"] == "ok"
+    assert output["command"] == "profile"
+    assert output["module"] == "test"
+
+def test_cli_performance_benchmark(capsys):
+    args = Namespace(
+        perf_command="benchmark",
+        scenario="ORCHESTRATOR_DRY_RUN",
+        json=True
+    )
+    handle_performance_command(args, None)
+
     captured = capsys.readouterr()
-    assert "snapshot_id" in captured.out
+    output = json.loads(captured.out)
+
+    assert output["status"] == "ok"
+    assert output["command"] == "benchmark"
+    assert output["scenario"] == "ORCHESTRATOR_DRY_RUN"
+
+def test_cli_performance_cache(capsys):
+    args = Namespace(
+        perf_command="cache",
+        cache_command="list",
+        json=True
+    )
+    handle_performance_command(args, None)
+
+    captured = capsys.readouterr()
+    output = json.loads(captured.out)
+
+    assert output["status"] == "ok"
+    assert output["command"] == "cache"
+    assert output["cache_command"] == "list"

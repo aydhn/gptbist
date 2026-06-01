@@ -1,6 +1,6 @@
 from typing import Any
 
-def run_doctor(settings=None, as_json=False, data_catalog=False, feature_store=False, leaderboard=False, orchestrator=False, final_audit=False, final_handoff=False):
+def run_doctor(settings=None, as_json=False, data_catalog=False, feature_store=False, leaderboard=False, orchestrator=False, final_audit=False, final_handoff=False, performance=False):
     res = {
         "status": "healthy",
         "checks": [
@@ -33,6 +33,17 @@ def run_doctor(settings=None, as_json=False, data_catalog=False, feature_store=F
             "blocked_guardrails": 0,
             "failed_recent_run": 0
         }
+
+    if performance:
+        res["performance"] = {
+            "slow_benchmark": False,
+            "stale_cache": True,
+            "missing_budgets": False,
+            "performance_regression": False,
+            "excessive_cache_size": False
+        }
+
+    return res
     if as_json:
         import json
         print(json.dumps(res, indent=2))

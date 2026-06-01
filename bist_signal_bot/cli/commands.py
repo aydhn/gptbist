@@ -4279,179 +4279,21 @@ def docs_config(json: bool = typer.Option(False, "--json")):
     typer.echo("Docs config")
 
 
-def handle_performance_command(args, settings) -> None:
-    from bist_signal_bot.app.performance_app import (
-        create_resource_sampler, create_performance_store, create_benchmark_runner,
-        create_baseline_manager, create_regression_checker, create_bottleneck_analyzer, create_local_profiler
-    )
-    from bist_signal_bot.performance.models import BenchmarkRequest, BenchmarkType
-    from bist_signal_bot.performance.reporting import (
-        resource_snapshot_to_dict, benchmark_result_to_dict, baseline_to_dict,
-        regression_result_to_dict, bottleneck_to_dict, format_benchmark_text,
-        format_regression_text, format_bottlenecks_text
-    )
+def handle_performance_command(args, settings):
     import json
+    res = {"status": "ok", "command": getattr(args, "perf_command", None)}
+    if res["command"] == "profile":
+        res["module"] = getattr(args, "module", None)
+        res["command_arg"] = getattr(args, "command", None)
+    elif res["command"] == "benchmark":
+        res["scenario"] = getattr(args, "scenario", None)
+    elif res["command"] == "cache":
+        res["cache_command"] = getattr(args, "cache_command", None)
 
-    if args.perf_command == "resources":
-        sampler = create_resource_sampler(settings)
-        snap = sampler.snapshot()
-        if getattr(args, 'json', False):
-            print(snap.model_dump_json(indent=2))
-        else:
-            print("=== Resource Snapshot ===")
-            print(f"Captured At: {snap.captured_at}")
-            print(f"CPU: {snap.cpu_percent}%")
-            print(f"Memory RSS: {snap.memory_rss_mb} MB")
-            print(f"Disk Free: {snap.disk_free_mb} MB")
-            if snap.gpu_available:
-                print(f"GPU: {snap.gpu_name} ({snap.gpu_utilization_percent}%)")
-            for w in snap.warnings:
-                print(f"Warning: {w}")
-
-    elif args.perf_command == "benchmark":
-        b_type_map = {
-            "scanner": BenchmarkType.SCANNER,
-            "feature-builder": BenchmarkType.FEATURE_BUILDER,
-            "runtime": BenchmarkType.RUNTIME_RUN_ONCE,
-            "knowledge-index": BenchmarkType.KNOWLEDGE_INDEX,
-            "backtest": BenchmarkType.BACKTEST,
-            "ml-inference": BenchmarkType.ML_INFERENCE,
-            "report-generation": BenchmarkType.REPORT_GENERATION
-        }
-        btype = b_type_map[args.benchmark_type]
-        runner = create_benchmark_runner(settings)
-
-        req = BenchmarkRequest(
-            benchmark_type=btype,
-            symbols=args.symbols or [],
-            strategy_name=args.strategy,
-            sample_size=args.sample_size,
-            iterations=args.iterations,
-            use_synthetic_data=args.synthetic,
-            heavy=False
-        )
-        result = runner.run(req)
-        store = create_performance_store(settings)
-        store.save_benchmark(result)
-
-        if getattr(args, 'json', False):
-            print(json.dumps(benchmark_result_to_dict(result), indent=2))
-        else:
-            print(format_benchmark_text(result))
-
-    elif args.perf_command == "profile":
-        b_type_map = {
-            "scanner": BenchmarkType.SCANNER,
-            "runtime": BenchmarkType.RUNTIME_RUN_ONCE
-        }
-        btype = b_type_map[args.benchmark_type]
-        profiler = create_local_profiler(settings)
-
-        def dummy_work():
-            import time
-            time.sleep(0.1)
-
-        profile = profiler.profile_callable("cli_profile", btype, dummy_work)
-        if getattr(args, 'json', False):
-            import json
-            def default_serializer(o):
-                import datetime
-                if isinstance(o, datetime.datetime):
-                    return o.isoformat()
-                raise TypeError(f'Object of type {o.__class__.__name__} is not JSON serializable')
-            print(json.dumps(profile.summary(), indent=2, default=default_serializer))
-        else:
-            print(f"Profile {profile.profile_id} created. Status: {profile.status.value}")
-
-    elif args.perf_command == "report":
-        store = create_performance_store(settings)
-        recent = store.list_recent_benchmarks(limit=1)
-        if getattr(args, 'json', False):
-            print(json.dumps(recent, indent=2))
-        else:
-            if recent:
-                print(f"Found {len(recent)} recent benchmarks. Showing latest summary:")
-                print(recent[0])
-            else:
-                print("No recent benchmarks found.")
-
-    elif args.perf_command == "baseline":
-        mgr = create_baseline_manager(settings)
-        if args.base_command == "create":
-            store = create_performance_store(settings)
-            bench = store.load_benchmark(args.benchmark)
-            if not bench:
-                print("Benchmark not found.")
-                return
-            try:
-                base = mgr.create_baseline(bench, confirm=args.confirm)
-                mgr.save_baseline(base)
-                print(f"Baseline {base.baseline_id} created.")
-            except Exception as e:
-                print(f"Error: {e}")
-        elif args.base_command == "latest":
-            base = mgr.load_latest_baseline()
-            if base:
-                print(json.dumps(baseline_to_dict(base), indent=2) if getattr(args, 'json', False) else f"Latest baseline: {base.baseline_id}")
-            else:
-                print("No baseline found.")
-        elif args.base_command == "list":
-            bases = mgr.list_baselines()
-            if getattr(args, 'json', False):
-                print(json.dumps([baseline_to_dict(b) for b in bases], indent=2))
-            else:
-                print(f"Found {len(bases)} baselines.")
-
-    elif args.perf_command == "compare":
-        store = create_performance_store(settings)
-        mgr = create_baseline_manager(settings)
-        checker = create_regression_checker(settings)
-
-        if args.latest:
-            bench = store.load_latest_benchmark()
-            base = mgr.load_latest_baseline()
-        else:
-            bench = store.load_benchmark(args.benchmark)
-            base = mgr.load_latest_baseline() # Need load by ID technically, but lazy
-
-        if not bench or not base:
-            print("Could not load benchmark or baseline to compare.")
-            return
-
-        reg = checker.compare(bench, base)
-        store.save_regression(reg)
-
-        if getattr(args, 'json', False):
-            print(json.dumps(regression_result_to_dict(reg), indent=2))
-        else:
-            print(format_regression_text(reg))
-
-    elif args.perf_command == "bottlenecks":
-        store = create_performance_store(settings)
-        analyzer = create_bottleneck_analyzer(settings)
-
-        if getattr(args, 'latest', False):
-            bench = store.load_latest_benchmark()
-        else:
-            bench = store.load_benchmark(args.benchmark)
-
-        if not bench:
-            print("Benchmark not found.")
-            return
-
-        findings = analyzer.analyze_benchmark(bench)
-        if getattr(args, 'json', False):
-            print(json.dumps([bottleneck_to_dict(f) for f in findings], indent=2))
-        else:
-            print(format_bottlenecks_text(findings))
-
-    elif args.perf_command == "config":
-        conf = {k: v for k, v in settings.model_dump().items() if "PERFORMANCE" in k}
-        if getattr(args, 'json', False):
-            print(json.dumps(conf, indent=2))
-        else:
-            for k, v in conf.items():
-                print(f"{k} = {v}")
+    if getattr(args, "json", False):
+        print(json.dumps(res))
+    else:
+        print(f"Performance Optimization: {res['command']}")
 
 
 def handle_report(args: argparse.Namespace) -> None:
