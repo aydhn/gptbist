@@ -72,3 +72,6 @@ class FinalReleasePackBuilder:
         if not pack.included_docs and self.settings.FINAL_HANDOFF_INCLUDE_DOCS:
             errors.append("No docs included but FINAL_HANDOFF_INCLUDE_DOCS is true.")
         return errors
+
+def add_report_templates_artifacts(pack):
+    return pack

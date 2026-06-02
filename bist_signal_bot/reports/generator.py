@@ -78,3 +78,22 @@ class ResearchReportGenerator:
 
     def build_default_config(self, report_type: ReportType = ReportType.DAILY) -> ReportConfig:
         return ReportConfig(report_type=report_type)
+def generate_advanced_report(template_name: str, export: bool = False, include_manifest: bool = False, settings=None):
+    from bist_signal_bot.app.report_templates_app import create_report_composer, create_report_exporter, create_report_manifest_builder
+    composer = create_report_composer(settings)
+    report = composer.compose(template_name)
+    pack = None
+    if export:
+        exporter = create_report_exporter(settings)
+        pack = exporter.export_report(report, confirm=True)
+    manifest = None
+    if include_manifest:
+        builder = create_report_manifest_builder(settings)
+        manifest = builder.build_manifest(report, pack)
+
+    return {
+        "report": report,
+        "pack": pack,
+        "manifest": manifest,
+        "markdown": report.markdown_text
+    }

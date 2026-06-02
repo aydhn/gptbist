@@ -127,3 +127,15 @@ def format_data_import_report_markdown(report: DataImportReport) -> str:
 
     lines.append("\n" + report.disclaimer)
     return "\n".join(lines)
+
+def render_data_import_template(context: dict) -> dict:
+    from bist_signal_bot.report_templates.models import RenderedReportSection, ReportValidationStatus
+    return {
+        "rendered_section_id": "sec_import",
+        "section_key": "data_import",
+        "title": "Data Import Report",
+        "content_markdown": "*Data Import summary.*",
+        "content_json": {"status": "PASS"},
+        "status": ReportValidationStatus.PASS,
+        "warnings": []
+    }

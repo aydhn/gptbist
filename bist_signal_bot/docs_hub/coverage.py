@@ -94,3 +94,6 @@ class DocsCoverageAnalyzer:
         if score is None: return DocsStatus.UNKNOWN
         if score >= 80.0: return DocsStatus.PASS
         return DocsStatus.WATCH
+
+def get_report_templates_coverage():
+    return {"docs": ["83_ADVANCED_REPORT_TEMPLATES.md"], "examples": ["report_templates_workflow.md"]}

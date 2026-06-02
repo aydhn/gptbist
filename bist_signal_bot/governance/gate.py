@@ -150,3 +150,10 @@ class GovernanceGate:
             if u.lower() in content.lower():
                 return {"status": "BLOCK", "reason": f"Unsafe what-if claim: {u}"}
         return {"status": "PASS"}
+
+    def check_report_templates_safe(self, content: str) -> dict:
+        unsafe = ["investment advice", "al/sat", "işlem yapılabilir", "trade ready"]
+        for u in unsafe:
+            if u.lower() in content.lower():
+                return {"status": "BLOCK", "reason": f"Unsafe report template claim: {u}"}
+        return {"status": "PASS"}

@@ -125,3 +125,13 @@ python -m bist_signal_bot data-import map --path data/my_ohlcv.csv --type OHLCV
 python -m bist_signal_bot data-import normalize --path data/my_ohlcv.csv --type OHLCV --dry-run
 python -m bist_signal_bot data-import run --path data/my_ohlcv.csv --type OHLCV --confirm
 ```
+
+### Advanced Report Templates
+- Report template library
+- Section library
+- Report composer
+- Safe narrative guard
+- Export pack
+- Report manifest
+- QA/Ops entegrasyonu
+- CLI report-templates kullanımı

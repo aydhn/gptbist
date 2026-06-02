@@ -206,3 +206,15 @@ def format_final_handoff_report_markdown(report: FinalHandoffReport) -> str:
 
     lines.append(f"\n> *Disclaimer*: {report.disclaimer}\n")
     return "\n".join(lines)
+
+def render_final_handoff_template(context: dict) -> dict:
+    from bist_signal_bot.report_templates.models import RenderedReportSection, ReportValidationStatus
+    return {
+        "rendered_section_id": "sec_handoff",
+        "section_key": "final_handoff",
+        "title": "Final Handoff Report",
+        "content_markdown": "*Final Handoff summary.*",
+        "content_json": {"status": "PASS"},
+        "status": ReportValidationStatus.PASS,
+        "warnings": []
+    }

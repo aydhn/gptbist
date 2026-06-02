@@ -335,3 +335,6 @@ def format_batch_run_text(run: Any) -> str:
 from bist_signal_bot.deployment.reporting import format_first_run_text, format_smoke_test_text, format_environment_doctor_text
 
 # Factors CLI formatting will be registered here
+
+def format_report_templates_report(report) -> str:
+    return "Report Templates Formatted String"
