@@ -135,3 +135,7 @@ python -m bist_signal_bot data-import run --path data/my_ohlcv.csv --type OHLCV 
 - Report manifest
 - QA/Ops entegrasyonu
 - CLI report-templates kullanımı
+
+
+## Synthetic Scenario Library
+Local offline scenario generation for testing, validation, and demo without real market data.
