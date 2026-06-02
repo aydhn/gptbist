@@ -1,3 +1,1 @@
-"""
-Performance Profiling, Resource Management, and Cache Optimization module.
-"""
+# Performance Module

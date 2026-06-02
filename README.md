@@ -103,3 +103,13 @@ python -m bist_signal_bot final-handoff build --save --json
 python -m bist_signal_bot final-handoff report --latest
 pytest
 ```
+
+## Performance Optimization
+* Profiling
+* Benchmark
+* Resource budget
+* Local cache
+* Bottleneck analysis
+* Regression checks
+* QA/Ops integration
+* CLI performance commands
