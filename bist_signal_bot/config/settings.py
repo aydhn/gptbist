@@ -7,6 +7,48 @@ from bist_signal_bot.config.secrets import settings_safe_dump
 
 class Settings(BaseSettings):
 
+    # Data Import Settings
+    ENABLE_DATA_IMPORT: bool = True
+    DATA_IMPORT_DIR_NAME: str = "data_import"
+    DATA_IMPORT_RESEARCH_ONLY: bool = True
+    DATA_IMPORT_SAVE_RESULTS: bool = True
+
+    DATA_IMPORT_ENABLE_CSV: bool = True
+    DATA_IMPORT_ENABLE_JSON: bool = True
+    DATA_IMPORT_ENABLE_JSONL: bool = True
+    DATA_IMPORT_ENABLE_PARQUET: bool = True
+    DATA_IMPORT_ENABLE_SQLITE: bool = True
+    DATA_IMPORT_ENABLE_EXCEL: bool = False
+
+    DATA_IMPORT_PREVIEW_MAX_ROWS: int = 20
+    DATA_IMPORT_INFER_TYPES: bool = True
+    DATA_IMPORT_ROW_COUNT_ESTIMATE: bool = True
+
+    DATA_IMPORT_AUTO_SCHEMA_MAPPING: bool = True
+    DATA_IMPORT_MAPPING_MIN_CONFIDENCE: float = 60.0
+    DATA_IMPORT_FAIL_ON_MISSING_REQUIRED: bool = True
+
+    DATA_IMPORT_NORMALIZE_SYMBOLS: bool = True
+    DATA_IMPORT_NORMALIZE_DATES: bool = True
+    DATA_IMPORT_NORMALIZE_DECIMAL_COMMA: bool = True
+    DATA_IMPORT_DROP_INVALID_REQUIRED_ROWS: bool = True
+    DATA_IMPORT_DEDUPLICATE: bool = True
+
+    DATA_IMPORT_CHUNKING_ENABLED: bool = True
+    DATA_IMPORT_CHUNK_SIZE: int = 50000
+    DATA_IMPORT_MAX_ROWS_MEMORY: int = 250000
+
+    DATA_IMPORT_DEFAULT_DRY_RUN: bool = True
+    DATA_IMPORT_WRITE_REQUIRES_CONFIRM: bool = True
+    DATA_IMPORT_REGISTER_CATALOG_REQUIRES_CONFIRM: bool = True
+
+    RUNTIME_DATA_IMPORT_ENABLED: bool = True
+    QA_INCLUDE_DATA_IMPORT: bool = True
+    OPS_INCLUDE_DATA_IMPORT: bool = True
+    REPORT_INCLUDE_DATA_IMPORT: bool = True
+    RESEARCH_AUTO_LOG_DATA_IMPORT: bool = False
+
+
     # --- RESEARCH ORCHESTRATOR / CAMPAIGN RUNNER SETTINGS ---
     ENABLE_RESEARCH_ORCHESTRATOR: bool = Field(default=True)
     RESEARCH_ORCHESTRATOR_DIR_NAME: str = Field(default="research_orchestrator")
