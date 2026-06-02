@@ -1,200 +1,172 @@
-import datetime
 from enum import Enum
 from typing import Any
 from pydantic import BaseModel, Field
+import datetime
 
 class PerformanceStatus(str, Enum):
     PASS = "PASS"
-    WARN = "WARN"
+    WATCH = "WATCH"
+    SLOW = "SLOW"
+    DEGRADED = "DEGRADED"
     FAIL = "FAIL"
+    BLOCKED = "BLOCKED"
     SKIPPED = "SKIPPED"
-    ERROR = "ERROR"
     UNKNOWN = "UNKNOWN"
 
-class BenchmarkType(str, Enum):
-    SCANNER = "SCANNER"
-    FEATURE_BUILDER = "FEATURE_BUILDER"
-    ML_INFERENCE = "ML_INFERENCE"
-    BACKTEST = "BACKTEST"
-    OPTIMIZATION = "OPTIMIZATION"
-    RUNTIME_RUN_ONCE = "RUNTIME_RUN_ONCE"
-    KNOWLEDGE_INDEX = "KNOWLEDGE_INDEX"
-    DRIFT_CHECK = "DRIFT_CHECK"
-    STRESS_TEST = "STRESS_TEST"
-    PORTFOLIO_RESEARCH = "PORTFOLIO_RESEARCH"
-    RESEARCH_LAB_JOB = "RESEARCH_LAB_JOB"
-    SCHEDULER_JOB = "SCHEDULER_JOB"
-    REPORT_GENERATION = "REPORT_GENERATION"
+class ResourceKind(str, Enum):
+    CPU = "CPU"
+    MEMORY = "MEMORY"
+    DISK = "DISK"
+    RUNTIME = "RUNTIME"
+    IO = "IO"
+    CACHE = "CACHE"
     CUSTOM = "CUSTOM"
 
-class ResourceMetricType(str, Enum):
-    WALL_TIME_SECONDS = "WALL_TIME_SECONDS"
-    CPU_TIME_SECONDS = "CPU_TIME_SECONDS"
-    MEMORY_RSS_MB = "MEMORY_RSS_MB"
-    MEMORY_PEAK_MB = "MEMORY_PEAK_MB"
-    CPU_PERCENT = "CPU_PERCENT"
-    GPU_MEMORY_MB = "GPU_MEMORY_MB"
-    GPU_UTILIZATION_PERCENT = "GPU_UTILIZATION_PERCENT"
-    DISK_READ_MB = "DISK_READ_MB"
-    DISK_WRITE_MB = "DISK_WRITE_MB"
-    ROWS_PROCESSED = "ROWS_PROCESSED"
-    SYMBOLS_PROCESSED = "SYMBOLS_PROCESSED"
-    CACHE_HIT_RATE = "CACHE_HIT_RATE"
+class CacheStatus(str, Enum):
+    HIT = "HIT"
+    MISS = "MISS"
+    STALE = "STALE"
+    INVALID = "INVALID"
+    BYPASS = "BYPASS"
+    DISABLED = "DISABLED"
+    UNKNOWN = "UNKNOWN"
+
+class BenchmarkScenario(str, Enum):
+    BOOTSTRAP_VALIDATE = "BOOTSTRAP_VALIDATE"
+    OFFLINE_DEMO = "OFFLINE_DEMO"
+    DATA_CATALOG_GATE = "DATA_CATALOG_GATE"
+    FEATURE_COMPUTE = "FEATURE_COMPUTE"
+    FEATURE_SERVE = "FEATURE_SERVE"
+    MODEL_GOVERNANCE = "MODEL_GOVERNANCE"
+    MONITORING_STATUS = "MONITORING_STATUS"
+    LEADERBOARD_BUILD = "LEADERBOARD_BUILD"
+    ORCHESTRATOR_DRY_RUN = "ORCHESTRATOR_DRY_RUN"
+    REPORT_DAILY_DRY_RUN = "REPORT_DAILY_DRY_RUN"
+    FINAL_AUDIT_GO_NO_GO = "FINAL_AUDIT_GO_NO_GO"
     CUSTOM = "CUSTOM"
 
-class PerformanceSeverity(str, Enum):
-    INFO = "INFO"
-    LOW = "LOW"
-    MEDIUM = "MEDIUM"
-    HIGH = "HIGH"
-    CRITICAL = "CRITICAL"
-
-class PerformanceMetric(BaseModel):
-    metric_id: str
-    metric_type: ResourceMetricType
+class TimingMeasurement(BaseModel):
+    timing_id: str
     name: str
-    value: float | int | str | None
+    started_at: datetime.datetime
+    finished_at: datetime.datetime | None = None
+    elapsed_seconds: float | None = None
+    status: PerformanceStatus
+    warnings: list[str] = Field(default_factory=list)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+class ResourceMeasurement(BaseModel):
+    measurement_id: str
+    resource_kind: ResourceKind
+    module_name: str
+    command: str | None = None
+    value: float | None = None
     unit: str
+    threshold: float | None = None
     status: PerformanceStatus
-    threshold_warn: float | None = None
-    threshold_fail: float | None = None
-    metadata: dict[str, Any] = Field(default_factory=dict)
-
-class ResourceSnapshot(BaseModel):
-    snapshot_id: str
-    captured_at: datetime.datetime
-    cpu_percent: float | None = None
-    memory_rss_mb: float | None = None
-    memory_available_mb: float | None = None
-    disk_free_mb: float | None = None
-    gpu_available: bool = False
-    gpu_name: str | None = None
-    gpu_memory_used_mb: float | None = None
-    gpu_memory_total_mb: float | None = None
-    gpu_utilization_percent: float | None = None
+    measured_at: datetime.datetime
     warnings: list[str] = Field(default_factory=list)
     metadata: dict[str, Any] = Field(default_factory=dict)
 
-class ProfileSpan(BaseModel):
-    span_id: str
-    name: str
-    module: str | None = None
-    started_at: datetime.datetime
-    finished_at: datetime.datetime | None = None
-    elapsed_seconds: float = 0.0
-    cpu_time_seconds: float | None = None
-    memory_before_mb: float | None = None
-    memory_after_mb: float | None = None
-    memory_delta_mb: float | None = None
-    children: list[str] = Field(default_factory=list)
-    warnings: list[str] = Field(default_factory=list)
-    metadata: dict[str, Any] = Field(default_factory=dict)
-
-class ProfileResult(BaseModel):
-    profile_id: str
-    benchmark_type: BenchmarkType
-    started_at: datetime.datetime
-    finished_at: datetime.datetime | None = None
-    elapsed_seconds: float = 0.0
-    spans: list[ProfileSpan] = Field(default_factory=list)
-    resource_snapshots: list[ResourceSnapshot] = Field(default_factory=list)
-    metrics: list[PerformanceMetric] = Field(default_factory=list)
-    status: PerformanceStatus = PerformanceStatus.UNKNOWN
-    warnings: list[str] = Field(default_factory=list)
-    errors: list[str] = Field(default_factory=list)
-    disclaimer: str = "Performance profile is operational only. Not investment advice. No real order was sent."
-    metadata: dict[str, Any] = Field(default_factory=dict)
-
-    def summary(self) -> dict[str, Any]:
-        return {
-            "profile_id": self.profile_id,
-            "benchmark_type": self.benchmark_type.value,
-            "elapsed_seconds": self.elapsed_seconds,
-            "status": self.status.value,
-            "span_count": len(self.spans),
-            "disclaimer": self.disclaimer
-        }
-
-class BenchmarkRequest(BaseModel):
-    benchmark_type: BenchmarkType
-    symbols: list[str] = Field(default_factory=list)
-    strategy_name: str | None = None
-    sample_size: int = Field(default=20, gt=0)
-    iterations: int = Field(default=3, gt=0)
-    warmup_iterations: int = Field(default=1, ge=0)
-    use_synthetic_data: bool = True
-    heavy: bool = False
-    save_output: bool = True
-    metadata: dict[str, Any] = Field(default_factory=dict)
-
-class BenchmarkRunResult(BaseModel):
-    benchmark_id: str
-    request: BenchmarkRequest
+class ResourceBudget(BaseModel):
+    budget_id: str
+    module_name: str
+    max_runtime_seconds: float | None = None
+    max_memory_mb: float | None = None
+    max_disk_mb: float | None = None
+    max_rows: int | None = None
+    max_cache_age_seconds: int | None = None
     status: PerformanceStatus
-    profiles: list[ProfileResult] = Field(default_factory=list)
-    aggregate_metrics: list[PerformanceMetric] = Field(default_factory=list)
-    median_elapsed_seconds: float | None = None
-    p95_elapsed_seconds: float | None = None
-    max_memory_peak_mb: float | None = None
-    throughput_items_per_second: float | None = None
     warnings: list[str] = Field(default_factory=list)
-    errors: list[str] = Field(default_factory=list)
-    output_files: dict[str, str] = Field(default_factory=dict)
-    disclaimer: str = "Benchmark result is operational only. Not investment advice. No real order was sent."
+    disclaimer: str = "Resource budget is local software performance metadata only. It is not investment advice or permission to trade. No real order was sent."
     metadata: dict[str, Any] = Field(default_factory=dict)
 
-    def summary(self) -> dict[str, Any]:
-        return {
-            "benchmark_id": self.benchmark_id,
-            "benchmark_type": self.request.benchmark_type.value,
-            "status": self.status.value,
-            "median_elapsed_seconds": self.median_elapsed_seconds,
-            "max_memory_peak_mb": self.max_memory_peak_mb,
-            "throughput_items_per_second": self.throughput_items_per_second,
-            "disclaimer": self.disclaimer
-        }
-
-class PerformanceBaseline(BaseModel):
-    baseline_id: str
+class CacheEntry(BaseModel):
+    cache_id: str
+    key: str
+    namespace: str
+    path: str
     created_at: datetime.datetime
-    benchmark_type: BenchmarkType
-    environment_hash: str
-    metrics: dict[str, float] = Field(default_factory=dict)
-    sample_size: int = Field(default=20, gt=0)
-    iterations: int = Field(default=3, gt=0)
-    app_version: str = "1.0.0"
-    notes: str | None = None
+    expires_at: datetime.datetime | None = None
+    checksum: str | None = None
+    status: CacheStatus
+    size_bytes: int | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)
 
-class PerformanceRegressionResult(BaseModel):
-    regression_id: str
-    benchmark_id: str
-    baseline_id: str
-    status: PerformanceStatus
-    metric_changes_pct: dict[str, float] = Field(default_factory=dict)
-    regressions: list[str] = Field(default_factory=list)
-    improvements: list[str] = Field(default_factory=list)
+class CacheLookupResult(BaseModel):
+    lookup_id: str
+    key: str
+    namespace: str
+    status: CacheStatus
+    entry: CacheEntry | None = None
+    reason: str | None = None
     warnings: list[str] = Field(default_factory=list)
-    disclaimer: str = "Performance regression result is operational only. No real order was sent."
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+class PerformanceProfile(BaseModel):
+    profile_id: str
+    created_at: datetime.datetime
+    module_name: str
+    command: str | None = None
+    timings: list[TimingMeasurement] = Field(default_factory=list)
+    resources: list[ResourceMeasurement] = Field(default_factory=list)
+    cache_results: list[CacheLookupResult] = Field(default_factory=list)
+    status: PerformanceStatus
+    bottleneck_summary: list[str] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+    disclaimer: str = "Performance profile is local software diagnostics output only. It is not investment advice or trading guidance. No real order was sent."
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+class BenchmarkResult(BaseModel):
+    benchmark_id: str
+    scenario: BenchmarkScenario
+    created_at: datetime.datetime
+    command: str | None = None
+    elapsed_seconds: float | None = None
+    memory_mb: float | None = None
+    disk_mb: float | None = None
+    cache_hit_count: int = 0
+    cache_miss_count: int = 0
+    status: PerformanceStatus
+    output_refs: dict[str, str] = Field(default_factory=dict)
+    warnings: list[str] = Field(default_factory=list)
+    disclaimer: str = "Benchmark result is local software performance metadata only. It does not indicate financial performance. No real order was sent."
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 class BottleneckFinding(BaseModel):
     finding_id: str
-    name: str
-    benchmark_type: BenchmarkType
-    severity: PerformanceSeverity
+    module_name: str
+    resource_kind: ResourceKind
+    severity: str
     message: str
-    evidence: dict[str, Any] = Field(default_factory=dict)
-    recommendations: list[str] = Field(default_factory=list)
+    evidence_refs: list[str] = Field(default_factory=list)
+    suggested_action: str | None = None
+    status: PerformanceStatus
+    warnings: list[str] = Field(default_factory=list)
     metadata: dict[str, Any] = Field(default_factory=dict)
 
-class PerformanceRecommendation(BaseModel):
-    recommendation_id: str
-    title: str
-    severity: PerformanceSeverity
-    module: str | None = None
-    action: str
-    expected_impact: str | None = None
-    risk: str | None = None
-    requires_code_change: bool = False
+class PerformanceRegressionFinding(BaseModel):
+    regression_id: str
+    scenario: BenchmarkScenario
+    baseline_value: float | None = None
+    current_value: float | None = None
+    delta_pct: float | None = None
+    threshold_pct: float
+    status: PerformanceStatus
+    message: str
+    warnings: list[str] = Field(default_factory=list)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+class PerformanceReport(BaseModel):
+    report_id: str
+    generated_at: datetime.datetime
+    profiles: list[PerformanceProfile] = Field(default_factory=list)
+    benchmarks: list[BenchmarkResult] = Field(default_factory=list)
+    bottlenecks: list[BottleneckFinding] = Field(default_factory=list)
+    regressions: list[PerformanceRegressionFinding] = Field(default_factory=list)
+    resource_budgets: list[ResourceBudget] = Field(default_factory=list)
+    cache_entries: list[CacheEntry] = Field(default_factory=list)
+    key_findings: list[str] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+    disclaimer: str = "Performance report is local software optimization reporting only. It is not investment advice or permission to trade. No real order was sent."
     metadata: dict[str, Any] = Field(default_factory=dict)

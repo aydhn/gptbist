@@ -1,85 +1,52 @@
-import uuid
-from typing import List, Optional
-
-from bist_signal_bot.config.settings import Settings
-from bist_signal_bot.performance.models import (
-    BenchmarkRunResult, ProfileResult, ProfileSpan, BottleneckFinding,
-    PerformanceSeverity, BenchmarkType
-)
+from bist_signal_bot.performance.models import BottleneckFinding, PerformanceProfile, BenchmarkResult, ResourceKind, PerformanceStatus
+import datetime
 
 class BottleneckAnalyzer:
-    def __init__(self, settings: Optional[Settings] = None):
-        self.settings = settings or Settings()
+    def __init__(self, settings=None, base_dir=None):
+        self.settings = settings
+        self.base_dir = base_dir
 
-    def slowest_spans(self, profile: ProfileResult, top_n: int = 10) -> List[ProfileSpan]:
-        # Filter spans to find those taking the most time
-        # Ideally, we only look at leaf nodes or non-overlapping time, but simple sort by elapsed works for basic analysis
-        sorted_spans = sorted(profile.spans, key=lambda s: s.elapsed_seconds, reverse=True)
-        return sorted_spans[:top_n]
-
-    def memory_growth_findings(self, profile: ProfileResult) -> List[BottleneckFinding]:
+    def analyze_profile(self, profile: PerformanceProfile) -> list[BottleneckFinding]:
         findings = []
-        warn_mb = getattr(self.settings, 'PERFORMANCE_MEMORY_DELTA_WARN_MB', 250.0)
-        fail_mb = getattr(self.settings, 'PERFORMANCE_MEMORY_DELTA_FAIL_MB', 750.0)
-
-        for span in profile.spans:
-            if span.memory_delta_mb is not None and span.memory_delta_mb > warn_mb:
-                severity = PerformanceSeverity.HIGH if span.memory_delta_mb > fail_mb else PerformanceSeverity.MEDIUM
-                findings.append(BottleneckFinding(
-                    finding_id=str(uuid.uuid4()),
-                    name=f"High memory growth in {span.name}",
-                    benchmark_type=profile.benchmark_type,
-                    severity=severity,
-                    message=f"Span '{span.name}' consumed {span.memory_delta_mb:.1f} MB during execution.",
-                    evidence={"span_id": span.span_id, "memory_delta_mb": span.memory_delta_mb}
-                ))
+        r_bottleneck = self.detect_runtime_bottleneck(profile)
+        if r_bottleneck:
+            findings.append(r_bottleneck)
+        c_bottleneck = self.detect_cache_bottleneck(profile)
+        if c_bottleneck:
+            findings.append(c_bottleneck)
         return findings
 
-    def throughput_findings(self, result: BenchmarkRunResult) -> List[BottleneckFinding]:
-        findings = []
-        # Look for unusually low throughput. Values are arbitrary for now unless we have baselines.
-        if result.throughput_items_per_second is not None and result.throughput_items_per_second < 1.0:
-            findings.append(BottleneckFinding(
-                finding_id=str(uuid.uuid4()),
-                name="Low throughput detected",
-                benchmark_type=result.request.benchmark_type,
-                severity=PerformanceSeverity.MEDIUM,
-                message=f"Throughput is {result.throughput_items_per_second:.2f} items/sec, which is very slow.",
-                evidence={"throughput": result.throughput_items_per_second}
-            ))
-        return findings
+    def analyze_benchmarks(self, results: list[BenchmarkResult]) -> list[BottleneckFinding]:
+        return []
 
-    def analyze_profile(self, profile: ProfileResult) -> List[BottleneckFinding]:
-        findings = []
-        findings.extend(self.memory_growth_findings(profile))
+    def detect_runtime_bottleneck(self, profile: PerformanceProfile) -> BottleneckFinding | None:
+        total_time = sum(t.elapsed_seconds for t in profile.timings if t.elapsed_seconds)
+        if total_time > 30.0:
+            return BottleneckFinding(
+                finding_id=f"bn_rt_{profile.profile_id}",
+                module_name=profile.module_name,
+                resource_kind=ResourceKind.RUNTIME,
+                severity="HIGH",
+                message=f"Runtime bottleneck detected: {total_time}s",
+                status=PerformanceStatus.SLOW,
+                suggested_action=self.suggest_action("runtime")
+            )
+        return None
 
-        warn_sec = getattr(self.settings, 'PERFORMANCE_SLOW_SPAN_WARN_SECONDS', 2.0)
-        fail_sec = getattr(self.settings, 'PERFORMANCE_SLOW_SPAN_FAIL_SECONDS', 10.0)
+    def detect_memory_bottleneck(self, profile: PerformanceProfile) -> BottleneckFinding | None:
+        return None
 
-        for span in self.slowest_spans(profile):
-            if span.elapsed_seconds > warn_sec:
-                severity = PerformanceSeverity.HIGH if span.elapsed_seconds > fail_sec else PerformanceSeverity.MEDIUM
-                findings.append(BottleneckFinding(
-                    finding_id=str(uuid.uuid4()),
-                    name=f"Slow execution in {span.name}",
-                    benchmark_type=profile.benchmark_type,
-                    severity=severity,
-                    message=f"Span '{span.name}' took {span.elapsed_seconds:.2f} seconds.",
-                    evidence={"span_id": span.span_id, "elapsed_seconds": span.elapsed_seconds}
-                ))
-        return findings
+    def detect_cache_bottleneck(self, profile: PerformanceProfile) -> BottleneckFinding | None:
+        return None
 
-    def analyze_benchmark(self, result: BenchmarkRunResult) -> List[BottleneckFinding]:
-        findings = []
-        findings.extend(self.throughput_findings(result))
-        for p in result.profiles:
-            findings.extend(self.analyze_profile(p))
+    def suggest_action(self, finding_type: str | BottleneckFinding) -> str | None:
+        if isinstance(finding_type, str):
+            ftype = finding_type
+        else:
+            ftype = finding_type.resource_kind.value.lower()
 
-        # Deduplicate by name and message
-        unique_findings = {}
-        for f in findings:
-            key = f"{f.name}-{f.message}"
-            if key not in unique_findings:
-                unique_findings[key] = f
-
-        return list(unique_findings.values())
+        if "runtime" in ftype:
+            return "use sampling"
+        elif "cache" in ftype:
+            return "enable local cache"
+        return "use dry-run first"

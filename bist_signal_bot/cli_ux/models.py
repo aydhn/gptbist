@@ -55,6 +55,10 @@ class CommandContractType(str, Enum):
     CUSTOM = "CUSTOM"
 
 class CLIOutputEnvelope(BaseModel):
+    elapsed_seconds: float | None = None
+    performance_status: str | None = None
+    cache_status: str | None = None
+
     envelope_id: str
     created_at: datetime
     command: str
