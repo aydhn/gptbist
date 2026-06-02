@@ -1,142 +1,73 @@
-import pandas as pd
-from typing import Any, Dict, List, Optional
-
 from bist_signal_bot.performance.models import (
-    PerformanceMetric, ResourceSnapshot, ProfileResult, BenchmarkRunResult,
-    PerformanceBaseline, PerformanceRegressionResult, BottleneckFinding,
-    PerformanceRecommendation, ProfileSpan
+    PerformanceProfile, BenchmarkResult, BottleneckFinding,
+    PerformanceRegressionFinding, ResourceBudget, CacheEntry, CacheLookupResult,
+    PerformanceReport, TimingMeasurement, ResourceMeasurement
 )
+from typing import Any
 
-def performance_metric_to_dict(metric: PerformanceMetric) -> Dict[str, Any]:
-    return metric.model_dump()
+def timing_to_dict(measurement: TimingMeasurement) -> dict[str, Any]:
+    return measurement.model_dump(mode="json")
 
-def resource_snapshot_to_dict(snapshot: ResourceSnapshot) -> Dict[str, Any]:
-    return snapshot.model_dump()
+def resource_to_dict(measurement: ResourceMeasurement) -> dict[str, Any]:
+    return measurement.model_dump(mode="json")
 
-def profile_result_to_dict(profile: ProfileResult) -> Dict[str, Any]:
-    return profile.model_dump()
+def budget_to_dict(budget: ResourceBudget) -> dict[str, Any]:
+    return budget.model_dump(mode="json")
 
-def benchmark_result_to_dict(result: BenchmarkRunResult) -> Dict[str, Any]:
-    return result.model_dump()
+def cache_entry_to_dict(entry: CacheEntry) -> dict[str, Any]:
+    return entry.model_dump(mode="json")
 
-def baseline_to_dict(baseline: PerformanceBaseline) -> Dict[str, Any]:
-    return baseline.model_dump()
+def cache_lookup_to_dict(result: CacheLookupResult) -> dict[str, Any]:
+    return result.model_dump(mode="json")
 
-def regression_result_to_dict(result: PerformanceRegressionResult) -> Dict[str, Any]:
-    return result.model_dump()
+def profile_to_dict(profile: PerformanceProfile) -> dict[str, Any]:
+    return profile.model_dump(mode="json")
 
-def bottleneck_to_dict(finding: BottleneckFinding) -> Dict[str, Any]:
-    return finding.model_dump()
+def benchmark_to_dict(result: BenchmarkResult) -> dict[str, Any]:
+    return result.model_dump(mode="json")
 
-def recommendation_to_dict(rec: PerformanceRecommendation) -> Dict[str, Any]:
-    return rec.model_dump()
+def bottleneck_to_dict(finding: BottleneckFinding) -> dict[str, Any]:
+    return finding.model_dump(mode="json")
 
-def metrics_to_dataframe(metrics: List[PerformanceMetric]) -> pd.DataFrame:
-    data = []
-    for m in metrics:
-        data.append({
-            "Name": m.name,
-            "Value": m.value,
-            "Unit": m.unit,
-            "Status": m.status.value
-        })
-    return pd.DataFrame(data)
+def regression_to_dict(finding: PerformanceRegressionFinding) -> dict[str, Any]:
+    return finding.model_dump(mode="json")
 
-def spans_to_dataframe(spans: List[ProfileSpan]) -> pd.DataFrame:
-    data = []
-    for s in spans:
-        data.append({
-            "Name": s.name,
-            "Elapsed (s)": s.elapsed_seconds,
-            "Mem Delta (MB)": s.memory_delta_mb,
-            "Module": s.module
-        })
-    return pd.DataFrame(data)
+def performance_report_to_dict(report: PerformanceReport) -> dict[str, Any]:
+    return report.model_dump(mode="json")
 
-def format_profile_text(profile: ProfileResult) -> str:
-    lines = [
-        "=== PERFORMANCE PROFILE ===",
-        f"Benchmark Type: {profile.benchmark_type.value}",
-        f"Status: {profile.status.value}",
-        f"Elapsed Seconds: {profile.elapsed_seconds:.2f}",
-        f"Spans Recorded: {len(profile.spans)}",
-        "",
-        profile.disclaimer
-    ]
+def format_profile_text(profile: PerformanceProfile) -> str:
+    lines = [f"Performance Profile: {profile.module_name}", f"Status: {profile.status.value}"]
+    for t in profile.timings:
+        lines.append(f"- {t.name}: {t.elapsed_seconds}s ({t.status.value})")
+    lines.append(f"\nDisclaimer: {profile.disclaimer}")
     return "\n".join(lines)
 
-def format_benchmark_text(result: BenchmarkRunResult) -> str:
-    lines = [
-        "=== BENCHMARK RESULT ===",
-        f"Type: {result.request.benchmark_type.value}",
-        f"Status: {result.status.value}",
-        f"Median Elapsed (s): {result.median_elapsed_seconds:.2f}" if result.median_elapsed_seconds else "Median Elapsed (s): N/A",
-        f"P95 Elapsed (s): {result.p95_elapsed_seconds:.2f}" if result.p95_elapsed_seconds else "P95 Elapsed (s): N/A",
-        f"Max Memory Peak (MB): {result.max_memory_peak_mb:.1f}" if result.max_memory_peak_mb else "Max Memory Peak (MB): N/A",
-        f"Throughput (items/sec): {result.throughput_items_per_second:.2f}" if result.throughput_items_per_second else "Throughput (items/sec): N/A",
-        "",
-        result.disclaimer
-    ]
-    return "\n".join(lines)
+def format_benchmark_text(result: BenchmarkResult) -> str:
+    return f"Benchmark {result.scenario.value}: {result.status.value} ({result.elapsed_seconds}s)\nDisclaimer: {result.disclaimer}"
 
-def format_regression_text(result: PerformanceRegressionResult) -> str:
-    lines = [
-        "=== PERFORMANCE REGRESSION ===",
-        f"Status: {result.status.value}",
-        ""
-    ]
-    if result.regressions:
-        lines.append("Regressions Detected:")
-        for r in result.regressions:
-            lines.append(f"- {r}")
-        lines.append("")
-    if result.improvements:
-        lines.append("Improvements Detected:")
-        for i in result.improvements:
-            lines.append(f"- {i}")
-        lines.append("")
-    lines.append(result.disclaimer)
-    return "\n".join(lines)
-
-def format_bottlenecks_text(findings: List[BottleneckFinding]) -> str:
+def format_bottlenecks_text(findings: list[BottleneckFinding]) -> str:
     if not findings:
         return "No bottlenecks found."
-    lines = ["=== BOTTLENECKS ==="]
-    for f in findings:
-        lines.append(f"[{f.severity.value}] {f.name}: {f.message}")
-    return "\n".join(lines)
+    return "\n".join(f"- {f.module_name} ({f.resource_kind.value}): {f.message} (Action: {f.suggested_action})" for f in findings)
 
-def format_performance_report_markdown(result: BenchmarkRunResult, findings: Optional[List[BottleneckFinding]] = None, recommendations: Optional[List[PerformanceRecommendation]] = None) -> str:
+def format_regressions_text(findings: list[PerformanceRegressionFinding]) -> str:
+    if not findings:
+        return "No regressions found."
+    return "\n".join(f"- {f.scenario.value}: {f.message} ({f.status.value})" for f in findings)
+
+def format_cache_text(entries: list[CacheEntry]) -> str:
+    if not entries:
+        return "Cache is empty."
+    return "\n".join(f"- {e.namespace}/{e.key}: {e.status.value} (Expires: {e.expires_at})" for e in entries)
+
+def format_performance_report_markdown(report: PerformanceReport) -> str:
     lines = [
-        "# Performance Report",
+        f"# Performance Report ({report.generated_at.isoformat()})",
         "",
-        "## Benchmark Summary",
-        f"- **Type**: {result.request.benchmark_type.value}",
-        f"- **Status**: {result.status.value}",
-        f"- **Median Elapsed**: {result.median_elapsed_seconds:.2f} s" if result.median_elapsed_seconds else "- **Median Elapsed**: N/A",
-        f"- **P95 Elapsed**: {result.p95_elapsed_seconds:.2f} s" if result.p95_elapsed_seconds else "- **P95 Elapsed**: N/A",
-        f"- **Peak Memory**: {result.max_memory_peak_mb:.1f} MB" if result.max_memory_peak_mb else "- **Peak Memory**: N/A",
-        "",
-        "## Findings",
+        "## Summary",
     ]
-    if findings:
-        for f in findings:
-            lines.append(f"- **[{f.severity.value}]** {f.name}: {f.message}")
-    else:
-        lines.append("No significant bottlenecks detected.")
+    for k in report.key_findings:
+        lines.append(f"- {k}")
 
-    lines.append("")
-    lines.append("## Recommendations")
-    if recommendations:
-        for r in recommendations:
-            lines.append(f"- **{r.title}**: {r.action} (Impact: {r.expected_impact})")
-    else:
-        lines.append("No recommendations.")
-
-    lines.extend([
-        "",
-        "---",
-        f"*{result.disclaimer}*"
-    ])
-
+    lines.extend(["", "## Disclaimer", f"*{report.disclaimer}*"])
     return "\n".join(lines)

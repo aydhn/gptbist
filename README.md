@@ -103,3 +103,6 @@ python -m bist_signal_bot final-handoff build --save --json
 python -m bist_signal_bot final-handoff report --latest
 pytest
 ```
+
+## Performance Optimization
+See `bist_signal_bot/docs/81_LOCAL_PERFORMANCE_OPTIMIZATION.md` for profiling, benchmarking, caching, and resource budgeting tools.
