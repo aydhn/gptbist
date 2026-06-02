@@ -618,3 +618,8 @@ def get_report_templates_dir(settings: Optional[Settings] = None) -> Path:
     d = base / (settings.REPORT_TEMPLATES_DIR_NAME if settings and hasattr(settings, "REPORT_TEMPLATES_DIR_NAME") else "report_templates")
     d.mkdir(parents=True, exist_ok=True)
     return d
+
+
+def get_synthetic_scenarios_dir(settings=None) -> Path:
+    from pathlib import Path
+    return Path("data/synthetic_scenarios")

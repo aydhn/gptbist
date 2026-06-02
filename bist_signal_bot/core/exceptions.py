@@ -2094,3 +2094,19 @@ class MaintenanceCadenceError(FinalHandoffError):
 
 class FinalHandoffStorageError(FinalHandoffError):
     pass
+
+
+class SyntheticScenarioError(Exception): pass
+class SyntheticScenarioLibraryError(SyntheticScenarioError): pass
+class SyntheticGeneratorError(SyntheticScenarioError): pass
+class SyntheticOHLCVError(SyntheticGeneratorError): pass
+class SyntheticMacroError(SyntheticGeneratorError): pass
+class SyntheticBreadthError(SyntheticGeneratorError): pass
+class SyntheticFinancialsError(SyntheticGeneratorError): pass
+class SyntheticEventError(SyntheticGeneratorError): pass
+class SyntheticFeatureFrameError(SyntheticGeneratorError): pass
+class SyntheticStressCaseError(SyntheticScenarioError): pass
+class SyntheticEdgeCaseError(SyntheticScenarioError): pass
+class SyntheticScenarioManifestError(SyntheticScenarioError): pass
+class SyntheticScenarioValidationError(SyntheticScenarioError): pass
+class SyntheticScenarioStorageError(SyntheticScenarioError): pass

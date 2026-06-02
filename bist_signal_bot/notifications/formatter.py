@@ -1945,3 +1945,15 @@ def format_report_template_validation(result) -> str:
 
 def format_report_templates_report(report) -> str:
     return "Report Templates Report Formatted String"
+
+
+def format_synthetic_scenario_spec(spec) -> str:
+    return f"Spec {spec.scenario_id}"
+def format_synthetic_dataset(dataset) -> str:
+    return f"Dataset {dataset.dataset_id}"
+def format_synthetic_manifest(manifest) -> str:
+    return f"Manifest {manifest.manifest_id}"
+def format_synthetic_validation(result) -> str:
+    return f"Validation {result.status.value}"
+def format_synthetic_scenario_report(report) -> str:
+    return "Synthetic scenario summary report."
