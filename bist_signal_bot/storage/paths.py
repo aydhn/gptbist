@@ -606,3 +606,9 @@ def get_final_handoff_dir(settings: Settings | None = None) -> Path:
     path = get_data_dir(s) / s.FINAL_HANDOFF_DIR_NAME
     path.mkdir(parents=True, exist_ok=True)
     return path
+
+def get_data_import_dir(settings=None) -> Path:
+    base = get_data_dir(settings)
+    d = base / (settings.DATA_IMPORT_DIR_NAME if settings and hasattr(settings, "DATA_IMPORT_DIR_NAME") else "data_import")
+    d.mkdir(parents=True, exist_ok=True)
+    return d
