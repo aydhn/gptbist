@@ -2285,6 +2285,42 @@ class Settings(BaseSettings):
     REPORT_INCLUDE_LEADERBOARD: bool = True
     RESEARCH_AUTO_LOG_LEADERBOARD: bool = False
 
+
+    # --- Advanced Report Templates ---
+    ENABLE_REPORT_TEMPLATES: bool = True
+    REPORT_TEMPLATES_DIR_NAME: str = "report_templates"
+    REPORT_TEMPLATES_RESEARCH_ONLY: bool = True
+    REPORT_TEMPLATES_SAVE_RESULTS: bool = True
+    REPORT_TEMPLATES_LOAD_DEFAULTS: bool = True
+    REPORT_TEMPLATES_DEFAULT_DAILY: str = "daily_research_report_v1"
+    REPORT_TEMPLATES_DEFAULT_WEEKLY: str = "weekly_operator_report_v1"
+    REPORT_TEMPLATES_DEFAULT_MONTHLY: str = "monthly_governance_report_v1"
+    REPORT_TEMPLATES_REQUIRE_DISCLAIMER: bool = True
+    REPORT_TEMPLATES_REQUIRE_REQUIRED_SECTIONS: bool = True
+
+    REPORT_NARRATIVE_SAFE_LANGUAGE_REQUIRED: bool = True
+    REPORT_NARRATIVE_BLOCK_UNSAFE_LANGUAGE: bool = True
+    REPORT_NARRATIVE_REWRITE_UNSAFE_SUMMARY: bool = True
+
+    REPORT_EXPORT_MARKDOWN_ENABLED: bool = True
+    REPORT_EXPORT_JSON_ENABLED: bool = True
+    REPORT_EXPORT_TEXT_ENABLED: bool = True
+    REPORT_EXPORT_HTML_ENABLED: bool = False
+    REPORT_EXPORT_PDF_ENABLED: bool = False
+    REPORT_EXPORT_REQUIRES_CONFIRM: bool = True
+    REPORT_EXPORT_INCLUDE_MANIFEST: bool = True
+
+    REPORT_TEMPLATE_VALIDATION_ENABLED: bool = True
+    REPORT_TEMPLATE_FAIL_ON_MISSING_REQUIRED_SECTION: bool = True
+    REPORT_TEMPLATE_FAIL_ON_MISSING_DISCLAIMER: bool = True
+    REPORT_TEMPLATE_BLOCK_ON_UNSAFE_LANGUAGE: bool = True
+
+    RUNTIME_REPORT_TEMPLATES_ENABLED: bool = True
+    QA_INCLUDE_REPORT_TEMPLATES: bool = True
+    OPS_INCLUDE_REPORT_TEMPLATES: bool = True
+    REPORT_INCLUDE_REPORT_TEMPLATES: bool = True
+    RESEARCH_AUTO_LOG_REPORT_TEMPLATES: bool = False
+
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
 

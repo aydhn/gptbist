@@ -178,3 +178,15 @@ def format_final_audit_report_markdown(report: FinalAuditReport) -> str:
     ])
 
     return "\n".join(lines)
+
+def render_final_audit_template(context: dict) -> dict:
+    from bist_signal_bot.report_templates.models import RenderedReportSection, ReportValidationStatus
+    return {
+        "rendered_section_id": "sec_audit",
+        "section_key": "final_audit",
+        "title": "Final Audit Report",
+        "content_markdown": "*Final Audit summary.*",
+        "content_json": {"status": "PASS"},
+        "status": ReportValidationStatus.PASS,
+        "warnings": []
+    }

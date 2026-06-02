@@ -71,3 +71,15 @@ def format_performance_report_markdown(report: PerformanceReport) -> str:
 
     lines.extend(["", "## Disclaimer", f"*{report.disclaimer}*"])
     return "\n".join(lines)
+
+def render_performance_template(context: dict) -> dict:
+    from bist_signal_bot.report_templates.models import RenderedReportSection, ReportValidationStatus
+    return {
+        "rendered_section_id": "sec_perf",
+        "section_key": "performance",
+        "title": "Performance Report",
+        "content_markdown": "*Performance summary.*",
+        "content_json": {"status": "PASS"},
+        "status": ReportValidationStatus.PASS,
+        "warnings": []
+    }

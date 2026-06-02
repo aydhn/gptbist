@@ -612,3 +612,9 @@ def get_data_import_dir(settings=None) -> Path:
     d = base / (settings.DATA_IMPORT_DIR_NAME if settings and hasattr(settings, "DATA_IMPORT_DIR_NAME") else "data_import")
     d.mkdir(parents=True, exist_ok=True)
     return d
+
+def get_report_templates_dir(settings: Optional[Settings] = None) -> Path:
+    base = get_data_dir(settings)
+    d = base / (settings.REPORT_TEMPLATES_DIR_NAME if settings and hasattr(settings, "REPORT_TEMPLATES_DIR_NAME") else "report_templates")
+    d.mkdir(parents=True, exist_ok=True)
+    return d

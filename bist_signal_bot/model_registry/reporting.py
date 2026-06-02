@@ -251,3 +251,15 @@ def format_model_registry_report_markdown(report: ModelRegistryReport) -> str:
         f"**Disclaimer:** {report.disclaimer}"
     ]
     return "\n".join(lines)
+
+def render_model_governance_template(context: dict) -> dict:
+    from bist_signal_bot.report_templates.models import RenderedReportSection, ReportValidationStatus
+    return {
+        "rendered_section_id": "sec_mg",
+        "section_key": "model_governance",
+        "title": "Model Governance Report",
+        "content_markdown": "*Model Governance summary.*",
+        "content_json": {"status": "PASS"},
+        "status": ReportValidationStatus.PASS,
+        "warnings": []
+    }

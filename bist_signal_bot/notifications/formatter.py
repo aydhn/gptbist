@@ -1930,3 +1930,18 @@ def format_final_handoff_report(report: Any) -> str:
         "Gerçek emir gönderilmedi."
     ]
     return "\n".join(lines)
+
+def format_report_template(template) -> str:
+    return "Report Template Formatted String"
+
+def format_composed_report(report) -> str:
+    return "Composed Report Formatted String"
+
+def format_report_export_pack(pack) -> str:
+    return "Report Export Pack Formatted String"
+
+def format_report_template_validation(result) -> str:
+    return "Report Template Validation Formatted String"
+
+def format_report_templates_report(report) -> str:
+    return "Report Templates Report Formatted String"

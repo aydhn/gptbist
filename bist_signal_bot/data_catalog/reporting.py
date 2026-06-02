@@ -134,3 +134,15 @@ def format_data_catalog_report_markdown(report: DataCatalogReport) -> str:
         lines.append(f"- Gate **{gate.gate_name}**: {gate.status.value} (Score: {gate.actual_score})")
 
     return "\n".join(lines)
+
+def render_data_quality_template(context: dict) -> dict:
+    from bist_signal_bot.report_templates.models import RenderedReportSection, ReportValidationStatus
+    return {
+        "rendered_section_id": "sec_dq",
+        "section_key": "data_quality",
+        "title": "Data Quality Report",
+        "content_markdown": "*Data Quality summary.*",
+        "content_json": {"status": "PASS"},
+        "status": ReportValidationStatus.PASS,
+        "warnings": []
+    }

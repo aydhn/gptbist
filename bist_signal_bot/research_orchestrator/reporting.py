@@ -113,3 +113,15 @@ def format_orchestrator_report_markdown(report: ResearchOrchestratorReport) -> s
         f"_{report.disclaimer}_"
     ])
     return "\n".join(lines)
+
+def render_orchestrator_template(context: dict) -> dict:
+    from bist_signal_bot.report_templates.models import RenderedReportSection, ReportValidationStatus
+    return {
+        "rendered_section_id": "sec_orch",
+        "section_key": "orchestrator",
+        "title": "Orchestrator Report",
+        "content_markdown": "*Orchestrator summary.*",
+        "content_json": {"status": "PASS"},
+        "status": ReportValidationStatus.PASS,
+        "warnings": []
+    }

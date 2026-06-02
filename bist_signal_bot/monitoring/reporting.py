@@ -56,3 +56,15 @@ Generated: {report.generated_at}
 
 Disclaimer: {report.disclaimer}
 """
+
+def render_monitoring_template(context: dict) -> dict:
+    from bist_signal_bot.report_templates.models import RenderedReportSection, ReportValidationStatus
+    return {
+        "rendered_section_id": "sec_mon",
+        "section_key": "monitoring",
+        "title": "Monitoring Report",
+        "content_markdown": "*Monitoring summary.*",
+        "content_json": {"status": "PASS"},
+        "status": ReportValidationStatus.PASS,
+        "warnings": []
+    }

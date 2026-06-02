@@ -144,3 +144,6 @@ def append_final_handoff_section(settings: Any) -> ReportSection:
             title="Final MVP Handoff",
             body_markdown=f"Failed to load final handoff data: {e}"
         )
+
+def get_advanced_report_sections() -> list:
+    return []
