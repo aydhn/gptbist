@@ -623,3 +623,11 @@ def get_report_templates_dir(settings: Optional[Settings] = None) -> Path:
 def get_synthetic_scenarios_dir(settings=None) -> Path:
     from pathlib import Path
     return Path("data/synthetic_scenarios")
+
+def get_local_ui_dir(settings=None) -> Path:
+    from bist_signal_bot.config.settings import Settings
+    if settings is None:
+        settings = Settings()
+    path = get_data_dir(settings) / getattr(settings, "LOCAL_UI_DIR_NAME", "local_ui")
+    path.mkdir(parents=True, exist_ok=True)
+    return path
