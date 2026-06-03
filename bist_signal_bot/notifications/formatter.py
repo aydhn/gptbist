@@ -16,3 +16,6 @@ def format_market_governance(assessment) -> str:
 
 def format_market_registry_report(report) -> str:
     return f"Market Registry Report\nMarkets: {len(report.markets)}\nDisclaimer: Local metadata only."
+
+def format_maintenance_summary(run) -> str:
+    return "BIST Bot Maintenance Automation Özeti\nBu çıktı yerel yazılım bakım özetidir.\nYatırım tavsiyesi değildir.\nİşlem uygunluğu anlamına gelmez.\nGerçek emir gönderilmedi."

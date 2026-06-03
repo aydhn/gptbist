@@ -2874,3 +2874,49 @@ def add_report_templates_parser(subparsers):
 
     cfg = sub.add_parser("config", help="Show report templates config")
     cfg.add_argument("--json", action="store_true", help="JSON output")
+
+def add_maintenance_auto_parser(subparsers):
+    p = subparsers.add_parser('maintenance-auto', help="Long-Term Maintenance Automation")
+    sp = p.add_subparsers(dest="maintenance_auto_cmd")
+
+    sp.add_parser('policies')
+
+    plan_p = sp.add_parser('plan')
+    plan_p.add_argument('--cadence', type=str, default='DAILY')
+    plan_p.add_argument('--dry-run', action='store_true', default=True)
+    plan_p.add_argument('--json', action='store_true')
+
+    run_p = sp.add_parser('run')
+    run_p.add_argument('--cadence', type=str, required=True)
+    run_p.add_argument('--dry-run', action='store_true', default=True)
+    run_p.add_argument('--confirm', action='store_true', default=False)
+    run_p.add_argument('--save', action='store_true', default=False)
+    run_p.add_argument('--json', action='store_true')
+
+    cleanup_p = sp.add_parser('cleanup')
+    cleanup_p.add_argument('--artifact-kind', type=str)
+    cleanup_p.add_argument('--dry-run', action='store_true', default=True)
+    cleanup_p.add_argument('--confirm', action='store_true', default=False)
+    cleanup_p.add_argument('--json', action='store_true')
+
+    retention_p = sp.add_parser('retention')
+    retention_p.add_argument('--json', action='store_true')
+
+    backup_p = sp.add_parser('backup')
+    backup_p.add_argument('--dry-run', action='store_true', default=True)
+    backup_p.add_argument('--manifest-only', action='store_true', default=False)
+    backup_p.add_argument('--json', action='store_true')
+
+    staleness_p = sp.add_parser('staleness')
+    staleness_p.add_argument('--json', action='store_true')
+
+    report_p = sp.add_parser('report')
+    report_p.add_argument('--latest', action='store_true')
+    report_p.add_argument('--json', action='store_true')
+
+    recent_p = sp.add_parser('recent')
+    recent_p.add_argument('--limit', type=int, default=10)
+    recent_p.add_argument('--json', action='store_true')
+
+    config_p = sp.add_parser('config')
+    config_p.add_argument('--json', action='store_true')
