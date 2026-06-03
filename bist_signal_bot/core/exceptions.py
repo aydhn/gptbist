@@ -2110,3 +2110,17 @@ class SyntheticEdgeCaseError(SyntheticScenarioError): pass
 class SyntheticScenarioManifestError(SyntheticScenarioError): pass
 class SyntheticScenarioValidationError(SyntheticScenarioError): pass
 class SyntheticScenarioStorageError(SyntheticScenarioError): pass
+
+
+class MarketRegistryError(Exception): pass
+class MarketInstrumentError(Exception): pass
+class MarketSymbolError(Exception): pass
+class MarketCalendarError(Exception): pass
+class MarketSessionError(Exception): pass
+class MarketCurrencyError(Exception): pass
+class MarketAssetClassError(Exception): pass
+class MarketNormalizationError(Exception): pass
+class MarketValidationError(Exception): pass
+class MarketUniverseError(Exception): pass
+class MarketGovernanceError(Exception): pass
+class MarketStorageError(Exception): pass

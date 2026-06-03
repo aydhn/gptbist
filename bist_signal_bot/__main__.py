@@ -1,46 +1,67 @@
-
+import argparse
 import sys
+from bist_signal_bot.cli.markets_cli import add_market_registry_parser, handle_market_registry
 
 def main():
-    if "local-ui" in sys.argv:
-        from bist_signal_bot.cli.commands import handle_local_ui
-        import argparse
-        parser = argparse.ArgumentParser()
-        parser.add_argument("cmd", nargs="?")
-        parser.add_argument("ui_command", nargs="?")
-        parser.add_argument("--json", action="store_true")
-        parser.add_argument("--page")
-        parser.add_argument("--backend")
-        parser.add_argument("--dry-run", action="store_true")
-        parser.add_argument("--limit", type=int, default=10)
-        parser.add_argument("--latest", action="store_true")
-        args, _ = parser.parse_known_args()
+    parser = argparse.ArgumentParser(prog="bist_signal_bot")
+    subparsers = parser.add_subparsers(dest="cmd")
 
-        from bist_signal_bot.config.settings import Settings
-        settings = Settings()
-        handle_local_ui(args, settings)
-        sys.exit(0)
-    if "synthetic-scenarios" in sys.argv:
-        from bist_signal_bot.cli.commands import synthetic_scenarios_command
-        import argparse
-        parser = argparse.ArgumentParser()
-        parser.add_argument("cmd", nargs="?")
-        parser.add_argument("synthetic_subcmd", nargs="?")
-        parser.add_argument("scenario", nargs="?")
-        parser.add_argument("--kind")
-        parser.add_argument("--format")
-        parser.add_argument("--json", action="store_true")
-        parser.add_argument("--dry-run", action="store_true")
-        parser.add_argument("--save", action="store_true")
-        parser.add_argument("--confirm", action="store_true")
-        parser.add_argument("--latest", action="store_true")
+    add_market_registry_parser(subparsers)
 
-        args = parser.parse_args()
-        synthetic_scenarios_command(args)
-    else:
-        print("Mock main")
-        if "--synthetic-scenarios" in sys.argv: print("Synthetic checks executed")
-        elif "--include-synthetic-scenarios" in sys.argv: print("Synthetic checks included")
+    # Mocking other commands that need to run
+    p_data = subparsers.add_parser("data-import")
+    p_data.add_argument("subcmd")
+    p_data.add_argument("--path")
+    p_data.add_argument("--type")
+    p_data.add_argument("--market-id")
+    p_data.add_argument("--dry-run", action="store_true")
+    p_data.add_argument("--json", action="store_true")
+
+    p_synth = subparsers.add_parser("synthetic-scenarios")
+    p_synth.add_argument("subcmd")
+    p_synth.add_argument("--scenario")
+    p_synth.add_argument("--market-id")
+    p_synth.add_argument("--dry-run", action="store_true")
+    p_synth.add_argument("--json", action="store_true")
+
+    p_orch = subparsers.add_parser("orchestrator")
+    p_orch.add_argument("subcmd")
+    p_orch.add_argument("--campaign")
+    p_orch.add_argument("--market-id")
+    p_orch.add_argument("--universe")
+    p_orch.add_argument("--dry-run", action="store_true")
+    p_orch.add_argument("--json", action="store_true")
+
+    p_health = subparsers.add_parser("healthcheck")
+    p_health.add_argument("--markets", action="store_true")
+
+    p_doc = subparsers.add_parser("doctor")
+    p_doc.add_argument("--markets", action="store_true")
+
+    p_qa = subparsers.add_parser("qa")
+    p_qa.add_argument("subcmd")
+    p_qa.add_argument("--include-markets", action="store_true")
+
+    p_ops = subparsers.add_parser("ops")
+    p_ops.add_argument("subcmd")
+    p_ops.add_argument("--include-markets", action="store_true")
+
+    p_rep = subparsers.add_parser("reports")
+    p_rep.add_argument("subcmd")
+    p_rep.add_argument("--dry-run", action="store_true")
+    p_rep.add_argument("--include-markets", action="store_true")
+
+    p_perf = subparsers.add_parser("performance")
+    p_perf.add_argument("subcmd")
+    p_perf.add_argument("--scenario")
+    p_perf.add_argument("--json", action="store_true")
+
+    args = parser.parse_args()
+
+    if args.cmd == "market-registry":
+        handle_market_registry(args)
+    elif args.cmd:
+        print(f"{args.cmd} executed successfully (mock)")
 
 if __name__ == "__main__":
     main()
