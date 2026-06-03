@@ -153,3 +153,20 @@ Provides offline, deterministic long-term maintenance cadence (cleanup, retentio
 - Dry-run by default.
 - Requires explicit `--confirm` for destructive operations.
 - Research metadata only, no real market execution.
+
+## Local Plugin Architecture
+
+The BIST Signal Bot supports a safe, local-first plugin architecture to extend capabilities (strategies, features, reports) without compromising the "research-only" safety model.
+
+### Key Features
+- **Plugin Manifest**: Standard `plugin.json` schema.
+- **Plugin Contracts**: Defined validation criteria for various plugin types.
+- **Hook Registry**: Deterministic, priority-based execution paths.
+- **Capability Policy**: Controls access. Broker, live execution, external network, and cloud APIs are blocked by default.
+- **Safe Loader**: Plugins are loaded in `SAFE_METADATA_ONLY` or `DRY_RUN` mode by default.
+- **Test Harness**: Validates plugins in dry-run mode before deployment.
+- **Governance**: Assesses capability and manifest language ensuring adherence to safe language rules (no "sure thing" or "trade ready").
+
+### Usage
+See `bist_signal_bot/examples/plugin_development_workflow.md` and use the CLI:
+`python -m bist_signal_bot plugins --help`

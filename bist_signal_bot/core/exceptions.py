@@ -2161,3 +2161,17 @@ class MaintenanceManifestError(MaintenanceAutomationError):
 
 class MaintenanceAutomationStorageError(MaintenanceAutomationError):
     pass
+
+
+class PluginError(BistSignalBotError): pass
+class PluginContractError(PluginError): pass
+class PluginManifestError(PluginError): pass
+class PluginDiscoveryError(PluginError): pass
+class PluginLoaderError(PluginError): pass
+class PluginHookError(PluginError): pass
+class PluginCapabilityError(PluginError): pass
+class PluginValidationError(PluginError): pass
+class PluginTestHarnessError(PluginError): pass
+class PluginSandboxError(PluginError): pass
+class PluginGovernanceError(PluginError): pass
+class PluginStorageError(PluginError): pass

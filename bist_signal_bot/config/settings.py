@@ -7,6 +7,42 @@ from bist_signal_bot.config.secrets import settings_safe_dump
 
 class Settings(BaseSettings):
 
+    # --- Local Plugin Architecture (Phase 109) ---
+    ENABLE_PLUGINS: bool = True
+    PLUGINS_DIR_NAME: str = "plugins"
+    PLUGINS_RESEARCH_ONLY: bool = True
+    PLUGINS_SAVE_RESULTS: bool = True
+
+    PLUGINS_DISCOVERY_ENABLED: bool = True
+    PLUGINS_DEFAULT_ENABLED: bool = False
+    PLUGINS_DISCOVERY_DIRS: str = "plugins,examples/plugins"
+    PLUGINS_ALLOW_PROJECT_ROOT_ONLY: bool = True
+
+    PLUGINS_DEFAULT_EXECUTION_MODE: str = "SAFE_METADATA_ONLY"
+    PLUGINS_ALLOW_LOCAL_EXECUTE: bool = False
+    PLUGINS_ALLOW_DRY_RUN_EXECUTE: bool = True
+    PLUGINS_REQUIRE_VALIDATION_BEFORE_LOAD: bool = True
+    PLUGINS_REQUIRE_TESTS_BEFORE_ACTIVE: bool = True
+
+    PLUGINS_BLOCK_EXTERNAL_NETWORK: bool = True
+    PLUGINS_BLOCK_BROKER_ACCESS: bool = True
+    PLUGINS_BLOCK_ORDER_EXECUTION: bool = True
+    PLUGINS_BLOCK_CLOUD_API: bool = True
+    PLUGINS_ALLOW_READ_LOCAL_FILES: bool = True
+    PLUGINS_ALLOW_WRITE_LOCAL_FILES: bool = False
+
+    PLUGINS_SANDBOX_STATIC_SCAN_ENABLED: bool = True
+    PLUGINS_BLOCK_UNSAFE_IMPORTS: bool = True
+    PLUGINS_BLOCK_UNSAFE_COMMANDS: bool = True
+    PLUGINS_SECRET_REDACTION_ENABLED: bool = True
+
+    RUNTIME_PLUGINS_ENABLED: bool = True
+    QA_INCLUDE_PLUGINS: bool = True
+    OPS_INCLUDE_PLUGINS: bool = True
+    REPORT_INCLUDE_PLUGINS: bool = True
+    RESEARCH_AUTO_LOG_PLUGINS: bool = False
+
+
     # --- Maintenance Automation (Phase 108) ---
     ENABLE_MAINTENANCE_AUTOMATION: bool = True
     MAINTENANCE_AUTOMATION_DIR_NAME: str = "maintenance_automation"

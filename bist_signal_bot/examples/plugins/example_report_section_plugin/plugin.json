@@ -1,0 +1,15 @@
+{
+  "plugin_id": "example_report_section_plugin",
+  "name": "Example Report Section Plugin",
+  "version": "1.0.0",
+  "kind": "REPORT_SECTION",
+  "entrypoint": "plugin.py",
+  "module_path": "example_report_section_plugin.plugin",
+  "description": "An example report section plugin.",
+  "author": "BIST Bot Team",
+  "compatible_with": ["bist_signal_bot>=1.0.0"],
+  "requested_capabilities": ["REGISTER_REPORT_SECTION"],
+  "hooks": ["REPORT_SECTION_RENDER"],
+  "enabled": true,
+  "metadata": {}
+}

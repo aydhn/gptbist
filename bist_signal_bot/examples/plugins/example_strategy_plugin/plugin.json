@@ -1,0 +1,15 @@
+{
+  "plugin_id": "example_strategy_plugin",
+  "name": "Example Strategy Plugin",
+  "version": "1.0.0",
+  "kind": "STRATEGY",
+  "entrypoint": "plugin.py",
+  "module_path": "example_strategy_plugin.plugin",
+  "description": "An example strategy plugin for demonstrating the local plugin architecture. It is completely deterministic and operates entirely offline.",
+  "author": "BIST Bot Team",
+  "compatible_with": ["bist_signal_bot>=1.0.0"],
+  "requested_capabilities": ["REGISTER_STRATEGY", "READ_LOCAL_FILES"],
+  "hooks": ["STRATEGY_DISCOVERY"],
+  "enabled": true,
+  "metadata": {}
+}
