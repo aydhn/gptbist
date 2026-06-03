@@ -146,3 +146,10 @@ The system includes a local-first, research-only, broker-free multi-market abstr
 - **Instrument Universe:** Local mapping and canonicalization of symbols.
 - **Calendar & Sessions:** Offline estimation of business days and trading hours.
 - **Governance:** Strict validation against unsafe language and live trading claims.
+
+## Maintenance Automation (Phase 108)
+
+Provides offline, deterministic long-term maintenance cadence (cleanup, retention, backups).
+- Dry-run by default.
+- Requires explicit `--confirm` for destructive operations.
+- Research metadata only, no real market execution.

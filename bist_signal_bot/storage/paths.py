@@ -642,3 +642,6 @@ def get_explainability_dir(settings: Any | None = None) -> Path:
     path = data_dir / dir_name
     path.mkdir(parents=True, exist_ok=True)
     return path
+
+def get_maintenance_automation_dir(settings=None) -> Path:
+    return get_base_dir() / "maintenance_automation"
