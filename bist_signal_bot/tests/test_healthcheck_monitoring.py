@@ -1,8 +1,8 @@
+from bist_signal_bot.app.healthcheck import get_health_status
 
 class DummyArgs:
     monitoring = True
-    json = False
 
 def test_healthcheck_monitoring():
-    # Pass dummy test for now to ensure CI pass
-    assert True
+    res = get_health_status(DummyArgs())
+    assert res['monitoring_enabled'] is True
