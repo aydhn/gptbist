@@ -139,3 +139,10 @@ python -m bist_signal_bot data-import run --path data/my_ohlcv.csv --type OHLCV 
 
 ## Synthetic Scenario Library
 Local offline scenario generation for testing, validation, and demo without real market data.
+
+## Multi-Market Research Abstraction
+The system includes a local-first, research-only, broker-free multi-market abstraction layer:
+- **Market Registry:** Offline definition of markets (Equity, FX, Crypto).
+- **Instrument Universe:** Local mapping and canonicalization of symbols.
+- **Calendar & Sessions:** Offline estimation of business days and trading hours.
+- **Governance:** Strict validation against unsafe language and live trading claims.
