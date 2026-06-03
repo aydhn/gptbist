@@ -645,3 +645,11 @@ def get_explainability_dir(settings: Any | None = None) -> Path:
 
 def get_maintenance_automation_dir(settings=None) -> Path:
     return get_base_dir() / "maintenance_automation"
+
+
+def get_plugins_dir(settings: Optional['Settings'] = None) -> Path:
+    from bist_signal_bot.config.settings import Settings
+    s = settings or Settings()
+    d = get_data_dir(s) / s.PLUGINS_DIR_NAME
+    d.mkdir(parents=True, exist_ok=True)
+    return d
