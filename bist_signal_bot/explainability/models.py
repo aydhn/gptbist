@@ -5,12 +5,16 @@ from pydantic import BaseModel, Field
 
 class ExplanationStatus(str, Enum):
     PASS = "PASS"
+    WATCH = "WATCH"
+    BLOCKED = "BLOCKED"
+    DEGRADED = "DEGRADED"
     WARN = "WARN"
     FAIL = "FAIL"
     INSUFFICIENT_DATA = "INSUFFICIENT_DATA"
     SKIPPED = "SKIPPED"
     ERROR = "ERROR"
     UNKNOWN = "UNKNOWN"
+    UNSUPPORTED_MODEL = "UNSUPPORTED_MODEL"
 
 class ExplanationType(str, Enum):
     SIGNAL = "SIGNAL"
@@ -33,6 +37,7 @@ class ContributionDirection(str, Enum):
     NEUTRAL = "NEUTRAL"
     MIXED = "MIXED"
     UNKNOWN = "UNKNOWN"
+    UNSUPPORTED_MODEL = "UNSUPPORTED_MODEL"
 
 class ContributionStrength(str, Enum):
     VERY_WEAK = "VERY_WEAK"
@@ -41,6 +46,7 @@ class ContributionStrength(str, Enum):
     STRONG = "STRONG"
     VERY_STRONG = "VERY_STRONG"
     UNKNOWN = "UNKNOWN"
+    UNSUPPORTED_MODEL = "UNSUPPORTED_MODEL"
 
 class EvidenceCardSectionType(str, Enum):
     SUMMARY = "SUMMARY"
@@ -245,4 +251,227 @@ class DecisionTrace(BaseModel):
     blocked_reasons: list[str] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)
     disclaimer: str = "Decision trace is operational research metadata only. No real order was sent."
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+class ExplanationObjectType(str, Enum):
+    MODEL = "MODEL"
+    STRATEGY = "STRATEGY"
+    SIGNAL = "SIGNAL"
+    FEATURE_SET = "FEATURE_SET"
+    SCANNER_RESULT = "SCANNER_RESULT"
+    BACKTEST_RESULT = "BACKTEST_RESULT"
+    VALIDATION_RESULT = "VALIDATION_RESULT"
+    CUSTOM = "CUSTOM"
+
+class ExplanationMethod(str, Enum):
+    FEATURE_ATTRIBUTION = "FEATURE_ATTRIBUTION"
+    PERMUTATION_IMPORTANCE = "PERMUTATION_IMPORTANCE"
+    SENSITIVITY_ANALYSIS = "SENSITIVITY_ANALYSIS"
+    RULE_TRACE = "RULE_TRACE"
+    DECISION_TRACE = "DECISION_TRACE"
+    COUNTERFACTUAL_RESEARCH = "COUNTERFACTUAL_RESEARCH"
+    COHORT_EXPLANATION = "COHORT_EXPLANATION"
+    MODEL_INTROSPECTION = "MODEL_INTROSPECTION"
+    FALLBACK_SIMPLE = "FALLBACK_SIMPLE"
+    CUSTOM = "CUSTOM"
+
+class AttributionDirection(str, Enum):
+    POSITIVE = "POSITIVE"
+    NEGATIVE = "NEGATIVE"
+    NEUTRAL = "NEUTRAL"
+    UNKNOWN = "UNKNOWN"
+    UNSUPPORTED_MODEL = "UNSUPPORTED_MODEL"
+
+class ExplanationScope(str, Enum):
+    LOCAL_ROW = "LOCAL_ROW"
+    SYMBOL = "SYMBOL"
+    COHORT = "COHORT"
+    GLOBAL_MODEL = "GLOBAL_MODEL"
+    STRATEGY = "STRATEGY"
+    REPORT = "REPORT"
+    CUSTOM = "CUSTOM"
+
+class FeatureAttribution(BaseModel):
+    attribution_id: str
+    object_type: ExplanationObjectType
+    object_id: str
+    feature_name: str
+    feature_value: float | int | str | bool | None = None
+    contribution_score: float | None = None
+    normalized_contribution: float | None = None
+    direction: AttributionDirection
+    rank: int | None = None
+    method: ExplanationMethod
+    warnings: list[str] = Field(default_factory=list)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+    def model_post_init(self, __context: Any) -> None:
+        if self.normalized_contribution is not None:
+            self.normalized_contribution = max(-100.0, min(100.0, self.normalized_contribution))
+        if self.rank is not None and self.rank <= 0:
+            self.rank = None
+
+class LocalExplanation(BaseModel):
+    explanation_id: str
+    object_type: ExplanationObjectType
+    object_id: str
+    scope: ExplanationScope
+    symbol: str | None = None
+    as_of: datetime | None = None
+    method: ExplanationMethod
+    prediction_value: float | None = None
+    baseline_value: float | None = None
+    attributions: list[FeatureAttribution] = Field(default_factory=list)
+    key_drivers: list[str] = Field(default_factory=list)
+    caveats: list[str] = Field(default_factory=list)
+    status: ExplanationStatus
+    warnings: list[str] = Field(default_factory=list)
+    disclaimer: str = "Local explanation is research-only interpretability metadata. It is not investment advice, a causal claim, or a trading instruction. No real order was sent."
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+class GlobalExplanation(BaseModel):
+    explanation_id: str
+    object_type: ExplanationObjectType
+    object_id: str
+    scope: ExplanationScope
+    method: ExplanationMethod
+    feature_importance: list[FeatureAttribution] = Field(default_factory=list)
+    sample_count: int | None = None
+    top_features: list[str] = Field(default_factory=list)
+    stability_score: float | None = None
+    status: ExplanationStatus
+    warnings: list[str] = Field(default_factory=list)
+    disclaimer: str = "Global explanation summarizes local research metadata only. It is not investment advice or a guarantee of future model behavior. No real order was sent."
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+class SensitivityPoint(BaseModel):
+    point_id: str
+    feature_name: str
+    original_value: float | None = None
+    perturbed_value: float | None = None
+    output_value: float | None = None
+    delta_output: float | None = None
+    warnings: list[str] = Field(default_factory=list)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+class SensitivityAnalysisResult(BaseModel):
+    sensitivity_id: str
+    object_type: ExplanationObjectType
+    object_id: str
+    feature_name: str
+    symbol: str | None = None
+    as_of: datetime | None = None
+    points: list[SensitivityPoint] = Field(default_factory=list)
+    monotonicity_hint: str | None = None
+    max_abs_delta: float | None = None
+    status: ExplanationStatus
+    warnings: list[str] = Field(default_factory=list)
+    disclaimer: str = "Sensitivity analysis is local research diagnostics only. It is not a forecast, causal proof, or trading instruction. No real order was sent."
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+class DecisionTraceStep(BaseModel):
+    step_id: str
+    step_name: str
+    condition: str | None = None
+    input_refs: dict[str, Any] = Field(default_factory=dict)
+    output_value: Any | None = None
+    passed: bool | None = None
+    message: str = ""
+    warnings: list[str] = Field(default_factory=list)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+class DecisionTrace(BaseModel):
+    trace_id: str
+    object_type: ExplanationObjectType = ExplanationObjectType.CUSTOM
+    object_id: str = "unknown"
+    symbol: str | None = None
+    as_of: datetime | None = None
+    steps: list[DecisionTraceStep] = Field(default_factory=list)
+    final_output: dict[str, Any] = Field(default_factory=dict)
+    status: ExplanationStatus = ExplanationStatus.UNKNOWN
+    warnings: list[str] = Field(default_factory=list)
+    disclaimer: str = "Decision trace is local software evidence metadata only. It is not investment advice or an order instruction. No real order was sent."
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+    # Old fields for compatibility
+    strategy_name: str | None = None
+    signal_id: str | None = None
+    created_at: datetime | None = None
+    stages: list[dict[str, Any]] = Field(default_factory=list)
+    final_decision: str = ""
+    final_confidence: float | None = None
+    blocked: bool = False
+    blocked_reasons: list[str] = Field(default_factory=list)
+
+class RuleTrace(BaseModel):
+    rule_trace_id: str
+    strategy_name: str
+    symbol: str | None = None
+    as_of: datetime | None = None
+    rules_evaluated: list[DecisionTraceStep] = Field(default_factory=list)
+    passed_rules: int = 0
+    failed_rules: int = 0
+    evidence_refs: list[str] = Field(default_factory=list)
+    status: ExplanationStatus
+    warnings: list[str] = Field(default_factory=list)
+    disclaimer: str = "Rule trace explains local research rule evaluation only. It is not investment advice or a trading instruction. No real order was sent."
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+class CounterfactualScenario(BaseModel):
+    counterfactual_id: str
+    object_type: ExplanationObjectType
+    object_id: str
+    symbol: str | None = None
+    as_of: datetime | None = None
+    changed_features: dict[str, Any] = Field(default_factory=dict)
+    original_output: float | None = None
+    counterfactual_output: float | None = None
+    delta_output: float | None = None
+    plausibility_status: ExplanationStatus
+    warnings: list[str] = Field(default_factory=list)
+    disclaimer: str = "Counterfactual scenario is local research what-if metadata only. It is not a market prediction, investment advice, or trading instruction. No real order was sent."
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+class ExplanationCohort(BaseModel):
+    cohort_id: str
+    name: str
+    object_type: ExplanationObjectType
+    object_ids: list[str] = Field(default_factory=list)
+    symbols: list[str] = Field(default_factory=list)
+    feature_names: list[str] = Field(default_factory=list)
+    sample_count: int = 0
+    created_at: datetime
+    status: ExplanationStatus
+    warnings: list[str] = Field(default_factory=list)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+class ExplanationGovernanceAssessment(BaseModel):
+    assessment_id: str
+    object_type: ExplanationObjectType
+    object_id: str
+    created_at: datetime
+    status: ExplanationStatus
+    explainability_available: bool = False
+    method_supported: bool = False
+    feature_coverage_score: float | None = None
+    attribution_stability_score: float | None = None
+    unsafe_language_findings: list[str] = Field(default_factory=list)
+    caveats: list[str] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+    disclaimer: str = "Explanation governance assessment is local software governance metadata only. It is not investment advice or permission to trade. No real order was sent."
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+class ExplainabilityReport(BaseModel):
+    report_id: str
+    generated_at: datetime
+    local_explanations: list[LocalExplanation] = Field(default_factory=list)
+    global_explanations: list[GlobalExplanation] = Field(default_factory=list)
+    sensitivity_results: list[SensitivityAnalysisResult] = Field(default_factory=list)
+    decision_traces: list[DecisionTrace] = Field(default_factory=list)
+    rule_traces: list[RuleTrace] = Field(default_factory=list)
+    counterfactuals: list[CounterfactualScenario] = Field(default_factory=list)
+    governance_assessments: list[ExplanationGovernanceAssessment] = Field(default_factory=list)
+    key_findings: list[str] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+    disclaimer: str = "Explainability report is local interpretability reporting only. It is not investment advice, causal proof, or a trading instruction. No real order was sent."
     metadata: dict[str, Any] = Field(default_factory=dict)

@@ -1,84 +1,131 @@
 import uuid
 from typing import Any
 from bist_signal_bot.explainability.models import (
-    FeatureContribution,
-    ContributionDirection,
-    ContributionStrength
+    FeatureAttribution,
+    LocalExplanation,
+    GlobalExplanation,
+    ExplanationObjectType,
+    ExplanationMethod,
+    ExplanationScope,
+    AttributionDirection,
+    ExplanationStatus
 )
 
 class FeatureAttributionEngine:
     def __init__(self, settings: Any = None):
         self.settings = settings
-        self.top_n = getattr(settings, "EXPLAINABILITY_TOP_FEATURES", 10) if settings else 10
-        self.min_abs_score = getattr(settings, "EXPLAINABILITY_MIN_CONTRIBUTION_ABS_SCORE", 5.0) if settings else 5.0
 
-    def attribute_features(
-        self,
-        features: dict[str, Any],
-        signal_payload: dict[str, Any] | None = None,
-        strategy_name: str | None = None
-    ) -> list[FeatureContribution]:
-        # A simple fallback feature attribution mock
-        contributions = []
-        for key, value in features.items():
-            try:
-                numeric_val = float(value)
-            except (ValueError, TypeError):
-                continue
+    def explain_local(self, object_id: str, feature_row: dict[str, Any], prediction_value: float | None = None, baseline_value: float | None = None, object_type: ExplanationObjectType = ExplanationObjectType.MODEL) -> LocalExplanation:
+        attributions = self.simple_attribution(feature_row, prediction_value, baseline_value, object_type, object_id)
+        attributions = self.normalize_contributions(attributions)
+        attributions = self.rank_attributions(attributions)
 
-            # Mock attribution based on feature magnitude
-            score = numeric_val % 100.0 if numeric_val > 0 else (numeric_val % 100.0) - 100.0
-            direction = self.direction_from_value(key, numeric_val, strategy_name)
-            strength = self.strength_from_score(score)
+        return LocalExplanation(
+            explanation_id=str(uuid.uuid4()),
+            object_type=object_type,
+            object_id=object_id,
+            scope=ExplanationScope.LOCAL_ROW,
+            method=ExplanationMethod.FEATURE_ATTRIBUTION,
+            prediction_value=prediction_value,
+            baseline_value=baseline_value,
+            attributions=attributions,
+            key_drivers=self.key_drivers(attributions),
+            status=ExplanationStatus.PASS,
+            warnings=["Deterministic fallback used." if not attributions else ""]
+        )
 
-            # Simple rule to skip weak features to keep list small
-            if abs(score) < self.min_abs_score:
-                continue
-
-            contributions.append(
-                FeatureContribution(
-                    contribution_id=str(uuid.uuid4()),
-                    feature_name=key,
-                    value=numeric_val,
-                    normalized_value=numeric_val,
-                    contribution_score=score,
-                    contribution_direction=direction,
-                    strength=strength,
-                    message=f"Feature {key} contributed with score {score:.2f}."
-                )
+    def explain_global(self, object_id: str, feature_rows: list[dict[str, Any]], object_type: ExplanationObjectType = ExplanationObjectType.MODEL) -> GlobalExplanation:
+        if not feature_rows:
+            return GlobalExplanation(
+                explanation_id=str(uuid.uuid4()),
+                object_type=object_type,
+                object_id=object_id,
+                scope=ExplanationScope.GLOBAL_MODEL,
+                method=ExplanationMethod.FEATURE_ATTRIBUTION,
+                status=ExplanationStatus.INSUFFICIENT_DATA,
+                warnings=["No feature rows provided."]
             )
 
-        return self.rank_contributions(contributions, self.top_n)
+        agg_scores = {}
+        for row in feature_rows:
+            attrs = self.simple_attribution(row, object_type=object_type, object_id=object_id)
+            for a in attrs:
+                if a.contribution_score is not None:
+                    agg_scores[a.feature_name] = agg_scores.get(a.feature_name, 0.0) + abs(a.contribution_score)
 
-    def rank_contributions(self, contributions: list[FeatureContribution], top_n: int = 10) -> list[FeatureContribution]:
-        return sorted(contributions, key=lambda c: abs(c.contribution_score or 0.0), reverse=True)[:top_n]
+        global_attrs = []
+        for fname, score in agg_scores.items():
+            avg_score = score / len(feature_rows)
+            global_attrs.append(FeatureAttribution(
+                attribution_id=str(uuid.uuid4()),
+                object_type=object_type,
+                object_id=object_id,
+                feature_name=fname,
+                contribution_score=avg_score,
+                direction=AttributionDirection.POSITIVE,
+                method=ExplanationMethod.FEATURE_ATTRIBUTION
+            ))
 
-    def normalize_feature_value(self, feature_name: str, value: Any) -> float | None:
-        try:
-            return float(value)
-        except (ValueError, TypeError):
-            return None
+        global_attrs = self.normalize_contributions(global_attrs)
+        global_attrs = self.rank_attributions(global_attrs)
 
-    def direction_from_value(self, feature_name: str, value: Any, strategy_name: str | None = None) -> ContributionDirection:
-        val = self.normalize_feature_value(feature_name, value)
-        if val is None:
-            return ContributionDirection.UNKNOWN
-        if val > 0:
-            return ContributionDirection.SUPPORTS
-        elif val < 0:
-            return ContributionDirection.OPPOSES
-        return ContributionDirection.NEUTRAL
+        return GlobalExplanation(
+            explanation_id=str(uuid.uuid4()),
+            object_type=object_type,
+            object_id=object_id,
+            scope=ExplanationScope.GLOBAL_MODEL,
+            method=ExplanationMethod.FEATURE_ATTRIBUTION,
+            feature_importance=global_attrs,
+            sample_count=len(feature_rows),
+            top_features=self.key_drivers(global_attrs),
+            status=ExplanationStatus.PASS
+        )
 
-    def strength_from_score(self, score: float | None) -> ContributionStrength:
-        if score is None:
-            return ContributionStrength.UNKNOWN
-        abs_score = abs(score)
-        if abs_score < 10.0:
-            return ContributionStrength.VERY_WEAK
-        elif abs_score < 30.0:
-            return ContributionStrength.WEAK
-        elif abs_score < 60.0:
-            return ContributionStrength.MODERATE
-        elif abs_score < 90.0:
-            return ContributionStrength.STRONG
-        return ContributionStrength.VERY_STRONG
+    def simple_attribution(self, feature_row: dict[str, Any], prediction_value: float | None = None, baseline_value: float | None = None, object_type: ExplanationObjectType = ExplanationObjectType.MODEL, object_id: str = "unknown") -> list[FeatureAttribution]:
+        contributions = []
+        for key, value in feature_row.items():
+            warnings = []
+            try:
+                numeric_val = float(value)
+                score = numeric_val % 100.0 if numeric_val > 0 else (numeric_val % 100.0) - 100.0
+                direction = AttributionDirection.POSITIVE if score > 0 else (AttributionDirection.NEGATIVE if score < 0 else AttributionDirection.NEUTRAL)
+            except (ValueError, TypeError):
+                numeric_val = None
+                score = None
+                direction = AttributionDirection.UNKNOWN
+                warnings.append("Non-numeric feature excluded from contribution.")
+
+            contributions.append(
+                FeatureAttribution(
+                    attribution_id=str(uuid.uuid4()),
+                    object_type=object_type,
+                    object_id=object_id,
+                    feature_name=key,
+                    feature_value=value,
+                    contribution_score=score,
+                    direction=direction,
+                    method=ExplanationMethod.FALLBACK_SIMPLE,
+                    warnings=warnings
+                )
+            )
+        return contributions
+
+    def normalize_contributions(self, attributions: list[FeatureAttribution]) -> list[FeatureAttribution]:
+        total_abs = sum(abs(a.contribution_score) for a in attributions if a.contribution_score is not None)
+        if total_abs == 0:
+            return attributions
+
+        for a in attributions:
+            if a.contribution_score is not None:
+                a.normalized_contribution = (a.contribution_score / total_abs) * 100.0
+        return attributions
+
+    def rank_attributions(self, attributions: list[FeatureAttribution]) -> list[FeatureAttribution]:
+        ranked = sorted(attributions, key=lambda a: abs(a.contribution_score or 0.0), reverse=True)
+        for i, a in enumerate(ranked):
+            a.rank = i + 1
+        return ranked
+
+    def key_drivers(self, attributions: list[FeatureAttribution], limit: int = 5) -> list[str]:
+        ranked = self.rank_attributions(attributions)
+        return [a.feature_name for a in ranked[:limit] if a.contribution_score is not None]
