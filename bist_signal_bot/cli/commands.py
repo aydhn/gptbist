@@ -7363,3 +7363,136 @@ def add_synthetic_scenarios_parser(subparsers):
 
     cp = sp.add_parser("config")
     cp.add_argument("--json", action="store_true")
+
+def handle_local_ui(args, settings=None):
+    from bist_signal_bot.app.local_ui_app import (
+        create_local_ui_capability_detector,
+        create_local_ui_layout_builder,
+        create_local_ui_runner,
+        create_local_ui_shortcut_registry,
+        create_local_ui_safety_guard
+    )
+
+    detector = create_local_ui_capability_detector(settings)
+
+    if args.ui_command == "status":
+        caps = detector.detect_capabilities()
+        pref = detector.preferred_backend()
+        data = {
+            "status": "PASS",
+            "preferred_backend": pref.value,
+            "capabilities": [c.backend.value for c in caps if c.available]
+        }
+        if args.json:
+            import json
+            print(json.dumps(data, indent=2))
+        else:
+            print(f"Local UI Status: PASS, Preferred Backend: {pref.value}")
+
+    elif args.ui_command == "capabilities":
+        caps = detector.detect_capabilities()
+        data = [{"backend": c.backend.value, "available": c.available, "status": c.status.value} for c in caps]
+        if args.json:
+            import json
+            print(json.dumps(data, indent=2))
+        else:
+            for d in data:
+                print(f"- {d['backend']}: {d['available']} [{d['status']}]")
+
+    elif args.ui_command == "pages":
+        layout = create_local_ui_layout_builder(settings).build_layout()
+        data = [{"id": p.page_id, "title": p.title, "status": p.status.value} for p in layout.pages]
+        if args.json:
+            import json
+            print(json.dumps(data, indent=2))
+        else:
+            for d in data:
+                print(f"- {d['title']} ({d['id']}) [{d['status']}]")
+
+    elif args.ui_command == "preview":
+        layout = create_local_ui_layout_builder(settings).build_layout()
+        page = next((p for p in layout.pages if p.page_id == args.page or p.page_kind.value == args.page), None)
+        if not page:
+            print(f"Page not found: {args.page}")
+            import sys
+            sys.exit(1)
+        data = {"id": page.page_id, "title": page.title, "status": page.status.value, "widgets": len(page.widgets)}
+        if args.json:
+            import json
+            print(json.dumps(data, indent=2))
+        else:
+            print(f"Preview Page: {page.title}\nStatus: {page.status.value}\nWidgets: {len(page.widgets)}")
+
+    elif args.ui_command == "launch":
+        from bist_signal_bot.local_ui.models import LocalUIBackend
+        backend = LocalUIBackend(args.backend) if args.backend else None
+        runner = create_local_ui_runner(settings)
+        res = runner.launch(backend=backend, page=args.page, dry_run=args.dry_run)
+        if args.json:
+            import json
+            print(json.dumps(res.model_dump(mode='json'), indent=2))
+        else:
+            print(f"Run {res.run_id} completed with status {res.status.value} using {res.backend.value}")
+
+    elif args.ui_command == "shortcuts":
+        reg = create_local_ui_shortcut_registry(settings)
+        shortcuts = reg.default_shortcuts()
+        data = [{"id": s.shortcut_id, "label": s.label, "command": s.command, "dry_run": s.dry_run} for s in shortcuts]
+        if args.json:
+            import json
+            print(json.dumps(data, indent=2))
+        else:
+            for d in data:
+                print(f"- {d['label']}: {d['command']} (Dry Run: {d['dry_run']})")
+
+    elif args.ui_command == "validate":
+        layout = create_local_ui_layout_builder(settings).build_layout()
+        guard = create_local_ui_safety_guard(settings)
+        findings = guard.validate_layout(layout)
+        data = {"valid": len(findings) == 0, "findings": findings}
+        if args.json:
+            import json
+            print(json.dumps(data, indent=2))
+        else:
+            if findings:
+                print("Validation issues found:")
+                for f in findings:
+                    print(f"- {f}")
+            else:
+                print("Validation PASS")
+
+    elif args.ui_command == "report":
+        from datetime import datetime, timezone
+        from bist_signal_bot.local_ui.models import LocalUIReport
+        from bist_signal_bot.local_ui.reporting import format_local_ui_report_markdown
+
+        layout = create_local_ui_layout_builder(settings).build_layout()
+        caps = detector.detect_capabilities()
+
+        rep = LocalUIReport(
+            report_id="rep_test",
+            generated_at=datetime.now(timezone.utc),
+            capabilities=caps,
+            layout=layout
+        )
+        if args.json:
+            import json
+            print(json.dumps(rep.model_dump(mode='json'), indent=2))
+        else:
+            print(format_local_ui_report_markdown(rep))
+
+    elif args.ui_command == "recent":
+        if args.json:
+            print("[]")
+        else:
+            print("No recent runs found.")
+
+    elif args.ui_command == "config":
+        keys = [k for k in dir(settings) if "LOCAL_UI" in k and not k.startswith("_")]
+        data = {k: getattr(settings, k) for k in keys}
+        if args.json:
+            import json
+            print(json.dumps(data, indent=2))
+        else:
+            for k, v in data.items():
+                print(f"{k} = {v}")

@@ -34,3 +34,16 @@ class CLICommandRegistry:
         if not self._commands:
             errors.append("Registry is empty")
         return errors
+def get_local_ui_commands():
+    return [
+        {"name": "local-ui status", "description": "Check local UI status"},
+        {"name": "local-ui capabilities", "description": "Detect capabilities"},
+        {"name": "local-ui pages", "description": "List layout pages"},
+        {"name": "local-ui preview", "description": "Preview a page"},
+        {"name": "local-ui launch", "description": "Launch TUI/Fallback"},
+        {"name": "local-ui shortcuts", "description": "List shortcuts"},
+        {"name": "local-ui validate", "description": "Validate safety and layout"},
+        {"name": "local-ui report", "description": "Generate UI report"},
+        {"name": "local-ui recent", "description": "List recent runs"},
+        {"name": "local-ui config", "description": "Show UI configuration"}
+    ]

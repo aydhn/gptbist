@@ -142,3 +142,35 @@ class CLIWorkflowRunner:
             "message": "Research Orchestrator run simulated.",
             "data": {"plan_id": plan.get("plan_id"), "status": "PASS"}
         }
+def run_local_ui_shortcut_dry_run(shortcut_id: str, settings=None):
+    from bist_signal_bot.app.local_ui_app import create_local_ui_shortcut_registry, create_local_ui_runner
+    from bist_signal_bot.cli_ux.schemas import CLIOutputEnvelope
+    from bist_signal_bot.cli_ux.models import CLIStatus
+
+    registry = create_local_ui_shortcut_registry(settings)
+    runner = create_local_ui_runner(settings)
+
+    shortcuts = registry.default_shortcuts()
+    sc = next((s for s in shortcuts if s.shortcut_id == shortcut_id), None)
+
+    if not sc:
+        return CLIOutputEnvelope(
+            command=f"local-ui shortcut run {shortcut_id}",
+            status=CLIStatus.FAILED,
+            message="Shortcut not found",
+            data={}
+        )
+
+    result = runner.run_shortcut(sc, dry_run=True)
+    return CLIOutputEnvelope(
+        command=f"local-ui shortcut run {shortcut_id}",
+        status=CLIStatus.SUCCESS if result["status"] == "SUCCESS" else CLIStatus.FAILED,
+        message=result["message"],
+        data=result,
+        metadata={
+            "local_ui_backend": "AUTO",
+            "local_ui_status": result["status"],
+            "fallback_used": False,
+            "rendered_page_count": 0
+        }
+    )

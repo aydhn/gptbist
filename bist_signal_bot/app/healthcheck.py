@@ -200,3 +200,17 @@ def check_report_templates_health():
         "composer_capable": True,
         "latest_validation_status": "PASS"
     }
+def check_local_ui(settings=None) -> dict:
+    from bist_signal_bot.app.local_ui_app import create_local_ui_capability_detector
+    try:
+        detector = create_local_ui_capability_detector(settings)
+        caps = detector.detect_capabilities()
+        pref = detector.preferred_backend()
+        return {
+            "status": "PASS",
+            "message": "Local UI OK",
+            "preferred_backend": pref.value,
+            "capabilities": [c.backend.value for c in caps if c.available]
+        }
+    except Exception as e:
+        return {"status": "FAIL", "message": f"Local UI error: {str(e)}"}
