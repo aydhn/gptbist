@@ -162,6 +162,12 @@ class ModelArtifact(BaseModel):
 
 
 class ModelCard(BaseModel):
+
+    # Phase 106: Explainability Integration
+    supported_explanation_methods: list[str] = Field(default_factory=list)
+    top_feature_importance: dict[str, float] = Field(default_factory=dict)
+    explanation_caveats: list[str] = Field(default_factory=list)
+    unsupported_method_warnings: list[str] = Field(default_factory=list)
     card_id: str
     model_id: str
     model_name: str

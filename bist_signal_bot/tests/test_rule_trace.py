@@ -1,20 +1,16 @@
-import pytest
 from bist_signal_bot.explainability.rule_trace import RuleTraceBuilder
 
-def test_trace_moving_average():
-    builder = RuleTraceBuilder()
-    row = {"close": 110, "sma_50": 100}
-    trace = builder.build_trace("moving_average_trend", "ASELS", row)
-    assert trace.strategy_name == "moving_average_trend"
-    assert trace.passed_count == 1
-    assert trace.failed_count == 0
-    assert len(trace.steps) == 1
-    assert trace.steps[0].passed is True
+def test_rule_trace_moving_average():
+    bld = RuleTraceBuilder()
+    row = {"ma_50": 100, "ma_200": 80}
+    trace = bld.trace_moving_average_strategy(row)
+    assert trace.passed_rules == 1
+    assert trace.failed_rules == 0
+    assert trace.status.value == "PASS"
 
-def test_trace_generic():
-    builder = RuleTraceBuilder()
-    row = {"close": 110}
-    trace = builder.build_trace("unknown_strategy", "ASELS", row)
-    assert len(trace.steps) == 1
-    assert trace.steps[0].rule_name == "Generic condition"
-    assert trace.steps[0].passed is True
+def test_rule_trace_missing_feature():
+    bld = RuleTraceBuilder()
+    row = {"ma_50": 100} # ma_200 missing
+    trace = bld.trace_moving_average_strategy(row)
+    assert trace.status.value == "WATCH"
+    assert "Missing feature" in trace.warnings[0]

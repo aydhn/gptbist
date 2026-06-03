@@ -631,3 +631,14 @@ def get_local_ui_dir(settings=None) -> Path:
     path = get_data_dir(settings) / getattr(settings, "LOCAL_UI_DIR_NAME", "local_ui")
     path.mkdir(parents=True, exist_ok=True)
     return path
+
+
+def get_explainability_dir(settings: Any | None = None) -> Path:
+    from bist_signal_bot.config.settings import get_settings
+    if settings is None:
+        settings = get_settings()
+    data_dir = get_data_dir(settings)
+    dir_name = getattr(settings, "EXPLAINABILITY_DIR_NAME", "explainability")
+    path = data_dir / dir_name
+    path.mkdir(parents=True, exist_ok=True)
+    return path

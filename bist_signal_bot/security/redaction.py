@@ -13,3 +13,7 @@ class SecretRedactor:
             else:
                 redacted[k] = v
         return redacted
+
+
+def redact_secrets(data: dict) -> dict:
+    return SecretRedactor.redact_dict(data)
