@@ -2124,3 +2124,39 @@ class MarketValidationError(Exception): pass
 class MarketUniverseError(Exception): pass
 class MarketGovernanceError(Exception): pass
 class MarketStorageError(Exception): pass
+
+class MaintenanceAutomationError(BistSignalBotError):
+    pass
+
+class MaintenanceCadenceError(MaintenanceAutomationError):
+    pass
+
+class MaintenancePlanError(MaintenanceAutomationError):
+    pass
+
+class MaintenanceRunError(MaintenanceAutomationError):
+    pass
+
+class MaintenanceCheckError(MaintenanceAutomationError):
+    pass
+
+class MaintenanceCleanupError(MaintenanceAutomationError):
+    pass
+
+class MaintenanceRetentionError(MaintenanceAutomationError):
+    pass
+
+class MaintenanceRotationError(MaintenanceAutomationError):
+    pass
+
+class MaintenanceBackupError(MaintenanceAutomationError):
+    pass
+
+class MaintenanceStalenessError(MaintenanceAutomationError):
+    pass
+
+class MaintenanceManifestError(MaintenanceAutomationError):
+    pass
+
+class MaintenanceAutomationStorageError(MaintenanceAutomationError):
+    pass

@@ -1,29 +1,32 @@
 import pytest
-from bist_signal_bot.maintenance.storage import MaintenanceStore
-from bist_signal_bot.maintenance.models import BackupResult, BackupRequest, MaintenanceStatus, BackupManifest, BackupFormat
+from pathlib import Path
+from bist_signal_bot.maintenance_automation.storage import MaintenanceAutomationStore
+from bist_signal_bot.maintenance_automation.models import MaintenanceCadencePolicy, MaintenanceCadenceKind
+from bist_signal_bot.maintenance_automation.cadence import MaintenanceCadenceRegistry
 
-def test_maintenance_store_save_list(tmp_path):
-    store = MaintenanceStore(tmp_path)
+def test_storage_save_load_policies(tmp_path):
+    store = MaintenanceAutomationStore(tmp_path)
+    registry = MaintenanceCadenceRegistry()
+    policies = registry.default_policies()
 
-    # Create fake BackupResult
-    manifest = BackupManifest(
-        manifest_id="mf_1", backup_id="bk_1", created_at="2024-01-01T00:00:00Z",
-        app_version="1.0", schema_version="1.0", backup_format=BackupFormat.ZIP,
-        scopes=[], file_entries=[], total_files=0, included_files=0, excluded_files=0, total_size_bytes=0
-    )
-    result = BackupResult(
-        backup_id="bk_1", request=BackupRequest(), status=MaintenanceStatus.SUCCESS,
-        manifest=manifest, elapsed_seconds=1.0
-    )
+    store.save_cadence_policies(policies)
+    loaded = store.load_cadence_policies()
 
-    paths = store.save_backup_result(result)
-    assert paths["result"].exists()
-    assert paths["manifest"].exists()
+    assert len(loaded) == len(policies)
+    assert loaded[0].cadence == policies[0].cadence
 
-    backups = store.list_backups()
-    assert len(backups) == 1
-    assert backups[0]["backup_id"] == "bk_1"
+def test_storage_append_load_run(tmp_path):
+    store = MaintenanceAutomationStore(tmp_path)
+    from bist_signal_bot.maintenance_automation.planner import MaintenancePlanner
+    from bist_signal_bot.maintenance_automation.runner import MaintenanceRunner
 
-    ops = store.list_operations()
-    assert len(ops) == 1
-    assert ops[0]["operation"] == "BACKUP_CREATE"
+    planner = MaintenancePlanner()
+    plan = planner.create_plan(MaintenanceCadenceKind.DAILY)
+    runner = MaintenanceRunner()
+    run = runner.run_plan(plan)
+
+    store.append_run(run)
+
+    loaded = store.load_latest_run()
+    assert loaded is not None
+    assert loaded.run_id == run.run_id

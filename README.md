@@ -146,3 +146,28 @@ The system includes a local-first, research-only, broker-free multi-market abstr
 - **Instrument Universe:** Local mapping and canonicalization of symbols.
 - **Calendar & Sessions:** Offline estimation of business days and trading hours.
 - **Governance:** Strict validation against unsafe language and live trading claims.
+
+## Long-Term Maintenance Automation
+
+Sistem, yerel ve offline bir bot olduğu için kendi loglarını, eski raporlarını ve cache'lerini yönetmelidir.
+Bu işlev **Maintenance Automation** katmanı ile sağlanır.
+
+### Amaç
+Yazılımın uzun vadede diski doldurmadan, hatalı çalışmadan, eski (stale) datalara takılmadan çalışmaya devam etmesi için kendi kendini denetlemesi.
+
+### Cadence & Dry-run
+- `DAILY`, `WEEKLY`, `MONTHLY`, `QUARTERLY` periyotlarda check, cleanup, backup işlemleri yapılabilir.
+- Varsayılan olarak tüm yıkıcı eylemler (silme vb.) `dry-run` olarak ayarlanmıştır ve `--confirm` olmadan asla gerçek silme yapmaz.
+
+### Cleanup & Retention
+Retention policy, `data/cache` veya `logs` gibi lokasyonlar için geçerlilik süreleri tutar. Süresi dolanlar "Cleanup Candidate" ilan edilir.
+
+### Backup Manifest
+Broker entegrasyonu olmayan bu sistemde "backup" işlemi, source kodun ve kritik ayarların `SHA-256` checksum'ları ile birlikte manifestinin oluşturulmasıdır.
+
+### CLI Komutları
+```bash
+python -m bist_signal_bot maintenance-auto plan --cadence WEEKLY --dry-run
+python -m bist_signal_bot maintenance-auto run --cadence WEEKLY --dry-run
+python -m bist_signal_bot maintenance-auto cleanup --dry-run
+```

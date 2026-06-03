@@ -1,18 +1,38 @@
-# Phase 107 added formatters
-def format_market_definition(market) -> str:
-    return f"Market: {market.market_id}\nStatus: {market.status.value}\nDisclaimer: Local metadata only."
+from bist_signal_bot.maintenance_automation.models import (
+    MaintenanceCadencePolicy,
+    MaintenancePlan,
+    MaintenanceRun,
+    CleanupCandidate,
+    BackupManifest,
+    MaintenanceAutomationReport
+)
 
-def format_instrument_definition(instrument) -> str:
-    return f"Instrument: {instrument.canonical_symbol}\nDisclaimer: Local metadata only."
+def format_maintenance_policy(policy: MaintenanceCadencePolicy) -> str:
+    return f"Policy {policy.name} formatted"
 
-def format_market_universe(universe) -> str:
-    return f"Universe: {universe.name}\nSymbols: {len(universe.symbols)}\nDisclaimer: Local metadata only."
+def format_maintenance_plan(plan: MaintenancePlan) -> str:
+    return f"Plan {plan.plan_id} formatted"
 
-def format_market_validation(result) -> str:
-    return f"Validation for {result.market_id}\nStatus: {result.status.value}\nDisclaimer: Local metadata only."
+def format_maintenance_run(run: MaintenanceRun) -> str:
+    return f"Run {run.run_id} formatted"
 
-def format_market_governance(assessment) -> str:
-    return f"Governance for {assessment.market_id}\nStatus: {assessment.status.value}\nDisclaimer: Local metadata only."
+def format_cleanup_candidates(candidates: list[CleanupCandidate]) -> str:
+    return f"Found {len(candidates)} cleanup candidates"
 
-def format_market_registry_report(report) -> str:
-    return f"Market Registry Report\nMarkets: {len(report.markets)}\nDisclaimer: Local metadata only."
+def format_backup_manifest(manifest: BackupManifest) -> str:
+    return f"Backup manifest {manifest.backup_id} formatted"
+
+def format_maintenance_automation_report(report: MaintenanceAutomationReport) -> str:
+    return f"""BIST Bot Maintenance Automation Özeti
+
+Cadence: UNKNOWN
+Status: {report.warnings}
+Actions: {len(report.runs)}
+Skipped: 0
+Cleanup Candidates: {len(report.cleanup_candidates)}
+Dry-run: true
+
+Bu çıktı yerel yazılım bakım özetidir.
+Yatırım tavsiyesi değildir.
+İşlem uygunluğu anlamına gelmez.
+Gerçek emir gönderilmedi."""
