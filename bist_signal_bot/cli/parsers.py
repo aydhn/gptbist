@@ -2920,3 +2920,5 @@ def add_maintenance_auto_parser(subparsers):
 
     config_p = sp.add_parser('config')
     config_p.add_argument('--json', action='store_true')
+
+from bist_signal_bot.cli.release_policy_cli import setup_release_policy_parser

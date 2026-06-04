@@ -7578,3 +7578,5 @@ def execute_maintenance_auto_cmd(args):
             print_json({"status": "PASS", "settings": "hidden"})
         else:
             print("Config settings loaded successfully.")
+
+from bist_signal_bot.cli.release_policy_cli import handle_release_policy_command

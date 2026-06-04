@@ -653,3 +653,11 @@ def get_plugins_dir(settings: Optional['Settings'] = None) -> Path:
     d = get_data_dir(s) / s.PLUGINS_DIR_NAME
     d.mkdir(parents=True, exist_ok=True)
     return d
+
+def get_release_policy_dir(settings=None) -> Path:
+    from bist_signal_bot.config.settings import get_settings
+    s = settings or get_settings()
+    data_dir = getattr(s, 'DATA_DIR', Path('data'))
+    if isinstance(data_dir, str):
+        data_dir = Path(data_dir)
+    return data_dir / getattr(s, 'RELEASE_POLICY_DIR_NAME', 'release_policy')

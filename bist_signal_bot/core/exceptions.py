@@ -2175,3 +2175,40 @@ class PluginTestHarnessError(PluginError): pass
 class PluginSandboxError(PluginError): pass
 class PluginGovernanceError(PluginError): pass
 class PluginStorageError(PluginError): pass
+
+
+class ReleasePolicyError(BistSignalBotError):
+    pass
+
+class BranchPolicyError(ReleasePolicyError):
+    pass
+
+class VersionGovernanceError(ReleasePolicyError):
+    pass
+
+class CompatibilityPolicyError(ReleasePolicyError):
+    pass
+
+class ChangeControlError(ReleasePolicyError):
+    pass
+
+class ChangelogError(ReleasePolicyError):
+    pass
+
+class MigrationPolicyError(ReleasePolicyError):
+    pass
+
+class DeprecationPolicyError(ReleasePolicyError):
+    pass
+
+class ReleaseBranchFreezeError(ReleasePolicyError):
+    pass
+
+class FinalClosureError(ReleasePolicyError):
+    pass
+
+class ReleasePolicyGovernanceError(ReleasePolicyError):
+    pass
+
+class ReleasePolicyStorageError(ReleasePolicyError):
+    pass

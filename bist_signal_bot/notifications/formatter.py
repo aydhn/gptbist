@@ -21,3 +21,6 @@ def format_plugin_governance(assessment: PluginGovernanceAssessment) -> str:
 
 def format_plugin_registry_report(report: PluginRegistryReport) -> str:
     return "Total Manifests: " + str(len(report.manifests)) + "\nDisclaimer: Yatırım tavsiyesi değildir."
+
+class NotificationFormatter:
+    pass
