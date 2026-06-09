@@ -340,3 +340,52 @@ def test_format_model_card_markdown():
     assert "limitation 1" in markdown
     assert "risk 1" in markdown
     assert "PASS" in markdown
+
+def test_lineage_edge_to_dict():
+    from bist_signal_bot.model_registry.models import ModelLineageEdge
+    from bist_signal_bot.model_registry.reporting import lineage_edge_to_dict
+    from datetime import datetime, timezone
+
+    edge = ModelLineageEdge(
+        edge_id="edge_123",
+        from_object_id="obj_1",
+        to_object_id="obj_2",
+        relation="DERIVES_FROM",
+        process_name="training_job",
+        created_at=datetime(2023, 1, 1, tzinfo=timezone.utc),
+        warnings=["warning 1"],
+        metadata={"key": "value"}
+    )
+
+    result = lineage_edge_to_dict(edge)
+
+    assert result == {
+        "edge_id": "edge_123",
+        "from": "obj_1",
+        "to": "obj_2",
+        "relation": "DERIVES_FROM",
+        "process": "training_job"
+    }
+
+def test_lineage_edge_to_dict_no_process():
+    from bist_signal_bot.model_registry.models import ModelLineageEdge
+    from bist_signal_bot.model_registry.reporting import lineage_edge_to_dict
+    from datetime import datetime, timezone
+
+    edge = ModelLineageEdge(
+        edge_id="edge_456",
+        from_object_id="obj_A",
+        to_object_id="obj_B",
+        relation="USES",
+        created_at=datetime(2023, 1, 1, tzinfo=timezone.utc),
+    )
+
+    result = lineage_edge_to_dict(edge)
+
+    assert result == {
+        "edge_id": "edge_456",
+        "from": "obj_A",
+        "to": "obj_B",
+        "relation": "USES",
+        "process": None
+    }
