@@ -129,3 +129,53 @@ def test_governance_assessment_to_dict_no_blocking_reasons():
         "created_at": "2023-02-01T12:00:00+00:00"
     }
     assert result == expected
+
+def test_model_registry_report_to_dict():
+    from bist_signal_bot.model_registry.models import ModelRegistryReport, ModelRecord, ExperimentRun, ModelArtifact, ModelCard, ModelDriftFinding, ExperimentStatus, ModelDriftType, ModelGovernanceStatus, ModelArtifactFormat
+
+    report = ModelRegistryReport(
+        report_id="report-123",
+        generated_at=datetime(2023, 5, 1, 10, 0, 0, tzinfo=timezone.utc),
+        models=[ModelRecord(model_id="m1", model_name="m", model_kind=ModelKind.CLASSIFIER, version="1.0", status=ModelRegistryStatus.ACTIVE_RESEARCH, created_at=datetime.now())],
+        experiments=[ExperimentRun(run_id="e1", experiment_name="e", model_name="m", model_kind=ModelKind.CLASSIFIER, status=ExperimentStatus.COMPLETED, started_at=datetime.now())],
+        artifacts=[ModelArtifact(artifact_id="a1", model_id="m1", path="path", artifact_format=ModelArtifactFormat.PICKLE, created_at=datetime.now())],
+        cards=[ModelCard(card_id="c1", model_id="m1", model_name="m", version="1.0", created_at=datetime.now(), intended_use="test", not_intended_use="not for real order execution or investment advice", input_features=["f1"], training_data_summary="test", validation_summary="test", calibration_summary="test", governance_status=ModelGovernanceStatus.PASS)],
+        drift_findings=[ModelDriftFinding(drift_id="d1", model_id="m1", drift_type=ModelDriftType.FEATURE_DRIFT, baseline_window="w1", current_window="w2", status=ModelGovernanceStatus.PASS, message="msg")],
+        key_findings=["Finding 1", "Finding 2"]
+    )
+
+    from bist_signal_bot.model_registry.reporting import model_registry_report_to_dict
+    result = model_registry_report_to_dict(report)
+
+    assert result == {
+        "report_id": "report-123",
+        "generated_at": "2023-05-01T10:00:00+00:00",
+        "models_count": 1,
+        "experiments_count": 1,
+        "artifacts_count": 1,
+        "cards_count": 1,
+        "drift_findings": 1,
+        "key_findings": ["Finding 1", "Finding 2"]
+    }
+
+def test_model_registry_report_to_dict_empty():
+    from bist_signal_bot.model_registry.models import ModelRegistryReport
+
+    report = ModelRegistryReport(
+        report_id="report-empty",
+        generated_at=datetime(2023, 6, 1, 12, 0, 0, tzinfo=timezone.utc)
+    )
+
+    from bist_signal_bot.model_registry.reporting import model_registry_report_to_dict
+    result = model_registry_report_to_dict(report)
+
+    assert result == {
+        "report_id": "report-empty",
+        "generated_at": "2023-06-01T12:00:00+00:00",
+        "models_count": 0,
+        "experiments_count": 0,
+        "artifacts_count": 0,
+        "cards_count": 0,
+        "drift_findings": 0,
+        "key_findings": []
+    }
