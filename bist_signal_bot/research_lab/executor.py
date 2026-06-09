@@ -83,6 +83,14 @@ class ResearchJobExecutor:
 
     def execute_command(self, command: List[str], timeout_seconds: int, env: Dict[str, str]) -> Tuple[int, str, str]:
         import os
+
+        # Security validation: strictly allow only bist_signal_bot module execution
+        if not command or len(command) < 3:
+            return 1, "", f"Security Error: Command too short or empty."
+
+        if command[0] != "python" or command[1] != "-m" or command[2] != "bist_signal_bot":
+            return 1, "", f"Security Error: Unauthorized command execution blocked. Only 'python -m bist_signal_bot' is allowed."
+
         merged_env = os.environ.copy()
         merged_env.update(env)
         try:
