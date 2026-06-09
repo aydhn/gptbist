@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, List
 from bist_signal_bot.report_templates.models import ComposedReport, ReportExportPack, ReportManifest
 
 class ReportManifestBuilder:
