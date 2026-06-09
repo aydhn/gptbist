@@ -389,3 +389,54 @@ def test_lineage_edge_to_dict_no_process():
         "relation": "USES",
         "process": None
     }
+
+def test_artifact_to_dict_basic():
+    from bist_signal_bot.model_registry.models import ModelArtifact, ModelArtifactFormat
+    from bist_signal_bot.model_registry.reporting import artifact_to_dict
+    from datetime import datetime, timezone
+
+    artifact = ModelArtifact(
+        artifact_id="art-123",
+        model_id="m1",
+        path="/path/to/model.pkl",
+        artifact_format=ModelArtifactFormat.PICKLE,
+        created_at=datetime(2023, 1, 1, 12, 0, 0, tzinfo=timezone.utc),
+        size_bytes=1024,
+        loadable=True
+    )
+
+    result = artifact_to_dict(artifact)
+
+    assert result == {
+        "artifact_id": "art-123",
+        "model_id": "m1",
+        "path": "/path/to/model.pkl",
+        "format": "PICKLE",
+        "created_at": "2023-01-01T12:00:00+00:00",
+        "size_bytes": 1024,
+        "loadable": True
+    }
+
+def test_artifact_to_dict_missing_optionals():
+    from bist_signal_bot.model_registry.models import ModelArtifact, ModelArtifactFormat
+    from bist_signal_bot.model_registry.reporting import artifact_to_dict
+    from datetime import datetime, timezone
+
+    artifact = ModelArtifact(
+        artifact_id="art-124",
+        path="/path/to/model.json",
+        artifact_format=ModelArtifactFormat.JSON,
+        created_at=datetime(2023, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+    )
+
+    result = artifact_to_dict(artifact)
+
+    assert result == {
+        "artifact_id": "art-124",
+        "model_id": None,
+        "path": "/path/to/model.json",
+        "format": "JSON",
+        "created_at": "2023-01-01T12:00:00+00:00",
+        "size_bytes": None,
+        "loadable": None
+    }
