@@ -9,6 +9,7 @@ class DocsValidator:
         self.secret_redactor = secret_redactor
         self.forbidden_guard = forbidden_guard
         self.settings = settings
+        self._file_cache: dict[Path, str] = {}
 
     def validate_docs_dir(self, docs_dir: Path) -> DocsValidationReport:
         report = DocsValidationReport()
@@ -31,7 +32,9 @@ class DocsValidator:
 
     def validate_markdown_file(self, path: Path) -> list[DocsValidationFinding]:
         findings = []
-        text = path.read_text(encoding="utf-8")
+        if path not in self._file_cache:
+            self._file_cache[path] = path.read_text(encoding="utf-8")
+        text = self._file_cache[path]
         findings.extend(self.validate_no_secrets(text, str(path)))
         findings.extend(self.validate_no_unsafe_claims(text, str(path)))
         findings.extend(self.validate_command_examples(text, str(path)))
