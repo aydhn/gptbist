@@ -140,6 +140,27 @@ class ModelCardBuilder:
             f"**Disclaimer:** {card.disclaimer}"
         ]
 
+
+        if card.supported_explanation_methods or card.top_feature_importance:
+            lines.extend([
+                "",
+                "## Explainability Details"
+            ])
+            if card.supported_explanation_methods:
+                lines.append(f"**Supported Methods:** {', '.join(card.supported_explanation_methods)}")
+            if card.top_feature_importance:
+                lines.append("**Top Features:**")
+                for k, v in card.top_feature_importance.items():
+                    lines.append(f"- {k}: {v:.4f}")
+            if card.explanation_caveats:
+                lines.append("**Caveats:**")
+                for cav in card.explanation_caveats:
+                    lines.append(f"- {cav}")
+            if card.unsupported_method_warnings:
+                lines.append("**Unsupported Warnings:**")
+                for w in card.unsupported_method_warnings:
+                    lines.append(f"- {w}")
+
         if card.warnings:
             lines.extend([
                 "",
