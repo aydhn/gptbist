@@ -10,10 +10,8 @@ def mask_sensitive_value(value: str) -> str:
     from bist_signal_bot.security.redaction import SecretRedactor
     return SecretRedactor.mask_value(value)
 
-def sanitize_for_logging(data: Any, mask_secrets: bool = True) -> Any:
+def sanitize_for_logging(data: Any) -> Any:
     """Recursively sanitizes a dictionary or list, masking sensitive values."""
-    if not mask_secrets:
-        return data
 
     try:
         from bist_signal_bot.security.redaction import SecretRedactor
@@ -72,8 +70,8 @@ def get_logger(name: str | None = None) -> logging.Logger:
         name = f"bist_signal_bot.{name}"
     return logging.getLogger(name or "bist_signal_bot")
 
-def safe_log_dict(logger: logging.Logger, level: int, message: str, data: Any, mask_secrets: bool = True):
-    sanitized_data = sanitize_for_logging(data, mask_secrets)
+def safe_log_dict(logger: logging.Logger, level: int, message: str, data: Any):
+    sanitized_data = sanitize_for_logging(data)
     if isinstance(sanitized_data, dict) or isinstance(sanitized_data, list):
          try:
              data_str = json.dumps(sanitized_data, ensure_ascii=False)
