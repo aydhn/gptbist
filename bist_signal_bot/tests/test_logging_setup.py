@@ -39,10 +39,6 @@ def test_sanitize_for_logging():
     assert sanitized["list"][0]["password"] == "mypa...d123"
     assert sanitized["list"][1] == "plain_text"
 
-def test_sanitize_for_logging_disabled():
-    data = {"token": "secret1234567890"}
-    assert sanitize_for_logging(data, mask_secrets=False)["token"] == "secret1234567890"
-
 def test_setup_logging(tmp_path):
     import os
     os.environ["LOG_LEVEL"] = "DEBUG"

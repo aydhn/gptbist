@@ -34,7 +34,7 @@ class ErrorHandler:
 
         # Log sanitized context safely
         if sanitized_context:
-            safe_log_dict(self.logger, logging.DEBUG, "Error Context", sanitized_context, self.settings.MASK_SECRETS_IN_LOGS)
+            safe_log_dict(self.logger, logging.DEBUG, "Error Context", sanitized_context)
 
         if self.settings.DEBUG_TRACEBACKS:
             self.logger.debug(f"Traceback:\n{''.join(traceback.format_exception(type(error), error, error.__traceback__))}")
