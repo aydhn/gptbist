@@ -4,6 +4,7 @@ from typing import Any
 
 import pandas as pd
 from pydantic import BaseModel, Field
+from bist_signal_bot.markets.calendar import MarketCalendarProvider
 
 
 class DataQualitySeverity(str, Enum):
@@ -84,12 +85,14 @@ class DataQualityChecker:
         min_rows: int = 100,
         max_daily_return_abs: float = 0.35,
         max_allowed_gap_days: int = 10,
-        fail_on_error: bool = False
+        fail_on_error: bool = False,
+        calendar_provider: MarketCalendarProvider | None = None
     ):
         self.min_rows = min_rows
         self.max_daily_return_abs = max_daily_return_abs
         self.max_allowed_gap_days = max_allowed_gap_days
         self.fail_on_error = fail_on_error
+        self.calendar_provider = calendar_provider
 
         self.required_columns = {"open", "high", "low", "close", "volume"}
 
@@ -98,6 +101,7 @@ class DataQualityChecker:
         symbol = getattr(market_data, "symbol", "UNKNOWN")
         timeframe = getattr(market_data, "timeframe", "UNKNOWN")
         source = getattr(market_data, "source", "UNKNOWN")
+        market_id = getattr(market_data, "market_id", "BIST")
 
         if hasattr(timeframe, 'value'):
             timeframe = timeframe.value
@@ -147,7 +151,7 @@ class DataQualityChecker:
         self._check_zero_volume_series(df, report)
 
         if timeframe == '1d' or str(timeframe).lower() == '1d':
-            self._check_large_date_gaps(df, report)
+            self._check_large_date_gaps(df, report, market_id)
 
         self._check_extreme_returns(df, report)
         self._check_minimum_rows(df, report)
@@ -332,20 +336,43 @@ class DataQualityChecker:
                     affected_columns=["volume"]
                 )
 
-    def _check_large_date_gaps(self, df: pd.DataFrame, report: DataQualityReport):
-        # TODO: Phase 6 sonrası, market calendar ile entegre edilerek hafta sonları ve tatiller gap hesabından düşülebilir.
+    def _check_large_date_gaps(self, df: pd.DataFrame, report: DataQualityReport, market_id: str):
         if isinstance(df.index, pd.DatetimeIndex) and len(df) > 1:
             gaps = df.index.to_series().diff()
             large_gaps = gaps[gaps > pd.Timedelta(days=self.max_allowed_gap_days)]
+
             if not large_gaps.empty:
-                self._add_issue(
-                    report,
-                    DataQualityIssueType.LARGE_DATE_GAP,
-                    DataQualitySeverity.WARNING,
-                    f"Found {len(large_gaps)} date gaps larger than {self.max_allowed_gap_days} days.",
-                    affected_rows=len(large_gaps),
-                    sample_timestamps=[str(t) for t in large_gaps.index[:5]]
-                )
+                true_large_gaps = []
+                for current_date, gap in large_gaps.items():
+                    if self.calendar_provider is not None:
+                        prev_date = current_date - gap
+                        missing_biz_days = 0
+
+                        # Count business days strictly between prev_date and current_date
+                        curr = prev_date + pd.Timedelta(days=1)
+                        while curr < current_date:
+                            # is_business_day expects string date in YYYY-MM-DD
+                            date_str = curr.strftime("%Y-%m-%d")
+                            if self.calendar_provider.is_business_day(market_id, date_str):
+                                missing_biz_days += 1
+                            curr += pd.Timedelta(days=1)
+
+                        # The total "business gap" includes the missing days + the jump to current_date
+                        business_gap = missing_biz_days + 1
+                        if business_gap > self.max_allowed_gap_days:
+                            true_large_gaps.append(current_date)
+                    else:
+                        true_large_gaps.append(current_date)
+
+                if true_large_gaps:
+                    self._add_issue(
+                        report,
+                        DataQualityIssueType.LARGE_DATE_GAP,
+                        DataQualitySeverity.WARNING,
+                        f"Found {len(true_large_gaps)} date gaps larger than {self.max_allowed_gap_days} days.",
+                        affected_rows=len(true_large_gaps),
+                        sample_timestamps=[str(t) for t in true_large_gaps[:5]]
+                    )
 
     def _check_extreme_returns(self, df: pd.DataFrame, report: DataQualityReport):
         if "close" in df.columns and pd.api.types.is_numeric_dtype(df["close"]) and len(df) > 1:
