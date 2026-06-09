@@ -179,3 +179,53 @@ def test_model_registry_report_to_dict_empty():
         "drift_findings": 0,
         "key_findings": []
     }
+
+def test_validation_summary_to_dict_basic():
+    from bist_signal_bot.model_registry.models import ModelValidationSummary, ModelGovernanceStatus
+    from bist_signal_bot.model_registry.reporting import validation_summary_to_dict
+
+    summary = ModelValidationSummary(
+        validation_id="val-123",
+        model_id="m1",
+        created_at=datetime(2023, 1, 1, 12, 0, 0, tzinfo=timezone.utc),
+        validation_method="cross-val",
+        status=ModelGovernanceStatus.PASS,
+        leakage_status=ModelGovernanceStatus.PASS,
+        feature_quality_score=0.95,
+        metrics={"accuracy": 0.99, "f1": 0.98}
+    )
+
+    result = validation_summary_to_dict(summary)
+    assert result == {
+        "validation_id": "val-123",
+        "model_id": "m1",
+        "method": "cross-val",
+        "status": "PASS",
+        "leakage_status": "PASS",
+        "feature_quality": 0.95,
+        "metrics": {"accuracy": 0.99, "f1": 0.98}
+    }
+
+def test_validation_summary_to_dict_missing_optionals():
+    from bist_signal_bot.model_registry.models import ModelValidationSummary, ModelGovernanceStatus
+    from bist_signal_bot.model_registry.reporting import validation_summary_to_dict
+
+    summary = ModelValidationSummary(
+        validation_id="val-124",
+        model_id="m2",
+        created_at=datetime(2023, 1, 1, 12, 0, 0, tzinfo=timezone.utc),
+        validation_method="train-test-split",
+        status=ModelGovernanceStatus.FAIL,
+        leakage_status=ModelGovernanceStatus.FAIL
+    )
+
+    result = validation_summary_to_dict(summary)
+    assert result == {
+        "validation_id": "val-124",
+        "model_id": "m2",
+        "method": "train-test-split",
+        "status": "FAIL",
+        "leakage_status": "FAIL",
+        "feature_quality": None,
+        "metrics": {}
+    }
