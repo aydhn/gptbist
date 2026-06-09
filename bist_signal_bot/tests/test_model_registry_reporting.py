@@ -229,3 +229,71 @@ def test_validation_summary_to_dict_missing_optionals():
         "feature_quality": None,
         "metrics": {}
     }
+
+def test_model_card_to_dict_basic():
+    from bist_signal_bot.model_registry.models import ModelCard, ModelGovernanceStatus
+    from bist_signal_bot.model_registry.reporting import model_card_to_dict
+    from datetime import datetime, timezone
+
+    card = ModelCard(
+        card_id="card-123",
+        model_id="m1",
+        model_name="my_model",
+        version="v1.0",
+        governance_status=ModelGovernanceStatus.PASS,
+        created_at=datetime(2023, 1, 1, 12, 0, 0, tzinfo=timezone.utc),
+        intended_use="Testing",
+        not_intended_use="Not for real order execution or investment advice",
+        input_features=["f1", "f2"],
+        training_data_summary="test data",
+        validation_summary="looks good",
+        calibration_summary="calibrated"
+    )
+
+    result = model_card_to_dict(card)
+
+    assert result == {
+        "card_id": "card-123",
+        "model_id": "m1",
+        "model_name": "my_model",
+        "version": "v1.0",
+        "governance_status": "PASS",
+        "created_at": "2023-01-01T12:00:00+00:00"
+    }
+
+def test_model_card_to_dict_full():
+    from bist_signal_bot.model_registry.models import ModelCard, ModelGovernanceStatus
+    from bist_signal_bot.model_registry.reporting import model_card_to_dict
+    from datetime import datetime, timezone
+
+    card = ModelCard(
+        card_id="card-full",
+        model_id="m-full",
+        model_name="my_full_model",
+        version="v1.1",
+        governance_status=ModelGovernanceStatus.FAIL,
+        created_at=datetime(2023, 1, 2, 12, 0, 0, tzinfo=timezone.utc),
+        intended_use="Testing full fields",
+        not_intended_use="not for real order execution or investment advice",
+        input_features=["f1", "f2", "f3"],
+        training_data_summary="full test data",
+        validation_summary="failed validation",
+        calibration_summary="uncalibrated",
+        known_limitations=["Limit 1", "Limit 2"],
+        risk_notes=["Risk 1"],
+        supported_explanation_methods=["shap", "lime"],
+        top_feature_importance={"f1": 0.8, "f2": 0.2},
+        explanation_caveats=["Caveat 1"],
+        unsupported_method_warnings=["Warning 1"]
+    )
+
+    result = model_card_to_dict(card)
+
+    assert result == {
+        "card_id": "card-full",
+        "model_id": "m-full",
+        "model_name": "my_full_model",
+        "version": "v1.1",
+        "governance_status": "FAIL",
+        "created_at": "2023-01-02T12:00:00+00:00"
+    }
