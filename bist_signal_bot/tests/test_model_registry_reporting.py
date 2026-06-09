@@ -297,3 +297,46 @@ def test_model_card_to_dict_full():
         "governance_status": "FAIL",
         "created_at": "2023-01-02T12:00:00+00:00"
     }
+
+def test_format_model_card_markdown():
+    from bist_signal_bot.model_registry.models import ModelCard, ModelGovernanceStatus
+    from bist_signal_bot.model_registry.reporting import format_model_card_markdown
+    from datetime import datetime, timezone
+
+    card = ModelCard(
+        card_id="card-123",
+        model_id="model-456",
+        model_name="Test Model",
+        version="1.0",
+        created_at=datetime(2023, 5, 1, tzinfo=timezone.utc),
+        intended_use="Test intended use",
+        not_intended_use="This is not intended for real order execution or investment advice",
+        input_features=["feat1", "feat2"],
+        training_data_summary="Trained on random data",
+        validation_summary="Passed validation",
+        calibration_summary="Well calibrated",
+        known_limitations=["limitation 1", "limitation 2"],
+        risk_notes=["risk 1"],
+        governance_status=ModelGovernanceStatus.PASS,
+        supported_explanation_methods=["SHAP"],
+        top_feature_importance={"feat1": 0.8, "feat2": 0.2},
+        explanation_caveats=["Caveat 1"],
+        unsupported_method_warnings=["Warning 1"]
+    )
+
+    markdown = format_model_card_markdown(card)
+
+    assert "Model Card: Test Model" in markdown
+    assert "card-123" in markdown
+    assert "model-456" in markdown
+    assert "1.0" in markdown
+    assert "Test intended use" in markdown
+    assert "This is not intended for real order execution or investment advice" in markdown
+    assert "feat1" in markdown
+    assert "feat2" in markdown
+    assert "Trained on random data" in markdown
+    assert "Passed validation" in markdown
+    assert "Well calibrated" in markdown
+    assert "limitation 1" in markdown
+    assert "risk 1" in markdown
+    assert "PASS" in markdown
