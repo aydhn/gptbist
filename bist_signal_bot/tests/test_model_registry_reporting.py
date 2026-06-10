@@ -568,3 +568,59 @@ def test_calibration_summary_to_dict_nulls():
         "reliability_score": None,
         "ece": None
     }
+
+def test_drift_finding_to_dict():
+    from bist_signal_bot.model_registry.models import ModelDriftFinding, ModelDriftType, ModelGovernanceStatus
+    from bist_signal_bot.model_registry.reporting import drift_finding_to_dict
+
+    finding = ModelDriftFinding(
+        drift_id="drift-123",
+        model_id="mod-1",
+        drift_type=ModelDriftType.FEATURE_DRIFT,
+        baseline_window="2023-01",
+        current_window="2023-02",
+        baseline_value=0.5,
+        current_value=0.8,
+        drift_score=0.9,
+        status=ModelGovernanceStatus.FAIL,
+        message="Significant data drift detected"
+    )
+
+    result = drift_finding_to_dict(finding)
+
+    assert result == {
+        "drift_id": "drift-123",
+        "model_id": "mod-1",
+        "drift_type": "FEATURE_DRIFT",
+        "score": 0.9,
+        "status": "FAIL",
+        "message": "Significant data drift detected"
+    }
+
+def test_drift_finding_to_dict_null_score():
+    from bist_signal_bot.model_registry.models import ModelDriftFinding, ModelDriftType, ModelGovernanceStatus
+    from bist_signal_bot.model_registry.reporting import drift_finding_to_dict
+
+    finding = ModelDriftFinding(
+        drift_id="drift-124",
+        model_id="mod-2",
+        drift_type=ModelDriftType.PERFORMANCE_DECAY,
+        baseline_window="2023-01",
+        current_window="2023-02",
+        baseline_value=0.5,
+        current_value=0.8,
+        drift_score=None,
+        status=ModelGovernanceStatus.PASS,
+        message="No significant decay detected"
+    )
+
+    result = drift_finding_to_dict(finding)
+
+    assert result == {
+        "drift_id": "drift-124",
+        "model_id": "mod-2",
+        "drift_type": "PERFORMANCE_DECAY",
+        "score": None,
+        "status": "PASS",
+        "message": "No significant decay detected"
+    }
