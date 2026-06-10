@@ -486,3 +486,37 @@ def test_format_experiment_run_text_running_no_metrics():
     assert "Status: RUNNING" in result
     assert "Duration: Runnings" in result
     assert "Metrics:" not in result
+
+def test_promotion_request_to_dict():
+    from bist_signal_bot.model_registry.models import ModelPromotionRequest, ModelPromotionStage, ModelGovernanceStatus
+    from bist_signal_bot.model_registry.reporting import promotion_request_to_dict
+    from datetime import datetime, timezone
+
+    request = ModelPromotionRequest(
+        promotion_id="promo-123",
+        model_id="m1",
+        requested_stage=ModelPromotionStage.ACTIVE_RESEARCH,
+        current_stage=ModelPromotionStage.STAGING,
+        requested_at=datetime(2023, 1, 1, 12, 0, 0, tzinfo=timezone.utc),
+        requested_by="analyst_1",
+        reason="Good performance in staging",
+        validation_status=ModelGovernanceStatus.PASS,
+        calibration_status=ModelGovernanceStatus.PASS,
+        leakage_status=ModelGovernanceStatus.PASS,
+        governance_decision=ModelGovernanceStatus.PASS,
+        approved=True,
+        warnings=[],
+        disclaimer="Model promotion is research registry metadata only. It is not live deployment approval or permission to trade. No real order was sent."
+    )
+
+    result = promotion_request_to_dict(request)
+
+    assert result == {
+        "promotion_id": "promo-123",
+        "model_id": "m1",
+        "requested_stage": "ACTIVE_RESEARCH",
+        "current_stage": "STAGING",
+        "approved": True,
+        "reason": "Good performance in staging",
+        "governance_decision": "PASS"
+    }
