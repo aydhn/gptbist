@@ -133,9 +133,13 @@ def handle_backtest_command(args, ctx) -> int:
             # Pre-fetch data
             symbols_data = {}
             if args.source == "mock":
+                from bist_signal_bot.data.models import DataFetchRequest, Timeframe
                 provider = MockMarketDataProvider()
-                for sym in symbols:
-                    symbols_data[sym] = provider.fetch_one(sym, "1d")
+                req = DataFetchRequest(symbols=symbols, timeframe=Timeframe.DAILY, period="2y")
+                results = provider.fetch_ohlcv(req)
+                for sym, mdf in results.items():
+                    if mdf and not mdf.data.empty:
+                        symbols_data[sym] = mdf
             else:
                 service = MarketDataService(settings=ctx.settings)
                 for sym in symbols:
