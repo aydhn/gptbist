@@ -4,7 +4,8 @@ from bist_signal_bot.stress.reporting import (
     format_shock_result_text,
     shock_results_to_dataframe,
     format_stress_result_text,
-    format_stress_report_markdown
+    format_stress_report_markdown,
+    format_monte_carlo_text
 )
 from bist_signal_bot.stress.models import (
     ShockScenarioResult,
@@ -351,3 +352,66 @@ def test_format_stress_report_markdown_full():
     assert "## Shock Scenarios" in md
     assert "## Drawdown Simulation" in md
     assert "## Risk of Ruin Estimate" in md
+def test_format_monte_carlo_text_full():
+    config = MonteCarloConfig(
+        method=MonteCarloMethod.BOOTSTRAP,
+        simulations=5000,
+        horizon_days=252,
+        seed=123,
+        initial_value=100000.0
+    )
+    result = MonteCarloResult(
+        result_id="mc_full",
+        config=config,
+        status=StressStatus.PASS,
+        final_return_pct_p05=None,
+        final_return_pct_p50=12.34,
+        max_drawdown_pct_p50=-15.67,
+        disclaimer="Full test disclaimer"
+    )
+
+    text = format_monte_carlo_text(result)
+
+    expected = "\n".join([
+        "=== MONTE CARLO ===",
+        "Simulations: 5000",
+        "Horizon: 252 days",
+        "Status: PASS",
+        "Median Return: 12.34%",
+        "Median Max Drawdown: -15.67%",
+        "",
+        "Note: Full test disclaimer"
+    ])
+
+    assert text == expected
+
+def test_format_monte_carlo_text_minimal():
+    config = MonteCarloConfig(
+        method=MonteCarloMethod.NORMAL_PARAMETRIC,
+        simulations=1000,
+        horizon_days=30,
+        seed=42,
+        initial_value=50000.0
+    )
+    result = MonteCarloResult(
+        result_id="mc_min",
+        config=config,
+        status=StressStatus.WARN,
+        final_return_pct_p05=None,
+        final_return_pct_p50=None,
+        max_drawdown_pct_p50=None,
+        disclaimer="Minimal test disclaimer"
+    )
+
+    text = format_monte_carlo_text(result)
+
+    expected = "\n".join([
+        "=== MONTE CARLO ===",
+        "Simulations: 1000",
+        "Horizon: 30 days",
+        "Status: WARN",
+        "",
+        "Note: Minimal test disclaimer"
+    ])
+
+    assert text == expected
