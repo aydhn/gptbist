@@ -520,3 +520,51 @@ def test_promotion_request_to_dict():
         "reason": "Good performance in staging",
         "governance_decision": "PASS"
     }
+
+def test_calibration_summary_to_dict():
+    from bist_signal_bot.model_registry.models import ModelCalibrationSummary, ModelGovernanceStatus
+    from bist_signal_bot.model_registry.reporting import calibration_summary_to_dict
+    from datetime import datetime, timezone
+
+    summary = ModelCalibrationSummary(
+        calibration_id="calib-1",
+        model_id="mod-1",
+        created_at=datetime(2023, 1, 1, tzinfo=timezone.utc),
+        calibration_method="platt",
+        status=ModelGovernanceStatus.PASS,
+        reliability_score=0.95,
+        expected_calibration_error=0.05
+    )
+    res = calibration_summary_to_dict(summary)
+    assert res == {
+        "calibration_id": "calib-1",
+        "model_id": "mod-1",
+        "method": "platt",
+        "status": "PASS",
+        "reliability_score": 0.95,
+        "ece": 0.05
+    }
+
+def test_calibration_summary_to_dict_nulls():
+    from bist_signal_bot.model_registry.models import ModelCalibrationSummary, ModelGovernanceStatus
+    from bist_signal_bot.model_registry.reporting import calibration_summary_to_dict
+    from datetime import datetime, timezone
+
+    summary = ModelCalibrationSummary(
+        calibration_id="calib-2",
+        model_id="mod-2",
+        created_at=datetime(2023, 1, 1, tzinfo=timezone.utc),
+        calibration_method="isotonic",
+        status=ModelGovernanceStatus.FAIL,
+        reliability_score=None,
+        expected_calibration_error=None
+    )
+    res = calibration_summary_to_dict(summary)
+    assert res == {
+        "calibration_id": "calib-2",
+        "model_id": "mod-2",
+        "method": "isotonic",
+        "status": "FAIL",
+        "reliability_score": None,
+        "ece": None
+    }
