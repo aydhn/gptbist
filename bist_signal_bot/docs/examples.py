@@ -2,14 +2,17 @@ import re
 from pathlib import Path
 from bist_signal_bot.docs.models import DocsValidationReport, DocsValidationStatus, DocsValidationFinding
 
+_INLINE_CMD_RE = re.compile(r'`(python -m bist_signal_bot[^`]*)`')
+_BLOCK_CMD_RE = re.compile(r'```(?:bash|sh)?\n(.*?)\n```', re.DOTALL)
+
 class DocsExampleRunner:
     def extract_commands_from_markdown(self, path: Path) -> list[str]:
         text = path.read_text(encoding="utf-8")
         # find backticks
         commands = []
-        for match in re.finditer(r'`(python -m bist_signal_bot[^`]*)`', text):
+        for match in _INLINE_CMD_RE.finditer(text):
             commands.append(match.group(1).strip())
-        for match in re.finditer(r'```(?:bash|sh)?\n(.*?)\n```', text, re.DOTALL):
+        for match in _BLOCK_CMD_RE.finditer(text):
             lines = match.group(1).splitlines()
             for line in lines:
                 if line.startswith("python -m bist_signal_bot"):
