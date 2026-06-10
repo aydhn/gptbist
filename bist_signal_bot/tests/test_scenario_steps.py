@@ -1,5 +1,4 @@
 import pytest
-from pathlib import Path
 from bist_signal_bot.scenarios.steps import ScenarioStepExecutor
 from bist_signal_bot.scenarios.models import ScenarioStepConfig, ScenarioStepType, ScenarioStatus
 
@@ -59,3 +58,13 @@ def test_execute_assertions(tmp_path):
     assert res.assertions_passed == 2 # status + contains_text
     assert res.assertions_failed == 1 # no_unsafe_claim
     assert any("unsafe" in i for i in res.issues)
+
+def test_execute_command_validation_failure():
+    with pytest.raises(ValueError, match="Command 'rm' is not allowed."):
+        ScenarioStepConfig(
+            step_id="cmd-invalid",
+            name="Test Invalid",
+            step_type=ScenarioStepType.COMMAND,
+            command=["rm", "-rf", "/"],
+            timeout_seconds=5
+        )

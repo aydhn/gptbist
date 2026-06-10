@@ -77,8 +77,13 @@ class ScenarioStepConfig(BaseModel):
             raise ValueError("name cannot be empty")
         if self.timeout_seconds <= 0:
             raise ValueError("timeout_seconds must be positive")
-        if self.step_type == ScenarioStepType.COMMAND and not self.command:
-            raise ValueError("command must be provided for COMMAND step type")
+        if self.step_type == ScenarioStepType.COMMAND:
+            if not self.command:
+                raise ValueError("command must be provided for COMMAND step type")
+
+            allowed_binaries = {"python", "echo", "ls", "sleep", "pytest"}
+            if self.command[0] not in allowed_binaries:
+                raise ValueError(f"Command '{self.command[0]}' is not allowed. Allowed commands are: {', '.join(allowed_binaries)}")
         if self.step_type == ScenarioStepType.FUNCTION and not self.function_name:
             raise ValueError("function_name must be provided for FUNCTION step type")
         return self
