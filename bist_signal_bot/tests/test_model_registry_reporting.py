@@ -440,3 +440,49 @@ def test_artifact_to_dict_missing_optionals():
         "size_bytes": None,
         "loadable": None
     }
+
+def test_format_experiment_run_text_finished_with_metrics():
+    from bist_signal_bot.model_registry.models import ExperimentRun, ExperimentStatus, ModelKind
+    from bist_signal_bot.model_registry.reporting import format_experiment_run_text
+    from datetime import datetime, timezone
+
+    run = ExperimentRun(
+        run_id="run-123",
+        experiment_name="test_exp",
+        model_name="test_model",
+        model_kind=ModelKind.CLASSIFIER,
+        status=ExperimentStatus.COMPLETED,
+        started_at=datetime(2023, 1, 1, 12, 0, 0, tzinfo=timezone.utc),
+        finished_at=datetime(2023, 1, 1, 12, 0, 5, tzinfo=timezone.utc),
+        metrics={"accuracy": 0.95, "f1": 0.90}
+    )
+
+    result = format_experiment_run_text(run)
+    assert "Experiment: test_exp | Model: test_model" in result
+    assert "Run ID: run-123" in result
+    assert "Status: COMPLETED" in result
+    assert "Duration: 5.0s" in result
+    assert "Metrics:" in result
+    assert "  accuracy: 0.9500" in result
+    assert "  f1: 0.9000" in result
+
+def test_format_experiment_run_text_running_no_metrics():
+    from bist_signal_bot.model_registry.models import ExperimentRun, ExperimentStatus, ModelKind
+    from bist_signal_bot.model_registry.reporting import format_experiment_run_text
+    from datetime import datetime, timezone
+
+    run = ExperimentRun(
+        run_id="run-124",
+        experiment_name="test_exp_2",
+        model_name="test_model_2",
+        model_kind=ModelKind.REGRESSOR,
+        status=ExperimentStatus.RUNNING,
+        started_at=datetime(2023, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+    )
+
+    result = format_experiment_run_text(run)
+    assert "Experiment: test_exp_2 | Model: test_model_2" in result
+    assert "Run ID: run-124" in result
+    assert "Status: RUNNING" in result
+    assert "Duration: Runnings" in result
+    assert "Metrics:" not in result
