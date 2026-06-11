@@ -1,6 +1,11 @@
-import pytest
-from datetime import datetime, timezone
-from bist_signal_bot.model_registry.models import ModelRecord, ModelKind, ModelRegistryStatus, ModelGovernanceAssessment, ModelGovernanceStatus
+from datetime import datetime
+from datetime import timezone
+from bist_signal_bot.model_registry.models import ModelRecord
+from bist_signal_bot.model_registry.models import ModelKind
+from bist_signal_bot.model_registry.models import ModelRegistryStatus
+# import pytest
+# from datetime import timezone
+from bist_signal_bot.model_registry.models import ModelGovernanceAssessment, ModelGovernanceStatus
 from bist_signal_bot.model_registry.reporting import format_model_record_text, governance_assessment_to_dict
 
 def test_format_model_record_text_basic():
@@ -233,7 +238,7 @@ def test_validation_summary_to_dict_missing_optionals():
 def test_model_card_to_dict_basic():
     from bist_signal_bot.model_registry.models import ModelCard, ModelGovernanceStatus
     from bist_signal_bot.model_registry.reporting import model_card_to_dict
-    from datetime import datetime, timezone
+    from datetime import timezone
 
     card = ModelCard(
         card_id="card-123",
@@ -264,7 +269,7 @@ def test_model_card_to_dict_basic():
 def test_model_card_to_dict_full():
     from bist_signal_bot.model_registry.models import ModelCard, ModelGovernanceStatus
     from bist_signal_bot.model_registry.reporting import model_card_to_dict
-    from datetime import datetime, timezone
+    from datetime import timezone
 
     card = ModelCard(
         card_id="card-full",
@@ -301,7 +306,7 @@ def test_model_card_to_dict_full():
 def test_format_model_card_markdown():
     from bist_signal_bot.model_registry.models import ModelCard, ModelGovernanceStatus
     from bist_signal_bot.model_registry.reporting import format_model_card_markdown
-    from datetime import datetime, timezone
+    from datetime import timezone
 
     card = ModelCard(
         card_id="card-123",
@@ -344,7 +349,7 @@ def test_format_model_card_markdown():
 def test_lineage_edge_to_dict():
     from bist_signal_bot.model_registry.models import ModelLineageEdge
     from bist_signal_bot.model_registry.reporting import lineage_edge_to_dict
-    from datetime import datetime, timezone
+    from datetime import timezone
 
     edge = ModelLineageEdge(
         edge_id="edge_123",
@@ -370,7 +375,7 @@ def test_lineage_edge_to_dict():
 def test_lineage_edge_to_dict_no_process():
     from bist_signal_bot.model_registry.models import ModelLineageEdge
     from bist_signal_bot.model_registry.reporting import lineage_edge_to_dict
-    from datetime import datetime, timezone
+    from datetime import timezone
 
     edge = ModelLineageEdge(
         edge_id="edge_456",
@@ -393,7 +398,7 @@ def test_lineage_edge_to_dict_no_process():
 def test_artifact_to_dict_basic():
     from bist_signal_bot.model_registry.models import ModelArtifact, ModelArtifactFormat
     from bist_signal_bot.model_registry.reporting import artifact_to_dict
-    from datetime import datetime, timezone
+    from datetime import timezone
 
     artifact = ModelArtifact(
         artifact_id="art-123",
@@ -420,7 +425,7 @@ def test_artifact_to_dict_basic():
 def test_artifact_to_dict_missing_optionals():
     from bist_signal_bot.model_registry.models import ModelArtifact, ModelArtifactFormat
     from bist_signal_bot.model_registry.reporting import artifact_to_dict
-    from datetime import datetime, timezone
+    from datetime import timezone
 
     artifact = ModelArtifact(
         artifact_id="art-124",
@@ -442,9 +447,9 @@ def test_artifact_to_dict_missing_optionals():
     }
 
 def test_format_experiment_run_text_finished_with_metrics():
-    from bist_signal_bot.model_registry.models import ExperimentRun, ExperimentStatus, ModelKind
+    from bist_signal_bot.model_registry.models import ExperimentRun, ExperimentStatus
     from bist_signal_bot.model_registry.reporting import format_experiment_run_text
-    from datetime import datetime, timezone
+    from datetime import timezone
 
     run = ExperimentRun(
         run_id="run-123",
@@ -467,9 +472,9 @@ def test_format_experiment_run_text_finished_with_metrics():
     assert "  f1: 0.9000" in result
 
 def test_format_experiment_run_text_running_no_metrics():
-    from bist_signal_bot.model_registry.models import ExperimentRun, ExperimentStatus, ModelKind
+    from bist_signal_bot.model_registry.models import ExperimentRun, ExperimentStatus
     from bist_signal_bot.model_registry.reporting import format_experiment_run_text
-    from datetime import datetime, timezone
+    from datetime import timezone
 
     run = ExperimentRun(
         run_id="run-124",
@@ -490,7 +495,7 @@ def test_format_experiment_run_text_running_no_metrics():
 def test_promotion_request_to_dict():
     from bist_signal_bot.model_registry.models import ModelPromotionRequest, ModelPromotionStage, ModelGovernanceStatus
     from bist_signal_bot.model_registry.reporting import promotion_request_to_dict
-    from datetime import datetime, timezone
+    from datetime import timezone
 
     request = ModelPromotionRequest(
         promotion_id="promo-123",
@@ -524,7 +529,7 @@ def test_promotion_request_to_dict():
 def test_calibration_summary_to_dict():
     from bist_signal_bot.model_registry.models import ModelCalibrationSummary, ModelGovernanceStatus
     from bist_signal_bot.model_registry.reporting import calibration_summary_to_dict
-    from datetime import datetime, timezone
+    from datetime import timezone
 
     summary = ModelCalibrationSummary(
         calibration_id="calib-1",
@@ -548,7 +553,7 @@ def test_calibration_summary_to_dict():
 def test_calibration_summary_to_dict_nulls():
     from bist_signal_bot.model_registry.models import ModelCalibrationSummary, ModelGovernanceStatus
     from bist_signal_bot.model_registry.reporting import calibration_summary_to_dict
-    from datetime import datetime, timezone
+    from datetime import timezone
 
     summary = ModelCalibrationSummary(
         calibration_id="calib-2",
@@ -626,7 +631,7 @@ def test_drift_finding_to_dict_null_score():
     }
 
 from bist_signal_bot.model_registry.reporting import experiments_to_dataframe
-from bist_signal_bot.model_registry.models import ExperimentRun, ExperimentStatus, ModelKind
+from bist_signal_bot.model_registry.models import ExperimentRun, ExperimentStatus
 import pandas as pd
 
 def test_experiments_to_dataframe_empty():
@@ -698,3 +703,55 @@ def test_experiments_to_dataframe_no_metrics():
     # Ensure no metric_ columns were created since metrics dict was empty
     metric_cols = [c for c in df.columns if c.startswith("metric_")]
     assert len(metric_cols) == 0
+
+def test_model_record_to_dict():
+    from bist_signal_bot.model_registry.reporting import model_record_to_dict
+    model = ModelRecord(
+        model_id="test_model_1",
+        model_name="my_model",
+        model_kind=ModelKind.CLASSIFIER,
+        version="1.0.0",
+        status=ModelRegistryStatus.ACTIVE_RESEARCH,
+        created_at=datetime(2023, 1, 1, 12, 0, 0, tzinfo=timezone.utc),
+        updated_at=None,
+        feature_set_version=None,
+        warnings=[]
+    )
+    res = model_record_to_dict(model)
+    assert res == {
+        "model_id": "test_model_1",
+        "model_name": "my_model",
+        "model_kind": "CLASSIFIER",
+        "version": "1.0.0",
+        "status": "ACTIVE_RESEARCH",
+        "created_at": "2023-01-01T12:00:00+00:00",
+        "updated_at": None,
+        "feature_set_version": None,
+        "warnings": []
+    }
+
+def test_model_record_to_dict_with_updated_at():
+    from bist_signal_bot.model_registry.reporting import model_record_to_dict
+    model = ModelRecord(
+        model_id="test_model_2",
+        model_name="my_model",
+        model_kind=ModelKind.CLASSIFIER,
+        version="1.0.0",
+        status=ModelRegistryStatus.ACTIVE_RESEARCH,
+        created_at=datetime(2023, 1, 1, 12, 0, 0, tzinfo=timezone.utc),
+        updated_at=datetime(2023, 1, 2, 12, 0, 0, tzinfo=timezone.utc),
+        feature_set_version="v2.5",
+        warnings=["warning1"]
+    )
+    res = model_record_to_dict(model)
+    assert res == {
+        "model_id": "test_model_2",
+        "model_name": "my_model",
+        "model_kind": "CLASSIFIER",
+        "version": "1.0.0",
+        "status": "ACTIVE_RESEARCH",
+        "created_at": "2023-01-01T12:00:00+00:00",
+        "updated_at": "2023-01-02T12:00:00+00:00",
+        "feature_set_version": "v2.5",
+        "warnings": ["warning1"]
+    }
