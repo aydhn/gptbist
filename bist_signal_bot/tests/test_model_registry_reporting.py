@@ -624,3 +624,77 @@ def test_drift_finding_to_dict_null_score():
         "status": "PASS",
         "message": "No significant decay detected"
     }
+
+from bist_signal_bot.model_registry.reporting import experiments_to_dataframe
+from bist_signal_bot.model_registry.models import ExperimentRun, ExperimentStatus, ModelKind
+import pandas as pd
+
+def test_experiments_to_dataframe_empty():
+    runs = []
+    df = experiments_to_dataframe(runs)
+    assert isinstance(df, pd.DataFrame)
+    assert df.empty
+
+def test_experiments_to_dataframe_basic():
+    runs = [
+        ExperimentRun(
+            run_id="run_1",
+            experiment_name="exp_1",
+            model_name="model_1",
+            model_kind=ModelKind.CLASSIFIER,
+            status=ExperimentStatus.COMPLETED,
+            started_at=datetime(2023, 1, 1, tzinfo=timezone.utc),
+            finished_at=datetime(2023, 1, 2, tzinfo=timezone.utc),
+            metrics={"acc": 0.9, "loss": 0.1}
+        ),
+        ExperimentRun(
+            run_id="run_2",
+            experiment_name="exp_2",
+            model_name="model_2",
+            model_kind=ModelKind.REGRESSOR,
+            status=ExperimentStatus.FAILED,
+            started_at=datetime(2023, 1, 3, tzinfo=timezone.utc),
+            metrics={"acc": 0.8}
+        )
+    ]
+    df = experiments_to_dataframe(runs)
+
+    assert isinstance(df, pd.DataFrame)
+    assert len(df) == 2
+
+    # Check that basic properties are preserved
+    assert df["run_id"].tolist() == ["run_1", "run_2"]
+    assert df["experiment_name"].tolist() == ["exp_1", "exp_2"]
+    assert df["model_name"].tolist() == ["model_1", "model_2"]
+    assert df["status"].tolist() == ["COMPLETED", "FAILED"]
+
+    # Check metrics flattening
+    assert "metric_acc" in df.columns
+    assert "metric_loss" in df.columns
+    assert df[df["run_id"] == "run_1"]["metric_acc"].iloc[0] == 0.9
+    assert df[df["run_id"] == "run_1"]["metric_loss"].iloc[0] == 0.1
+    assert df[df["run_id"] == "run_2"]["metric_acc"].iloc[0] == 0.8
+    assert pd.isna(df[df["run_id"] == "run_2"]["metric_loss"].iloc[0])
+
+    # Verify we removed the 'metrics' column
+    assert "metrics" not in df.columns
+
+def test_experiments_to_dataframe_no_metrics():
+    runs = [
+        ExperimentRun(
+            run_id="run_1",
+            experiment_name="exp_1",
+            model_name="model_1",
+            model_kind=ModelKind.CLASSIFIER,
+            status=ExperimentStatus.COMPLETED,
+            started_at=datetime(2023, 1, 1, tzinfo=timezone.utc),
+            metrics={}
+        )
+    ]
+    df = experiments_to_dataframe(runs)
+    assert len(df) == 1
+    assert "run_id" in df.columns
+    assert "metrics" not in df.columns
+    # Ensure no metric_ columns were created since metrics dict was empty
+    metric_cols = [c for c in df.columns if c.startswith("metric_")]
+    assert len(metric_cols) == 0
