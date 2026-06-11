@@ -1,7 +1,7 @@
 import re
 import time
 from datetime import datetime, UTC
-from typing import Any
+from typing import Any  # noqa: F401
 import pandas as pd
 
 from bist_signal_bot.config.settings import Settings
@@ -68,7 +68,61 @@ class MarketDataNormalizer:
             if hasattr(settings, "NORMALIZATION_STRICT"):
                 self.strict = settings.NORMALIZATION_STRICT
             if hasattr(settings, "NORMALIZATION_TARGET_TIMEZONE") and settings.NORMALIZATION_TARGET_TIMEZONE:
-                 self.target_timezone = settings.NORMALIZATION_TARGET_TIMEZONE
+                self.target_timezone = settings.NORMALIZATION_TARGET_TIMEZONE
+
+    def _normalize_symbol_with_issues(self, symbol: str) -> tuple[str, list[NormalizationIssue]]:
+        issues = []
+        try:
+            symbol = ensure_valid_internal_symbol(symbol)
+        except Exception as e:
+            if self.strict:
+                raise DataNormalizationError(f"Invalid symbol format: {e}")
+            issues.append(NormalizationIssue(
+                issue_type=NormalizationIssueType.SYMBOL_NORMALIZED,
+                message=f"Failed to normalize symbol {symbol}: {e}"
+            ))
+        return symbol, issues
+
+    def _apply_dataframe_transformations(
+        self, df: pd.DataFrame, symbol: str
+    ) -> tuple[pd.DataFrame, list[NormalizationIssue], NormalizationStatus]:
+        issues = []
+        status = NormalizationStatus.SUCCESS
+
+        if df.empty:
+            issues.append(NormalizationIssue(
+                issue_type=NormalizationIssueType.EMPTY_DATA,
+                message="Input DataFrame is empty."
+            ))
+            return df.copy(), issues, NormalizationStatus.WARNING
+
+        df_norm = df.copy()
+
+        df_norm, mi_issues = self.flatten_multiindex_columns(df_norm)
+        issues.extend(mi_issues)
+
+        df_norm, col_issues = self.normalize_columns(df_norm)
+        issues.extend(col_issues)
+
+        df_norm, idx_issues = self.normalize_index(df_norm)
+        issues.extend(idx_issues)
+
+        df_norm, num_issues = self.normalize_numeric_columns(df_norm)
+        issues.extend(num_issues)
+
+        missing_cols = self.REQUIRED_COLUMNS - set(df_norm.columns)
+        if missing_cols:
+            issues.append(NormalizationIssue(
+                issue_type=NormalizationIssueType.COLUMN_MISSING,
+                message=f"Missing required columns: {missing_cols}",
+                affected_columns=list(missing_cols)
+            ))
+            status = NormalizationStatus.FAILED
+            if self.strict:
+                raise DataNormalizationError(f"[{symbol}] Missing required columns: {missing_cols}")
+
+        df_norm = self.standardize_column_order(df_norm)
+        return df_norm, issues, status
 
     def normalize_dataframe(
         self,
@@ -79,18 +133,8 @@ class MarketDataNormalizer:
         adjusted: bool = True
     ) -> NormalizedMarketData:
         start_time = time.time()
-        issues: list[NormalizationIssue] = []
-        status = NormalizationStatus.SUCCESS
 
-        try:
-            symbol = ensure_valid_internal_symbol(symbol)
-        except Exception as e:
-            if self.strict:
-                raise DataNormalizationError(f"Invalid symbol format: {e}")
-            issues.append(NormalizationIssue(
-                issue_type=NormalizationIssueType.SYMBOL_NORMALIZED,
-                message=f"Failed to normalize symbol {symbol}: {e}"
-            ))
+        symbol, sym_issues = self._normalize_symbol_with_issues(symbol)
 
         timeframe_obj = timeframe if isinstance(timeframe, Timeframe) else Timeframe(timeframe)
         source_obj = source if isinstance(source, DataVendor) else DataVendor(source)
@@ -98,47 +142,16 @@ class MarketDataNormalizer:
         input_rows = len(df)
         input_columns = [str(c) for c in df.columns]
 
-        if df.empty:
-            issues.append(NormalizationIssue(
-                issue_type=NormalizationIssueType.EMPTY_DATA,
-                message="Input DataFrame is empty."
-            ))
-            status = NormalizationStatus.WARNING
-            df_norm = df.copy()
-        else:
-            df_norm = df.copy()
+        df_norm, df_issues, status = self._apply_dataframe_transformations(df, symbol)
 
-            df_norm, mi_issues = self.flatten_multiindex_columns(df_norm)
-            issues.extend(mi_issues)
-
-            df_norm, col_issues = self.normalize_columns(df_norm)
-            issues.extend(col_issues)
-
-            df_norm, idx_issues = self.normalize_index(df_norm)
-            issues.extend(idx_issues)
-
-            df_norm, num_issues = self.normalize_numeric_columns(df_norm)
-            issues.extend(num_issues)
-
-            missing_cols = self.REQUIRED_COLUMNS - set(df_norm.columns)
-            if missing_cols:
-                issues.append(NormalizationIssue(
-                    issue_type=NormalizationIssueType.COLUMN_MISSING,
-                    message=f"Missing required columns: {missing_cols}",
-                    affected_columns=list(missing_cols)
-                ))
-                status = NormalizationStatus.FAILED
-                if self.strict:
-                     raise DataNormalizationError(f"[{symbol}] Missing required columns: {missing_cols}")
-
-            df_norm = self.standardize_column_order(df_norm)
+        issues = sym_issues + df_issues
 
         output_rows = len(df_norm)
         output_columns = list(df_norm.columns)
         elapsed = time.time() - start_time
 
         if status != NormalizationStatus.FAILED and issues:
-             status = NormalizationStatus.WARNING
+            status = NormalizationStatus.WARNING
 
         report = NormalizationReport(
             symbol=symbol,
@@ -210,7 +223,7 @@ class MarketDataNormalizer:
                 ))
             except Exception as e:
                 if self.strict:
-                     raise DataNormalizationError(f"Failed to flatten MultiIndex columns: {e}")
+                    raise DataNormalizationError(f"Failed to flatten MultiIndex columns: {e}")
                 issues.append(NormalizationIssue(
                     issue_type=NormalizationIssueType.UNKNOWN,
                     message=f"Failed to flatten MultiIndex: {e}"
@@ -237,7 +250,7 @@ class MarketDataNormalizer:
                 alias_to_std[self._clean_column_name(alias)] = std
 
         for ts_alias in self.TIMESTAMP_ALIASES:
-             alias_to_std[self._clean_column_name(ts_alias)] = "timestamp"
+            alias_to_std[self._clean_column_name(ts_alias)] = "timestamp"
 
         for orig_col in df.columns:
             cleaned = self._clean_column_name(orig_col)
@@ -245,12 +258,12 @@ class MarketDataNormalizer:
             if cleaned in alias_to_std:
                 std_col = alias_to_std[cleaned]
                 if orig_col != std_col:
-                     rename_map[orig_col] = std_col
+                    rename_map[orig_col] = std_col
             else:
                 if self.drop_unknown_columns:
-                     drop_cols.append(orig_col)
+                    drop_cols.append(orig_col)
                 elif orig_col != cleaned:
-                     rename_map[orig_col] = cleaned
+                    rename_map[orig_col] = cleaned
 
         if rename_map:
             df.rename(columns=rename_map, inplace=True)
@@ -284,14 +297,14 @@ class MarketDataNormalizer:
                     ))
                 except Exception as e:
                     if self.strict:
-                         raise DataNormalizationError(f"Failed to parse timestamp column: {e}")
+                        raise DataNormalizationError(f"Failed to parse timestamp column: {e}")
                     issues.append(NormalizationIssue(
                         issue_type=NormalizationIssueType.UNKNOWN,
                         message=f"Failed to parse timestamp: {e}"
                     ))
             else:
-                 if self.strict:
-                     raise DataNormalizationError("DataFrame index is not DatetimeIndex and no timestamp column found.")
+                if self.strict:
+                    raise DataNormalizationError("DataFrame index is not DatetimeIndex and no timestamp column found.")
 
         if isinstance(df.index, pd.DatetimeIndex):
             df.index.name = "timestamp"
@@ -355,7 +368,7 @@ class MarketDataNormalizer:
                         affected.append(col)
                     except Exception as e:
                         if self.strict:
-                             raise DataNormalizationError(f"Failed to cast column {col} to numeric: {e}")
+                            raise DataNormalizationError(f"Failed to cast column {col} to numeric: {e}")
 
         if affected:
             issues.append(NormalizationIssue(
