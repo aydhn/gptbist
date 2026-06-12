@@ -1,12 +1,12 @@
 from datetime import datetime
 from datetime import timezone
-from bist_signal_bot.model_registry.models import ModelRecord
+from bist_signal_bot.model_registry.models import ModelRecord, ExperimentRun, ExperimentStatus
 from bist_signal_bot.model_registry.models import ModelKind
 from bist_signal_bot.model_registry.models import ModelRegistryStatus
 # import pytest
 # from datetime import timezone
 from bist_signal_bot.model_registry.models import ModelGovernanceAssessment, ModelGovernanceStatus
-from bist_signal_bot.model_registry.reporting import format_model_record_text, governance_assessment_to_dict
+from bist_signal_bot.model_registry.reporting import format_model_record_text, governance_assessment_to_dict, experiment_run_to_dict
 
 def test_format_model_record_text_basic():
     model = ModelRecord(
@@ -755,3 +755,44 @@ def test_model_record_to_dict_with_updated_at():
         "feature_set_version": "v2.5",
         "warnings": ["warning1"]
     }
+
+
+def test_experiment_run_to_dict_basic():
+    run = ExperimentRun(
+        run_id="run_123",
+        experiment_name="exp_A",
+        model_name="model_A",
+        model_kind=ModelKind.CLASSIFIER,
+        status=ExperimentStatus.COMPLETED,
+        started_at=datetime(2023, 1, 1, 10, 0, 0, tzinfo=timezone.utc),
+        finished_at=datetime(2023, 1, 1, 11, 0, 0, tzinfo=timezone.utc),
+        metrics={"accuracy": 0.95, "f1": 0.94}
+    )
+    result = experiment_run_to_dict(run)
+    assert result["run_id"] == "run_123"
+    assert result["experiment_name"] == "exp_A"
+    assert result["model_name"] == "model_A"
+    assert result["status"] == "COMPLETED"
+    assert result["started_at"] == "2023-01-01T10:00:00+00:00"
+    assert result["finished_at"] == "2023-01-01T11:00:00+00:00"
+    assert result["metrics"] == {"accuracy": 0.95, "f1": 0.94}
+
+def test_experiment_run_to_dict_without_finished_at():
+    run = ExperimentRun(
+        run_id="run_124",
+        experiment_name="exp_B",
+        model_name="model_B",
+        model_kind=ModelKind.REGRESSOR,
+        status=ExperimentStatus.RUNNING,
+        started_at=datetime(2023, 1, 2, 10, 0, 0, tzinfo=timezone.utc),
+        finished_at=None,
+        metrics={}
+    )
+    result = experiment_run_to_dict(run)
+    assert result["run_id"] == "run_124"
+    assert result["experiment_name"] == "exp_B"
+    assert result["model_name"] == "model_B"
+    assert result["status"] == "RUNNING"
+    assert result["started_at"] == "2023-01-02T10:00:00+00:00"
+    assert result["finished_at"] is None
+    assert result["metrics"] == {}
