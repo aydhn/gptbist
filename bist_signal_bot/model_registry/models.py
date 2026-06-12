@@ -1,7 +1,7 @@
 from datetime import datetime
 from enum import Enum
 from typing import Any
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, model_validator, field_validator
 
 
 class ModelRegistryStatus(str, Enum):
@@ -104,20 +104,27 @@ class ModelRecord(BaseModel):
     disclaimer: str = "Model record is local research metadata only. It is not investment advice or permission to trade. No real order was sent."
     metadata: dict[str, Any] = Field(default_factory=dict)
 
-    @model_validator(mode='after')
-    def validate_record(self) -> 'ModelRecord':
-        if not self.model_name:
+    @field_validator('model_name')
+    @classmethod
+    def validate_model_name(cls, v: str) -> str:
+        if not v:
             raise ValueError("model_name cannot be empty")
-        if not self.version:
+        return v
+
+    @field_validator('version')
+    @classmethod
+    def validate_version(cls, v: str) -> str:
+        if not v:
             raise ValueError("version cannot be empty")
-        if self.status == ModelRegistryStatus.ACTIVE_RESEARCH:
-            # Active research should ideally have validation/calibration/leakage metadata
-            # We'll enforce this logically in governance/promotion engine, but record level check is useful.
-            pass
-        for ref in self.dataset_refs:
+        return v
+
+    @field_validator('dataset_refs')
+    @classmethod
+    def validate_dataset_refs(cls, v: list[str]) -> list[str]:
+        for ref in v:
             if 'token' in ref.lower() or 'secret' in ref.lower():
                 raise ValueError("dataset_refs must not contain secrets")
-        return self
+        return v
 
 
 class ExperimentRun(BaseModel):
@@ -152,13 +159,19 @@ class ModelArtifact(BaseModel):
     warnings: list[str] = Field(default_factory=list)
     metadata: dict[str, Any] = Field(default_factory=dict)
 
-    @model_validator(mode='after')
-    def validate_artifact(self) -> 'ModelArtifact':
-        if self.checksum is not None and len(self.checksum) == 0:
+    @field_validator('checksum')
+    @classmethod
+    def validate_checksum(cls, v: str | None) -> str | None:
+        if v is not None and len(v) == 0:
             raise ValueError("checksum cannot be empty string if provided")
-        if 'token' in self.path.lower() or 'secret' in self.path.lower():
+        return v
+
+    @field_validator('path')
+    @classmethod
+    def validate_path(cls, v: str) -> str:
+        if 'token' in v.lower() or 'secret' in v.lower():
             raise ValueError("artifact path must not contain secrets")
-        return self
+        return v
 
 
 class ModelCard(BaseModel):
@@ -186,13 +199,14 @@ class ModelCard(BaseModel):
     disclaimer: str = "Model card is local research documentation only. It is not investment advice, a recommendation, or permission to trade. No real order was sent."
     metadata: dict[str, Any] = Field(default_factory=dict)
 
-    @model_validator(mode='after')
-    def validate_card(self) -> 'ModelCard':
-        n_i_u = self.not_intended_use.lower()
+    @field_validator('not_intended_use')
+    @classmethod
+    def validate_not_intended_use(cls, v: str) -> str:
+        n_i_u = v.lower()
         if "real order execution" not in n_i_u or "investment advice" not in n_i_u:
             # We'll just append it to enforce the rule, or we could raise ValueError. Let's raise.
             raise ValueError("not_intended_use must state that 'real order execution' and 'investment advice' are not intended.")
-        return self
+        return v
 
 
 class ModelValidationSummary(BaseModel):
