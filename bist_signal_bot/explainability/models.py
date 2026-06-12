@@ -1,7 +1,7 @@
 from datetime import datetime
 from enum import Enum
 from typing import Any
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 class ExplanationStatus(str, Enum):
     PASS = "PASS"
@@ -78,9 +78,12 @@ class FeatureContribution(BaseModel):
     evidence_refs: list[str] = Field(default_factory=list)
     metadata: dict[str, Any] = Field(default_factory=dict)
 
-    def model_post_init(self, __context: Any) -> None:
-        if self.contribution_score is not None:
-            self.contribution_score = max(-100.0, min(100.0, self.contribution_score))
+    @field_validator("contribution_score")
+    @classmethod
+    def _clamp_contribution_score(cls, v: float | None) -> float | None:
+        if v is not None:
+            return max(-100.0, min(100.0, v))
+        return v
 
 class IndicatorExplanation(BaseModel):
     indicator_id: str
@@ -290,11 +293,19 @@ class FeatureAttribution(BaseModel):
     warnings: list[str] = Field(default_factory=list)
     metadata: dict[str, Any] = Field(default_factory=dict)
 
-    def model_post_init(self, __context: Any) -> None:
-        if self.normalized_contribution is not None:
-            self.normalized_contribution = max(-100.0, min(100.0, self.normalized_contribution))
-        if self.rank is not None and self.rank <= 0:
-            self.rank = None
+    @field_validator("normalized_contribution")
+    @classmethod
+    def _clamp_normalized_contribution(cls, v: float | None) -> float | None:
+        if v is not None:
+            return max(-100.0, min(100.0, v))
+        return v
+
+    @field_validator("rank")
+    @classmethod
+    def _validate_rank(cls, v: int | None) -> int | None:
+        if v is not None and v <= 0:
+            return None
+        return v
 
 class LocalExplanation(BaseModel):
     explanation_id: str
