@@ -481,137 +481,137 @@ class AuditLogger:
         else:
             self._audit_file = None
 
-def log_event(self, event: AuditEvent) -> None:
-    if not self._enabled or not self._audit_file:
-        return
+    def log_event(self, event: AuditEvent) -> None:
+        if not self._enabled or not self._audit_file:
+            return
 
-    try:
-        sanitized_metadata = event.metadata
-        if self.settings.SECURITY_REDACT_AUDIT:
-            from bist_signal_bot.security.redaction import SecretRedactor
-            sanitized_metadata = SecretRedactor.redact_dict(event.metadata)
+        try:
+            sanitized_metadata = event.metadata
+            if self.settings.SECURITY_REDACT_AUDIT:
+                from bist_signal_bot.security.redaction import SecretRedactor
+                sanitized_metadata = SecretRedactor.redact_dict(event.metadata)
 
-        event_dict = {
-            "timestamp": event.timestamp.isoformat(),
-            "event_type": event.event_type.value,
-            "level": event.level,
-            "message": event.message,
-            "symbol": event.symbol,
-            "run_id": event.run_id,
-            "metadata": sanitized_metadata
-        }
+            event_dict = {
+                "timestamp": event.timestamp.isoformat(),
+                "event_type": event.event_type.value,
+                "level": event.level,
+                "message": event.message,
+                "symbol": event.symbol,
+                "run_id": event.run_id,
+                "metadata": sanitized_metadata
+            }
 
-        # JSON Lines format
-        with open(self._audit_file, "a", encoding="utf-8") as f:
-            f.write(json.dumps(event_dict, ensure_ascii=False) + "\n")
+            # JSON Lines format
+            with open(self._audit_file, "a", encoding="utf-8") as f:
+                f.write(json.dumps(event_dict, ensure_ascii=False) + "\n")
 
-    except Exception as e:
-        # Fallback to standard logger if audit logging fails
-        self._logger.error(f"Failed to write to audit log: {e}")
+        except Exception as e:
+            # Fallback to standard logger if audit logging fails
+            self._logger.error(f"Failed to write to audit log: {e}")
 
 def log_app_start(self, run_id: str | None = None, metadata: dict[str, Any] | None = None) -> None:
-    self.log_event(AuditEvent(
-        event_type=AuditEventType.APP_START,
-        message="Application started",
-        run_id=run_id,
-        metadata=metadata or {}
-    ))
+        self.log_event(AuditEvent(
+            event_type=AuditEventType.APP_START,
+            message="Application started",
+            run_id=run_id,
+            metadata=metadata or {}
+        ))
 
 def log_healthcheck(self, summary: dict[str, Any], run_id: str | None = None) -> None:
-    self.log_event(AuditEvent(
-        event_type=AuditEventType.HEALTHCHECK,
-        message="Healthcheck executed",
-        run_id=run_id,
-        metadata=summary
-    ))
+        self.log_event(AuditEvent(
+            event_type=AuditEventType.HEALTHCHECK,
+            message="Healthcheck executed",
+            run_id=run_id,
+            metadata=summary
+        ))
 
 def log_data_fetch(self, symbol: str, provider: str, timeframe: str, run_id: str | None = None, metadata: dict[str, Any] | None = None) -> None:
-    md = {"provider": provider, "timeframe": timeframe}
-    if metadata:
-        md.update(metadata)
-    self.log_event(AuditEvent(
-        event_type=AuditEventType.DATA_FETCH,
-        message=f"Fetched data for {symbol}",
-        symbol=symbol,
-        run_id=run_id,
-        metadata=md
-    ))
+        md = {"provider": provider, "timeframe": timeframe}
+        if metadata:
+            md.update(metadata)
+        self.log_event(AuditEvent(
+            event_type=AuditEventType.DATA_FETCH,
+            message=f"Fetched data for {symbol}",
+            symbol=symbol,
+            run_id=run_id,
+            metadata=md
+        ))
 
 def log_cache_read(self, symbol: str, vendor: str, timeframe: str, run_id: str | None = None) -> None:
-    self.log_event(AuditEvent(
-        event_type=AuditEventType.DATA_CACHE_READ,
-        message=f"Read {symbol} from cache",
-        symbol=symbol,
-        run_id=run_id,
-        metadata={"vendor": vendor, "timeframe": timeframe}
-    ))
+        self.log_event(AuditEvent(
+            event_type=AuditEventType.DATA_CACHE_READ,
+            message=f"Read {symbol} from cache",
+            symbol=symbol,
+            run_id=run_id,
+            metadata={"vendor": vendor, "timeframe": timeframe}
+        ))
 
 def log_cache_write(self, symbol: str, vendor: str, timeframe: str, row_count: int, run_id: str | None = None) -> None:
-    self.log_event(AuditEvent(
-        event_type=AuditEventType.DATA_CACHE_WRITE,
-        message=f"Wrote {symbol} to cache",
-        symbol=symbol,
-        run_id=run_id,
-        metadata={"vendor": vendor, "timeframe": timeframe, "row_count": row_count}
-    ))
+        self.log_event(AuditEvent(
+            event_type=AuditEventType.DATA_CACHE_WRITE,
+            message=f"Wrote {symbol} to cache",
+            symbol=symbol,
+            run_id=run_id,
+            metadata={"vendor": vendor, "timeframe": timeframe, "row_count": row_count}
+        ))
 
 def log_error(self, error: Exception, context: dict[str, Any] | None = None, run_id: str | None = None) -> None:
-    self.log_event(AuditEvent(
-        event_type=AuditEventType.ERROR,
-        message=str(error),
-        level="ERROR",
-        run_id=run_id,
-        metadata={"error_type": type(error).__name__, "context": context or {}}
-    ))
+        self.log_event(AuditEvent(
+            event_type=AuditEventType.ERROR,
+            message=str(error),
+            level="ERROR",
+            run_id=run_id,
+            metadata={"error_type": type(error).__name__, "context": context or {}}
+        ))
 
 def log_universe_update(self, event_type: AuditEventType, message: str, action: str, symbols_affected: list[str], file_path: str | None = None, validation_passed: bool | None = None, issue_count: int | None = None, run_id: str | None = None) -> None:
-    metadata = {
-        "action": action,
-        "symbols_affected": symbols_affected,
-        "file_path": file_path,
-    }
-    if validation_passed is not None:
-        metadata["validation_passed"] = validation_passed
-    if issue_count is not None:
-        metadata["issue_count"] = issue_count
+        metadata = {
+            "action": action,
+            "symbols_affected": symbols_affected,
+            "file_path": file_path,
+        }
+        if validation_passed is not None:
+            metadata["validation_passed"] = validation_passed
+        if issue_count is not None:
+            metadata["issue_count"] = issue_count
 
-    self.log_event(AuditEvent(
-        event_type=event_type,
-        message=message,
-        run_id=run_id,
-        metadata=metadata
-    ))
+        self.log_event(AuditEvent(
+            event_type=event_type,
+            message=message,
+            run_id=run_id,
+            metadata=metadata
+        ))
 
 def log_indicator_calculation(self, symbol: str, timeframe: str, indicators: list[str], success_count: int, failed_count: int, elapsed_seconds: float, run_id: str | None = None) -> None:
-    self.log_event(AuditEvent(
-        event_type=AuditEventType.CLI_COMMAND,
-        message=f"Calculated indicators for {symbol}",
-        symbol=symbol,
-        run_id=run_id,
-        metadata={
-            "timeframe": timeframe,
-            "indicators_requested": indicators,
-            "success_count": success_count,
-            "failed_count": failed_count,
-            "elapsed_seconds": elapsed_seconds
-        }
-    ))
+        self.log_event(AuditEvent(
+            event_type=AuditEventType.CLI_COMMAND,
+            message=f"Calculated indicators for {symbol}",
+            symbol=symbol,
+            run_id=run_id,
+            metadata={
+                "timeframe": timeframe,
+                "indicators_requested": indicators,
+                "success_count": success_count,
+                "failed_count": failed_count,
+                "elapsed_seconds": elapsed_seconds
+            }
+        ))
 
 def log_cost_model_calculation(self, symbol: str, side: str, quantity: float, price: float, scenario: str, total_cost: float, total_cost_bps: float, run_id: str | None = None) -> None:
-    self.log_event(AuditEvent(
-        event_type=AuditEventType.COST_MODEL_CALCULATION,
-        message="Cost model calculated",
-        symbol=symbol,
-        run_id=run_id,
-        metadata={
-            "side": side,
-            "quantity": quantity,
-            "price": price,
-            "scenario": scenario,
-            "total_cost": total_cost,
-            "total_cost_bps": total_cost_bps
-        }
-    ))
+        self.log_event(AuditEvent(
+            event_type=AuditEventType.COST_MODEL_CALCULATION,
+            message="Cost model calculated",
+            symbol=symbol,
+            run_id=run_id,
+            metadata={
+                "side": side,
+                "quantity": quantity,
+                "price": price,
+                "scenario": scenario,
+                "total_cost": total_cost,
+                "total_cost_bps": total_cost_bps
+            }
+        ))
 
 RUNTIME_RUN_STARTED = "RUNTIME_RUN_STARTED"
 RUNTIME_RUN_COMPLETED = "RUNTIME_RUN_COMPLETED"
@@ -686,15 +686,15 @@ STRATEGY_BLOCKED = "STRATEGY_BLOCKED"
 STRATEGY_REGISTRY_SNAPSHOT_CREATED = "STRATEGY_REGISTRY_SNAPSHOT_CREATED"
 
 class PortfolioLedgerAuditEvent:
-    PORTFOLIO_LEDGER_CREATED = "PORTFOLIO_LEDGER_CREATED"
-    PORTFOLIO_LEDGER_UPDATED = "PORTFOLIO_LEDGER_UPDATED"
-    PORTFOLIO_LEDGER_EVENT_APPENDED = "PORTFOLIO_LEDGER_EVENT_APPENDED"
-    PORTFOLIO_VALUATION_COMPLETED = "PORTFOLIO_VALUATION_COMPLETED"
-    PORTFOLIO_ATTRIBUTION_COMPLETED = "PORTFOLIO_ATTRIBUTION_COMPLETED"
-    PORTFOLIO_OUTCOME_EVALUATED = "PORTFOLIO_OUTCOME_EVALUATED"
-    PORTFOLIO_NAV_UPDATED = "PORTFOLIO_NAV_UPDATED"
-    PORTFOLIO_REBALANCE_TRACKED = "PORTFOLIO_REBALANCE_TRACKED"
-    PORTFOLIO_LEDGER_REPORT_CREATED = "PORTFOLIO_LEDGER_REPORT_CREATED"
+        PORTFOLIO_LEDGER_CREATED = "PORTFOLIO_LEDGER_CREATED"
+        PORTFOLIO_LEDGER_UPDATED = "PORTFOLIO_LEDGER_UPDATED"
+        PORTFOLIO_LEDGER_EVENT_APPENDED = "PORTFOLIO_LEDGER_EVENT_APPENDED"
+        PORTFOLIO_VALUATION_COMPLETED = "PORTFOLIO_VALUATION_COMPLETED"
+        PORTFOLIO_ATTRIBUTION_COMPLETED = "PORTFOLIO_ATTRIBUTION_COMPLETED"
+        PORTFOLIO_OUTCOME_EVALUATED = "PORTFOLIO_OUTCOME_EVALUATED"
+        PORTFOLIO_NAV_UPDATED = "PORTFOLIO_NAV_UPDATED"
+        PORTFOLIO_REBALANCE_TRACKED = "PORTFOLIO_REBALANCE_TRACKED"
+        PORTFOLIO_LEDGER_REPORT_CREATED = "PORTFOLIO_LEDGER_REPORT_CREATED"
 
 # Event Calendar Events
 EVENT_CALENDAR_IMPORTED = "EVENT_CALENDAR_IMPORTED"
@@ -745,27 +745,27 @@ RESEARCH_ORCHESTRATOR_REPORT_CREATED = "RESEARCH_ORCHESTRATOR_REPORT_CREATED"
 
 
 class FinalAuditEvent:
-    FINAL_AUDIT_RUN = "FINAL_AUDIT_RUN"
-    FINAL_ACCEPTANCE_SUITE_RUN = "FINAL_ACCEPTANCE_SUITE_RUN"
-    FINAL_CONTRACTS_AUDITED = "FINAL_CONTRACTS_AUDITED"
-    FINAL_INTEGRATION_MATRIX_BUILT = "FINAL_INTEGRATION_MATRIX_BUILT"
-    FINAL_SECURITY_AUDIT_RUN = "FINAL_SECURITY_AUDIT_RUN"
-    RELEASE_CANDIDATE_CREATED = "RELEASE_CANDIDATE_CREATED"
-    HARDENING_FREEZE_CREATED = "HARDENING_FREEZE_CREATED"
-    GO_NO_GO_DECISION_CREATED = "GO_NO_GO_DECISION_CREATED"
-    FINAL_RISK_REGISTER_CREATED = "FINAL_RISK_REGISTER_CREATED"
-    FINAL_AUDIT_REPORT_CREATED = "FINAL_AUDIT_REPORT_CREATED"
+        FINAL_AUDIT_RUN = "FINAL_AUDIT_RUN"
+        FINAL_ACCEPTANCE_SUITE_RUN = "FINAL_ACCEPTANCE_SUITE_RUN"
+        FINAL_CONTRACTS_AUDITED = "FINAL_CONTRACTS_AUDITED"
+        FINAL_INTEGRATION_MATRIX_BUILT = "FINAL_INTEGRATION_MATRIX_BUILT"
+        FINAL_SECURITY_AUDIT_RUN = "FINAL_SECURITY_AUDIT_RUN"
+        RELEASE_CANDIDATE_CREATED = "RELEASE_CANDIDATE_CREATED"
+        HARDENING_FREEZE_CREATED = "HARDENING_FREEZE_CREATED"
+        GO_NO_GO_DECISION_CREATED = "GO_NO_GO_DECISION_CREATED"
+        FINAL_RISK_REGISTER_CREATED = "FINAL_RISK_REGISTER_CREATED"
+        FINAL_AUDIT_REPORT_CREATED = "FINAL_AUDIT_REPORT_CREATED"
 
 class FinalHandoffAuditEvent:
-    FINAL_HANDOFF_BUILT = "FINAL_HANDOFF_BUILT"
-    FINAL_RELEASE_PACK_BUILT = "FINAL_RELEASE_PACK_BUILT"
-    OPERATOR_PLAYBOOK_CREATED = "OPERATOR_PLAYBOOK_CREATED"
-    DEVELOPER_PLAYBOOK_CREATED = "DEVELOPER_PLAYBOOK_CREATED"
-    FINAL_COMMAND_MAP_CREATED = "FINAL_COMMAND_MAP_CREATED"
-    FINAL_MODULE_MAP_CREATED = "FINAL_MODULE_MAP_CREATED"
-    POST_RELEASE_ROADMAP_CREATED = "POST_RELEASE_ROADMAP_CREATED"
-    MAINTENANCE_TASKS_CREATED = "MAINTENANCE_TASKS_CREATED"
-    FINAL_HANDOFF_REPORT_CREATED = "FINAL_HANDOFF_REPORT_CREATED"
+        FINAL_HANDOFF_BUILT = "FINAL_HANDOFF_BUILT"
+        FINAL_RELEASE_PACK_BUILT = "FINAL_RELEASE_PACK_BUILT"
+        OPERATOR_PLAYBOOK_CREATED = "OPERATOR_PLAYBOOK_CREATED"
+        DEVELOPER_PLAYBOOK_CREATED = "DEVELOPER_PLAYBOOK_CREATED"
+        FINAL_COMMAND_MAP_CREATED = "FINAL_COMMAND_MAP_CREATED"
+        FINAL_MODULE_MAP_CREATED = "FINAL_MODULE_MAP_CREATED"
+        POST_RELEASE_ROADMAP_CREATED = "POST_RELEASE_ROADMAP_CREATED"
+        MAINTENANCE_TASKS_CREATED = "MAINTENANCE_TASKS_CREATED"
+        FINAL_HANDOFF_REPORT_CREATED = "FINAL_HANDOFF_REPORT_CREATED"
 
 
 SYNTHETIC_SCENARIO_SPEC_LOADED = "SYNTHETIC_SCENARIO_SPEC_LOADED"

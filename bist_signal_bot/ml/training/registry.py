@@ -19,7 +19,7 @@ class MLModelRegistry:
         self.settings = settings
         self.base_dir = base_dir or get_ml_models_dir(settings)
         self.base_dir.mkdir(parents=True, exist_ok=True)
-        self.path_guard = PathGuard([self.base_dir])
+        self.path_guard = PathGuard()
 
     def get_models_dir(self) -> Path:
         return self.base_dir
