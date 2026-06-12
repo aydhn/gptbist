@@ -44,6 +44,7 @@ class ConfigModule(str, Enum):
     STRESS = "STRESS"
     DRIFT = "DRIFT"
     CUSTOM = "CUSTOM"
+    SYSTEM = "SYSTEM"
 
 class FeatureFlagState(str, Enum):
     ENABLED = "ENABLED"
@@ -64,6 +65,7 @@ class RuntimeProfileType(str, Enum):
     PERFORMANCE_TEST = "PERFORMANCE_TEST"
     DEVELOPMENT = "DEVELOPMENT"
     CUSTOM = "CUSTOM"
+    SYSTEM = "SYSTEM"
 
 class ConfigValidationStatus(str, Enum):
     PASS = "PASS"
