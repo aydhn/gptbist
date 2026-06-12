@@ -73,8 +73,8 @@ class ResearchTask(BaseModel):
     depends_on: list[str] = Field(default_factory=list)
     required: bool = True
     allow_failure: bool = False
-    timeout_seconds: int | None = None
-    retry_count: int = 0
+    timeout_seconds: int | None = Field(default=None, gt=0)
+    retry_count: int = Field(default=0, ge=0)
     save_outputs: bool = False
     warnings: list[str] = Field(default_factory=list)
     metadata: dict[str, Any] = Field(default_factory=dict)
@@ -100,18 +100,6 @@ class ResearchTask(BaseModel):
     def validate_depends_on(cls, v, info):
         if info.data.get("task_id") in v:
             raise ValueError("Task cannot depend on itself")
-        return v
-
-    @field_validator("timeout_seconds")
-    def validate_timeout(cls, v):
-        if v is not None and v <= 0:
-            raise ValueError("timeout_seconds must be positive")
-        return v
-
-    @field_validator("retry_count")
-    def validate_retry(cls, v):
-        if v < 0:
-            raise ValueError("retry_count cannot be negative")
         return v
 
 class ResearchDependency(BaseModel):
