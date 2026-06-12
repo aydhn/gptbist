@@ -202,15 +202,18 @@ class SignalExplanation(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
 
     def summary_dict(self) -> dict[str, Any]:
-        return {
-            "explanation_id": self.explanation_id,
-            "signal_id": self.signal_id,
-            "symbol": self.symbol,
-            "strategy_name": self.strategy_name,
-            "generated_at": self.generated_at.isoformat(),
-            "summary": self.summary,
-            "final_status": self.final_status.value
-        }
+        return self.model_dump(
+            include={
+                "explanation_id",
+                "signal_id",
+                "symbol",
+                "strategy_name",
+                "generated_at",
+                "summary",
+                "final_status"
+            },
+            mode="json"
+        )
 
 class EvidenceCardSection(BaseModel):
     section_id: str
