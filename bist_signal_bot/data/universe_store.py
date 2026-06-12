@@ -221,6 +221,66 @@ class UniverseStore:
 
         return output_path
 
+    def _parse_json_universe(self, path: Path) -> list['SymbolInfo']:
+        imported_symbols = []
+        with open(path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        symbols_data = data.get("symbols", [])
+        for item in symbols_data:
+            sym = item.get("symbol")
+            if not sym: continue
+            sym = ensure_valid_internal_symbol(sym)
+            groups = {SymbolGroup(g) for g in item.get("groups", [])}
+            info = SymbolInfo(
+                symbol=sym,
+                name=item.get("name"),
+                market=Market(item.get("market", Market.BIST.value)),
+                asset_type=AssetType(item.get("asset_type", AssetType.EQUITY.value)),
+                currency=item.get("currency", "TRY"),
+                groups=groups,
+                is_active=item.get("is_active", True),
+                notes=item.get("notes")
+            )
+            imported_symbols.append(info)
+        return imported_symbols
+
+    def _parse_csv_universe(self, path: Path) -> list['SymbolInfo']:
+        imported_symbols = []
+        with open(path, "r", encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                sym = row.get("symbol", "").strip()
+                if not sym: continue
+                sym = ensure_valid_internal_symbol(sym)
+
+                g_str = row.get("groups", "")
+                groups = set()
+                if g_str:
+                    delim = "|" if "|" in g_str else ","
+                    for g in g_str.split(delim):
+                        g = g.strip()
+                        if g:
+                            try:
+                                groups.add(SymbolGroup(g))
+                            except ValueError:
+                                pass
+
+                is_active_str = row.get("is_active", "true").lower()
+                is_active = is_active_str in ("true", "1", "yes", "")
+
+                info = SymbolInfo(
+                    symbol=sym,
+                    name=row.get("name", "").strip() or None,
+                    market=Market(row.get("market", Market.BIST.value).strip() or Market.BIST.value),
+                    asset_type=AssetType(row.get("asset_type", AssetType.EQUITY.value).strip() or AssetType.EQUITY.value),
+                    currency=row.get("currency", "TRY").strip() or "TRY",
+                    groups=groups,
+                    is_active=is_active,
+                    notes=row.get("notes", "").strip() or None
+                )
+                imported_symbols.append(info)
+        return imported_symbols
+
     def import_universe(self, path: Path, merge: bool = True, deactivate_missing: bool = False) -> 'UniverseUpdateResult':
         from bist_signal_bot.data.models import UniverseUpdateAction, UniverseUpdateResult
 
@@ -236,62 +296,11 @@ class UniverseStore:
         if not merge:
             current_universe = SymbolUniverse()
 
-        imported_symbols = []
         try:
             if path.suffix.lower() == ".json":
-                with open(path, "r", encoding="utf-8") as f:
-                    data = json.load(f)
-                symbols_data = data.get("symbols", [])
-                for item in symbols_data:
-                    sym = item.get("symbol")
-                    if not sym: continue
-                    sym = ensure_valid_internal_symbol(sym)
-                    groups = {SymbolGroup(g) for g in item.get("groups", [])}
-                    info = SymbolInfo(
-                        symbol=sym,
-                        name=item.get("name"),
-                        market=Market(item.get("market", Market.BIST.value)),
-                        asset_type=AssetType(item.get("asset_type", AssetType.EQUITY.value)),
-                        currency=item.get("currency", "TRY"),
-                        groups=groups,
-                        is_active=item.get("is_active", True),
-                        notes=item.get("notes")
-                    )
-                    imported_symbols.append(info)
+                imported_symbols = self._parse_json_universe(path)
             else:
-                with open(path, "r", encoding="utf-8") as f:
-                    reader = csv.DictReader(f)
-                    for row in reader:
-                        sym = row.get("symbol", "").strip()
-                        if not sym: continue
-                        sym = ensure_valid_internal_symbol(sym)
-
-                        g_str = row.get("groups", "")
-                        groups = set()
-                        if g_str:
-                            delim = "|" if "|" in g_str else ","
-                            for g in g_str.split(delim):
-                                g = g.strip()
-                                if g:
-                                    try:
-                                        groups.add(SymbolGroup(g))
-                                    except ValueError:
-                                        pass
-
-                        is_active_str = row.get("is_active", "true").lower()
-                        is_active = is_active_str in ("true", "1", "yes", "")
-
-                        info = SymbolInfo(
-                            symbol=sym,
-                            name=row.get("name", "").strip() or None,
-                            market=Market(row.get("market", Market.BIST.value).strip() or Market.BIST.value),
-                            asset_type=AssetType(row.get("asset_type", AssetType.EQUITY.value).strip() or AssetType.EQUITY.value),
-                            currency=row.get("currency", "TRY").strip() or "TRY",
-                            groups=groups,
-                            is_active=is_active,
-                            notes=row.get("notes", "").strip() or None
-                        )
-                        imported_symbols.append(info)
+                imported_symbols = self._parse_csv_universe(path)
 
             affected = []
             imported_symbol_names = {info.symbol for info in imported_symbols}
