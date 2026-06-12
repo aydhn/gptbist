@@ -84,160 +84,182 @@ def get_manifest_by_id(plugin_id):
             return m
     return None
 
+def _handle_contracts(args):
+    reg = create_plugin_contract_registry()
+    contracts = reg.default_contracts()
+    if args.json:
+        print(json.dumps([c.model_dump(mode='json') for c in contracts], indent=2))
+    else:
+        for c in contracts:
+            print(f"Contract: {c.contract_id} ({c.kind.value}) v{c.version}")
+
+def _handle_discover(args):
+    engine = create_plugin_discovery_engine()
+    dirs = [Path(args.dir)] if args.dir else None
+    manifests = engine.discover(dirs)
+    if args.json:
+        print(json.dumps([m.model_dump(mode='json') for m in manifests], indent=2))
+    else:
+        print(f"Discovered {len(manifests)} plugins.")
+        for m in manifests:
+            print(f"- {m.plugin_id} ({m.kind.value})")
+
+def _handle_list(args):
+    engine = create_plugin_discovery_engine()
+    manifests = engine.discover()
+    if getattr(args, "kind", None):
+        manifests = [m for m in manifests if m.kind.value == args.kind]
+    if args.json:
+        print(json.dumps([m.model_dump(mode='json') for m in manifests], indent=2))
+    else:
+        for m in manifests:
+            print(f"{m.plugin_id} [{m.kind.value}] - Enabled: {m.enabled}")
+
+def _handle_show(args):
+    m = get_manifest_by_id(args.plugin)
+    if not m:
+        print(f"Plugin {args.plugin} not found.")
+        return
+    if getattr(args, "json", False):
+        print(json.dumps(m.model_dump(mode='json'), indent=2))
+    else:
+        print(f"ID: {m.plugin_id}\nName: {m.name}\nKind: {m.kind.value}\nDescription: {m.description}")
+
+def _handle_validate(args):
+    validator = create_plugin_validator()
+    if getattr(args, "dir", None):
+        from bist_signal_bot.app.plugins_app import create_plugin_manifest_parser
+        p = Path(args.dir) / "plugin.json"
+        if p.exists():
+            m = create_plugin_manifest_parser().parse_manifest(p)
+        else:
+            print("No plugin.json found in dir.")
+            return
+    else:
+        m = get_manifest_by_id(getattr(args, "plugin", ""))
+
+    if not m:
+        print("Plugin not found.")
+        return
+
+    res = validator.validate_plugin(m)
+    if getattr(args, "json", False):
+        print(json.dumps(res.model_dump(mode='json'), indent=2))
+    else:
+        print(f"Validation for {m.plugin_id}: {res.status.value}")
+        for f in res.findings:
+            print(f" - {f}")
+
+def _handle_test(args):
+    m = get_manifest_by_id(args.plugin)
+    if not m:
+        print("Plugin not found.")
+        return
+    harness = create_plugin_test_harness()
+    res = harness.run_plugin_tests(m, dry_run=True)
+    if getattr(args, "json", False):
+        print(json.dumps(res.model_dump(mode='json'), indent=2))
+    else:
+        print(f"Test Status: {res.status.value} (Passed: {res.tests_passed}, Failed: {res.tests_failed})")
+
+def _handle_load(args):
+    m = get_manifest_by_id(args.plugin)
+    if not m:
+        print("Plugin not found.")
+        return
+    loader = create_safe_plugin_loader()
+    mode = PluginExecutionMode.SAFE_METADATA_ONLY
+    if getattr(args, "dry_run", False):
+        mode = PluginExecutionMode.DRY_RUN
+
+    res = loader.load_plugin(m, mode=mode)
+    if getattr(args, "json", False):
+        print(json.dumps(res.model_dump(mode='json'), indent=2))
+    else:
+        print(f"Load Status: {res.status.value} - {res.execution_mode.value}")
+
+def _handle_hooks(args):
+    engine = create_plugin_discovery_engine()
+    hook_reg = create_plugin_hook_registry()
+    for m in engine.discover():
+        hook_reg.register_hooks_from_manifest(m)
+
+    if getattr(args, "kind", None):
+        hooks = hook_reg.hooks_for_kind(args.kind) # Actually expects enum but for CLI string is used, will just summarize
+        summary = {"count": len(hooks)}
+    else:
+        summary = hook_reg.hook_summary()
+
+    if getattr(args, "json", False):
+        print(json.dumps(summary, indent=2))
+    else:
+        print(f"Hooks: {summary}")
+
+def _handle_governance(args):
+    m = get_manifest_by_id(args.plugin)
+    if not m:
+        print("Plugin not found.")
+        return
+    gov = create_plugin_governance_engine()
+    res = gov.assess_plugin(m)
+    if getattr(args, "json", False):
+        print(json.dumps(res.model_dump(mode='json'), indent=2))
+    else:
+        print(f"Governance Status: {res.status.value}")
+        if res.blocked_reasons:
+            print("Blocked reasons:")
+            for r in res.blocked_reasons:
+                print(f" - {r}")
+
+def _handle_report(args):
+    engine = create_plugin_discovery_engine()
+    gov = create_plugin_governance_engine()
+    manifests = engine.discover()
+
+    report = PluginRegistryReport(
+        report_id="rep_1",
+        generated_at=datetime.now(),
+        manifests=manifests,
+        governance_assessments=[gov.assess_plugin(m) for m in manifests]
+    )
+
+    if getattr(args, "json", False):
+        print(json.dumps(report.model_dump(mode='json'), indent=2))
+    else:
+        print(format_plugin_registry_report_markdown(report))
+
+def _handle_recent(args):
+    print(json.dumps([]) if getattr(args, "json", False) else "No recent activity (mock).")
+
+def _handle_config(args):
+    from bist_signal_bot.config.settings import get_settings
+    s = get_settings()
+    cfg = {k: v for k, v in s.__dict__.items() if "PLUGIN" in k}
+    if getattr(args, "json", False):
+        print(json.dumps(cfg, indent=2))
+    else:
+        for k, v in cfg.items():
+            print(f"{k}: {v}")
+
 def handle(args):
-    if args.plugin_command == "contracts":
-        reg = create_plugin_contract_registry()
-        contracts = reg.default_contracts()
-        if args.json:
-            print(json.dumps([c.model_dump(mode='json') for c in contracts], indent=2))
-        else:
-            for c in contracts:
-                print(f"Contract: {c.contract_id} ({c.kind.value}) v{c.version}")
+    handlers = {
+        "contracts": _handle_contracts,
+        "discover": _handle_discover,
+        "list": _handle_list,
+        "show": _handle_show,
+        "validate": _handle_validate,
+        "test": _handle_test,
+        "load": _handle_load,
+        "hooks": _handle_hooks,
+        "governance": _handle_governance,
+        "report": _handle_report,
+        "recent": _handle_recent,
+        "config": _handle_config,
+    }
 
-    elif args.plugin_command == "discover":
-        engine = create_plugin_discovery_engine()
-        dirs = [Path(args.dir)] if args.dir else None
-        manifests = engine.discover(dirs)
-        if args.json:
-            print(json.dumps([m.model_dump(mode='json') for m in manifests], indent=2))
-        else:
-            print(f"Discovered {len(manifests)} plugins.")
-            for m in manifests:
-                print(f"- {m.plugin_id} ({m.kind.value})")
+    handler = handlers.get(args.plugin_command)
+    if handler:
+        handler(args)
+    else:
+        print(f"Unknown plugin command: {args.plugin_command}")
 
-    elif args.plugin_command == "list":
-        engine = create_plugin_discovery_engine()
-        manifests = engine.discover()
-        if getattr(args, "kind", None):
-            manifests = [m for m in manifests if m.kind.value == args.kind]
-        if args.json:
-            print(json.dumps([m.model_dump(mode='json') for m in manifests], indent=2))
-        else:
-            for m in manifests:
-                print(f"{m.plugin_id} [{m.kind.value}] - Enabled: {m.enabled}")
-
-    elif args.plugin_command == "show":
-        m = get_manifest_by_id(args.plugin)
-        if not m:
-            print(f"Plugin {args.plugin} not found.")
-            return
-        if getattr(args, "json", False):
-            print(json.dumps(m.model_dump(mode='json'), indent=2))
-        else:
-            print(f"ID: {m.plugin_id}\nName: {m.name}\nKind: {m.kind.value}\nDescription: {m.description}")
-
-    elif args.plugin_command == "validate":
-        validator = create_plugin_validator()
-        if getattr(args, "dir", None):
-            from bist_signal_bot.app.plugins_app import create_plugin_manifest_parser
-            p = Path(args.dir) / "plugin.json"
-            if p.exists():
-                m = create_plugin_manifest_parser().parse_manifest(p)
-            else:
-                print("No plugin.json found in dir.")
-                return
-        else:
-            m = get_manifest_by_id(getattr(args, "plugin", ""))
-
-        if not m:
-            print("Plugin not found.")
-            return
-
-        res = validator.validate_plugin(m)
-        if getattr(args, "json", False):
-            print(json.dumps(res.model_dump(mode='json'), indent=2))
-        else:
-            print(f"Validation for {m.plugin_id}: {res.status.value}")
-            for f in res.findings:
-                print(f" - {f}")
-
-    elif args.plugin_command == "test":
-        m = get_manifest_by_id(args.plugin)
-        if not m:
-            print("Plugin not found.")
-            return
-        harness = create_plugin_test_harness()
-        res = harness.run_plugin_tests(m, dry_run=True)
-        if getattr(args, "json", False):
-            print(json.dumps(res.model_dump(mode='json'), indent=2))
-        else:
-            print(f"Test Status: {res.status.value} (Passed: {res.tests_passed}, Failed: {res.tests_failed})")
-
-    elif args.plugin_command == "load":
-        m = get_manifest_by_id(args.plugin)
-        if not m:
-            print("Plugin not found.")
-            return
-        loader = create_safe_plugin_loader()
-        mode = PluginExecutionMode.SAFE_METADATA_ONLY
-        if getattr(args, "dry_run", False):
-            mode = PluginExecutionMode.DRY_RUN
-
-        res = loader.load_plugin(m, mode=mode)
-        if getattr(args, "json", False):
-            print(json.dumps(res.model_dump(mode='json'), indent=2))
-        else:
-            print(f"Load Status: {res.status.value} - {res.execution_mode.value}")
-
-    elif args.plugin_command == "hooks":
-        engine = create_plugin_discovery_engine()
-        hook_reg = create_plugin_hook_registry()
-        for m in engine.discover():
-            hook_reg.register_hooks_from_manifest(m)
-
-        if getattr(args, "kind", None):
-            hooks = hook_reg.hooks_for_kind(args.kind) # Actually expects enum but for CLI string is used, will just summarize
-            summary = {"count": len(hooks)}
-        else:
-            summary = hook_reg.hook_summary()
-
-        if getattr(args, "json", False):
-            print(json.dumps(summary, indent=2))
-        else:
-            print(f"Hooks: {summary}")
-
-    elif args.plugin_command == "governance":
-        m = get_manifest_by_id(args.plugin)
-        if not m:
-            print("Plugin not found.")
-            return
-        gov = create_plugin_governance_engine()
-        res = gov.assess_plugin(m)
-        if getattr(args, "json", False):
-            print(json.dumps(res.model_dump(mode='json'), indent=2))
-        else:
-            print(f"Governance Status: {res.status.value}")
-            if res.blocked_reasons:
-                print("Blocked reasons:")
-                for r in res.blocked_reasons:
-                    print(f" - {r}")
-
-    elif args.plugin_command == "report":
-        engine = create_plugin_discovery_engine()
-        gov = create_plugin_governance_engine()
-        manifests = engine.discover()
-
-        report = PluginRegistryReport(
-            report_id="rep_1",
-            generated_at=datetime.now(),
-            manifests=manifests,
-            governance_assessments=[gov.assess_plugin(m) for m in manifests]
-        )
-
-        if getattr(args, "json", False):
-            print(json.dumps(report.model_dump(mode='json'), indent=2))
-        else:
-            print(format_plugin_registry_report_markdown(report))
-
-    elif args.plugin_command == "recent":
-        print(json.dumps([]) if getattr(args, "json", False) else "No recent activity (mock).")
-
-    elif args.plugin_command == "config":
-        from bist_signal_bot.config.settings import get_settings
-        s = get_settings()
-        cfg = {k: v for k, v in s.__dict__.items() if "PLUGIN" in k}
-        if getattr(args, "json", False):
-            print(json.dumps(cfg, indent=2))
-        else:
-            for k, v in cfg.items():
-                print(f"{k}: {v}")
