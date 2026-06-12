@@ -274,7 +274,7 @@ class MLModelTrainer:
             from bist_signal_bot.storage.paths import get_metadata_dir
             audit = AuditLogger(self.settings)
             audit.log_event(AuditEvent(
-                event_type=AuditEventType.ML_TRAINING_COMPLETED,
+                event_type="ML_TRAINING_COMPLETED",
                 message=f"Model trained successfully: {artifact.model_id}",
                 metadata=res.summary()
             ))
