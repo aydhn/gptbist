@@ -238,21 +238,6 @@ class EvidenceCard(BaseModel):
     disclaimer: str = "Evidence card is research-only. It is not investment advice or permission for real orders. No real order was sent."
     metadata: dict[str, Any] = Field(default_factory=dict)
 
-class DecisionTrace(BaseModel):
-    trace_id: str
-    symbol: str
-    strategy_name: str | None = None
-    signal_id: str | None = None
-    created_at: datetime
-    stages: list[dict[str, Any]] = Field(default_factory=list)
-    final_decision: str
-    final_confidence: float | None = None
-    blocked: bool = False
-    blocked_reasons: list[str] = Field(default_factory=list)
-    warnings: list[str] = Field(default_factory=list)
-    disclaimer: str = "Decision trace is operational research metadata only. No real order was sent."
-    metadata: dict[str, Any] = Field(default_factory=dict)
-
 class ExplanationObjectType(str, Enum):
     MODEL = "MODEL"
     STRATEGY = "STRATEGY"
