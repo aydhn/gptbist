@@ -11,6 +11,8 @@ def main():
     subparsers = parser.add_subparsers(dest="cmd")
 
     add_market_registry_parser(subparsers)
+    from bist_signal_bot.cli_ux.cli_parser import add_cli_ux_subparser
+    add_cli_ux_subparser(subparsers)
     add_plugins_parser(subparsers)
     setup_release_policy_parser(subparsers)
 
@@ -74,6 +76,11 @@ def main():
     p_perf.add_argument("--json", action="store_true")
 
     args = parser.parse_args()
+
+    if args.cmd == "cli-ux":
+        from bist_signal_bot.cli_ux.cli_parser import handle_cli_ux
+        handle_cli_ux(args)
+        return
 
     if args.cmd == "plugins":
         from bist_signal_bot.cli_ux.plugins_cli import handle as handle_plugins
