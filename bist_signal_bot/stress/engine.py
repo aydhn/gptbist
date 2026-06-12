@@ -43,61 +43,109 @@ class StressTestEngine:
         self.settings = settings
         self.logger = logging.getLogger("bist_signal_bot.stress.engine")
 
+    def _prepare_inputs(self, request: StressTestRequest) -> tuple[Any, Any]:
+        series = None
+        snapshot = None
+
+        if request.input_type == StressInputType.PORTFOLIO_RESEARCH_SNAPSHOT:
+            if not self.portfolio_research_engine:
+                raise ValueError("Portfolio research engine not provided.")
+            if request.snapshot_id:
+                snapshot = self.portfolio_research_engine.store.load_snapshot(request.snapshot_id)
+            else:
+                snapshot = self.portfolio_research_engine.store.load_latest_snapshot()
+
+            if not snapshot:
+                raise ValueError("No portfolio snapshot found.")
+
+            symbols = [item.symbol for item in snapshot.items] if hasattr(snapshot, "items") else []
+            if self.data_service and symbols:
+                data_by_symbol = {sym: self.data_service.get_historical_data(sym) for sym in symbols}
+            else:
+                data_by_symbol = {}
+
+            series = self.return_builder.from_portfolio_snapshot(snapshot, data_by_symbol)
+
+        elif request.input_type == StressInputType.CUSTOM_RETURNS:
+            if "custom_returns" in request.metadata:
+                series = ReturnSeries(
+                    series_id=str(uuid.uuid4()),
+                    source_type=StressInputType.CUSTOM_RETURNS,
+                    returns=request.metadata["custom_returns"],
+                    frequency=request.timeframe
+                )
+            else:
+                 raise ValueError("Custom returns must be provided in metadata.")
+        else:
+             raise NotImplementedError(f"Input type {request.input_type} not yet implemented.")
+
+        return series, snapshot
+
+    def _run_shocks(self, request: StressTestRequest, snapshot: Any) -> tuple[list, StressStatus]:
+        shock_results = []
+        status = StressStatus.PASS
+        if request.include_shock_scenarios:
+            scenarios = request.scenarios or self.shock_engine.default_scenarios()
+            for sc in scenarios:
+                res = self.shock_engine.apply_scenario(snapshot, sc)
+                shock_results.append(res)
+                if res.status in (StressStatus.FAIL, StressStatus.ERROR):
+                    status = StressStatus.WARN
+        return shock_results, status
+
+    def _run_monte_carlo(self, request: StressTestRequest, series: ReturnSeries) -> tuple[Any, StressStatus]:
+        mc_result = None
+        status = StressStatus.PASS
+        if request.include_monte_carlo:
+            mc_result = self.monte_carlo_simulator.run(series, request.monte_carlo_config)
+            if mc_result.status in (StressStatus.FAIL, StressStatus.ERROR):
+                status = StressStatus.WARN
+        return mc_result, status
+
+    def _run_drawdown(self, request: StressTestRequest, series: ReturnSeries) -> Any:
+        if request.include_drawdown:
+            return self.drawdown_simulator.analyze(series)
+        return None
+
+    def _run_risk_of_ruin(self, request: StressTestRequest, series: ReturnSeries, mc_result: Any) -> tuple[Any, StressStatus]:
+        ror_result = None
+        status = StressStatus.PASS
+        if request.include_risk_of_ruin:
+            ror_result = self.risk_of_ruin_estimator.estimate(series, mc_result, request.ruin_threshold_pct)
+            if ror_result.status == StressStatus.FAIL:
+                status = StressStatus.FAIL
+        return ror_result, status
+
+    def _save_output(self, request: StressTestRequest, result_pre: StressTestResult) -> None:
+        if request.save_output:
+            try:
+                paths = self.store.save_result(result_pre)
+                result_pre.output_files = {k: str(v) for k, v in paths.items()}
+
+                md_path = paths["result_json"].parent / "stress_report.md"
+                with open(md_path, "w", encoding="utf-8") as f:
+                    f.write(format_stress_report_markdown(result_pre))
+                result_pre.output_files["report_md"] = str(md_path)
+            except Exception as e:
+                self.logger.error(f"Failed to save stress output: {e}")
+                result_pre.warnings.append(f"Failed to save output: {e}")
+
     def run(self, request: StressTestRequest) -> StressTestResult:
         stress_id = str(uuid.uuid4())
         warnings = []
         status = StressStatus.PASS
 
-        # 1. Prepare inputs & returns
-        series = None
-        snapshot = None
-
         try:
-            if request.input_type == StressInputType.PORTFOLIO_RESEARCH_SNAPSHOT:
-                if not self.portfolio_research_engine:
-                    raise ValueError("Portfolio research engine not provided.")
-                if request.snapshot_id:
-                    snapshot = self.portfolio_research_engine.store.load_snapshot(request.snapshot_id)
-                else:
-                    snapshot = self.portfolio_research_engine.store.load_latest_snapshot()
-
-                if not snapshot:
-                    raise ValueError("No portfolio snapshot found.")
-
-                # We need data to calculate returns
-                # Simplified data fetch for the items
-                symbols = [item.symbol for item in snapshot.items] if hasattr(snapshot, "items") else []
-                if self.data_service and symbols:
-                    # In a real impl, fetch appropriate timeframe data
-                    data_by_symbol = {sym: self.data_service.get_historical_data(sym) for sym in symbols}
-                else:
-                    data_by_symbol = {}
-
-                series = self.return_builder.from_portfolio_snapshot(snapshot, data_by_symbol)
-
-            elif request.input_type == StressInputType.CUSTOM_RETURNS:
-                # Custom returns assumed passed in metadata or symbols list for mock
-                if "custom_returns" in request.metadata:
-                    series = ReturnSeries(
-                        series_id=str(uuid.uuid4()),
-                        source_type=StressInputType.CUSTOM_RETURNS,
-                        returns=request.metadata["custom_returns"],
-                        frequency=request.timeframe
-                    )
-                else:
-                     raise ValueError("Custom returns must be provided in metadata.")
-            else:
-                 raise NotImplementedError(f"Input type {request.input_type} not yet implemented.")
-
+            series, snapshot = self._prepare_inputs(request)
         except Exception as e:
-             self.logger.error(f"Error preparing input: {e}")
-             return StressTestResult(
-                 stress_id=stress_id,
-                 request=request,
-                 status=StressStatus.ERROR,
-                 stress_rating=StressSeverity.EXTREME,
-                 warnings=[f"Failed to prepare input: {e}"]
-             )
+            self.logger.error(f"Error preparing input: {e}")
+            return StressTestResult(
+                stress_id=stress_id,
+                request=request,
+                status=StressStatus.ERROR,
+                stress_rating=StressSeverity.EXTREME,
+                warnings=[f"Failed to prepare input: {e}"]
+            )
 
         if not series or not series.returns:
              return StressTestResult(
@@ -108,36 +156,20 @@ class StressTestEngine:
                  warnings=["No returns available for stress test."]
              )
 
-        # 2. Run Shocks
-        shock_results = []
-        if request.include_shock_scenarios:
-            scenarios = request.scenarios or self.shock_engine.default_scenarios()
-            for sc in scenarios:
-                res = self.shock_engine.apply_scenario(snapshot, sc)
-                shock_results.append(res)
-                if res.status in (StressStatus.FAIL, StressStatus.ERROR):
-                    status = StressStatus.WARN
+        shock_results, shock_status = self._run_shocks(request, snapshot)
+        if shock_status == StressStatus.WARN:
+            status = StressStatus.WARN
 
-        # 3. Run Monte Carlo
-        mc_result = None
-        if request.include_monte_carlo:
-            mc_result = self.monte_carlo_simulator.run(series, request.monte_carlo_config)
-            if mc_result.status in (StressStatus.FAIL, StressStatus.ERROR):
-                status = StressStatus.WARN
+        mc_result, mc_status = self._run_monte_carlo(request, series)
+        if mc_status == StressStatus.WARN:
+            status = StressStatus.WARN
 
-        # 4. Run Drawdown
-        dd_result = None
-        if request.include_drawdown:
-            dd_result = self.drawdown_simulator.analyze(series)
+        dd_result = self._run_drawdown(request, series)
 
-        # 5. Run Risk of Ruin
-        ror_result = None
-        if request.include_risk_of_ruin:
-            ror_result = self.risk_of_ruin_estimator.estimate(series, mc_result, request.ruin_threshold_pct)
-            if ror_result.status == StressStatus.FAIL:
-                status = StressStatus.FAIL
+        ror_result, ror_status = self._run_risk_of_ruin(request, series, mc_result)
+        if ror_status == StressStatus.FAIL:
+            status = StressStatus.FAIL
 
-        # 6. Score and Rating
         result_pre = StressTestResult(
             stress_id=stress_id,
             request=request,
@@ -153,32 +185,17 @@ class StressTestEngine:
         score = self.calculate_stress_score(result_pre)
         rating = self.rating_from_score(score)
 
-        # Determine overall status
         if rating == StressSeverity.EXTREME:
             status = StressStatus.FAIL
         elif rating == StressSeverity.HIGH:
-            status = StressStatus.WARN
+            if status != StressStatus.FAIL:
+                status = StressStatus.WARN
 
         result_pre.stress_score = score
         result_pre.stress_rating = rating
         result_pre.status = status
 
-        # 7. Save Output
-        if request.save_output:
-            try:
-                paths = self.store.save_result(result_pre)
-                result_pre.output_files = {k: str(v) for k, v in paths.items()}
-
-                # Also save markdown report
-                md_path = paths["result_json"].parent / "stress_report.md"
-                with open(md_path, "w", encoding="utf-8") as f:
-                    f.write(format_stress_report_markdown(result_pre))
-                result_pre.output_files["report_md"] = str(md_path)
-            except Exception as e:
-                self.logger.error(f"Failed to save stress output: {e}")
-                result_pre.warnings.append(f"Failed to save output: {e}")
-
-        # Audit could go here
+        self._save_output(request, result_pre)
 
         return result_pre
 
