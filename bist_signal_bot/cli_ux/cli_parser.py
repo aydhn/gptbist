@@ -79,129 +79,78 @@ def add_cli_ux_subparser(subparsers):
     p_config = sub.add_parser("config", help="Show CLI UX config")
     p_config.add_argument("--json", action="store_true", help="Output JSON")
 
+def _handle_contracts(args, settings):
 
-def handle_cli_ux(args, context=None):
-    settings = get_settings()
-
-    if args.cli_ux_command == "contracts":
-        registry = create_cli_output_contract_registry(settings)
-        if args.action == "show" and args.name:
-            c = registry.get_contract(args.name)
-            if not c:
-                print(f"Contract not found: {args.name}")
-                sys.exit(4)
-            if args.json:
-                print(json.dumps(contract_to_dict(c), indent=2))
-            else:
-                print(format_contracts_text([c]))
-        else:
-            contracts = registry.default_contracts()
-            if args.json:
-                print(json.dumps([contract_to_dict(c) for c in contracts], indent=2))
-            else:
-                print(format_contracts_text(contracts))
-
-    elif args.cli_ux_command == "schemas":
-        registry = create_cli_output_schema_registry(settings)
-        if args.action == "show" and args.name:
-            # simple mock match
-            s = next((sch for sch in registry.default_schemas() if sch.name == args.name), None)
-            if not s:
-                print(f"Schema not found: {args.name}")
-                sys.exit(4)
-            if args.json:
-                print(json.dumps(schema_to_dict(s), indent=2))
-            else:
-                print(json.dumps(schema_to_dict(s), indent=2))
-        else:
-            schemas = registry.default_schemas()
-            if args.json:
-                print(json.dumps([schema_to_dict(s) for s in schemas], indent=2))
-            else:
-                print(f"Loaded {len(schemas)} schemas.")
-
-    elif args.cli_ux_command == "aliases":
-        registry = create_cli_alias_registry(settings)
-        if args.action == "resolve" and args.name:
-            t = registry.resolve_alias(args.name)
-            if not t:
-                print(f"Alias not found: {args.name}")
-                sys.exit(4)
-            if args.json:
-                print(json.dumps({"alias": args.name, "target": t}, indent=2))
-            else:
-                print(f"{args.name} -> {t}")
-        else:
-            aliases = registry.default_aliases()
-            if args.json:
-                print(json.dumps([alias_to_dict(a) for a in aliases], indent=2))
-            else:
-                print(format_aliases_text(aliases))
-
-    elif args.cli_ux_command == "workflow":
-        runner = create_cli_workflow_runner(settings)
-        if args.action == "run":
-            if not args.name:
-                print("Workflow name is required.")
-                sys.exit(2)
-            # mock command
-            run = runner.run_workflow(args.name, ["echo 'mock'"], dry_run=args.dry_run, save=args.save)
-            if args.json:
-                print(json.dumps(workflow_run_to_dict(run), indent=2))
-            else:
-                print(format_workflow_run_text(run))
-        elif args.action == "recent":
-            store = create_cli_ux_store(settings)
-            runs = store.load_workflow_runs(args.limit)
-            if args.json:
-                print(json.dumps([workflow_run_to_dict(r) for r in runs], indent=2))
-            else:
-                print(f"Found {len(runs)} recent runs.")
-
-    elif args.cli_ux_command == "recipe":
-        executor = create_command_recipe_executor(settings)
-        if args.action == "preview":
-            cmds = executor.preview_recipe(args.name)
-            if args.json:
-                print(json.dumps({"recipe": args.name, "commands": cmds}, indent=2))
-            else:
-                print(f"Recipe {args.name} commands:")
-                for c in cmds:
-                    print(f"  {c}")
-        elif args.action == "run":
-            run = executor.execute_recipe(args.name, dry_run=args.dry_run, save=args.save)
-            if args.json:
-                print(json.dumps(workflow_run_to_dict(run), indent=2))
-            else:
-                print(format_workflow_run_text(run))
-
-    elif args.cli_ux_command == "compatibility":
-        checker = create_cli_compatibility_checker(settings)
-        res = checker.check_compatibility()
+    registry = create_cli_output_contract_registry(settings)
+    if args.action == "show" and args.name:
+        c = registry.get_contract(args.name)
+        if not c:
+            print(f"Contract not found: {args.name}")
+            sys.exit(4)
         if args.json:
-            print(json.dumps(compatibility_to_dict(res), indent=2))
+            print(json.dumps(contract_to_dict(c), indent=2))
         else:
-            print(format_compatibility_text(res))
-
-    elif args.cli_ux_command == "report":
-        import uuid
-        checker = create_cli_compatibility_checker(settings)
-        compat = checker.check_compatibility()
-        r = CLIUXReport(
-            report_id=str(uuid.uuid4()),
-            generated_at=datetime.now(timezone.utc),
-            contracts=create_cli_output_contract_registry(settings).default_contracts(),
-            schemas=create_cli_output_schema_registry(settings).default_schemas(),
-            aliases=create_cli_alias_registry(settings).default_aliases(),
-            compatibility=compat,
-            key_findings=["CLI UX components are functioning correctly"]
-        )
+            print(format_contracts_text([c]))
+    else:
+        contracts = registry.default_contracts()
         if args.json:
-            print(json.dumps(cli_ux_report_to_dict(r), indent=2))
+            print(json.dumps([contract_to_dict(c) for c in contracts], indent=2))
         else:
-            print(format_cli_ux_report_markdown(r))
+            print(format_contracts_text(contracts))
 
-    elif args.cli_ux_command == "recent":
+def _handle_schemas(args, settings):
+
+    registry = create_cli_output_schema_registry(settings)
+    if args.action == "show" and args.name:
+        # simple mock match
+        s = next((sch for sch in registry.default_schemas() if sch.name == args.name), None)
+        if not s:
+            print(f"Schema not found: {args.name}")
+            sys.exit(4)
+        if args.json:
+            print(json.dumps(schema_to_dict(s), indent=2))
+        else:
+            print(json.dumps(schema_to_dict(s), indent=2))
+    else:
+        schemas = registry.default_schemas()
+        if args.json:
+            print(json.dumps([schema_to_dict(s) for s in schemas], indent=2))
+        else:
+            print(f"Loaded {len(schemas)} schemas.")
+
+def _handle_aliases(args, settings):
+
+    registry = create_cli_alias_registry(settings)
+    if args.action == "resolve" and args.name:
+        t = registry.resolve_alias(args.name)
+        if not t:
+            print(f"Alias not found: {args.name}")
+            sys.exit(4)
+        if args.json:
+            print(json.dumps({"alias": args.name, "target": t}, indent=2))
+        else:
+            print(f"{args.name} -> {t}")
+    else:
+        aliases = registry.default_aliases()
+        if args.json:
+            print(json.dumps([alias_to_dict(a) for a in aliases], indent=2))
+        else:
+            print(format_aliases_text(aliases))
+
+def _handle_workflow(args, settings):
+
+    runner = create_cli_workflow_runner(settings)
+    if args.action == "run":
+        if not args.name:
+            print("Workflow name is required.")
+            sys.exit(2)
+        # mock command
+        run = runner.run_workflow(args.name, ["echo 'mock'"], dry_run=args.dry_run, save=args.save)
+        if args.json:
+            print(json.dumps(workflow_run_to_dict(run), indent=2))
+        else:
+            print(format_workflow_run_text(run))
+    elif args.action == "recent":
         store = create_cli_ux_store(settings)
         runs = store.load_workflow_runs(args.limit)
         if args.json:
@@ -209,13 +158,90 @@ def handle_cli_ux(args, context=None):
         else:
             print(f"Found {len(runs)} recent runs.")
 
-    elif args.cli_ux_command == "config":
-        conf = {
-            "ENABLE_CLI_UX": getattr(settings, "ENABLE_CLI_UX", True),
-            "CLI_OUTPUT_CONTRACTS_ENABLED": getattr(settings, "CLI_OUTPUT_CONTRACTS_ENABLED", True)
-        }
+def _handle_recipe(args, settings):
+
+    executor = create_command_recipe_executor(settings)
+    if args.action == "preview":
+        cmds = executor.preview_recipe(args.name)
         if args.json:
-            print(json.dumps(conf, indent=2))
+            print(json.dumps({"recipe": args.name, "commands": cmds}, indent=2))
         else:
-            for k, v in conf.items():
-                print(f"{k}: {v}")
+            print(f"Recipe {args.name} commands:")
+            for c in cmds:
+                print(f"  {c}")
+    elif args.action == "run":
+        run = executor.execute_recipe(args.name, dry_run=args.dry_run, save=args.save)
+        if args.json:
+            print(json.dumps(workflow_run_to_dict(run), indent=2))
+        else:
+            print(format_workflow_run_text(run))
+
+def _handle_compatibility(args, settings):
+
+    checker = create_cli_compatibility_checker(settings)
+    res = checker.check_compatibility()
+    if args.json:
+        print(json.dumps(compatibility_to_dict(res), indent=2))
+    else:
+        print(format_compatibility_text(res))
+
+def _handle_report(args, settings):
+
+    import uuid
+    checker = create_cli_compatibility_checker(settings)
+    compat = checker.check_compatibility()
+    r = CLIUXReport(
+        report_id=str(uuid.uuid4()),
+        generated_at=datetime.now(timezone.utc),
+        contracts=create_cli_output_contract_registry(settings).default_contracts(),
+        schemas=create_cli_output_schema_registry(settings).default_schemas(),
+        aliases=create_cli_alias_registry(settings).default_aliases(),
+        compatibility=compat,
+        key_findings=["CLI UX components are functioning correctly"]
+    )
+    if args.json:
+        print(json.dumps(cli_ux_report_to_dict(r), indent=2))
+    else:
+        print(format_cli_ux_report_markdown(r))
+
+def _handle_recent(args, settings):
+
+    store = create_cli_ux_store(settings)
+    runs = store.load_workflow_runs(args.limit)
+    if args.json:
+        print(json.dumps([workflow_run_to_dict(r) for r in runs], indent=2))
+    else:
+        print(f"Found {len(runs)} recent runs.")
+
+def _handle_config(args, settings):
+
+    conf = {
+        "ENABLE_CLI_UX": getattr(settings, "ENABLE_CLI_UX", True),
+        "CLI_OUTPUT_CONTRACTS_ENABLED": getattr(settings, "CLI_OUTPUT_CONTRACTS_ENABLED", True)
+    }
+    if args.json:
+        print(json.dumps(conf, indent=2))
+    else:
+        for k, v in conf.items():
+            print(f"{k}: {v}")
+
+def handle_cli_ux(args, context=None):
+    settings = get_settings()
+    if args.cli_ux_command == 'contracts':
+        return _handle_contracts(args, settings)
+    if args.cli_ux_command == 'schemas':
+        return _handle_schemas(args, settings)
+    if args.cli_ux_command == 'aliases':
+        return _handle_aliases(args, settings)
+    if args.cli_ux_command == 'workflow':
+        return _handle_workflow(args, settings)
+    if args.cli_ux_command == 'recipe':
+        return _handle_recipe(args, settings)
+    if args.cli_ux_command == 'compatibility':
+        return _handle_compatibility(args, settings)
+    if args.cli_ux_command == 'report':
+        return _handle_report(args, settings)
+    if args.cli_ux_command == 'recent':
+        return _handle_recent(args, settings)
+    if args.cli_ux_command == 'config':
+        return _handle_config(args, settings)
