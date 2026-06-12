@@ -23,6 +23,8 @@ from bist_signal_bot.stress.models import (
     DrawdownSimulationResult
 )
 
+
+
 def test_format_shock_result_text_with_impact():
     scenario = StressScenario(
         scenario_id="scen1",
@@ -79,7 +81,6 @@ def test_format_shock_result_text_without_impact():
 
     assert text == expected_text
 
-
 def test_shock_results_to_dataframe():
     scenario1 = StressScenario(
         scenario_id="scen1",
@@ -126,8 +127,6 @@ def test_shock_results_to_dataframe_empty():
     df = shock_results_to_dataframe([])
     assert list(df.columns) == []
     assert len(df) == 0
-
-
 
 def test_format_stress_result_text_full():
     request = StressTestRequest(
@@ -281,7 +280,6 @@ def test_format_stress_result_text_partial():
 
     assert text == expected
 
-
 def test_format_stress_report_markdown_full():
     request = StressTestRequest(
         input_type=StressInputType.MOCK,
@@ -347,11 +345,42 @@ def test_format_stress_report_markdown_full():
     )
 
     md = format_stress_report_markdown(result)
-    assert "# Stress Test Research Report" in md
-    assert "## Monte Carlo Simulation" in md
-    assert "## Shock Scenarios" in md
-    assert "## Drawdown Simulation" in md
-    assert "## Risk of Ruin Estimate" in md
+
+    expected_lines = [
+        "# Stress Test Research Report",
+        "",
+        "**ID:** `STRESS4`",
+        "**Status:** PASS",
+        "**Rating:** LOW",
+        "**Warnings:** 1",
+        "",
+        "## Disclaimer",
+        "*Disclaimer text here*",
+        "",
+        "## Monte Carlo Simulation",
+        "- **Simulations:** 1000",
+        "- **Method:** BOOTSTRAP",
+        "- **5th Percentile Return:** 5.25%",
+        "- **Median Return:** 10.50%",
+        "",
+        "## Shock Scenarios",
+        "| Scenario         | Severity   |   Portfolio Impact % | Status   |",
+        "|:-----------------|:-----------|---------------------:|:---------|",
+        "| Market Crash 20% | HIGH       |                -15.5 | PASS     |",
+        "",
+        "## Drawdown Simulation",
+        "- **Max Drawdown:** -15.00%",
+        "- **Longest Duration:** 45 days",
+        "",
+        "## Risk of Ruin Estimate",
+        "- **Threshold:** 20.00%",
+        "- **Probability:** 2.15%",
+        "- **Worst Streak:** 5 days",
+        ""
+    ]
+    expected = "\n".join(expected_lines)
+    assert md == expected
+
 def test_format_monte_carlo_text_full():
     config = MonteCarloConfig(
         method=MonteCarloMethod.BOOTSTRAP,
@@ -415,3 +444,233 @@ def test_format_monte_carlo_text_minimal():
     ])
 
     assert text == expected
+
+def test_format_stress_report_markdown_full_with_nones():
+    request = StressTestRequest(
+        input_type=StressInputType.MOCK,
+        symbols=["AAPL"],
+        monte_carlo_config=MonteCarloConfig(
+            method=MonteCarloMethod.BOOTSTRAP,
+            simulations=1000,
+            horizon_days=252,
+            seed=42,
+            initial_value=10000.0
+        ),
+        ruin_threshold_pct=20.0
+    )
+
+    mc_result = MonteCarloResult(
+        result_id="mc3",
+        config=request.monte_carlo_config,
+        status=StressStatus.PASS,
+        final_return_pct_p05=None,
+        final_return_pct_p50=None
+    )
+
+    ror_result = RiskOfRuinResult(
+        result_id="ror3",
+        status=StressStatus.PASS,
+        ruin_threshold_pct=20.0,
+        estimated_ruin_probability_pct=None,
+        worst_loss_streak=None
+    )
+
+    dd_result = DrawdownSimulationResult(
+        result_id="dd3",
+        status=StressStatus.PASS,
+        max_drawdown_pct=None,
+        longest_drawdown_days=None
+    )
+
+    scenario = StressScenario(
+        scenario_id="scen3",
+        name="Market Crash 20%",
+        scenario_type=StressScenarioType.MARKET_SHOCK,
+        severity=StressSeverity.HIGH
+    )
+    shock_result = ShockScenarioResult(
+        result_id="shock3",
+        scenario=scenario,
+        status=StressStatus.PASS,
+        estimated_portfolio_impact_pct=None
+    )
+
+    result = StressTestResult(
+        stress_id="STRESS_NONES",
+        request=request,
+        status=StressStatus.WARN,
+        stress_score=85.5,
+        stress_rating=StressSeverity.MEDIUM,
+        warnings=["Test warning"],
+        monte_carlo_result=mc_result,
+        risk_of_ruin_result=ror_result,
+        drawdown_result=dd_result,
+        shock_results=[shock_result],
+        disclaimer="Disclaimer with nones"
+    )
+
+    md = format_stress_report_markdown(result)
+
+    expected_lines = [
+        "# Stress Test Research Report",
+        "",
+        "**ID:** `STRESS_NONES`",
+        "**Status:** WARN",
+        "**Rating:** MEDIUM",
+        "**Warnings:** 1",
+        "",
+        "## Disclaimer",
+        "*Disclaimer with nones*",
+        "",
+        "## Monte Carlo Simulation",
+        "- **Simulations:** 1000",
+        "- **Method:** BOOTSTRAP",
+        "- **5th Percentile Return:** N/A",
+        "- **Median Return:** N/A",
+        "",
+        "## Shock Scenarios",
+        "| Scenario         | Severity   | Portfolio Impact %   | Status   |",
+        "|:-----------------|:-----------|:---------------------|:---------|",
+        "| Market Crash 20% | HIGH       |                      | PASS     |",
+        "",
+        "## Drawdown Simulation",
+        "- **Max Drawdown:** N/A",
+        "- **Longest Duration:** N/A",
+        "",
+        "## Risk of Ruin Estimate",
+        "- **Threshold:** 20.00%",
+        "- **Probability:** N/A",
+        "- **Worst Streak:** N/A",
+        ""
+    ]
+    expected = "\n".join(expected_lines)
+    assert md == expected
+
+def test_format_stress_report_markdown_minimal():
+    request = StressTestRequest(
+        input_type=StressInputType.MOCK,
+        symbols=["AAPL"],
+        monte_carlo_config=MonteCarloConfig(
+            method=MonteCarloMethod.BOOTSTRAP,
+            simulations=1000,
+            horizon_days=252,
+            seed=42,
+            initial_value=10000.0
+        ),
+        ruin_threshold_pct=20.0
+    )
+
+    result = StressTestResult(
+        stress_id="STRESS_MINIMAL",
+        request=request,
+        status=StressStatus.PASS,
+        stress_score=None,
+        stress_rating=StressSeverity.LOW,
+        warnings=[],
+        monte_carlo_result=None,
+        risk_of_ruin_result=None,
+        drawdown_result=None,
+        shock_results=[],
+        disclaimer="Disclaimer text here"
+    )
+
+    md = format_stress_report_markdown(result)
+    expected = "\n".join([
+        "# Stress Test Research Report",
+        "",
+        "**ID:** `STRESS_MINIMAL`",
+        "**Status:** PASS",
+        "**Rating:** LOW",
+        "**Warnings:** 0",
+        "",
+        "## Disclaimer",
+        "*Disclaimer text here*",
+        ""
+    ])
+    assert md == expected
+
+def test_to_dict_functions():
+    from bist_signal_bot.stress.reporting import (
+        stress_result_to_dict,
+        monte_carlo_to_dict,
+        shock_result_to_dict,
+        drawdown_result_to_dict,
+        risk_of_ruin_to_dict
+    )
+
+    # Test stress_result_to_dict
+    request = StressTestRequest(
+        input_type=StressInputType.MOCK,
+        symbols=["AAPL"],
+        monte_carlo_config=MonteCarloConfig(
+            method=MonteCarloMethod.BOOTSTRAP,
+            simulations=1000,
+            horizon_days=252,
+            seed=42,
+            initial_value=10000.0
+        ),
+        ruin_threshold_pct=20.0
+    )
+    result = StressTestResult(
+        stress_id="STRESS_DICT",
+        request=request,
+        status=StressStatus.PASS,
+        stress_score=None,
+        stress_rating=StressSeverity.LOW,
+        warnings=[],
+        monte_carlo_result=None,
+        risk_of_ruin_result=None,
+        drawdown_result=None,
+        shock_results=[],
+        disclaimer="Disclaimer text here"
+    )
+    d = stress_result_to_dict(result)
+    assert d["stress_id"] == "STRESS_DICT"
+
+    # Test monte_carlo_to_dict
+    mc_result = MonteCarloResult(
+        result_id="mc_dict",
+        config=request.monte_carlo_config,
+        status=StressStatus.PASS,
+        final_return_pct_p05=5.25,
+        final_return_pct_p50=10.5
+    )
+    d = monte_carlo_to_dict(mc_result)
+    assert d["result_id"] == "mc_dict"
+
+    # Test risk_of_ruin_to_dict
+    ror_result = RiskOfRuinResult(
+        result_id="ror_dict",
+        status=StressStatus.PASS,
+        ruin_threshold_pct=20.0,
+        estimated_ruin_probability_pct=2.15,
+        worst_loss_streak=5
+    )
+    d = risk_of_ruin_to_dict(ror_result)
+    assert d["result_id"] == "ror_dict"
+
+    # Test drawdown_result_to_dict
+    dd_result = DrawdownSimulationResult(
+        result_id="dd_dict",
+        status=StressStatus.PASS,
+        max_drawdown_pct=-15.0,
+        longest_drawdown_days=45
+    )
+    d = drawdown_result_to_dict(dd_result)
+    assert d["result_id"] == "dd_dict"
+
+    # Test shock_result_to_dict
+    scenario = StressScenario(
+        scenario_id="scen_dict",
+        name="Market Crash 20%",
+        scenario_type=StressScenarioType.MARKET_SHOCK,
+        severity=StressSeverity.HIGH
+    )
+    shock_result = ShockScenarioResult(
+        result_id="shock_dict",
+        scenario=scenario,
+        status=StressStatus.PASS,
+        estimated_portfolio_impact_pct=-15.5
+    )
+    d = shock_result_to_dict(shock_result)
+    assert d["result_id"] == "shock_dict"
