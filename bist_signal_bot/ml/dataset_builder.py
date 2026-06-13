@@ -1,10 +1,8 @@
 import pandas as pd
 import logging
 from datetime import datetime, timezone
-from typing import Any
 
 from bist_signal_bot.config.settings import Settings
-from bist_signal_bot.data.data_service import MarketDataService
 from bist_signal_bot.ml.models import (
     MLDatasetRequest, MLDatasetResult, MLDatasetStatus, DatasetSplitMode,
     MLTaskType, LabelConfig, LabelType, FeatureConfig, FeatureSetLevel, PreprocessingConfig, MLDatasetSchema
@@ -15,7 +13,6 @@ from bist_signal_bot.ml.preprocessing import MLPreprocessor
 from bist_signal_bot.ml.leakage import MLLeakageGuard
 from bist_signal_bot.ml.schema import MLSchemaBuilder
 from bist_signal_bot.ml.feature_store import FeatureStore
-from bist_signal_bot.core.exceptions import MLDatasetError
 
 logger = logging.getLogger(__name__)
 
@@ -107,15 +104,7 @@ class MLDatasetBuilder:
                 dfs.append(df)
 
         if not dfs:
-            return MLDatasetResult(
-                request=request,
-                status=MLDatasetStatus.EMPTY,
-                data=pd.DataFrame(),
-                schema_=MLDatasetSchema(symbol_col="symbol", timestamp_col="timestamp", feature_cols=[], label_cols=[], metadata_cols=[], excluded_cols=[], generated_at=started_at),
-                issues=issues,
-                started_at=started_at,
-                finished_at=datetime.now(timezone.utc)
-            )
+            return self._create_failure_result(request, MLDatasetStatus.EMPTY, pd.DataFrame(), issues, started_at)
 
         # Concat
         try:
@@ -125,22 +114,14 @@ class MLDatasetBuilder:
                 combined_df.reset_index(drop=True, inplace=True)
         except Exception as e:
             issues.append(f"Failed to concatenate dataset: {e}")
-            return MLDatasetResult(
-                request=request, status=MLDatasetStatus.FAILED, data=pd.DataFrame(),
-                schema_=MLDatasetSchema(symbol_col="symbol", timestamp_col="timestamp", feature_cols=[], label_cols=[], metadata_cols=[], excluded_cols=[], generated_at=started_at),
-                issues=issues, started_at=started_at, finished_at=datetime.now(timezone.utc)
-            )
+            return self._create_failure_result(request, MLDatasetStatus.FAILED, pd.DataFrame(), issues, started_at)
 
         # Build Schema
         try:
             schema = self.schema_builder.build_schema(combined_df, request.feature_config, request.label_config)
         except Exception as e:
             issues.append(f"Failed to build schema: {e}")
-            return MLDatasetResult(
-                request=request, status=MLDatasetStatus.FAILED, data=combined_df,
-                schema_=MLDatasetSchema(symbol_col="symbol", timestamp_col="timestamp", feature_cols=[], label_cols=[], metadata_cols=[], excluded_cols=[], generated_at=started_at),
-                issues=issues, started_at=started_at, finished_at=datetime.now(timezone.utc)
-            )
+            return self._create_failure_result(request, MLDatasetStatus.FAILED, combined_df, issues, started_at)
 
         # Leakage guard (final check)
         leakage_issues = self.leakage_guard.run_all_checks(combined_df, schema)
@@ -174,25 +155,37 @@ class MLDatasetBuilder:
         # Save
         if request.save:
             try:
-                out_files = self.feature_store.save_dataset(result)
+                self.feature_store.save_dataset(result)
             except Exception as e:
                 issues.append(f"Failed to save dataset: {e}")
                 result.status = MLDatasetStatus.PARTIAL_SUCCESS
 
+        self._collect_performance_metrics(result, combined_df)
 
+        return result
+
+    def _create_failure_result(self, request: MLDatasetRequest, status: MLDatasetStatus, df: pd.DataFrame, issues: list[str], started_at: datetime) -> MLDatasetResult:
+        return MLDatasetResult(
+            request=request,
+            status=status,
+            data=df,
+            schema_=MLDatasetSchema(symbol_col="symbol", timestamp_col="timestamp", feature_cols=[], label_cols=[], metadata_cols=[], excluded_cols=[], generated_at=started_at),
+            issues=issues,
+            started_at=started_at,
+            finished_at=datetime.now(timezone.utc)
+        )
+
+    def _collect_performance_metrics(self, result: MLDatasetResult, df: pd.DataFrame):
         if getattr(self.settings, 'ENABLE_PERFORMANCE_TOOLS', False):
             try:
                 from bist_signal_bot.app.performance_app import create_resource_monitor
                 monitor = create_resource_monitor(self.settings)
                 snap = monitor.snapshot()
                 result.metadata["resource_after"] = snap.summary()
-                # Estimate memory footprint safely
                 if not df.empty:
                     result.metadata["memory_estimate_mb"] = df.memory_usage(deep=True).sum() / (1024 * 1024)
             except Exception:
                 pass
-
-        return result
 
     def split_dataset(self, data: pd.DataFrame, request: MLDatasetRequest) -> tuple[pd.DataFrame | None, pd.DataFrame | None]:
         if request.split_mode == DatasetSplitMode.NONE:
