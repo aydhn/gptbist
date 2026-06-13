@@ -91,9 +91,7 @@ class RuntimeOrchestrator:
         else:
             return self._run_once_impl(config, trigger)
 
-    def _run_once_impl(self, config: RuntimePipelineConfig, trigger: RuntimeTrigger = RuntimeTrigger.CLI) -> RuntimePipelineResult:
-
-        # Config Registry Integration
+    def _run_config_gate_integration(self, config: RuntimePipelineConfig, trigger: RuntimeTrigger) -> Optional[RuntimePipelineResult]:
         if getattr(config, "config_gate_before_run", False) or getattr(self.settings, "RUNTIME_CONFIG_GATE_BEFORE_RUN", False):
             try:
                 from bist_signal_bot.app.config_registry_app import create_config_gate
@@ -108,7 +106,6 @@ class RuntimeOrchestrator:
 
                 if gate_res.blocked:
                     self.logger.error("Config Gate blocked execution.")
-                    # Simplified return for mock integration
                     result = RuntimePipelineResult(
                         run_id=f"run_{uuid.uuid4().hex[:8]}",
                         trigger=trigger,
@@ -121,7 +118,9 @@ class RuntimeOrchestrator:
                     return result
             except Exception as e:
                 self.logger.error(f"Config gate error: {e}")
+        return None
 
+    def _check_data_freshness(self, config: RuntimePipelineConfig) -> None:
         if getattr(self.settings, "RUNTIME_REQUIRE_FRESH_DATA", False):
             try:
                 from bist_signal_bot.data.data_service import MarketDataService
@@ -133,18 +132,93 @@ class RuntimeOrchestrator:
             except Exception as e:
                 self.logger.warning(f"Failed to check data freshness: {e}")
 
-        if config and getattr(config, 'use_adaptive', False) and self.adaptive_engine:
+    def _apply_adaptive_config(self, config: RuntimePipelineConfig) -> None:
+        if config and getattr(config, 'use_adaptive', False) and hasattr(self, 'adaptive_engine') and getattr(self, 'adaptive_engine', None):
             try:
-                # Fallbacks in case config lacks symbols/strategies
                 syms = config.symbols if hasattr(config, 'symbols') and config.symbols else []
                 strats = [j.strategy_name for j in config.jobs if j.strategy_name]
-                adaptive_config = self.adaptive_engine.build_runtime_strategy_config(syms, strats)
+                adaptive_config = getattr(self, 'adaptive_engine').build_runtime_strategy_config(syms, strats)
                 if not config.metadata: config.metadata = {}
                 config.metadata["adaptive_config"] = adaptive_config
             except Exception as e:
                 self.logger.warning(f"Adaptive integration failed: {e}")
-        security_preflight: Optional[SecurityPreflightRunner] = None,
-        kill_switch: Optional[KillSwitchManager] = None,
+
+    def _execute_pipeline_steps(self, config: RuntimePipelineConfig, result: RuntimePipelineResult) -> None:
+        steps = RuntimePipelineBuilder.build_runtime_pipeline_steps(config)
+
+        for step in steps:
+            if step == RuntimeJobType.HEALTHCHECK:
+                if self.healthcheck_runner:
+                    job_res = self.job_runner.run_job(step, lambda: self.healthcheck_runner.run() if hasattr(self.healthcheck_runner, "run") else {"status": "ok"})
+                    result.job_results.append(job_res)
+                    result.healthcheck_summary = job_res.summary
+
+            elif step == RuntimeJobType.SIGNAL_SCAN:
+                if self.scanner_engine:
+                    req = RuntimePipelineBuilder.build_scan_request(config)
+                    job_res = self.job_runner.run_job(step, lambda: self.scanner_engine.scan(req) if hasattr(self.scanner_engine, "scan") else {"mock_scan": True})
+                    result.job_results.append(job_res)
+                    result.scan_report_summary = job_res.summary
+
+            elif step == RuntimeJobType.PAPER_RUN:
+                if self.paper_engine and getattr(config, 'use_paper', False) and not getattr(config, 'dry_run', False):
+                    job_res = self.job_runner.run_job(step, lambda: self.paper_engine.run(getattr(config, 'strategy_name', '')) if hasattr(self.paper_engine, "run") else {"mock_paper": True})
+                    result.job_results.append(job_res)
+                    result.paper_result_summary = job_res.summary
+
+            elif step == RuntimeJobType.TELEGRAM_SUMMARY:
+                if self.notifier and getattr(config, 'send_telegram', False) and not getattr(config, 'dry_run', False):
+                    job_res = self.send_summary(result)
+                    result.job_results.append(job_res)
+
+        failed_jobs = [j for j in result.job_results if getattr(getattr(j, 'status', None), 'value', str(getattr(j, 'status', None))) == "FAILED"]
+        if failed_jobs:
+            result.status = RuntimePipelineStatus.FAILED
+        elif any(getattr(getattr(j, 'status', None), 'value', str(getattr(j, 'status', None))) == "PARTIAL_SUCCESS" for j in result.job_results):
+            result.status = RuntimePipelineStatus.PARTIAL_SUCCESS
+        else:
+            result.status = RuntimePipelineStatus.SUCCESS
+
+    def _integrate_portfolio_research(self, config: RuntimePipelineConfig, result: RuntimePipelineResult) -> None:
+        if getattr(config, "build_research_portfolio", False) or getattr(self.settings, "RUNTIME_BUILD_RESEARCH_PORTFOLIO", False):
+            try:
+                from bist_signal_bot.app.portfolio_research_app import create_portfolio_research_engine
+                from bist_signal_bot.portfolio_research.models import PortfolioResearchRequest, AllocationMethod
+
+                engine = create_portfolio_research_engine(self.settings)
+
+                method_str = getattr(config, "portfolio_allocation_method", None) or getattr(self.settings, "RUNTIME_PORTFOLIO_ALLOCATION_METHOD", "HYBRID")
+                try:
+                    method = AllocationMethod(method_str)
+                except ValueError:
+                    method = AllocationMethod.HYBRID
+
+                req = PortfolioResearchRequest(
+                    symbols=getattr(config, 'symbols', []),
+                    allocation_method=method,
+                    max_items=getattr(config, "portfolio_max_items", None) or getattr(self.settings, "RUNTIME_PORTFOLIO_MAX_ITEMS", 10),
+                    save_snapshot=True,
+                    source=getattr(config, "data_source", "local")
+                )
+
+                snapshot = engine.build_snapshot(req)
+
+                result.metadata["portfolio_snapshot_id"] = snapshot.snapshot_id
+                result.metadata["portfolio_item_count"] = snapshot.item_count
+                result.metadata["portfolio_warnings"] = len(snapshot.warnings)
+                self.logger.info(f"Built research portfolio snapshot: {snapshot.snapshot_id}")
+            except Exception as e:
+                self.logger.error(f"Failed to build research portfolio: {e}")
+                result.metadata["portfolio_error"] = str(e)
+
+    def _run_once_impl(self, config: RuntimePipelineConfig, trigger: RuntimeTrigger = RuntimeTrigger.CLI) -> RuntimePipelineResult:
+        gate_result = self._run_config_gate_integration(config, trigger)
+        if gate_result:
+            return gate_result
+
+        self._check_data_freshness(config)
+        self._apply_adaptive_config(config)
+
         run_id = str(uuid.uuid4())
         started_at = datetime.utcnow()
 
@@ -170,53 +244,16 @@ class RuntimeOrchestrator:
         self.state_store.mark_running(run_id, lock_id)
 
         try:
-            # Session check fallback handled in job_runner
             in_session, session_msg = self.job_runner.should_run_in_session(config.session_policy, started_at)
             if not in_session:
                 result.status = RuntimePipelineStatus.SKIPPED
                 self.logger.info(session_msg)
                 return result
 
-            steps = RuntimePipelineBuilder.build_runtime_pipeline_steps(config)
+            self._execute_pipeline_steps(config, result)
 
-            for step in steps:
-                if step == RuntimeJobType.HEALTHCHECK:
-                    if self.healthcheck_runner:
-                        job_res = self.job_runner.run_job(step, lambda: self.healthcheck_runner.run() if hasattr(self.healthcheck_runner, "run") else {"status": "ok"})
-                        result.job_results.append(job_res)
-                        result.healthcheck_summary = job_res.summary
-
-                elif step == RuntimeJobType.SIGNAL_SCAN:
-                    if self.scanner_engine:
-                        req = RuntimePipelineBuilder.build_scan_request(config)
-                        # Normally would call self.scanner_engine.scan(req)
-                        job_res = self.job_runner.run_job(step, lambda: self.scanner_engine.scan(req) if hasattr(self.scanner_engine, "scan") else {"mock_scan": True})
-                        result.job_results.append(job_res)
-                        result.scan_report_summary = job_res.summary
-
-                elif step == RuntimeJobType.PAPER_RUN:
-                    if self.paper_engine and config.use_paper and not config.dry_run:
-                        # Normally would call self.paper_engine.run(req)
-                        job_res = self.job_runner.run_job(step, lambda: self.paper_engine.run(config.strategy_name) if hasattr(self.paper_engine, "run") else {"mock_paper": True})
-                        result.job_results.append(job_res)
-                        result.paper_result_summary = job_res.summary
-
-                elif step == RuntimeJobType.TELEGRAM_SUMMARY:
-                    if self.notifier and config.send_telegram and not config.dry_run:
-                        job_res = self.send_summary(result)
-                        result.job_results.append(job_res)
-
-            # Evaluate pipeline overall status
-            failed_jobs = [j for j in result.job_results if j.status.value == "FAILED"]
-            if failed_jobs:
-                result.status = RuntimePipelineStatus.FAILED
-            elif any(j.status.value == "PARTIAL_SUCCESS" for j in result.job_results):
-                result.status = RuntimePipelineStatus.PARTIAL_SUCCESS
-            else:
-                result.status = RuntimePipelineStatus.SUCCESS
-
-            if config.save_reports:
-                formats = self.settings.RUNTIME_REPORT_FORMATS.split(",")
+            if getattr(config, 'save_reports', False):
+                formats = getattr(self.settings, 'RUNTIME_REPORT_FORMATS', '').split(",")
                 paths = self.report_store.save_result(result, formats=formats)
                 result.output_files = {k: str(v) for k, v in paths.items()}
 
@@ -229,43 +266,10 @@ class RuntimeOrchestrator:
             result.finished_at = datetime.utcnow()
             result.elapsed_seconds = (result.finished_at - result.started_at).total_seconds()
 
-            # Portfolio Research Integration
-            if getattr(config, "build_research_portfolio", False) or getattr(self.settings, "RUNTIME_BUILD_RESEARCH_PORTFOLIO", False):
-                try:
-                    from bist_signal_bot.app.portfolio_research_app import create_portfolio_research_engine
-                    from bist_signal_bot.portfolio_research.models import PortfolioResearchRequest, AllocationMethod
-
-                    engine = create_portfolio_research_engine(self.settings)
-
-                    method_str = getattr(config, "portfolio_allocation_method", None) or getattr(self.settings, "RUNTIME_PORTFOLIO_ALLOCATION_METHOD", "HYBRID")
-                    try:
-                        method = AllocationMethod(method_str)
-                    except ValueError:
-                        method = AllocationMethod.HYBRID
-
-                    req = PortfolioResearchRequest(
-                        symbols=config.symbols if config.symbols else [],
-                        allocation_method=method,
-                        max_items=getattr(config, "portfolio_max_items", None) or getattr(self.settings, "RUNTIME_PORTFOLIO_MAX_ITEMS", 10),
-                        save_snapshot=True,
-                        source=config.data_source if hasattr(config, "data_source") else "local"
-                    )
-
-                    snapshot = engine.build_snapshot(req)
-
-                    result.metadata["portfolio_snapshot_id"] = snapshot.snapshot_id
-                    result.metadata["portfolio_item_count"] = snapshot.item_count
-                    result.metadata["portfolio_warnings"] = len(snapshot.warnings)
-                    self.logger.info(f"Built research portfolio snapshot: {snapshot.snapshot_id}")
-                except Exception as e:
-                    self.logger.error(f"Failed to build research portfolio: {e}")
-                    result.metadata["portfolio_error"] = str(e)
+            self._integrate_portfolio_research(config, result)
 
             self.state_store.mark_finished(result)
             self.lock_manager.release(lock_id)
-
-            # Simulated Audit
-            # audit_log(RUNTIME_RUN_COMPLETED, metadata={"run_id": result.run_id, "status": result.status.value})
 
         return result
 
