@@ -216,87 +216,98 @@ class PriceAdjustmentEngine:
             ))
 
         return issues
+    def _fetch_actions(self, symbol: str) -> list[CorporateAction]:
+        if not self.action_store or not self.action_store.exists():
+            return []
+        all_actions = self.action_store.get_actions_for_symbol(symbol)
+        if self.require_verified_actions:
+            return [a for a in all_actions if a.verified]
+        return all_actions
 
-    def adjust_market_data(self, market_data: MarketDataFrame) -> AdjustedMarketData:
-        start_time = datetime.now(UTC)
-        symbol = market_data.symbol
-
-        input_df = market_data.data.copy()
-        input_rows = len(input_df)
-
+    def _apply_policy(
+        self,
+        df_adj: pd.DataFrame,
+        actions: list[CorporateAction]
+    ) -> tuple[pd.DataFrame, AdjustmentStatus, list[AdjustmentIssue], int, list[str], bool]:
         issues = []
-        actions = []
-
-        if self.action_store and self.action_store.exists():
-            all_actions = self.action_store.get_actions_for_symbol(symbol)
-            if self.require_verified_actions:
-                actions = [a for a in all_actions if a.verified]
-            else:
-                actions = all_actions
-
-        actions_available = len(actions)
+        status = AdjustmentStatus.SUCCESS
         actions_applied = 0
         adjusted_columns = []
         volume_adjusted = False
 
-        df_adj = input_df.copy()
+        if self.policy == AdjustmentPolicy.NONE:
+            status = AdjustmentStatus.SKIPPED
+            issues.append(AdjustmentIssue(issue_type="POLICY_NONE", message="Adjustment policy is NONE. Skipped."))
 
-        status = AdjustmentStatus.SUCCESS
+        elif self.policy == AdjustmentPolicy.FLAG_ONLY:
+            status = AdjustmentStatus.SUCCESS
+            issues.append(AdjustmentIssue(issue_type="FLAG_ONLY", message="Policy is FLAG_ONLY. No data modified."))
+            issues.extend(self.detect_potential_unadjusted_events(df_adj))
 
-        try:
-            if self.policy == AdjustmentPolicy.NONE:
-                status = AdjustmentStatus.SKIPPED
-                issues.append(AdjustmentIssue(issue_type="POLICY_NONE", message="Adjustment policy is NONE. Skipped."))
+        elif self.policy == AdjustmentPolicy.USE_PROVIDER_ADJUSTED:
+            df_adj, applied_issues = self.apply_provider_adjusted(df_adj)
+            issues.extend(applied_issues)
+            if any(i.issue_type == "MISSING_ADJ_CLOSE" for i in applied_issues):
+                status = AdjustmentStatus.SKIPPED if not self.strict else AdjustmentStatus.WARNING
+            else:
+                actions_applied = 1
+                if self.apply_to_ohlc: adjusted_columns.extend(["open", "high", "low", "close"])
+                if self.apply_to_volume:
+                    adjusted_columns.append("volume")
+                    volume_adjusted = True
 
-            elif self.policy == AdjustmentPolicy.FLAG_ONLY:
-                status = AdjustmentStatus.SUCCESS
-                issues.append(AdjustmentIssue(issue_type="FLAG_ONLY", message="Policy is FLAG_ONLY. No data modified."))
-                # Flag potential unadjusted events
-                issues.extend(self.detect_potential_unadjusted_events(df_adj))
+        elif self.policy == AdjustmentPolicy.MANUAL_SPLIT_ADJUST:
+            df_adj, applied_issues = self.apply_split_adjustments(df_adj, actions)
+            issues.extend(applied_issues)
+            applied_count = sum(1 for i in applied_issues if i.issue_type == "APPLIED_SPLIT")
+            actions_applied = applied_count
+            if applied_count > 0:
+                if self.apply_to_ohlc: adjusted_columns.extend(["open", "high", "low", "close"])
+                if self.apply_to_volume:
+                    adjusted_columns.append("volume")
+                    volume_adjusted = True
 
-            elif self.policy == AdjustmentPolicy.USE_PROVIDER_ADJUSTED:
-                df_adj, applied_issues = self.apply_provider_adjusted(df_adj)
-                issues.extend(applied_issues)
-                if any(i.issue_type == "MISSING_ADJ_CLOSE" for i in applied_issues):
-                    status = AdjustmentStatus.SKIPPED if not self.strict else AdjustmentStatus.WARNING
-                else:
-                    actions_applied = 1 # Logical flag
-                    if self.apply_to_ohlc: adjusted_columns.extend(["open", "high", "low", "close"])
-                    if self.apply_to_volume:
-                        adjusted_columns.append("volume")
-                        volume_adjusted = True
+        elif self.policy == AdjustmentPolicy.MANUAL_DIVIDEND_ADJUST:
+            status = AdjustmentStatus.SKIPPED
+            issues.append(AdjustmentIssue(
+                issue_type="UNSUPPORTED_POLICY",
+                message="MANUAL_DIVIDEND_ADJUST is not implemented in this phase. Skipping."
+            ))
 
-            elif self.policy == AdjustmentPolicy.MANUAL_SPLIT_ADJUST:
-                df_adj, applied_issues = self.apply_split_adjustments(df_adj, actions)
-                issues.extend(applied_issues)
-                applied_count = sum(1 for i in applied_issues if i.issue_type == "APPLIED_SPLIT")
-                actions_applied = applied_count
-                if applied_count > 0:
-                    if self.apply_to_ohlc: adjusted_columns.extend(["open", "high", "low", "close"])
-                    if self.apply_to_volume:
-                        adjusted_columns.append("volume")
-                        volume_adjusted = True
-
-            elif self.policy == AdjustmentPolicy.MANUAL_DIVIDEND_ADJUST:
-                status = AdjustmentStatus.SKIPPED
+        elif self.policy == AdjustmentPolicy.MANUAL_TOTAL_RETURN:
+            if self.strict:
+                from bist_signal_bot.core.exceptions import PriceAdjustmentError
+                raise PriceAdjustmentError("MANUAL_TOTAL_RETURN is not supported in Phase 15.")
+            else:
+                status = AdjustmentStatus.FAILED
                 issues.append(AdjustmentIssue(
                     issue_type="UNSUPPORTED_POLICY",
-                    message="MANUAL_DIVIDEND_ADJUST is not implemented in this phase. Skipping."
+                    message="MANUAL_TOTAL_RETURN is not supported. Failed."
                 ))
 
-            elif self.policy == AdjustmentPolicy.MANUAL_TOTAL_RETURN:
-                if self.strict:
-                    raise PriceAdjustmentError("MANUAL_TOTAL_RETURN is not supported in Phase 15.")
-                else:
-                    status = AdjustmentStatus.FAILED
-                    issues.append(AdjustmentIssue(
-                        issue_type="UNSUPPORTED_POLICY",
-                        message="MANUAL_TOTAL_RETURN is not supported. Failed."
-                    ))
+        adjusted_columns = list(set([c for c in adjusted_columns if c in df_adj.columns]))
 
-            # Deduplicate adjusted_columns
-            adjusted_columns = list(set([c for c in adjusted_columns if c in df_adj.columns]))
+        return df_adj, status, issues, actions_applied, adjusted_columns, volume_adjusted
 
+    def adjust_market_data(self, market_data: MarketDataFrame) -> AdjustedMarketData:
+        start_time = datetime.now(UTC)
+        symbol = market_data.symbol
+        input_df = market_data.data.copy()
+        input_rows = len(input_df)
+
+        actions = self._fetch_actions(symbol)
+        actions_available = len(actions)
+
+        df_adj = input_df.copy()
+        issues = []
+        status = AdjustmentStatus.SUCCESS
+        actions_applied = 0
+        adjusted_columns = []
+        volume_adjusted = False
+
+        try:
+            df_adj, status, applied_issues, actions_applied, adjusted_columns, volume_adjusted = self._apply_policy(df_adj, actions)
+            issues.extend(applied_issues)
         except Exception as e:
             logger.error(f"Error adjusting data for {symbol}: {e}", exc_info=True)
             status = AdjustmentStatus.FAILED
@@ -305,6 +316,7 @@ class PriceAdjustmentEngine:
                 message=f"Internal error during adjustment: {e}"
             ))
             if self.strict and self.policy != AdjustmentPolicy.NONE and self.policy != AdjustmentPolicy.FLAG_ONLY:
+                from bist_signal_bot.core.exceptions import PriceAdjustmentError
                 raise PriceAdjustmentError(f"Adjustment failed for {symbol}: {e}")
 
         end_time = datetime.now(UTC)
@@ -325,7 +337,6 @@ class PriceAdjustmentEngine:
             end_time=end_time
         )
 
-        # Build new MarketDataFrame
         new_metadata = dict(market_data.metadata)
         new_metadata.update({
             "adjusted_by_engine": True if actions_applied > 0 or self.policy == AdjustmentPolicy.USE_PROVIDER_ADJUSTED else False,
@@ -338,7 +349,6 @@ class PriceAdjustmentEngine:
             "adjustment_issue_count": len(issues)
         })
 
-        # Do not alter original adjusted boolean unless we truly adjusted
         final_adjusted = market_data.adjusted
         if self.policy in [AdjustmentPolicy.MANUAL_SPLIT_ADJUST, AdjustmentPolicy.USE_PROVIDER_ADJUSTED] and actions_applied > 0:
             final_adjusted = True
