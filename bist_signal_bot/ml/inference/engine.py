@@ -8,6 +8,8 @@ from pathlib import Path
 from bist_signal_bot.config.settings import Settings
 from bist_signal_bot.ml.training.registry import MLModelRegistry
 from bist_signal_bot.ml.training.models import MLModelArtifact, MLTaskType
+from bist_signal_bot.app.model_registry_app import create_model_governance_engine
+from bist_signal_bot.model_registry.models import ModelGovernanceStatus
 from bist_signal_bot.ml.inference.models import (
     MLInferenceInput, MLInferenceResult, MLSignalFilterResult, MLInferenceBatchResult,
     MLInferenceConfig, MLFilterDecision, MLPredictionDirection, MLFeatureAlignmentStatus, MLInferenceMode, MLScoreBlendMode
@@ -110,6 +112,80 @@ class MLInferenceEngine:
 
         return df
 
+
+    def _check_model_governance(self, model_id: str, input_data: MLInferenceInput, start_time: float, generated_at: datetime, reasons: list[str], warnings: list[str]):
+        assessment = None
+        if getattr(self.settings, "RUNTIME_MODEL_REGISTRY_ENABLED", False):
+            try:
+                gov_engine = create_model_governance_engine(self.settings)
+                assessment = gov_engine.assess_model(model_id)
+                if assessment.status == ModelGovernanceStatus.BLOCKED or \
+                   (assessment.status == ModelGovernanceStatus.FAIL and getattr(self.settings, "RUNTIME_INFERENCE_BLOCK_GOVERNANCE_FAIL", False)):
+                    reasons.append(f"Model {model_id} governance blocked/failed")
+                    from bist_signal_bot.ml.inference.models import MLFeatureAlignmentResult, MLFeatureAlignmentStatus
+                    dummy_align = MLFeatureAlignmentResult(status=MLFeatureAlignmentStatus.FAILED)
+                    res = self._create_error_result(input_data, dummy_align, reasons, warnings, start_time, generated_at)
+                    res.governance_status = assessment.status
+                    return assessment, res
+
+                # Warning logic
+                if assessment.status == ModelGovernanceStatus.WATCH and getattr(self.settings, "RUNTIME_INFERENCE_WARN_ON_MODEL_DRIFT", True):
+                    warnings.append(f"Model {model_id} is on WATCH status")
+            except Exception as e:
+                self.logger.warning(f"Failed to check model governance: {e}")
+        return assessment, None
+
+    def _align_features(self, input_data: MLInferenceInput, artifact_dict: dict, start_time: float, generated_at: datetime, reasons: list[str], warnings: list[str]):
+        df_live = self.build_live_features(input_data.symbol, input_data.data, artifact_dict, input_data.timeframe)
+        if input_data.config.latest_only:
+            df_live = df_live.tail(1).reset_index(drop=True)
+
+        feature_cols = artifact_dict.get("feature_cols", [])
+        alignment = self.aligner.align_features(
+            df_live,
+            feature_cols,
+            allow_extra_features=input_data.config.allow_extra_features,
+            reject_on_missing=input_data.config.reject_on_missing_features
+        )
+        warnings.extend(alignment.issues)
+
+        from bist_signal_bot.ml.inference.models import MLFeatureAlignmentStatus
+        if alignment.status in [MLFeatureAlignmentStatus.FAILED, MLFeatureAlignmentStatus.MISSING_FEATURES]:
+            reasons.append("Feature alignment failed or missing features rejected.")
+            res = self._create_error_result(input_data, alignment, reasons, warnings, start_time, generated_at)
+            return None, alignment, res
+
+        return alignment.aligned_data, alignment, None
+
+    def _transform_features(self, df_aligned: pd.DataFrame, preprocessor: Any, feature_cols: list[str]) -> pd.DataFrame:
+        if preprocessor:
+            try:
+                df_aligned = preprocessor.transform_live(df_aligned)
+            except AttributeError:
+                df_aligned.replace([float("inf"), -float("inf")], float("nan"), inplace=True)
+                df_aligned = pd.DataFrame(preprocessor.transform(df_aligned), columns=feature_cols, index=df_aligned.index)
+        return df_aligned
+
+    def _generate_predictions(self, estimator: Any, df_aligned: pd.DataFrame) -> tuple[float, float | None, float | None]:
+        predictions = estimator.predict(df_aligned)
+        pred_val = predictions[-1]
+
+        probabilities = None
+        if hasattr(estimator, "predict_proba"):
+            try:
+                probabilities = estimator.predict_proba(df_aligned)
+            except Exception:
+                pass
+
+        prob_pos = None
+        prob_neg = None
+        if probabilities is not None and len(probabilities) > 0:
+            if probabilities.shape[1] >= 2:
+                prob_neg = float(probabilities[-1][0])
+                prob_pos = float(probabilities[-1][1])
+
+        return pred_val, prob_pos, prob_neg
+
     def predict(self, input_data: MLInferenceInput) -> MLInferenceResult:
         start_time = time.time()
         generated_at = datetime.now(timezone.utc)
@@ -123,75 +199,19 @@ class MLInferenceEngine:
             estimator, preprocessor, artifact_dict = self.load_artifact(input_data.config)
             model_id = input_data.config.model_id or input_data.config.model_path or "unknown"
 
-            # Governance Check
-            if getattr(self.settings, "RUNTIME_MODEL_REGISTRY_ENABLED", False):
-                try:
-                    gov_engine = create_model_governance_engine(self.settings)
-                    assessment = gov_engine.assess_model(model_id)
-                    if assessment.status == ModelGovernanceStatus.BLOCKED or \
-                       (assessment.status == ModelGovernanceStatus.FAIL and getattr(self.settings, "RUNTIME_INFERENCE_BLOCK_GOVERNANCE_FAIL", False)):
-                        reasons.append(f"Model {model_id} governance blocked/failed")
-                        from bist_signal_bot.ml.inference.models import MLFeatureAlignmentResult, MLFeatureAlignmentStatus
-                        dummy_align = MLFeatureAlignmentResult(status=MLFeatureAlignmentStatus.FAILED)
-                        res = self._create_error_result(input_data, dummy_align, reasons, warnings, start_time, generated_at)
-                        res.governance_status = assessment.status
-                        return res
+            assessment, error_res = self._check_model_governance(model_id, input_data, start_time, generated_at, reasons, warnings)
+            if error_res:
+                return error_res
 
-                    # Warning logic
-                    if assessment.status == ModelGovernanceStatus.WATCH and getattr(self.settings, "RUNTIME_INFERENCE_WARN_ON_MODEL_DRIFT", True):
-                        warnings.append(f"Model {model_id} is on WATCH status")
-                except Exception as e:
-                    self.logger.warning(f"Failed to check model governance: {e}")
+            df_aligned, alignment, error_res = self._align_features(input_data, artifact_dict, start_time, generated_at, reasons, warnings)
+            if error_res:
+                return error_res
 
-
-            # 1. Prepare features
-            df_live = self.build_live_features(input_data.symbol, input_data.data, artifact_dict, input_data.timeframe)
-            if input_data.config.latest_only:
-                df_live = df_live.tail(1).reset_index(drop=True)
-
-            # 2. Align features
             feature_cols = artifact_dict.get("feature_cols", [])
-            alignment = self.aligner.align_features(
-                df_live,
-                feature_cols,
-                allow_extra_features=input_data.config.allow_extra_features,
-                reject_on_missing=input_data.config.reject_on_missing_features
-            )
-            warnings.extend(alignment.issues)
+            df_aligned = self._transform_features(df_aligned, preprocessor, feature_cols)
 
-            if alignment.status in [MLFeatureAlignmentStatus.FAILED, MLFeatureAlignmentStatus.MISSING_FEATURES]:
-                reasons.append("Feature alignment failed or missing features rejected.")
-                return self._create_error_result(input_data, alignment, reasons, warnings, start_time, generated_at)
+            pred_val, prob_pos, prob_neg = self._generate_predictions(estimator, df_aligned)
 
-            df_aligned = alignment.aligned_data
-
-            # 3. Transform via preprocessor if any
-            if preprocessor:
-                try:
-                    df_aligned = preprocessor.transform_live(df_aligned)
-                except AttributeError:
-                    df_aligned.replace([float("inf"), -float("inf")], float("nan"), inplace=True)
-                    df_aligned = pd.DataFrame(preprocessor.transform(df_aligned), columns=feature_cols, index=df_aligned.index)
-
-            # 4. Predict
-            predictions = estimator.predict(df_aligned)
-            pred_val = predictions[-1]
-
-            probabilities = None
-            if hasattr(estimator, "predict_proba"):
-                try:
-                    probabilities = estimator.predict_proba(df_aligned)
-                except:
-                    pass
-
-            prob_pos = None
-            prob_neg = None
-            if probabilities is not None and len(probabilities) > 0:
-                if probabilities.shape[1] >= 2:
-                    prob_neg = float(probabilities[-1][0])
-                    prob_pos = float(probabilities[-1][1])
-
-            # Convert to dictionary simulating MLPredictionItem
             task_type = artifact_dict.get("task_type", "CLASSIFICATION")
             pred_item = {
                 "prediction_type": "REGRESSION_VALUE" if task_type == "REGRESSION" else "CLASS_LABEL",
@@ -200,15 +220,14 @@ class MLInferenceEngine:
                 "probability_negative": prob_neg,
             }
 
-            # 5. Score
             score, direction, score_reasons = self.scorer.prediction_to_score(pred_item)
             reasons.extend(score_reasons)
 
             res = MLInferenceResult(
                 symbol=input_data.symbol,
-                governance_status=assessment.status if 'assessment' in locals() else None,
-                validation_status=assessment.validation_status if 'assessment' in locals() else None,
-                calibration_status=assessment.calibration_status if 'assessment' in locals() else None,
+                governance_status=assessment.status if assessment else None,
+                validation_status=assessment.validation_status if assessment else None,
+                calibration_status=assessment.calibration_status if assessment else None,
                 model_id=model_id,
                 prediction_direction=direction,
                 prediction_value=pred_val,
@@ -224,7 +243,6 @@ class MLInferenceEngine:
                 elapsed_seconds=time.time() - start_time
             )
 
-            # 6. Apply Filter if signal exists
             if input_data.signal:
                 filter_res = self.signal_filter.filter_signal(input_data.signal, res, input_data.config)
                 return filter_res.inference_result
