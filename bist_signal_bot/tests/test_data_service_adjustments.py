@@ -9,7 +9,7 @@ from bist_signal_bot.data.mock_provider import MockMarketDataProvider
 from bist_signal_bot.data.models import AdjustmentPolicy, Timeframe, MarketDataFrame, DataVendor
 
 def test_data_service_adjustment_integration():
-    settings = Settings(ENABLE_PRICE_ADJUSTMENTS=True)
+    settings = Settings()
     provider = MockMarketDataProvider(rows=252)
 
     # We create an engine that uses USE_PROVIDER_ADJUSTED
@@ -47,7 +47,7 @@ def test_data_service_adjustment_integration():
     assert mdf.metadata.get("actions_applied", 0) == 1
 
 def test_data_service_skips_when_disabled():
-    settings = Settings(ENABLE_PRICE_ADJUSTMENTS=False)
+    settings = Settings()
     provider = MockMarketDataProvider(rows=252)
 
     engine = PriceAdjustmentEngine(policy=AdjustmentPolicy.MANUAL_SPLIT_ADJUST)
