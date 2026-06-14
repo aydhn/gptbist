@@ -97,7 +97,6 @@ class FinancialStatementImporter:
                             fiscal_year=int(item.get("fiscal_year", 0)),
                             fiscal_period=item.get("fiscal_period", "")
                         )
-                        record.__post_init__()
                         records.append(record)
                     except Exception as e:
                         continue
@@ -150,7 +149,6 @@ class FinancialStatementImporter:
                     fiscal_year=data["fiscal_year"],
                     fiscal_period=data["fiscal_period"]
                 )
-                record.__post_init__()
                 records.append(record)
             except Exception:
                 continue
@@ -185,7 +183,6 @@ class FinancialStatementImporter:
                             fiscal_year=int(row.get("fiscal_year", 0)) if row.get("fiscal_year") else 0,
                             fiscal_period=row.get("fiscal_period", "")
                         )
-                        record.__post_init__()
                         records.append(record)
                     except Exception:
                         continue
