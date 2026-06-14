@@ -84,19 +84,19 @@ class FinancialStatementRecord:
         self.symbol = self.symbol.upper() if self.symbol else ""
 
     def _validate_fiscal_year(self) -> None:
-        if self.fiscal_year < 0 and "fiscal_year must be positive" not in self.warnings:
-            self.warnings.append("fiscal_year must be positive")
+        warning_msg = "fiscal_year must be positive"
+        if self.fiscal_year < 0 and warning_msg not in self.warnings:
+            self.warnings.append(warning_msg)
 
     def _validate_values(self) -> None:
-        if not self.values and "values dictionary is empty" not in self.warnings:
-            self.warnings.append("values dictionary is empty")
+        warning_msg = "values dictionary is empty"
+        if not self.values and warning_msg not in self.warnings:
+            self.warnings.append(warning_msg)
 
     def _validate_statement_type(self) -> None:
-        if (
-            self.statement_type == FinancialStatementType.UNKNOWN
-            and "statement_type is UNKNOWN" not in self.warnings
-        ):
-            self.warnings.append("statement_type is UNKNOWN")
+        warning_msg = "statement_type is UNKNOWN"
+        if self.statement_type == FinancialStatementType.UNKNOWN and warning_msg not in self.warnings:
+            self.warnings.append(warning_msg)
 
 
 @dataclasses.dataclass
