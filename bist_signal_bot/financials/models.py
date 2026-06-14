@@ -3,6 +3,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any
 
+
 class FinancialStatementType(str, Enum):
     INCOME_STATEMENT = "INCOME_STATEMENT"
     BALANCE_SHEET = "BALANCE_SHEET"
@@ -11,6 +12,7 @@ class FinancialStatementType(str, Enum):
     FOOTNOTE_SUMMARY = "FOOTNOTE_SUMMARY"
     DERIVED_METRICS = "DERIVED_METRICS"
     UNKNOWN = "UNKNOWN"
+
 
 class FinancialPeriodType(str, Enum):
     QUARTERLY = "QUARTERLY"
@@ -21,6 +23,7 @@ class FinancialPeriodType(str, Enum):
     CUSTOM = "CUSTOM"
     UNKNOWN = "UNKNOWN"
 
+
 class FinancialDataStatus(str, Enum):
     RAW_IMPORTED = "RAW_IMPORTED"
     NORMALIZED = "NORMALIZED"
@@ -30,12 +33,14 @@ class FinancialDataStatus(str, Enum):
     ERROR = "ERROR"
     UNKNOWN = "UNKNOWN"
 
+
 class FinancialMetricDirection(str, Enum):
     HIGHER_IS_BETTER = "HIGHER_IS_BETTER"
     LOWER_IS_BETTER = "LOWER_IS_BETTER"
     NEUTRAL = "NEUTRAL"
     CONTEXT_DEPENDENT = "CONTEXT_DEPENDENT"
     UNKNOWN = "UNKNOWN"
+
 
 class FinancialQualityStatus(str, Enum):
     STRONG = "STRONG"
@@ -44,6 +49,7 @@ class FinancialQualityStatus(str, Enum):
     INSUFFICIENT_DATA = "INSUFFICIENT_DATA"
     ERROR = "ERROR"
     UNKNOWN = "UNKNOWN"
+
 
 @dataclasses.dataclass
 class FinancialStatementRecord:
@@ -64,16 +70,34 @@ class FinancialStatementRecord:
     period_start: datetime | None = None
     reported_at: datetime | None = None
     source_ref: str | None = None
-    disclaimer: str = "Financial statement record is local research data only. It is not investment advice. No real order was sent."
+    disclaimer: str = (
+        "Financial statement record is local research data only. It is not investment advice. No real order was sent."
+    )
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
+        self._normalize_symbol()
+        self._validate_fiscal_year()
+        self._validate_values()
+        self._validate_statement_type()
+
+    def _normalize_symbol(self) -> None:
         self.symbol = self.symbol.upper() if self.symbol else ""
-        if self.fiscal_year < 0:
+
+    def _validate_fiscal_year(self) -> None:
+        if self.fiscal_year < 0 and "fiscal_year must be positive" not in self.warnings:
             self.warnings.append("fiscal_year must be positive")
-        if not self.values:
+
+    def _validate_values(self) -> None:
+        if not self.values and "values dictionary is empty" not in self.warnings:
             self.warnings.append("values dictionary is empty")
-        if self.statement_type == FinancialStatementType.UNKNOWN:
+
+    def _validate_statement_type(self) -> None:
+        if (
+            self.statement_type == FinancialStatementType.UNKNOWN
+            and "statement_type is UNKNOWN" not in self.warnings
+        ):
             self.warnings.append("statement_type is UNKNOWN")
+
 
 @dataclasses.dataclass
 class NormalizedFinancialStatement:
@@ -106,6 +130,7 @@ class NormalizedFinancialStatement:
     capex: float | None = None
     shares_outstanding: float | None = None
 
+
 @dataclasses.dataclass
 class FinancialRatio:
     ratio_id: str
@@ -119,6 +144,7 @@ class FinancialRatio:
     warnings: list[str]
     metadata: dict[str, Any]
     value: float | None = None
+
 
 @dataclasses.dataclass
 class FinancialTrendMetric:
@@ -135,6 +161,7 @@ class FinancialTrendMetric:
     qoq_change_pct: float | None = None
     ttm_value: float | None = None
     trend_score: float | None = None
+
 
 @dataclasses.dataclass
 class EarningsQualityAssessment:
@@ -154,7 +181,10 @@ class EarningsQualityAssessment:
     debt_quality_score: float | None = None
     earnings_growth_quality_score: float | None = None
     overall_quality_score: float | None = None
-    disclaimer: str = "Earnings quality assessment is research-only. It does not predict future earnings or price direction. No real order was sent."
+    disclaimer: str = (
+        "Earnings quality assessment is research-only. It does not predict future earnings or price direction. No real order was sent."
+    )
+
 
 @dataclasses.dataclass
 class SectorFinancialComparison:
@@ -173,6 +203,7 @@ class SectorFinancialComparison:
     sector_score: float | None = None
     disclaimer: str = "Sector comparison is research-only. No real order was sent."
 
+
 @dataclasses.dataclass
 class FinancialImportResult:
     import_id: str
@@ -185,7 +216,10 @@ class FinancialImportResult:
     warnings: list[str]
     errors: list[str]
     metadata: dict[str, Any]
-    disclaimer: str = "Financial import is local operational data processing only. No real order was sent."
+    disclaimer: str = (
+        "Financial import is local operational data processing only. No real order was sent."
+    )
+
 
 @dataclasses.dataclass
 class FinancialAnalysisReport:
@@ -200,4 +234,6 @@ class FinancialAnalysisReport:
     warnings: list[str]
     metadata: dict[str, Any]
     symbol: str | None = None
-    disclaimer: str = "Financial analysis report is research-only. It is not investment advice. No real order was sent."
+    disclaimer: str = (
+        "Financial analysis report is research-only. It is not investment advice. No real order was sent."
+    )
