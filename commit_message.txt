@@ -1,6 +1,0 @@
-🧹 Simplify Long Function in StressTestEngine
-
-🎯 **What:** The `run` method in `bist_signal_bot/stress/engine.py` was a very long, monolithic function. It has been refactored by extracting distinct logical steps into private helper methods (`_prepare_inputs`, `_run_shocks`, `_run_monte_carlo`, `_run_drawdown`, `_run_risk_of_ruin`, and `_save_output`).
-💡 **Why:** Breaking down the long function improves the code health, readability, and maintainability of the `StressTestEngine`. Each helper method now has a single responsibility, making it easier to test and reason about the logic.
-✅ **Verification:** The test suite for the stress engine (`pytest bist_signal_bot/tests/test_stress_*.py`) was run and all tests pass. A bug involving the status downgrading from `FAIL` to `WARN` was also caught and fixed during refactoring.
-✨ **Result:** A cleaner, more modular `run` orchestration method that preserves the exact same logic and functionality without introducing any regressions.
