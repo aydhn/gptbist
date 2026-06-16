@@ -159,6 +159,10 @@ class MLModelTrainer:
         output_files = {}
 
         try:
+            # Validate inputs and resolve config BEFORE anything references it.
+            train_input.validate_input()
+            config = train_input.config
+            config.validate_config()
 
             # Experiment Tracking Start
             exp_tracker = None
@@ -175,9 +179,6 @@ class MLModelTrainer:
                     run_id = run.run_id
                 except Exception as e:
                     self.logger.warning(f"Failed to start experiment run: {e}")
-                train_input.validate_input()
-            config = train_input.config
-            config.validate_config()
 
             prepared = self.prepare_data(train_input)
 

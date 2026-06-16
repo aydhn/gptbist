@@ -24,7 +24,9 @@ DEFAULTS: dict[str, Any] = {
 
     # ---- Adaptive engine ----
     "ADAPTIVE_DEFAULT_TOP_N": 5,
-    "ADAPTIVE_MODE": "ADVISORY",
+    "ADAPTIVE_MODE": "RECOMMEND_ONLY",
+    "ADAPTIVE_AUTO_APPLY_REQUIRES_CONFIRM": True,
+    "ADAPTIVE_SAVE_REPORTS": True,
     "ADAPTIVE_DIR_NAME": "adaptive",
 
     # ---- Momentum indicators (standard TA windows) ----
