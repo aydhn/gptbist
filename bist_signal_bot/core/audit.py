@@ -12,6 +12,17 @@ from bist_signal_bot.security.redaction import SecretRedactor
 
 class AuditEventType(str, Enum):
 
+    # Core application events
+    APP_START = "APP_START"
+    APP_SHUTDOWN = "APP_SHUTDOWN"
+    HEALTHCHECK = "HEALTHCHECK"
+    DATA_FETCH = "DATA_FETCH"
+    DATA_CACHE_READ = "DATA_CACHE_READ"
+    DATA_CACHE_WRITE = "DATA_CACHE_WRITE"
+    CLI_COMMAND = "CLI_COMMAND"
+    COST_MODEL_CALCULATION = "COST_MODEL_CALCULATION"
+    ERROR = "ERROR"
+
     # Local Plugin Architecture Events (Phase 109)
     PLUGIN_CONTRACTS_LOADED = "PLUGIN_CONTRACTS_LOADED"
     PLUGIN_DISCOVERED = "PLUGIN_DISCOVERED"
@@ -509,7 +520,7 @@ class AuditLogger:
             # Fallback to standard logger if audit logging fails
             self._logger.error(f"Failed to write to audit log: {e}")
 
-def log_app_start(self, run_id: str | None = None, metadata: dict[str, Any] | None = None) -> None:
+    def log_app_start(self, run_id: str | None = None, metadata: dict[str, Any] | None = None) -> None:
         self.log_event(AuditEvent(
             event_type=AuditEventType.APP_START,
             message="Application started",
@@ -517,7 +528,7 @@ def log_app_start(self, run_id: str | None = None, metadata: dict[str, Any] | No
             metadata=metadata or {}
         ))
 
-def log_healthcheck(self, summary: dict[str, Any], run_id: str | None = None) -> None:
+    def log_healthcheck(self, summary: dict[str, Any], run_id: str | None = None) -> None:
         self.log_event(AuditEvent(
             event_type=AuditEventType.HEALTHCHECK,
             message="Healthcheck executed",
@@ -525,7 +536,7 @@ def log_healthcheck(self, summary: dict[str, Any], run_id: str | None = None) ->
             metadata=summary
         ))
 
-def log_data_fetch(self, symbol: str, provider: str, timeframe: str, run_id: str | None = None, metadata: dict[str, Any] | None = None) -> None:
+    def log_data_fetch(self, symbol: str, provider: str, timeframe: str, run_id: str | None = None, metadata: dict[str, Any] | None = None) -> None:
         md = {"provider": provider, "timeframe": timeframe}
         if metadata:
             md.update(metadata)
@@ -537,7 +548,7 @@ def log_data_fetch(self, symbol: str, provider: str, timeframe: str, run_id: str
             metadata=md
         ))
 
-def log_cache_read(self, symbol: str, vendor: str, timeframe: str, run_id: str | None = None) -> None:
+    def log_cache_read(self, symbol: str, vendor: str, timeframe: str, run_id: str | None = None) -> None:
         self.log_event(AuditEvent(
             event_type=AuditEventType.DATA_CACHE_READ,
             message=f"Read {symbol} from cache",
@@ -546,7 +557,7 @@ def log_cache_read(self, symbol: str, vendor: str, timeframe: str, run_id: str |
             metadata={"vendor": vendor, "timeframe": timeframe}
         ))
 
-def log_cache_write(self, symbol: str, vendor: str, timeframe: str, row_count: int, run_id: str | None = None) -> None:
+    def log_cache_write(self, symbol: str, vendor: str, timeframe: str, row_count: int, run_id: str | None = None) -> None:
         self.log_event(AuditEvent(
             event_type=AuditEventType.DATA_CACHE_WRITE,
             message=f"Wrote {symbol} to cache",
@@ -555,7 +566,7 @@ def log_cache_write(self, symbol: str, vendor: str, timeframe: str, row_count: i
             metadata={"vendor": vendor, "timeframe": timeframe, "row_count": row_count}
         ))
 
-def log_error(self, error: Exception, context: dict[str, Any] | None = None, run_id: str | None = None) -> None:
+    def log_error(self, error: Exception, context: dict[str, Any] | None = None, run_id: str | None = None) -> None:
         self.log_event(AuditEvent(
             event_type=AuditEventType.ERROR,
             message=str(error),
@@ -564,7 +575,7 @@ def log_error(self, error: Exception, context: dict[str, Any] | None = None, run
             metadata={"error_type": type(error).__name__, "context": context or {}}
         ))
 
-def log_universe_update(self, event_type: AuditEventType, message: str, action: str, symbols_affected: list[str], file_path: str | None = None, validation_passed: bool | None = None, issue_count: int | None = None, run_id: str | None = None) -> None:
+    def log_universe_update(self, event_type: AuditEventType, message: str, action: str, symbols_affected: list[str], file_path: str | None = None, validation_passed: bool | None = None, issue_count: int | None = None, run_id: str | None = None) -> None:
         metadata = {
             "action": action,
             "symbols_affected": symbols_affected,
@@ -582,7 +593,7 @@ def log_universe_update(self, event_type: AuditEventType, message: str, action: 
             metadata=metadata
         ))
 
-def log_indicator_calculation(self, symbol: str, timeframe: str, indicators: list[str], success_count: int, failed_count: int, elapsed_seconds: float, run_id: str | None = None) -> None:
+    def log_indicator_calculation(self, symbol: str, timeframe: str, indicators: list[str], success_count: int, failed_count: int, elapsed_seconds: float, run_id: str | None = None) -> None:
         self.log_event(AuditEvent(
             event_type=AuditEventType.CLI_COMMAND,
             message=f"Calculated indicators for {symbol}",
@@ -597,7 +608,7 @@ def log_indicator_calculation(self, symbol: str, timeframe: str, indicators: lis
             }
         ))
 
-def log_cost_model_calculation(self, symbol: str, side: str, quantity: float, price: float, scenario: str, total_cost: float, total_cost_bps: float, run_id: str | None = None) -> None:
+    def log_cost_model_calculation(self, symbol: str, side: str, quantity: float, price: float, scenario: str, total_cost: float, total_cost_bps: float, run_id: str | None = None) -> None:
         self.log_event(AuditEvent(
             event_type=AuditEventType.COST_MODEL_CALCULATION,
             message="Cost model calculated",

@@ -19,6 +19,9 @@ from __future__ import annotations
 from typing import Any
 
 DEFAULTS: dict[str, Any] = {
+    # ---- Core application ----
+    "APP_NAME": "bist-signal-bot",
+
     # ---- Adaptive engine ----
     "ADAPTIVE_DEFAULT_TOP_N": 5,
     "ADAPTIVE_MODE": "ADVISORY",
@@ -185,8 +188,17 @@ DEFAULTS: dict[str, Any] = {
     "DEPLOYMENT_DOCTOR_MIN_FREE_DISK_MB": 500,
     "QA_SYNTHETIC_PERIODS": 252,
     "PACKAGING_EXCLUDE_ENV_FILE": True,
+    "PACKAGING_EXCLUDE_DATA_DIR": True,
+    "PACKAGING_EXCLUDE_LOGS_DIR": True,
+    "PACKAGING_EXCLUDE_REPORTS_DIR": True,
+
+    # ---- Storage layout: files ----
+    "LOG_FILE_NAME": "bist_signal_bot.log",
+    "MARKET_DATA_INDEX_FILE": "market_data_index.json",
+    "CORPORATE_ACTIONS_FILE_NAME": "corporate_actions.csv",
 
     # ---- Directory names (storage layout) ----
+    "LOG_DIR": "logs",
     "BOOTSTRAP_DIR_NAME": "bootstrap",
     "DATA_IMPORT_DIR_NAME": "imports",
     "FINANCIALS_DIR_NAME": "financials",

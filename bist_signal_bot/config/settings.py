@@ -130,8 +130,6 @@ def _default_for(name: str) -> Any:
     up = name.upper()
     if up.endswith("_VERSION"):
         return "1.0.0"
-    if up.endswith("_DIR_NAME"):
-        return name.lower()
     # Unknown feature flags default to enabled — preserves prior behaviour and is
     # harmless under the research-only / no-real-order invariant.
     if up.startswith(_FLAG_PREFIXES) or up.endswith(_FLAG_SUFFIXES):
@@ -140,8 +138,11 @@ def _default_for(name: str) -> Any:
         return 0
     if up.endswith(_FLOAT_SUFFIXES):
         return 0.0
-    if up.endswith(("_DIR", "_PATH")):
-        return None
+    # Path / directory / file / name-like keys: derive a lowercase token so that
+    # Path(value) and `some_dir / value` never crash on None. Real values should
+    # come from .env or DEFAULTS; this is only a never-crash safety net.
+    if up.endswith(("_DIR", "_PATH", "_DIR_NAME", "_FILE", "_FILE_NAME", "_NAME")):
+        return name.lower()
     return None
 
 
@@ -155,9 +156,13 @@ def _load_raw() -> dict[str, str]:
         merged: dict[str, str] = {}
         merged.update(_parse_env_file(_ENV_EXAMPLE))
         merged.update(_parse_env_file(_ENV_FILE))
-        for k, v in os.environ.items():
-            if k.isupper():  # ignore PATH-style mixed-case OS noise
-                merged[k] = v
+        # Only let os.environ override keys we already know about. This keeps
+        # unrelated OS variables (APPDATA, PATH, ANTHROPIC_*, ...) out of the
+        # settings surface and out of any settings dump/log.
+        known = set(merged) | set(DEFAULTS)
+        for k in known:
+            if k in os.environ:
+                merged[k] = os.environ[k]
         _RAW_CACHE = merged
     return _RAW_CACHE
 
@@ -213,6 +218,14 @@ class Settings:
         raw = object.__getattribute__(self, "_raw")
         keys = set(raw) | set(DEFAULTS)
         return {k: getattr(self, k) for k in sorted(keys)}
+
+    # pydantic-compatible aliases — several call sites treat Settings as a model
+    # (e.g. settings_safe_dump in config/secrets.py calls .model_dump()).
+    def model_dump(self, *args: Any, **kwargs: Any) -> dict[str, Any]:
+        return self.as_dict()
+
+    def dict(self, *args: Any, **kwargs: Any) -> dict[str, Any]:
+        return self.as_dict()
 
 
 _settings = Settings()

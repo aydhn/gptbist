@@ -117,7 +117,7 @@ def dispatch_risk(args, ctx) -> int:
     ctx.logger = logger
     return handle_risk_commands(args, ctx)
 
-def run_cli(argv: list[str] | None = None) -> int:
+def _run_cli_core(argv: list[str] | None = None) -> int:
     import sys
     args_to_parse = argv if argv is not None else sys.argv[1:]
 
@@ -526,30 +526,42 @@ try:
 except Exception:
     pass
 
-def run_cli():
-    import sys
+def run_cli(argv: list[str] | None = None) -> int:
+    """Top-level CLI entry point.
 
-    if len(sys.argv) > 1 and sys.argv[1] == 'cli-ux':
+    Handles the few subcommands that need their own click/argparse group
+    (``cli-ux``, ``ops``, ``factors``) up front, then delegates everything else
+    to the full dispatcher in :func:`_run_cli_core` (550+ commands). Accepts an
+    explicit ``argv`` so it can be driven from tests and from ``__main__``.
+    """
+    import sys
+    args_list = list(sys.argv[1:]) if argv is None else list(argv)
+    first = args_list[0] if args_list else None
+
+    if first == 'cli-ux':
         import argparse
         from bist_signal_bot.cli_ux.cli_parser import add_cli_ux_subparser, handle_cli_ux
         parser = argparse.ArgumentParser()
         subparsers = parser.add_subparsers(dest="command")
         add_cli_ux_subparser(subparsers)
-        args, _ = parser.parse_known_args(sys.argv[1:])
+        args, _ = parser.parse_known_args(args_list)
         handle_cli_ux(args)
-        sys.exit(0)
-    if len(sys.argv) > 1 and sys.argv[1] == 'ops':
+        return 0
+    if first == 'ops':
         import argparse
         from bist_signal_bot.cli.ops_commands import add_ops_subparsers, handle_ops_command
         parser = argparse.ArgumentParser()
         subparsers = parser.add_subparsers(dest="command")
         add_cli_ux_subparser(subparsers)
         add_ops_subparsers(subparsers)
-        args, _ = parser.parse_known_args(sys.argv[1:])
+        args, _ = parser.parse_known_args(args_list)
         handle_ops_command(args)
-        sys.exit(0)
-    if len(sys.argv) > 1 and sys.argv[1] == 'factors':
+        return 0
+    if first == 'factors':
         from bist_signal_bot.cli.factors_commands import factors_cli
-        sys.argv.pop(1)
+        # factors_cli is a click group that reads sys.argv; align it.
+        sys.argv = [sys.argv[0]] + args_list[1:]
         factors_cli()
-        sys.exit(0)
+        return 0
+
+    return _run_cli_core(args_list)
