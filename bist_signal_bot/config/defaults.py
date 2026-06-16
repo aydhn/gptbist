@@ -25,9 +25,24 @@ DEFAULTS: dict[str, Any] = {
     # ---- Adaptive engine ----
     "ADAPTIVE_DEFAULT_TOP_N": 5,
     "ADAPTIVE_MODE": "RECOMMEND_ONLY",
-    "ADAPTIVE_AUTO_APPLY_REQUIRES_CONFIRM": True,
-    "ADAPTIVE_SAVE_REPORTS": True,
+    "ADAPTIVE_SAVE_REPORTS": False,
     "ADAPTIVE_DIR_NAME": "adaptive",
+    # AdaptivePolicy thresholds — mirror AdaptivePolicy model field defaults so
+    # the policy builds cleanly from settings (override any of these in .env).
+    "ADAPTIVE_MIN_EVIDENCE_COUNT": 2,
+    "ADAPTIVE_MIN_BACKTEST_TRADES": 10,
+    "ADAPTIVE_MIN_WALK_FORWARD_SPLITS": 3,
+    "ADAPTIVE_MIN_OOS_POSITIVE_SPLIT_PCT": 50.0,
+    "ADAPTIVE_MAX_ALLOWED_DRAWDOWN_PCT": 35.0,
+    "ADAPTIVE_MIN_PROFIT_FACTOR": 1.0,
+    "ADAPTIVE_MIN_SHARPE": -5.0,
+    "ADAPTIVE_MIN_PAPER_TRADES": 5,
+    "ADAPTIVE_MAX_RECENT_PAPER_DRAWDOWN_PCT": 20.0,
+    "ADAPTIVE_MAX_MODEL_AGE_DAYS": 30,
+    "ADAPTIVE_MIN_ML_SCORE": 50.0,
+    "ADAPTIVE_REQUIRE_REGIME_MATCH": False,
+    "ADAPTIVE_REJECT_HIGH_OVERFIT_WARNING": True,
+    "ADAPTIVE_AUTO_APPLY_REQUIRES_CONFIRM": True,
 
     # ---- Momentum indicators (standard TA windows) ----
     "MOMENTUM_RSI_WINDOW": 14,
