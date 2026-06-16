@@ -178,13 +178,21 @@ DEFAULTS: dict[str, Any] = {
     # ---- Runtime loop / jobs ----
     "RUNTIME_DEFAULT_TOP_N": 10,
     "RUNTIME_DEFAULT_STRATEGY": "moving_average_trend",
+    "RUNTIME_DEFAULT_SOURCE": "local",  # validate_pipeline_config accepts 'mock' or 'local'
+    "RUNTIME_REPORT_FORMATS": "md",
+    "RUNTIME_USE_TRADE_RISK": True,
+    "RUNTIME_USE_PORTFOLIO_RISK": True,
+    "RUNTIME_USE_ML_FILTER": False,       # enable once a model is trained/registered
+    "RUNTIME_USE_REGIME_FILTER": True,
+    "RUNTIME_RUN_DRIFT_CHECK": False,     # enable once a baseline model exists
     "RUNTIME_JOB_MAX_RETRIES": 2,
     "RUNTIME_JOB_RETRY_DELAY_SECONDS": 5,
     "RUNTIME_JOB_TIMEOUT_SECONDS": 300,
     "RUNTIME_LOCK_TTL_SECONDS": 3600,
     "RUNTIME_MAX_ITERATIONS": 1,
     "RUNTIME_SLEEP_SECONDS": 60,
-    "RUNTIME_UNIVERSE_MODE": "FILE",
+    "RUNTIME_UNIVERSE_MODE": "ALL",  # scan the whole seed universe (ScanUniverseMode has no FILE)
+    "RUNTIME_SESSION_POLICY": "RUN_ALWAYS",  # research-friendly; use ONLY_AFTER_CLOSE in production
     "RUNTIME_LOCK_FILE_NAME": "runtime.lock",
     "RUNTIME_STATE_FILE_NAME": "runtime_state.json",
 

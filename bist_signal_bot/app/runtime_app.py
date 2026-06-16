@@ -17,21 +17,39 @@ def create_runtime_orchestrator(settings: Optional[Settings] = None, base_dir: O
     # Phase 39 establishes the orchestrator *structure*. The specific engine classes
     # like ScannerEngine, RegimeEngine are instantiated where available.
 
-    # Try importing Scanner Engine
+    # Shared strategy engine (scanner and paper engines both depend on it)
+    strategy_engine = None
+    try:
+        from bist_signal_bot.strategies.engine import StrategyEngine
+        strategy_engine = StrategyEngine(settings=settings)
+    except ImportError:
+        pass
+
+    # Scanner engine
     scanner_engine = None
     try:
         from bist_signal_bot.scanner.engine import SignalScannerEngine
-        scanner_engine = SignalScannerEngine(data_service=data_service, settings=settings)
+        scanner_engine = SignalScannerEngine(
+            data_service=data_service,
+            strategy_engine=strategy_engine,
+            settings=settings,
+        )
     except ImportError:
         class MockScanner:
             def scan(self, *args, **kwargs): return {"mock_scan": True}
         scanner_engine = MockScanner()
 
-    # Try importing Paper Engine
+    # Paper trading engine (research-only simulation; no real orders)
     paper_engine = None
     try:
         from bist_signal_bot.paper.engine import PaperTradingEngine
-        paper_engine = PaperTradingEngine(settings=settings)
+        from bist_signal_bot.paper.ledger import PaperLedgerStore
+        paper_engine = PaperTradingEngine(
+            ledger_store=PaperLedgerStore(settings),
+            strategy_engine=strategy_engine,
+            data_service=data_service,
+            settings=settings,
+        )
     except ImportError:
         class MockPaper:
             def run(self, *args, **kwargs): return {"mock_paper": True}

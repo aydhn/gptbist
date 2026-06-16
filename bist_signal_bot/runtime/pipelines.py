@@ -6,18 +6,26 @@ from bist_signal_bot.core.exceptions import RuntimeValidationError
 class RuntimePipelineBuilder:
 
     @staticmethod
-    def build_scan_request(config: RuntimePipelineConfig) -> dict:
-        return {
-            "strategy": config.strategy_name,
-            "universe": config.universe_mode,
-            "symbols": config.symbols,
-            "group": config.group_name,
-            "watchlist": config.watchlist_name,
-            "source": config.source,
-            "timeframe": config.timeframe,
-            "rows": config.rows,
-            "top_n": config.top_n
-        }
+    def build_scan_request(config: RuntimePipelineConfig):
+        """Build a real ScanRequest from the runtime config (the scanner expects a
+        ScanRequest object, not a dict)."""
+        from bist_signal_bot.scanner.models import ScanRequest, ScanUniverseMode
+        try:
+            universe_mode = ScanUniverseMode(config.universe_mode)
+        except (ValueError, TypeError):
+            universe_mode = ScanUniverseMode.SYMBOLS
+        return ScanRequest(
+            strategy_name=config.strategy_name,
+            universe_mode=universe_mode,
+            symbols=list(config.symbols or []),
+            watchlist_name=config.watchlist_name,
+            group_name=config.group_name,
+            source=config.source,
+            top_n=config.top_n,
+            use_trade_risk=config.use_trade_risk,
+            use_portfolio_risk=config.use_portfolio_risk,
+            continue_on_error=True,
+        )
 
     @staticmethod
     def build_paper_request(config: RuntimePipelineConfig, symbols: List[str]) -> dict:
