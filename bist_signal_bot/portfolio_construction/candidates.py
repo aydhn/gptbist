@@ -1,6 +1,5 @@
 from typing import Any, List, Optional
 import uuid
-from loguru import logger
 
 from bist_signal_bot.config.settings import Settings
 from bist_signal_bot.portfolio_construction.models import PortfolioCandidate, PortfolioConstructionRequest

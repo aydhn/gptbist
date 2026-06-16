@@ -526,6 +526,20 @@ try:
 except Exception:
     pass
 
+def _run_bootstrap_command(rest: list[str]) -> int:
+    """Handle ``bootstrap demo`` — run the offline capability demo (best-effort)."""
+    sub = rest[0] if rest else "demo"
+    if sub == "demo":
+        from bist_signal_bot.bootstrap.demo import OfflineDemoRunner
+        runner = OfflineDemoRunner()
+        run = runner.run_demo(save=("--save" in rest))
+        for line in runner.demo_summary(run):
+            print(line)
+        return 0  # best-effort; the summary reports per-command status
+    print(f"Unknown bootstrap subcommand: {sub!r} (expected: demo)")
+    return 1
+
+
 def run_cli(argv: list[str] | None = None) -> int:
     """Top-level CLI entry point.
 
@@ -563,5 +577,7 @@ def run_cli(argv: list[str] | None = None) -> int:
         sys.argv = [sys.argv[0]] + args_list[1:]
         factors_cli()
         return 0
+    if first == 'bootstrap':
+        return _run_bootstrap_command(args_list[1:])
 
     return _run_cli_core(args_list)
