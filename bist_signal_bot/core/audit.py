@@ -15,6 +15,7 @@ class AuditEventType(str, Enum):
     # Core application events
     APP_START = "APP_START"
     APP_SHUTDOWN = "APP_SHUTDOWN"
+    SYSTEM = "SYSTEM"
     HEALTHCHECK = "HEALTHCHECK"
     DATA_FETCH = "DATA_FETCH"
     DATA_CACHE_READ = "DATA_CACHE_READ"

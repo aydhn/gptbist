@@ -136,9 +136,15 @@ class BacktestEngine:
         profiler = None
         timer_span = None
         if getattr(self.settings, 'ENABLE_PERFORMANCE_PROFILING', False):
-            from bist_signal_bot.app.performance_app import create_local_profiler
-            profiler = create_local_profiler(self.settings)
-            timer_span = profiler.timer.start_span(f"backtest_single_{symbol}")
+            # Profiling is best-effort and must never break a backtest run.
+            try:
+                from bist_signal_bot.app.performance_app import create_local_profiler
+                profiler = create_local_profiler(self.settings)
+                timer = getattr(profiler, "timer", None)
+                if timer is not None and hasattr(timer, "start_span"):
+                    timer_span = timer.start_span(f"backtest_single_{symbol}")
+            except Exception:
+                profiler, timer_span = None, None
 
         started_at = datetime.now(UTC)
         df = data.data.copy() if isinstance(data, MarketDataFrame) else data.copy()

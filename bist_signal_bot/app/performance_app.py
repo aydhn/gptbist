@@ -18,6 +18,9 @@ def create_performance_timer(settings: Settings | None = None) -> PerformanceTim
 def create_local_performance_profiler(settings: Settings | None = None, base_dir: Path | None = None) -> LocalPerformanceProfiler:
     return LocalPerformanceProfiler(settings=settings, base_dir=base_dir)
 
+# Backwards-compatible alias: backtesting/runtime/knowledge/ml/cli import this name.
+create_local_profiler = create_local_performance_profiler
+
 def create_resource_budget_manager(settings: Settings | None = None, base_dir: Path | None = None) -> ResourceBudgetManager:
     return ResourceBudgetManager(settings=settings, base_dir=base_dir)
 

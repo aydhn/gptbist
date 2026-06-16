@@ -90,6 +90,13 @@ The learning pieces that make it "self-improving":
   but not yet run. Wire these for full autonomy.
 - ML filter & drift check are off by default (`RUNTIME_USE_ML_FILTER`, `RUNTIME_RUN_DRIFT_CHECK`)
   until a baseline model is trained and registered.
+- **Backtest engine** (`backtesting/engine.py::run_single_symbol`) has a chain of half-wired
+  integrations (performance profiler API, then strategy-registry/None handling around line 158).
+  The profiling call is now guarded (best-effort), but downstream wiring still needs repair —
+  `test_backtest_engine.py` is not green yet. Backtest is not on the autonomous loop's hot path.
+- **Audit metadata redaction**: `test_audit_logger_sanitizes_metadata` expects partial masking
+  (`secr...6789`), but `SecretRedactor.redact_dict` does full `***REDACTED***` (stronger). The code
+  is the safer behavior; treat the test as the stale side, not the code.
 
 ## Code style
 
