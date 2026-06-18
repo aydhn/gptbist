@@ -1,3 +1,4 @@
+from unittest.mock import MagicMock
 import pytest
 from bist_signal_bot.paper.orders import PaperOrderManager
 from bist_signal_bot.paper.models import PaperOrderSide, PaperOrderStatus, PaperAccount, PaperAccountStatus
@@ -13,12 +14,19 @@ def test_order_reject_if_account_not_active():
 
 def test_order_creates_with_metadata():
     manager = PaperOrderManager()
-    sig = SignalCandidate(symbol="ASELS", direction=SignalDirection.LONG, score=80.0, strategy_name="test")
-    # Setting an arbitrary ID directly via metadata hack if it doesn't allow field setting easily,
-    # or rely on its own generated ID. For now let's just make sure it creates order properly
-    # sig.signal_id = "sig-123" # Not needed for order creation directly anymore
+
+    # Use MagicMock to mock a SignalCandidate with an arbitrary signal_id
+    sig = MagicMock(spec=SignalCandidate)
+    sig.symbol = "ASELS"
+    sig.direction = SignalDirection.LONG
+    sig.score = 80.0
+    sig.strategy_name = "test"
+    sig.signal_id = "sig-123"
+
     order = manager.create_market_order("a", "ASELS", PaperOrderSide.BUY, 10, signal=sig)
+
     assert order.strategy_name == "test"
+    assert order.signal_id == "sig-123"
 
 def test_order_risk_rejection():
     manager = PaperOrderManager()
