@@ -181,3 +181,17 @@ def test_regime_classification_safe_public_dict_edge_cases():
     assert safe_dict["reasons"] == []
     assert safe_dict["warnings"] == []
     assert safe_dict["disclaimer"] == "Market regime research output only. Not investment advice. No order was sent."
+
+def test_regime_feature_set_model_post_init():
+    feature_set = RegimeFeatureSet(
+        symbol="aapl",
+        trend_score=80.0,
+        volatility_score=20.0,
+        liquidity_score=90.0,
+        momentum_score=70.0,
+        range_score=30.0,
+        breakout_score=60.0,
+        composite_regime_score=75.0
+    )
+
+    assert feature_set.symbol == "AAPL"
