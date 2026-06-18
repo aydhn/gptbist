@@ -142,6 +142,17 @@ def test_regime_batch_result_summary():
     assert summary["classifications"] == 3
     assert summary["filter_results"] == 2
 
+def test_regime_batch_result_summary_empty():
+    result = RegimeBatchResult()
+    summary = result.summary()
+
+    assert summary["requested_count"] == 0
+    assert summary["success_count"] == 0
+    assert summary["failed_count"] == 0
+    assert summary["elapsed_seconds"] == 0.0
+    assert summary["classifications"] == 0
+    assert summary["filter_results"] == 0
+
 def test_regime_classification_safe_public_dict_edge_cases():
     feature_set = RegimeFeatureSet(
         symbol="XYZ",
