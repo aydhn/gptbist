@@ -84,6 +84,20 @@ DEFAULTS: dict[str, Any] = {
     "VOL_Z_WINDOW": 20,
     "VOL_ANNUALIZATION": 252.0,
 
+    # ---- Market regime analysis ----
+    "REGIME_TREND_WINDOW": 50,
+    "REGIME_VOLATILITY_WINDOW": 20,
+    "REGIME_MOMENTUM_WINDOW": 20,
+    "REGIME_LIQUIDITY_WINDOW": 20,
+    "REGIME_CORRELATION_WINDOW": 60,
+    "REGIME_USE_MTF": False,
+    "REGIME_USE_BENCHMARK_RELATIVE": False,
+    "REGIME_SCORE_MODE": "FILTER_AND_SCORE",
+    "REGIME_MIN_SCORE": 40.0,
+    "REGIME_REJECT_STRESS": False,
+    "REGIME_REDUCE_IN_STRESS": True,
+    "REGIME_STRESS_REDUCTION_FACTOR": 0.50,
+
     # ---- Candlestick / chart patterns ----
     "PATTERN_BREAKOUT_WINDOW": 20,
     "PATTERN_RANGE_WINDOW": 20,
@@ -103,6 +117,19 @@ DEFAULTS: dict[str, Any] = {
     # ---- Risk engine (conservative, research defaults) ----
     "RISK_PER_TRADE_PCT": 0.01,
     "RISK_EQUITY_POSITION_PCT": 0.10,
+    "RISK_DEFAULT_EQUITY": 100_000.0,
+    "RISK_DEFAULT_AVAILABLE_CASH": 100_000.0,
+    "RISK_POSITION_SIZING_METHOD": "EQUITY_PERCENT",
+    "RISK_USE_FRACTIONAL_SHARES": False,
+    "RISK_ALLOW_SHORT": False,
+    "RISK_ALLOW_SAME_SYMBOL_POSITION": False,
+    "RISK_REJECT_IF_NO_STOP": False,
+    "RISK_REJECT_IF_NO_TARGET": False,
+    "RISK_STOP_METHOD": "FIXED_PERCENT",
+    "RISK_TARGET_METHOD": "RISK_REWARD_MULTIPLE",
+    "RISK_TARGET_R_MULTIPLE": 2.0,
+    "RISK_ATR_MULTIPLIER": 2.0,
+    "RISK_SWING_LOOKBACK": 20,
     "RISK_FIXED_STOP_PCT": 0.05,
     "RISK_FIXED_TARGET_PCT": 0.10,
     "RISK_FIXED_NOTIONAL": 10_000.0,
@@ -205,6 +232,9 @@ DEFAULTS: dict[str, Any] = {
 
     # ---- Misc engine modes / strategies ----
     "DEFAULT_STRATEGY": "moving_average_trend",
+    "STRATEGY_CANDIDATE_DISCLAIMER": (
+        "Research signal candidate only. Not investment advice. No real order sent."
+    ),
     "DOWNLOAD_DEFAULT_PERIOD": "2y",
     "ENSEMBLE_WEIGHT_STRATEGY": "EQUAL",
     "MTF_ALIGNMENT_MODE": "STRICT",

@@ -1215,7 +1215,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     # run-once
     parser_run_once = runtime_subparsers.add_parser('run-once', help="Run the pipeline once")
-    parser_run_once.add_argument('--source', default='mock', help="Data source")
+    parser_run_once.add_argument('--source', default='local', help="Data source")
     parser_run_once.add_argument('--strategy', default='moving_average_trend', help="Strategy name")
     parser_run_once.add_argument('--group', help="Universe group")
     parser_run_once.add_argument('--symbols', nargs='+', help="Specific symbols")
@@ -1227,7 +1227,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     # dry-run
     parser_dry_run = runtime_subparsers.add_parser('dry-run', help="Dry run the pipeline")
-    parser_dry_run.add_argument('--source', default='mock', help="Data source")
+    parser_dry_run.add_argument('--source', default='local', help="Data source")
     parser_dry_run.add_argument('--strategy', default='moving_average_trend', help="Strategy name")
     parser_dry_run.add_argument('--symbols', nargs='+', help="Specific symbols")
 
@@ -1236,7 +1236,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser_loop.add_argument('--interval', type=int, default=60, help="Interval in minutes")
     parser_loop.add_argument('--max-iterations', type=int, default=0, help="Max iterations")
     parser_loop.add_argument('--run-immediately', action='store_true', help="Run immediately")
-    parser_loop.add_argument('--source', default='mock', help="Data source")
+    parser_loop.add_argument('--source', default='local', help="Data source")
     parser_loop.add_argument('--strategy', default='moving_average_trend', help="Strategy name")
     parser_loop.add_argument('--symbols', nargs='+', help="Specific symbols")
 

@@ -23,9 +23,10 @@ class KnowledgeSourceCollector:
             docs.extend(self.collect_from_research_ledger())
 
         if KnowledgeSourceType.REVIEW_THESIS in types_to_collect:
+            docs.extend(self.collect_from_review_thesis())
+
         if KnowledgeSourceType.WHATIF_REPORT in types_to_collect:
             docs.extend(self.collect_from_whatif_reports())
-            docs.extend(self.collect_from_review_thesis())
 
         if KnowledgeSourceType.DECISION_JOURNAL in types_to_collect:
             docs.extend(self.collect_from_decision_journal())

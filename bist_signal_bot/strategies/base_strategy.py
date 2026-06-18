@@ -70,9 +70,9 @@ class BaseStrategy(ABC):
                               score: float = 0.0, strength: SignalStrength = SignalStrength.UNKNOWN,
                               reasons: list[Any] | None = None, risk_notes: list[Any] | None = None,
                               **kwargs: Any) -> SignalCandidate:
-        disclaimer = "Research signal candidate only. Not investment advice. No order was sent."
+        disclaimer = "Research signal candidate only. Not investment advice. No real order sent."
         if context.settings:
-            disclaimer = getattr(context.settings, "STRATEGY_CANDIDATE_DISCLAIMER", disclaimer)
+            disclaimer = getattr(context.settings, "STRATEGY_CANDIDATE_DISCLAIMER", disclaimer) or disclaimer
 
         timestamp = None
         if context.latest_row is not None and hasattr(context.latest_row, "name"):

@@ -7,12 +7,14 @@ from bist_signal_bot.config.settings import Settings
 from bist_signal_bot.core.exceptions import RuntimeValidationError, RuntimeLockError
 from bist_signal_bot.runtime.models import (
     RuntimePipelineConfig, RuntimePipelineResult, RuntimeTrigger, RuntimePipelineStatus,
-    RuntimeJobType, RuntimeJobConfig, RuntimeState, RuntimeJobResult, SessionPolicy
+    RuntimeJobType, RuntimeJobConfig, RuntimeState, RuntimeJobResult, RuntimeJobStatus,
+    SessionPolicy
 )
 from bist_signal_bot.runtime.locks import RuntimeLockManager
 from bist_signal_bot.runtime.state import RuntimeStateStore
 from bist_signal_bot.runtime.jobs import RuntimeJobRunner
 from bist_signal_bot.runtime.pipelines import RuntimePipelineBuilder
+from bist_signal_bot.scanner.models import ScanUniverseMode
 
 from bist_signal_bot.reports.generator import ResearchReportGenerator
 from bist_signal_bot.reports.digest import ReportDigestBuilder
@@ -159,26 +161,68 @@ class RuntimeOrchestrator:
                 if data_service is not None and hasattr(data_service, "get_many_ohlcv"):
                     def _refresh():
                         from bist_signal_bot.data.symbol_universe import DEFAULT_SEED_SYMBOLS
+                        from bist_signal_bot.data.models import Timeframe
+
                         raw = list(config.symbols) if getattr(config, "symbols", None) else list(DEFAULT_SEED_SYMBOLS)
                         syms = [getattr(s, "symbol", s) for s in raw]  # SymbolInfo -> ticker str
-                        # Best-effort, per-symbol: bad/missing local data must not abort the run.
-                        ok = 0
-                        for sym in syms:
-                            try:
-                                md = data_service.get_ohlcv(sym)
-                                if md is not None:
-                                    fetched_data[sym] = md
-                                    ok += 1
-                            except Exception:
-                                continue
-                        return {"symbols_refreshed": ok, "symbols_requested": len(syms)}
+                        timeframe = Timeframe(config.timeframe)
+                        requested = list(syms)
+                        missing: list[str] = []
+
+                        if config.source == "local":
+                            store = getattr(data_service, "store", None)
+                            provider = getattr(data_service, "provider", None)
+                            vendor = getattr(provider, "vendor", None)
+                            if store is None or vendor is None:
+                                raise RuntimeValidationError("Local runtime data requires a configured local store.")
+                            syms = [s for s in requested if store.exists(s, vendor, timeframe)]
+                            missing = [s for s in requested if s not in syms]
+
+                        if not syms:
+                            raise RuntimeValidationError("No local market data is available for the runtime symbols.")
+
+                        refreshed = data_service.get_many_ohlcv(
+                            syms,
+                            timeframe=timeframe,
+                            refresh=False,
+                            save=False,
+                            allow_provider_fallback=False,
+                        )
+                        fetched_data.update(refreshed)
+                        if not fetched_data:
+                            raise RuntimeValidationError("Market data refresh returned no usable data.")
+                        return {
+                            "symbols_refreshed": len(fetched_data),
+                            "symbols_requested": len(requested),
+                            "symbols_missing": len(missing),
+                            "network_used": False,
+                        }
                     job_res = self.job_runner.run_job(step, _refresh)
                     result.job_results.append(job_res)
 
             elif step == RuntimeJobType.SIGNAL_SCAN:
                 if self.scanner_engine:
                     req = RuntimePipelineBuilder.build_scan_request(config)
-                    job_res = self.job_runner.run_job(step, lambda: self.scanner_engine.scan(req) if hasattr(self.scanner_engine, "scan") else {"mock_scan": True})
+                    if fetched_data:
+                        req.symbols = list(fetched_data)
+                        req.universe_mode = ScanUniverseMode.SYMBOLS
+                        req.source = "local_file"
+                    scan_holder: dict[str, Any] = {}
+
+                    def _scan():
+                        report = self.scanner_engine.scan(req)
+                        scan_holder["report"] = report
+                        return report.summary() if hasattr(report, "summary") else {"output": str(report)}
+
+                    job_res = self.job_runner.run_job(step, _scan)
+                    report = scan_holder.get("report")
+                    report_status = getattr(getattr(report, "status", None), "value", None)
+                    if report_status == "FAILED":
+                        job_res.status = RuntimeJobStatus.FAILED
+                        job_res.issues.append("Signal scan failed for all requested symbols.")
+                    elif report_status == "PARTIAL_SUCCESS":
+                        job_res.status = RuntimeJobStatus.PARTIAL_SUCCESS
+                        job_res.issues.append("Signal scan completed with symbol-level errors.")
                     result.job_results.append(job_res)
                     result.scan_report_summary = job_res.summary
 
@@ -190,11 +234,61 @@ class RuntimeOrchestrator:
                             df = getattr(md, "data", md)
                             if df is not None and not getattr(df, "empty", True):
                                 dfs[sym] = df
-                        if dfs:
-                            self.regime_engine.classify_many(dfs)
-                        return {"regime_classified": len(dfs)}
+                        if not dfs:
+                            raise RuntimeValidationError("No usable data frames are available for regime analysis.")
+                        batch = self.regime_engine.classify_many(dfs)
+                        return batch.summary()
                     job_res = self.job_runner.run_job(step, _regime)
+                    if job_res.status == RuntimeJobStatus.SUCCESS:
+                        requested = int(job_res.summary.get("requested_count", 0))
+                        succeeded = int(job_res.summary.get("success_count", 0))
+                        failed = int(job_res.summary.get("failed_count", 0))
+                        if requested > 0 and succeeded == 0:
+                            job_res.status = RuntimeJobStatus.FAILED
+                            job_res.issues.append("Regime analysis failed for all requested symbols.")
+                        elif failed > 0:
+                            job_res.status = RuntimeJobStatus.PARTIAL_SUCCESS
+                            job_res.issues.append("Regime analysis completed with symbol-level errors.")
                     result.job_results.append(job_res)
+                    result.regime_summary = job_res.summary
+
+            elif step == RuntimeJobType.ML_INFERENCE:
+                def _ml_inference():
+                    if self.ml_inference_engine is None:
+                        raise RuntimeValidationError("ML inference requires a configured registered model.")
+                    if not config.ml_model_id:
+                        raise RuntimeValidationError("ml_model_id is required for runtime ML inference.")
+
+                    from bist_signal_bot.ml.inference.models import MLInferenceInput
+
+                    inference_config = self.ml_inference_engine.build_default_config(config.ml_model_id)
+                    inference_config.enabled = True
+                    inputs = []
+                    for symbol, market_data in fetched_data.items():
+                        data = getattr(market_data, "data", market_data)
+                        if data is not None and not getattr(data, "empty", True):
+                            inputs.append(MLInferenceInput(
+                                symbol=symbol,
+                                data=data,
+                                config=inference_config,
+                                timeframe=config.timeframe,
+                            ))
+                    if not inputs:
+                        raise RuntimeValidationError("No usable data is available for ML inference.")
+                    return self.ml_inference_engine.predict_batch(inputs).summary()
+
+                job_res = self.job_runner.run_job(step, _ml_inference)
+                if job_res.status == RuntimeJobStatus.SUCCESS:
+                    requested = int(job_res.summary.get("requested_count", 0))
+                    errors = int(job_res.summary.get("error_count", 0))
+                    if requested > 0 and errors == requested:
+                        job_res.status = RuntimeJobStatus.FAILED
+                        job_res.issues.append("ML inference failed for all requested symbols.")
+                    elif errors > 0:
+                        job_res.status = RuntimeJobStatus.PARTIAL_SUCCESS
+                        job_res.issues.append("ML inference completed with symbol-level errors.")
+                result.job_results.append(job_res)
+                result.ml_summary = job_res.summary
 
             elif step == RuntimeJobType.PAPER_RUN:
                 if self.paper_engine and getattr(config, 'use_paper', False) and not getattr(config, 'dry_run', False):
@@ -208,13 +302,15 @@ class RuntimeOrchestrator:
                     result.job_results.append(job_res)
 
             elif step == RuntimeJobType.CLEANUP:
-                job_res = self.job_runner.run_job(step, lambda: {"cleanup": "ok"})
-                result.job_results.append(job_res)
+                result.metadata.setdefault("skipped_steps", []).append({
+                    "step": RuntimeJobType.CLEANUP.value,
+                    "reason": "No cleanup service is configured.",
+                })
 
-        failed_jobs = [j for j in result.job_results if getattr(getattr(j, 'status', None), 'value', str(getattr(j, 'status', None))) == "FAILED"]
+        failed_jobs = [j for j in result.job_results if j.status == RuntimeJobStatus.FAILED]
         if failed_jobs:
             result.status = RuntimePipelineStatus.FAILED
-        elif any(getattr(getattr(j, 'status', None), 'value', str(getattr(j, 'status', None))) == "PARTIAL_SUCCESS" for j in result.job_results):
+        elif any(j.status == RuntimeJobStatus.PARTIAL_SUCCESS for j in result.job_results):
             result.status = RuntimePipelineStatus.PARTIAL_SUCCESS
         else:
             result.status = RuntimePipelineStatus.SUCCESS

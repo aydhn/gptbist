@@ -129,7 +129,15 @@ class MarketDataService:
     def get_last_quality_report(self, symbol: str) -> DataQualityReport | None:
         return self.last_quality_reports.get(symbol)
 
-    def get_ohlcv(self, symbol: str, timeframe: Timeframe = Timeframe.DAILY, period: str = "2y", refresh: bool = False, save: bool = True) -> MarketDataFrame:
+    def get_ohlcv(
+        self,
+        symbol: str,
+        timeframe: Timeframe = Timeframe.DAILY,
+        period: str = "2y",
+        refresh: bool = False,
+        save: bool = True,
+        allow_provider_fallback: bool = True,
+    ) -> MarketDataFrame:
         """Fetch historical data for a single symbol, utilizing local storage if available and preferred."""
         self._validate_symbol(symbol)
 
@@ -141,7 +149,14 @@ class MarketDataService:
                     mdf = self.store.read_ohlcv(symbol, self.provider.vendor, timeframe)
                     return self._apply_quality_check(mdf, symbol)
                 except Exception as e:
+                    if not allow_provider_fallback:
+                        raise
                     logger.warning(f"Failed to read local data for {symbol}, falling back to provider: {e}", exc_info=True)
+
+        if not allow_provider_fallback:
+            raise FileNotFoundError(
+                f"No readable local data found for {symbol} ({timeframe.value}); provider fallback is disabled."
+            )
 
         logger.info(f"Fetching {symbol} from provider ({self.provider.vendor.value}).")
         mdf = self.provider.fetch_one(
@@ -162,7 +177,15 @@ class MarketDataService:
 
         return mdf
 
-    def get_many_ohlcv(self, symbols: list[str], timeframe: Timeframe = Timeframe.DAILY, period: str = "2y", refresh: bool = False, save: bool = True) -> dict[str, MarketDataFrame]:
+    def get_many_ohlcv(
+        self,
+        symbols: list[str],
+        timeframe: Timeframe = Timeframe.DAILY,
+        period: str = "2y",
+        refresh: bool = False,
+        save: bool = True,
+        allow_provider_fallback: bool = True,
+    ) -> dict[str, MarketDataFrame]:
         """Fetch historical data for multiple symbols, utilizing local storage."""
         results = {}
         symbols_to_fetch = []
@@ -178,8 +201,13 @@ class MarketDataService:
                         logger.debug(f"Read {sym} from local store.")
                         continue
                     except Exception as e:
+                        if not allow_provider_fallback:
+                            logger.warning(f"Failed to read local data for {sym}; provider fallback is disabled: {e}")
+                            continue
                         logger.warning(f"Failed to read local data for {sym}, will fetch: {e}")
 
+            if not allow_provider_fallback:
+                continue
             symbols_to_fetch.append(sym)
 
         if symbols_to_fetch:

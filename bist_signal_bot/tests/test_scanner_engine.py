@@ -1,17 +1,23 @@
 import pytest
 import pandas as pd
+from types import SimpleNamespace
 from bist_signal_bot.scanner.engine import SignalScannerEngine
 from bist_signal_bot.scanner.models import ScanRequest, ScanUniverseMode, ScanCandidateStatus, ScanStatus, ScanSortKey
 from bist_signal_bot.config.settings import Settings
 from bist_signal_bot.strategies.models import StrategyExecutionResult, StrategyExecutionIssue
 from bist_signal_bot.signals.models import SignalCandidate, SignalDirection, SignalStrength
 from bist_signal_bot.risk.models import RiskDecision, RiskDecisionStatus
+from bist_signal_bot.risk.engine import RiskEngine
+from bist_signal_bot.portfolio.risk_engine import PortfolioRiskEngine
 
 class MockDataService:
-    def get_history(self, symbol, **kwargs):
+    provider = SimpleNamespace(vendor="MOCK")
+    store = SimpleNamespace(exists=lambda *args, **kwargs: True)
+
+    def get_ohlcv(self, symbol, **kwargs):
         if symbol == "BADDATA":
-            return pd.DataFrame()
-        return pd.DataFrame({'close': [100, 101, 102]})
+            return SimpleNamespace(data=pd.DataFrame())
+        return SimpleNamespace(data=pd.DataFrame({'close': [100, 101, 102]}))
 
 class MockStrategyEngine:
     def run_strategy_on_data(self, strategy_name, symbol, data, **kwargs):
@@ -38,6 +44,13 @@ def test_resolve_symbols():
     symbols = engine.resolve_symbols(req)
     assert symbols == ["A", "B"]
 
+def test_default_risk_engines_receive_settings_by_keyword():
+    engine = SignalScannerEngine(data_service=MockDataService(), strategy_engine=MockStrategyEngine())
+
+    assert isinstance(engine.risk_engine, RiskEngine)
+    assert isinstance(engine.portfolio_risk_engine, PortfolioRiskEngine)
+    assert not isinstance(engine.risk_engine.position_sizer, Settings)
+
 def test_scan_symbol_success():
     engine = SignalScannerEngine(data_service=MockDataService(), strategy_engine=MockStrategyEngine(), risk_engine=MockRiskEngine(), portfolio_risk_engine=MockPortfolioRiskEngine())
     req = ScanRequest(strategy_name="t", universe_mode=ScanUniverseMode.SYMBOLS, symbols=["A"])
@@ -51,3 +64,24 @@ def test_scan_continue_on_error():
     assert report.status == ScanStatus.PARTIAL_SUCCESS
     assert report.passed_count == 1
     assert report.error_count == 1
+
+def test_local_scan_does_not_fall_back_to_network():
+    data_service = MockDataService()
+    data_service.store = SimpleNamespace(exists=lambda *args, **kwargs: False)
+    engine = SignalScannerEngine(
+        data_service=data_service,
+        strategy_engine=MockStrategyEngine(),
+        risk_engine=MockRiskEngine(),
+        portfolio_risk_engine=MockPortfolioRiskEngine(),
+    )
+    req = ScanRequest(
+        strategy_name="t",
+        universe_mode=ScanUniverseMode.SYMBOLS,
+        symbols=["A"],
+        source="local_file",
+    )
+
+    res = engine.scan_symbol("A", req)
+
+    assert res.status == ScanCandidateStatus.ERROR
+    assert "network fallback is disabled" in res.issues[0].message

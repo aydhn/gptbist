@@ -40,6 +40,11 @@ def setup_engine():
     registry.register(MockErrorStrategy())
     return StrategyEngine(registry=registry)
 
+def test_engine_uses_builtin_registry_by_default():
+    engine = StrategyEngine()
+
+    assert engine.registry.exists("moving_average_trend")
+
 def test_engine_run_on_data_success():
     engine = setup_engine()
     df = pd.DataFrame({"close": [1, 2, 3]})

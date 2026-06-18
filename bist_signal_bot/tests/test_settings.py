@@ -17,3 +17,14 @@ def test_settings_repr_hides_secrets():
     repr_str = repr(settings)
     assert "123456789:ABCDefghIJKLmnopQRSTuvwxYZ" not in repr_str
     assert "1234...wxYZ" in repr_str
+
+def test_regime_defaults_are_typed_and_complete():
+    settings = Settings(_env_file=None)
+
+    assert settings.REGIME_SCORE_MODE == "FILTER_AND_SCORE"
+    assert settings.REGIME_TREND_WINDOW == 50
+    assert settings.REGIME_MIN_SCORE == 40.0
+    assert settings.REGIME_USE_MTF is False
+    assert "No real order sent." in settings.STRATEGY_CANDIDATE_DISCLAIMER
+    assert settings.RISK_DEFAULT_EQUITY == 100_000.0
+    assert settings.RISK_POSITION_SIZING_METHOD == "EQUITY_PERCENT"

@@ -40,14 +40,6 @@ class KnowledgeIndexer:
     def build_index(self, request: KnowledgeIndexBuildRequest) -> KnowledgeIndexBuildResult:
         start_time = time.time()
 
-        # Inject Optional Profiler
-        profiler = None
-        timer_span = None
-        if getattr(self.settings, 'ENABLE_PERFORMANCE_PROFILING', False):
-            from bist_signal_bot.app.performance_app import create_local_profiler
-            profiler = create_local_profiler(self.settings)
-            timer_span = profiler.timer.start_span("knowledge_build_index")
-
         result = KnowledgeIndexBuildResult(
             build_id=str(uuid.uuid4()),
             request=request,

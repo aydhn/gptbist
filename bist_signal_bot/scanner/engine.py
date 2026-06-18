@@ -8,6 +8,7 @@ from typing import List, Optional, Any, Dict
 from bist_signal_bot.config.settings import Settings
 from bist_signal_bot.core.exceptions import ScannerValidationError, ScannerExecutionError
 from bist_signal_bot.data.data_service import MarketDataService
+from bist_signal_bot.data.models import Timeframe
 from bist_signal_bot.data.symbol_universe import SymbolUniverse
 from bist_signal_bot.strategies.engine import StrategyEngine
 from bist_signal_bot.ml.inference.engine import MLInferenceEngine
@@ -57,8 +58,8 @@ class SignalScannerEngine:
         self.kill_switch = KillSwitchManager(self.settings, get_data_dir(self.settings))
         self.security_preflight = SecurityPreflightRunner(self.settings, kill_switch=self.kill_switch)
         self.ml_inference_engine = ml_inference_engine
-        self.risk_engine = risk_engine or RiskEngine(self.settings)
-        self.portfolio_risk_engine = portfolio_risk_engine or PortfolioRiskEngine(self.settings)
+        self.risk_engine = risk_engine or RiskEngine(settings=self.settings)
+        self.portfolio_risk_engine = portfolio_risk_engine or PortfolioRiskEngine(settings=self.settings)
         self.paper_engine = paper_engine
         self.ranker = ranker or ScanRanker(self.settings)
         self.filter_engine = filter_engine or ScanFilterEngine(self.settings)
@@ -110,7 +111,26 @@ class SignalScannerEngine:
 
         try:
             # 1. Fetch data
-            data = self.data_service.get_history(symbol, timeframe=request.timeframe, rows=request.rows or 200, source=request.source)
+            timeframe = Timeframe(request.timeframe)
+            if request.source in {"local", "local_file"}:
+                store = getattr(self.data_service, "store", None)
+                provider = getattr(self.data_service, "provider", None)
+                vendor = getattr(provider, "vendor", None)
+                if store is None or vendor is None or not store.exists(symbol, vendor, timeframe):
+                    raise ScannerExecutionError(
+                        f"No local data found for {symbol} ({timeframe.value}); network fallback is disabled."
+                    )
+
+            market_data = self.data_service.get_ohlcv(
+                symbol,
+                timeframe=timeframe,
+                refresh=False,
+                save=False,
+                allow_provider_fallback=request.source not in {"local", "local_file"},
+            )
+            data = getattr(market_data, "data", market_data)
+            if request.rows:
+                data = data.tail(request.rows)
             if data is None or data.empty:
                 issues.append(SymbolScanIssue(symbol=symbol,
                 data_provider=self.settings.DEFAULT_DATA_PROVIDER,
@@ -130,10 +150,6 @@ class SignalScannerEngine:
             strat_result = self.strategy_engine.run_strategy_on_data(
                 strategy_name=request.strategy_name,
                 symbol=symbol,
-                data_provider=self.settings.DEFAULT_DATA_PROVIDER,
-                data_lineage_source_id="UNKNOWN",
-                data_freshness_age_hours=0.0,
-                data_quality_warnings=[],
                 data=data,
                 params=request.params,
                 run_mode=StrategyRunMode.RESEARCH,

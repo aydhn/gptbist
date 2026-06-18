@@ -63,10 +63,21 @@ def create_runtime_orchestrator(settings: Optional[Settings] = None, base_dir: O
     except ImportError:
         regime_engine = None
 
+    # ML inference is opt-in and requires an explicitly registered model.
+    ml_inference_engine = None
+    model_id = getattr(settings, "ML_INFERENCE_DEFAULT_MODEL_ID", "")
+    if getattr(settings, "RUNTIME_USE_ML_FILTER", False) and model_id:
+        try:
+            from bist_signal_bot.ml.inference.engine import MLInferenceEngine
+            ml_inference_engine = MLInferenceEngine.from_settings(settings)
+        except ImportError:
+            ml_inference_engine = None
+
     return RuntimeOrchestrator(
         scanner_engine=scanner_engine,
         paper_engine=paper_engine,
         regime_engine=regime_engine,
+        ml_inference_engine=ml_inference_engine,
         notifier=app_context.notifier,
         settings=settings
     )
