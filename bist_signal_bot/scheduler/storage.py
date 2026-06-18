@@ -11,6 +11,7 @@ from bist_signal_bot.scheduler.models import (
     ScheduleTrigger,
     ScheduledJobType,
     ScheduledJobStatus,
+    ScheduledJobDecision,
     ScheduleTriggerType,
     MarketSessionType
 )
@@ -183,17 +184,24 @@ class SchedulerStore:
             except Exception:
                 pass
 
-        # In a real implementation we would map these back to ScheduledJobRun objects
-        # For MVP we will just return mock objects
         res = []
         for d in runs:
-            # Very hacky reconstruction just to make types match
             run = ScheduledJobRun(
                 run_id=d["run_id"],
                 job_id=d["job_id"],
                 job_name=d["job_name"],
                 job_type=ScheduledJobType(d["job_type"]),
-                started_at=datetime.fromisoformat(d["started_at"])
+                started_at=datetime.fromisoformat(d["started_at"]),
+                finished_at=datetime.fromisoformat(d["finished_at"]) if d.get("finished_at") else None,
+                status=ScheduledJobStatus(d.get("status", "UNKNOWN")),
+                decision=ScheduledJobDecision(d.get("decision", "ERROR")),
+                elapsed_seconds=d.get("elapsed_seconds", 0.0),
+                exit_code=d.get("exit_code"),
+                output_refs=d.get("output_refs", {}),
+                warnings=d.get("warnings", []),
+                errors=d.get("errors", []),
+                disclaimer=d.get("disclaimer", "Scheduled job run is research-only. Not investment advice. No real order was sent."),
+                metadata=d.get("metadata", {})
             )
             res.append(run)
 
