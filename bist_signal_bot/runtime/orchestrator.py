@@ -145,6 +145,7 @@ class RuntimeOrchestrator:
 
     def _execute_pipeline_steps(self, config: RuntimePipelineConfig, result: RuntimePipelineResult) -> None:
         steps = RuntimePipelineBuilder.build_runtime_pipeline_steps(config)
+        fetched_data: dict = {}  # shared across steps: DATA_REFRESH -> REGIME_ANALYSIS
 
         for step in steps:
             if step == RuntimeJobType.HEALTHCHECK:
@@ -153,12 +154,47 @@ class RuntimeOrchestrator:
                     result.job_results.append(job_res)
                     result.healthcheck_summary = job_res.summary
 
+            elif step == RuntimeJobType.DATA_REFRESH:
+                data_service = getattr(self.scanner_engine, "data_service", None)
+                if data_service is not None and hasattr(data_service, "get_many_ohlcv"):
+                    def _refresh():
+                        from bist_signal_bot.data.symbol_universe import DEFAULT_SEED_SYMBOLS
+                        raw = list(config.symbols) if getattr(config, "symbols", None) else list(DEFAULT_SEED_SYMBOLS)
+                        syms = [getattr(s, "symbol", s) for s in raw]  # SymbolInfo -> ticker str
+                        # Best-effort, per-symbol: bad/missing local data must not abort the run.
+                        ok = 0
+                        for sym in syms:
+                            try:
+                                md = data_service.get_ohlcv(sym)
+                                if md is not None:
+                                    fetched_data[sym] = md
+                                    ok += 1
+                            except Exception:
+                                continue
+                        return {"symbols_refreshed": ok, "symbols_requested": len(syms)}
+                    job_res = self.job_runner.run_job(step, _refresh)
+                    result.job_results.append(job_res)
+
             elif step == RuntimeJobType.SIGNAL_SCAN:
                 if self.scanner_engine:
                     req = RuntimePipelineBuilder.build_scan_request(config)
                     job_res = self.job_runner.run_job(step, lambda: self.scanner_engine.scan(req) if hasattr(self.scanner_engine, "scan") else {"mock_scan": True})
                     result.job_results.append(job_res)
                     result.scan_report_summary = job_res.summary
+
+            elif step == RuntimeJobType.REGIME_ANALYSIS:
+                if self.regime_engine is not None and fetched_data:
+                    def _regime():
+                        dfs = {}
+                        for sym, md in fetched_data.items():
+                            df = getattr(md, "data", md)
+                            if df is not None and not getattr(df, "empty", True):
+                                dfs[sym] = df
+                        if dfs:
+                            self.regime_engine.classify_many(dfs)
+                        return {"regime_classified": len(dfs)}
+                    job_res = self.job_runner.run_job(step, _regime)
+                    result.job_results.append(job_res)
 
             elif step == RuntimeJobType.PAPER_RUN:
                 if self.paper_engine and getattr(config, 'use_paper', False) and not getattr(config, 'dry_run', False):
@@ -170,6 +206,10 @@ class RuntimeOrchestrator:
                 if self.notifier and getattr(config, 'send_telegram', False) and not getattr(config, 'dry_run', False):
                     job_res = self.send_summary(result)
                     result.job_results.append(job_res)
+
+            elif step == RuntimeJobType.CLEANUP:
+                job_res = self.job_runner.run_job(step, lambda: {"cleanup": "ok"})
+                result.job_results.append(job_res)
 
         failed_jobs = [j for j in result.job_results if getattr(getattr(j, 'status', None), 'value', str(getattr(j, 'status', None))) == "FAILED"]
         if failed_jobs:

@@ -55,9 +55,18 @@ def create_runtime_orchestrator(settings: Optional[Settings] = None, base_dir: O
             def run(self, *args, **kwargs): return {"mock_paper": True}
         paper_engine = MockPaper()
 
+    # Market regime engine (REGIME_ANALYSIS pipeline step)
+    regime_engine = None
+    try:
+        from bist_signal_bot.regime.engine import RegimeEngine
+        regime_engine = RegimeEngine.from_settings(settings)
+    except ImportError:
+        regime_engine = None
+
     return RuntimeOrchestrator(
         scanner_engine=scanner_engine,
         paper_engine=paper_engine,
+        regime_engine=regime_engine,
         notifier=app_context.notifier,
         settings=settings
     )

@@ -14,13 +14,25 @@ class RuntimePipelineBuilder:
             universe_mode = ScanUniverseMode(config.universe_mode)
         except (ValueError, TypeError):
             universe_mode = ScanUniverseMode.SYMBOLS
+        symbols = list(config.symbols or [])
+        if not symbols:
+            # ALL resolves to an empty list without a configured universe; fall back
+            # to the seed universe so the scan actually has symbols to work on.
+            from bist_signal_bot.data.symbol_universe import DEFAULT_SEED_SYMBOLS
+            symbols = [getattr(s, "symbol", s) for s in DEFAULT_SEED_SYMBOLS]
+        symbols = [getattr(s, "symbol", s) for s in symbols]  # normalize SymbolInfo -> str
+        # With an explicit symbol list, force SYMBOLS mode (ALL ignores `symbols`).
+        if symbols:
+            universe_mode = ScanUniverseMode.SYMBOLS
         return ScanRequest(
             strategy_name=config.strategy_name,
             universe_mode=universe_mode,
-            symbols=list(config.symbols or []),
+            symbols=symbols,
             watchlist_name=config.watchlist_name,
             group_name=config.group_name,
-            source=config.source,
+            # pipeline config uses 'local' (validate_pipeline_config), the scanner
+            # expects 'local_file' for on-disk data.
+            source="local_file" if config.source == "local" else config.source,
             top_n=config.top_n,
             use_trade_risk=config.use_trade_risk,
             use_portfolio_risk=config.use_portfolio_risk,
