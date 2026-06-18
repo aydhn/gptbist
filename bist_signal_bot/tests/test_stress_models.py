@@ -43,3 +43,56 @@ def test_return_series_missing_frequency():
             returns=[0.01, 0.02],
             frequency=""
         )
+
+def test_stress_test_request_valid_symbols():
+    mc_config = MonteCarloConfig(
+        method=MonteCarloMethod.BOOTSTRAP,
+        simulations=10,
+        horizon_days=30,
+        seed=42,
+        initial_value=10000.0
+    )
+    req = StressTestRequest(
+        input_type=StressInputType.CUSTOM_RETURNS,
+        monte_carlo_config=mc_config,
+        ruin_threshold_pct=50.0,
+        symbols=[" aapl ", "msft", " ", ""]
+    )
+    assert req.symbols == ["AAPL", "MSFT"]
+
+def test_stress_test_request_invalid_source():
+    mc_config = MonteCarloConfig(
+        method=MonteCarloMethod.BOOTSTRAP,
+        simulations=10,
+        horizon_days=30,
+        seed=42,
+        initial_value=10000.0
+    )
+    with pytest.raises(ValueError, match="Source must be one of"):
+        StressTestRequest(
+            input_type=StressInputType.CUSTOM_RETURNS,
+            monte_carlo_config=mc_config,
+            ruin_threshold_pct=50.0,
+            source="invalid_source"
+        )
+
+def test_stress_test_request_invalid_ruin_threshold():
+    mc_config = MonteCarloConfig(
+        method=MonteCarloMethod.BOOTSTRAP,
+        simulations=10,
+        horizon_days=30,
+        seed=42,
+        initial_value=10000.0
+    )
+    with pytest.raises(ValueError, match="ruin_threshold_pct must be between 0 and 100"):
+        StressTestRequest(
+            input_type=StressInputType.CUSTOM_RETURNS,
+            monte_carlo_config=mc_config,
+            ruin_threshold_pct=-1.0
+        )
+    with pytest.raises(ValueError, match="ruin_threshold_pct must be between 0 and 100"):
+        StressTestRequest(
+            input_type=StressInputType.CUSTOM_RETURNS,
+            monte_carlo_config=mc_config,
+            ruin_threshold_pct=101.0
+        )
