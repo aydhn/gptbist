@@ -141,3 +141,43 @@ def test_regime_batch_result_summary():
     assert summary["elapsed_seconds"] == 5.68
     assert summary["classifications"] == 3
     assert summary["filter_results"] == 2
+
+def test_regime_classification_safe_public_dict_edge_cases():
+    feature_set = RegimeFeatureSet(
+        symbol="XYZ",
+        trend_score=0.0,
+        volatility_score=0.0,
+        liquidity_score=0.0,
+        momentum_score=0.0,
+        range_score=0.0,
+        breakout_score=0.0,
+        composite_regime_score=0.0
+    )
+
+    classification = RegimeClassification(
+        symbol="XYZ",
+        trend_regime=TrendRegime.UNKNOWN,
+        volatility_regime=VolatilityRegime.UNKNOWN,
+        liquidity_regime=LiquidityRegime.UNKNOWN,
+        momentum_regime=MomentumRegime.UNKNOWN,
+        market_regime=MarketRegime.UNKNOWN,
+        regime_score=0.001,
+        confidence=0.004,
+        feature_set=feature_set,
+        reasons=[],
+        warnings=[]
+    )
+
+    safe_dict = classification.safe_public_dict()
+
+    assert safe_dict["symbol"] == "XYZ"
+    assert safe_dict["market_regime"] == "UNKNOWN"
+    assert safe_dict["trend_regime"] == "UNKNOWN"
+    assert safe_dict["volatility_regime"] == "UNKNOWN"
+    assert safe_dict["liquidity_regime"] == "UNKNOWN"
+    assert safe_dict["momentum_regime"] == "UNKNOWN"
+    assert safe_dict["regime_score"] == 0.0
+    assert safe_dict["confidence"] == 0.0
+    assert safe_dict["reasons"] == []
+    assert safe_dict["warnings"] == []
+    assert safe_dict["disclaimer"] == "Market regime research output only. Not investment advice. No order was sent."
