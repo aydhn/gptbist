@@ -24,7 +24,7 @@ if ($python_ver -match "Python 3\\.(1[0-9]|2[0-9])") {
 # Create venv
 if (-Not (Test-Path ".venv")) {
     Write-Host "Creating virtual environment..."
-    python -m v"env" .venv
+    python -m venv .venv
 }
 
 # Activate instruction
@@ -46,8 +46,6 @@ Write-Host "Running healthcheck..."
 
 Write-Host "Installation complete."
 '''
-        # Quick hack to get around venv detection
-        content = content.replace('v"env"', 'venv')
         output_path.parent.mkdir(parents=True, exist_ok=True)
         output_path.write_text(content, encoding="utf-8")
         return output_path
@@ -69,7 +67,7 @@ fi
 # Create venv
 if [ ! -d ".venv" ]; then
     echo "Creating virtual environment..."
-    python3 -m v"env" .venv
+    python3 -m venv .venv
 fi
 
 echo "To activate: source .venv/bin/activate"
@@ -90,8 +88,6 @@ echo "Running healthcheck..."
 
 echo "Installation complete."
 '''
-        # Quick hack to get around venv detection
-        content = content.replace('v"env"', 'venv')
         output_path.parent.mkdir(parents=True, exist_ok=True)
         output_path.write_text(content, encoding="utf-8")
         os.chmod(output_path, 0o755)
