@@ -1,6 +1,6 @@
-import json
 from pathlib import Path
 from typing import Optional, Any
+import json
 from bist_signal_bot.signals.models import SignalAlertPolicy, SignalPriority
 from bist_signal_bot.config.settings import Settings
 
@@ -10,23 +10,42 @@ class SignalPolicyManager:
             from bist_signal_bot.config.settings import get_settings
             settings = get_settings()
 
-        priority_str = getattr(settings, "SIGNAL_DIGEST_ONLY_BELOW_PRIORITY", "NORMAL")
+        priority_str = getattr(settings, "SIGNAL_DIGEST_ONLY_BELOW_PRIORITY", "NORMAL") or "NORMAL"
         try:
             digest_only_priority = SignalPriority(priority_str)
         except ValueError:
             digest_only_priority = SignalPriority.NORMAL
 
+        def safe_get(key: str, default: Any) -> Any:
+            val = settings.get(key, None) if hasattr(settings, "get") else getattr(settings, key, None)
+            if val is None:
+                return default
+            # We also check if it returns 0 or 0.0 when it shouldn't for minutes and percentages
+            # Specifically settings fallback might return 0 for ints missing in .env
+            if val == 0 and key in [
+                "SIGNAL_ALERT_COOLDOWN_MINUTES",
+                "SIGNAL_VALIDITY_MINUTES",
+                "SIGNAL_MAX_ALERTS_PER_SIGNAL"
+            ]:
+                return default
+            if val == 0.0 and key in [
+                "SIGNAL_MIN_SCORE_CHANGE_FOR_REPEAT_ALERT",
+                "SIGNAL_MIN_CONFIDENCE_FOR_ALERT"
+            ]:
+                return default
+            return val
+
         return SignalAlertPolicy(
-            dedupe_enabled=getattr(settings, "SIGNAL_ALERT_DEDUPE_ENABLED", True),
-            cooldown_minutes=getattr(settings, "SIGNAL_ALERT_COOLDOWN_MINUTES", 240),
-            validity_minutes=getattr(settings, "SIGNAL_VALIDITY_MINUTES", 1440),
-            min_score_change_for_repeat_alert=getattr(settings, "SIGNAL_MIN_SCORE_CHANGE_FOR_REPEAT_ALERT", 7.5),
-            min_confidence_for_alert=getattr(settings, "SIGNAL_MIN_CONFIDENCE_FOR_ALERT", 45.0),
-            max_alerts_per_signal=getattr(settings, "SIGNAL_MAX_ALERTS_PER_SIGNAL", 3),
+            dedupe_enabled=safe_get("SIGNAL_ALERT_DEDUPE_ENABLED", True),
+            cooldown_minutes=safe_get("SIGNAL_ALERT_COOLDOWN_MINUTES", 240),
+            validity_minutes=safe_get("SIGNAL_VALIDITY_MINUTES", 1440),
+            min_score_change_for_repeat_alert=safe_get("SIGNAL_MIN_SCORE_CHANGE_FOR_REPEAT_ALERT", 7.5),
+            min_confidence_for_alert=safe_get("SIGNAL_MIN_CONFIDENCE_FOR_ALERT", 45.0),
+            max_alerts_per_signal=safe_get("SIGNAL_MAX_ALERTS_PER_SIGNAL", 3),
             digest_only_below_priority=digest_only_priority,
-            mute_low_agreement=getattr(settings, "SIGNAL_MUTE_LOW_AGREEMENT", True),
-            mute_high_conflict=getattr(settings, "SIGNAL_MUTE_HIGH_CONFLICT", True),
-            allow_critical_repeat=getattr(settings, "SIGNAL_ALLOW_CRITICAL_REPEAT_ALERT", True)
+            mute_low_agreement=safe_get("SIGNAL_MUTE_LOW_AGREEMENT", True),
+            mute_high_conflict=safe_get("SIGNAL_MUTE_HIGH_CONFLICT", True),
+            allow_critical_repeat=safe_get("SIGNAL_ALLOW_CRITICAL_REPEAT_ALERT", True)
         )
 
     def load_alert_policy(self, path: Optional[Path] = None) -> SignalAlertPolicy:
