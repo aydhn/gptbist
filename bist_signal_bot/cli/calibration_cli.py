@@ -69,118 +69,135 @@ def setup_calibration_parser(subparsers):
     cfg = sub.add_parser("config", help="Show calibration config")
     cfg.add_argument("--json", action="store_true")
 
+
+def _handle_build_outcomes(args, settings):
+    builder = create_outcome_dataset_builder(settings)
+    records = builder.build_dataset(strategy_name=args.strategy, symbol=args.symbol)
+    if args.json:
+        print(json.dumps({"count": len(records), "status": "success"}))
+    else:
+        print(f"Built {len(records)} outcomes.")
+
+def _handle_evaluate(args, settings):
+    store = create_calibration_store(settings)
+    records = store.load_outcomes(strategy_name=args.strategy)
+    calibrator = create_signal_calibrator(settings)
+    score_type = CalibrationScoreType(args.score_type.upper())
+    result = calibrator.evaluate(records, score_type, OutcomeHorizon.FIVE_DAYS)
+    if args.json:
+        print(json.dumps(calibration_result_to_dict(result), indent=2))
+    else:
+        print(format_calibration_result_text(result))
+
+def _handle_fit(args, settings):
+    store = create_calibration_store(settings)
+    records = store.load_outcomes()
+    calibrator = create_signal_calibrator(settings)
+    score_type = CalibrationScoreType(args.score_type.upper())
+    mapping = calibrator.fit(records, score_type, method=args.method)
+    if args.json:
+        print(json.dumps(mapping.model_dump(), default=str, indent=2))
+    else:
+        print(f"Mapping ID: {mapping.mapping_id}, Status: {mapping.status.value}")
+
+def _handle_bins(args, settings):
+    store = create_calibration_store(settings)
+    records = store.load_outcomes(strategy_name=args.strategy)
+    builder = create_calibration_bin_builder(settings)
+    score_type = CalibrationScoreType(args.score_type.upper())
+    bins = builder.build_bins(records, score_type)
+    if args.json:
+        print(json.dumps([b.model_dump() for b in bins], default=str, indent=2))
+    else:
+        for b in bins:
+            print(f"{b.lower_bound}-{b.upper_bound}: {b.sample_count} samples")
+
+def _handle_thresholds(args, settings):
+    store = create_calibration_store(settings)
+    records = store.load_outcomes(strategy_name=args.strategy)
+    tuner = create_threshold_tuner(settings)
+    score_type = CalibrationScoreType(args.score_type.upper())
+    result = tuner.optimize_threshold(records, score_type, OutcomeHorizon.FIVE_DAYS, objective=args.objective)
+    if args.json:
+        print(json.dumps(threshold_result_to_dict(result), indent=2))
+    else:
+        print(format_threshold_result_text(result))
+
+def _handle_cohorts(args, settings):
+    store = create_calibration_store(settings)
+    records = store.load_outcomes()
+    analyzer = create_outcome_cohort_analyzer(settings)
+    score_type = CalibrationScoreType(args.score_type.upper())
+    if args.by:
+        cohorts = analyzer.cohort_by_field(records, args.by, score_type)
+    else:
+        cohorts = analyzer.analyze_cohorts(records, score_type)
+    if args.json:
+        print(json.dumps([cohort_to_dict(c) for c in cohorts], indent=2))
+    else:
+        print(format_cohorts_text(cohorts))
+
+def _handle_errors(args, settings):
+    store = create_calibration_store(settings)
+    records = store.load_outcomes(strategy_name=args.strategy, symbol=args.symbol)
+    builder = create_error_taxonomy_builder(settings)
+    errors = builder.classify_errors(records, CalibrationScoreType.SIGNAL_CONFIDENCE)
+    if args.json:
+        print(json.dumps([error_case_to_dict(e) for e in errors], indent=2))
+    else:
+        print(format_error_cases_text(errors))
+
+def _handle_report(args, settings):
+    from bist_signal_bot.calibration.models import CalibrationReport, CalibrationStatus
+    from datetime import datetime, UTC
+    import uuid
+
+    report = CalibrationReport(
+        report_id=str(uuid.uuid4()),
+        generated_at=datetime.now(UTC),
+        overall_status=CalibrationStatus.PASS
+    )
+    if args.json:
+        print(json.dumps(calibration_report_to_dict(report), indent=2))
+    else:
+        print(format_calibration_report_markdown(report))
+
+def _handle_recent(args, settings):
+    store = create_calibration_store(settings)
+    res = store.load_latest_calibration()
+    out = {"status": "success", "results": [res.model_dump() if res else None]}
+    if args.json:
+        print(json.dumps(out, default=str, indent=2))
+    else:
+        print(f"Recent Result: {res.calibration_id if res else 'None'}")
+
+def _handle_config(args, settings):
+    keys = [k for k in dir(settings) if k.startswith("CALIBRATION_")]
+    conf = {k: getattr(settings, k) for k in keys}
+    if args.json:
+        print(json.dumps(conf, indent=2))
+    else:
+        for k, v in conf.items():
+            print(f"{k} = {v}")
+
 def handle_calibration_command(args, ctx):
     settings = ctx.settings if hasattr(ctx, 'settings') else Settings()
     cmd = args.calib_cmd
 
-    if cmd == "build-outcomes":
-        builder = create_outcome_dataset_builder(settings)
-        records = builder.build_dataset(strategy_name=args.strategy, symbol=args.symbol)
-        if args.json:
-            print(json.dumps({"count": len(records), "status": "success"}))
-        else:
-            print(f"Built {len(records)} outcomes.")
+    handlers = {
+        "build-outcomes": _handle_build_outcomes,
+        "evaluate": _handle_evaluate,
+        "fit": _handle_fit,
+        "bins": _handle_bins,
+        "thresholds": _handle_thresholds,
+        "cohorts": _handle_cohorts,
+        "errors": _handle_errors,
+        "report": _handle_report,
+        "recent": _handle_recent,
+        "config": _handle_config
+    }
 
-    elif cmd == "evaluate":
-        store = create_calibration_store(settings)
-        records = store.load_outcomes(strategy_name=args.strategy)
-        calibrator = create_signal_calibrator(settings)
-        score_type = CalibrationScoreType(args.score_type.upper())
-        result = calibrator.evaluate(records, score_type, OutcomeHorizon.FIVE_DAYS)
-        if args.json:
-            print(json.dumps(calibration_result_to_dict(result), indent=2))
-        else:
-            print(format_calibration_result_text(result))
-
-    elif cmd == "fit":
-        store = create_calibration_store(settings)
-        records = store.load_outcomes()
-        calibrator = create_signal_calibrator(settings)
-        score_type = CalibrationScoreType(args.score_type.upper())
-        mapping = calibrator.fit(records, score_type, method=args.method)
-        if args.json:
-            print(json.dumps(mapping.model_dump(), default=str, indent=2))
-        else:
-            print(f"Mapping ID: {mapping.mapping_id}, Status: {mapping.status.value}")
-
-    elif cmd == "bins":
-        store = create_calibration_store(settings)
-        records = store.load_outcomes(strategy_name=args.strategy)
-        builder = create_calibration_bin_builder(settings)
-        score_type = CalibrationScoreType(args.score_type.upper())
-        bins = builder.build_bins(records, score_type)
-        if args.json:
-            print(json.dumps([b.model_dump() for b in bins], default=str, indent=2))
-        else:
-            for b in bins:
-                print(f"{b.lower_bound}-{b.upper_bound}: {b.sample_count} samples")
-
-    elif cmd == "thresholds":
-        store = create_calibration_store(settings)
-        records = store.load_outcomes(strategy_name=args.strategy)
-        tuner = create_threshold_tuner(settings)
-        score_type = CalibrationScoreType(args.score_type.upper())
-        result = tuner.optimize_threshold(records, score_type, OutcomeHorizon.FIVE_DAYS, objective=args.objective)
-        if args.json:
-            print(json.dumps(threshold_result_to_dict(result), indent=2))
-        else:
-            print(format_threshold_result_text(result))
-
-    elif cmd == "cohorts":
-        store = create_calibration_store(settings)
-        records = store.load_outcomes()
-        analyzer = create_outcome_cohort_analyzer(settings)
-        score_type = CalibrationScoreType(args.score_type.upper())
-        if args.by:
-            cohorts = analyzer.cohort_by_field(records, args.by, score_type)
-        else:
-            cohorts = analyzer.analyze_cohorts(records, score_type)
-        if args.json:
-            print(json.dumps([cohort_to_dict(c) for c in cohorts], indent=2))
-        else:
-            print(format_cohorts_text(cohorts))
-
-    elif cmd == "errors":
-        store = create_calibration_store(settings)
-        records = store.load_outcomes(strategy_name=args.strategy, symbol=args.symbol)
-        builder = create_error_taxonomy_builder(settings)
-        errors = builder.classify_errors(records, CalibrationScoreType.SIGNAL_CONFIDENCE)
-        if args.json:
-            print(json.dumps([error_case_to_dict(e) for e in errors], indent=2))
-        else:
-            print(format_error_cases_text(errors))
-
-    elif cmd == "report":
-        from bist_signal_bot.calibration.models import CalibrationReport, CalibrationStatus
-        from datetime import datetime, UTC
-        import uuid
-
-        report = CalibrationReport(
-            report_id=str(uuid.uuid4()),
-            generated_at=datetime.now(UTC),
-            overall_status=CalibrationStatus.PASS
-        )
-        if args.json:
-            print(json.dumps(calibration_report_to_dict(report), indent=2))
-        else:
-            print(format_calibration_report_markdown(report))
-
-    elif cmd == "recent":
-        store = create_calibration_store(settings)
-        res = store.load_latest_calibration()
-        out = {"status": "success", "results": [res.model_dump() if res else None]}
-        if args.json:
-            print(json.dumps(out, default=str, indent=2))
-        else:
-            print(f"Recent Result: {res.calibration_id if res else 'None'}")
-
-    elif cmd == "config":
-        keys = [k for k in dir(settings) if k.startswith("CALIBRATION_")]
-        conf = {k: getattr(settings, k) for k in keys}
-        if args.json:
-            print(json.dumps(conf, indent=2))
-        else:
-            for k, v in conf.items():
-                print(f"{k} = {v}")
+    if cmd in handlers:
+        handlers[cmd](args, settings)
 
     return 0
