@@ -206,3 +206,40 @@ def test_regime_feature_set_model_post_init():
     )
 
     assert feature_set.symbol == "AAPL"
+
+def test_regime_classification_summary_no_timestamp():
+    feature_set = RegimeFeatureSet(
+        symbol="AAPL",
+        trend_score=80.0,
+        volatility_score=20.0,
+        liquidity_score=90.0,
+        momentum_score=70.0,
+        range_score=30.0,
+        breakout_score=60.0,
+        composite_regime_score=75.0
+    )
+
+    classification = RegimeClassification(
+        symbol="AAPL",
+        timestamp=None,
+        trend_regime=TrendRegime.UPTREND,
+        volatility_regime=VolatilityRegime.LOW,
+        liquidity_regime=LiquidityRegime.STRONG,
+        momentum_regime=MomentumRegime.POSITIVE,
+        market_regime=MarketRegime.RISK_ON,
+        regime_score=85.123,
+        confidence=90.456,
+        feature_set=feature_set
+    )
+
+    summary = classification.summary()
+
+    assert summary["symbol"] == "AAPL"
+    assert summary["timestamp"] is None
+    assert summary["market_regime"] == "RISK_ON"
+    assert summary["trend_regime"] == "UPTREND"
+    assert summary["volatility_regime"] == "LOW"
+    assert summary["liquidity_regime"] == "STRONG"
+    assert summary["momentum_regime"] == "POSITIVE"
+    assert summary["regime_score"] == 85.12
+    assert summary["confidence"] == 90.46
