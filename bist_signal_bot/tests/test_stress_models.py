@@ -15,7 +15,7 @@ def test_return_series_validation():
     assert 0.02 in rs.returns
     assert 'Cleaned 2 invalid returns (NaN/inf).' in rs.warnings
 
-def test_monte_carlo_config_validation():
+def test_monte_carlo_config_validation_simulations():
     with pytest.raises(ValueError, match="must be positive"):
         MonteCarloConfig(
             method=MonteCarloMethod.BOOTSTRAP,
@@ -95,4 +95,35 @@ def test_stress_test_request_invalid_ruin_threshold():
             input_type=StressInputType.CUSTOM_RETURNS,
             monte_carlo_config=mc_config,
             ruin_threshold_pct=101.0
+        )
+
+def test_monte_carlo_config_validation_horizon_days():
+    with pytest.raises(ValueError, match="horizon_days must be positive"):
+        MonteCarloConfig(
+            method=MonteCarloMethod.BOOTSTRAP,
+            simulations=10,
+            horizon_days=0,
+            seed=42,
+            initial_value=100000.0
+        )
+
+def test_monte_carlo_config_validation_initial_value():
+    with pytest.raises(ValueError, match="initial_value must be positive"):
+        MonteCarloConfig(
+            method=MonteCarloMethod.BOOTSTRAP,
+            simulations=10,
+            horizon_days=30,
+            seed=42,
+            initial_value=-100.0
+        )
+
+def test_monte_carlo_config_validation_block_size():
+    with pytest.raises(ValueError, match="block_size must be positive if provided"):
+        MonteCarloConfig(
+            method=MonteCarloMethod.BOOTSTRAP,
+            simulations=10,
+            horizon_days=30,
+            seed=42,
+            initial_value=100000.0,
+            block_size=0
         )
