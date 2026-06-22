@@ -19,6 +19,15 @@ class MockDataService:
             return SimpleNamespace(data=pd.DataFrame())
         return SimpleNamespace(data=pd.DataFrame({'close': [100, 101, 102]}))
 
+    def get_many_ohlcv(self, symbols, **kwargs):
+        results = {}
+        for symbol in symbols:
+            if symbol == "BADDATA":
+                results[symbol] = SimpleNamespace(data=pd.DataFrame())
+            else:
+                results[symbol] = SimpleNamespace(data=pd.DataFrame({'close': [100, 101, 102]}))
+        return results
+
 class MockStrategyEngine:
     def run_strategy_on_data(self, strategy_name, symbol, data, **kwargs):
         if symbol == "ERRORSTRAT":

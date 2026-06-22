@@ -105,29 +105,32 @@ class SignalScannerEngine:
 
         return unique_symbols
 
-    def scan_symbol(self, symbol: str, request: ScanRequest) -> SymbolScanResult:
+    def scan_symbol(self, symbol: str, request: ScanRequest, pre_fetched_data: Optional[Any] = None) -> SymbolScanResult:
         start_time = time.time()
         issues = []
 
         try:
             # 1. Fetch data
             timeframe = Timeframe(request.timeframe)
-            if request.source in {"local", "local_file"}:
-                store = getattr(self.data_service, "store", None)
-                provider = getattr(self.data_service, "provider", None)
-                vendor = getattr(provider, "vendor", None)
-                if store is None or vendor is None or not store.exists(symbol, vendor, timeframe):
-                    raise ScannerExecutionError(
-                        f"No local data found for {symbol} ({timeframe.value}); network fallback is disabled."
-                    )
+            if pre_fetched_data is not None:
+                market_data = pre_fetched_data
+            else:
+                if request.source in {"local", "local_file"}:
+                    store = getattr(self.data_service, "store", None)
+                    provider = getattr(self.data_service, "provider", None)
+                    vendor = getattr(provider, "vendor", None)
+                    if store is None or vendor is None or not store.exists(symbol, vendor, timeframe):
+                        raise ScannerExecutionError(
+                            f"No local data found for {symbol} ({timeframe.value}); network fallback is disabled."
+                        )
 
-            market_data = self.data_service.get_ohlcv(
-                symbol,
-                timeframe=timeframe,
-                refresh=False,
-                save=False,
-                allow_provider_fallback=request.source not in {"local", "local_file"},
-            )
+                market_data = self.data_service.get_ohlcv(
+                    symbol,
+                    timeframe=timeframe,
+                    refresh=False,
+                    save=False,
+                    allow_provider_fallback=request.source not in {"local", "local_file"},
+                )
             data = getattr(market_data, "data", market_data)
             if request.rows:
                 data = data.tail(request.rows)
@@ -239,8 +242,38 @@ class SignalScannerEngine:
         results = []
         issues = []
 
+        # Batch fetch data for all symbols
+        timeframe = Timeframe(request.timeframe)
+        allow_network = request.source not in {"local", "local_file"}
+        batch_data = {}
+        try:
+            batch_data = self.data_service.get_many_ohlcv(
+                symbols=symbols,
+                timeframe=timeframe,
+                refresh=False,
+                save=False,
+                allow_provider_fallback=allow_network
+            )
+        except Exception as e:
+            self.logger.warning(f"Batch fetch failed, falling back to sequential: {e}")
+
         for sym in symbols:
-            res = self.scan_symbol(sym, request)
+            pre_fetched = None
+            if isinstance(batch_data, dict) and batch_data:
+                pre_fetched = batch_data.get(sym)
+                if pre_fetched is None:
+                    from bist_signal_bot.data.models import MarketDataFrame, DataVendor
+                    import datetime as dt_mod
+                    source_val = request.source.upper() if request.source.upper() in [v.value for v in DataVendor] else DataVendor.UNKNOWN
+                    pre_fetched = MarketDataFrame(symbol=sym, timeframe=timeframe, source=source_val, data=None, fetched_at=dt_mod.datetime.utcnow())
+            elif isinstance(batch_data, dict) and len(batch_data) == 0:
+                # If batch fetch successfully returned an empty dict, all symbols failed
+                from bist_signal_bot.data.models import MarketDataFrame, DataVendor
+                import datetime as dt_mod
+                source_val = request.source.upper() if request.source.upper() in [v.value for v in DataVendor] else DataVendor.UNKNOWN
+                pre_fetched = MarketDataFrame(symbol=sym, timeframe=timeframe, source=source_val, data=None, fetched_at=dt_mod.datetime.utcnow())
+
+            res = self.scan_symbol(sym, request, pre_fetched_data=pre_fetched)
             results.append(res)
             issues.extend(res.issues)
 
