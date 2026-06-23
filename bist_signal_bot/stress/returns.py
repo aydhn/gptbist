@@ -1,4 +1,3 @@
-import uuid
 import math
 import numpy as np
 import pandas as pd
@@ -14,7 +13,6 @@ class ReturnSeriesBuilder:
         if df.empty:
             warnings.append("DataFrame is empty.")
             return ReturnSeries(
-                series_id=str(uuid.uuid4()),
                 symbol=symbol,
                 source_type=source_type,
                 returns=[],
@@ -25,7 +23,6 @@ class ReturnSeriesBuilder:
         if "Close" not in df.columns:
             warnings.append("Close column not found in DataFrame.")
             return ReturnSeries(
-                series_id=str(uuid.uuid4()),
                 symbol=symbol,
                 source_type=source_type,
                 returns=[],
@@ -50,7 +47,6 @@ class ReturnSeriesBuilder:
         end_dt = end_date.to_pydatetime() if end_date else None
 
         return ReturnSeries(
-            series_id=str(uuid.uuid4()),
             symbol=symbol,
             source_type=source_type,
             returns=ReturnSeriesBuilder.clean_returns(returns),
@@ -74,7 +70,6 @@ class ReturnSeriesBuilder:
         if not weights:
             warnings.append("No items/weights found in snapshot.")
             return ReturnSeries(
-                series_id=str(uuid.uuid4()),
                 source_type=StressInputType.PORTFOLIO_RESEARCH_SNAPSHOT,
                 returns=[],
                 frequency="1D",
@@ -103,7 +98,6 @@ class ReturnSeriesBuilder:
             warnings.append("No common index found across symbols.")
 
         return ReturnSeries(
-            series_id=str(uuid.uuid4()),
             source_type=StressInputType.PORTFOLIO_RESEARCH_SNAPSHOT,
             returns=ReturnSeriesBuilder.clean_returns(returns_list),
             frequency="1D",
@@ -117,7 +111,6 @@ class ReturnSeriesBuilder:
         if not returns:
             warnings.append("No daily returns found in basket simulation.")
         return ReturnSeries(
-            series_id=str(uuid.uuid4()),
             source_type=StressInputType.BASKET_SIMULATION,
             returns=ReturnSeriesBuilder.clean_returns(returns),
             frequency="1D",
@@ -139,7 +132,6 @@ class ReturnSeriesBuilder:
             warnings.append("No equity_curve found in backtest result.")
 
         return ReturnSeries(
-            series_id=str(uuid.uuid4()),
             source_type=StressInputType.BACKTEST_EQUITY_CURVE,
             returns=ReturnSeriesBuilder.clean_returns(returns),
             frequency="1D",
@@ -150,7 +142,6 @@ class ReturnSeriesBuilder:
     def from_paper_ledger(ledger: Any) -> ReturnSeries:
         warnings = ["Paper ledger conversion not fully implemented; returning mock empty series."]
         return ReturnSeries(
-            series_id=str(uuid.uuid4()),
             source_type=StressInputType.PAPER_LEDGER,
             returns=[],
             frequency="1D",

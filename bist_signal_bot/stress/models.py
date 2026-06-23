@@ -44,7 +44,7 @@ class StressSeverity(str, Enum):
     EXTREME = "EXTREME"
 
 class ReturnSeries(BaseModel):
-    series_id: str = Field(..., description="Unique identifier for the return series")
+    series_id: str = Field(default_factory=lambda: str(uuid.uuid4()), description="Unique identifier for the return series")
     symbol: str | None = Field(None, description="Optional symbol if specific to one asset")
     source_type: StressInputType = Field(..., description="The source of the returns data")
     returns: list[float] = Field(default_factory=list, description="List of periodic returns")
