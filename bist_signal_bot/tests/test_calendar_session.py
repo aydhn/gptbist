@@ -134,6 +134,17 @@ def test_is_market_open(mock_ensure_tz, session_service, mock_calendar):
     assert session_service.is_market_open(now_closed) is False
 
 
+@patch("bist_signal_bot.calendar.session.istanbul_now")
+def test_is_market_open_no_now(mock_istanbul_now, session_service, mock_calendar):
+    now = datetime(2023, 10, 2, 14, 0, tzinfo=timezone.utc)
+    mock_istanbul_now.return_value = now
+
+    mock_calendar.market_open_datetime.return_value = datetime(2023, 10, 2, 10, 0, tzinfo=timezone.utc)
+    mock_calendar.market_close_datetime.return_value = datetime(2023, 10, 2, 18, 0, tzinfo=timezone.utc)
+
+    assert session_service.is_market_open() is True
+
+
 @patch("bist_signal_bot.calendar.session.ensure_istanbul_timezone")
 def test_should_generate_intraday_signal(mock_ensure_tz, session_service, mock_calendar):
     now = datetime(2023, 10, 2, 14, 0, tzinfo=timezone.utc)
