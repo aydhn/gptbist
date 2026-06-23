@@ -295,3 +295,20 @@ def test_should_generate_daily_signal_no_market_close(mock_ensure_tz, session_se
     mock_calendar.market_close_datetime.return_value = None
 
     assert session_service.should_generate_daily_signal(now) is False
+
+@patch("bist_signal_bot.calendar.session.ensure_istanbul_timezone")
+def test_get_status_closed_other_reason(mock_ensure_tz, session_service, mock_calendar):
+    now = datetime(2023, 11, 1, 12, 0, tzinfo=timezone.utc)
+    mock_ensure_tz.return_value = now
+
+    mock_calendar.is_trading_day.return_value = False
+    mock_calendar.get_day_type.return_value = MarketDayType.UNKNOWN
+    mock_calendar.market_open_datetime.return_value = None
+    mock_calendar.market_close_datetime.return_value = None
+
+    status = session_service.get_status(now)
+
+    assert status.session_type == MarketSessionType.CLOSED
+    assert status.is_market_open is False
+    assert status.is_trading_day is False
+    assert status.message == "Market is closed."
