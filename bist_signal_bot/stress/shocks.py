@@ -1,5 +1,12 @@
 import uuid
-from typing import Any
+from typing import Protocol
+
+class SnapshotItem(Protocol):
+    symbol: str
+
+class SnapshotProtocol(Protocol):
+    items: list[SnapshotItem]
+
 
 from bist_signal_bot.stress.models import (
     StressScenario,
@@ -65,7 +72,7 @@ class ShockScenarioEngine:
             )
         ]
 
-    def apply_scenario(self, snapshot: Any, scenario: StressScenario) -> ShockScenarioResult:
+    def apply_scenario(self, snapshot: SnapshotProtocol, scenario: StressScenario) -> ShockScenarioResult:
         warnings = []
         status = StressStatus.PASS
         item_impacts = {}
@@ -115,7 +122,7 @@ class ShockScenarioEngine:
             warnings=warnings
         )
 
-    def apply_market_shock(self, items: list[Any], shock_pct: float) -> dict[str, float]:
+    def apply_market_shock(self, items: list[SnapshotItem], shock_pct: float) -> dict[str, float]:
         impacts = {}
         for item in items:
             # Simplified beta approach: assume beta=1 if not present
@@ -123,7 +130,7 @@ class ShockScenarioEngine:
             impacts[item.symbol] = shock_pct * beta
         return impacts
 
-    def apply_sector_shocks(self, items: list[Any], sector_shocks: dict[str, float]) -> dict[str, float]:
+    def apply_sector_shocks(self, items: list[SnapshotItem], sector_shocks: dict[str, float]) -> dict[str, float]:
         impacts = {}
         for item in items:
             sector = getattr(item, "sector", None)
@@ -133,7 +140,7 @@ class ShockScenarioEngine:
                 impacts[item.symbol] = 0.0
         return impacts
 
-    def apply_symbol_shocks(self, items: list[Any], symbol_shocks: dict[str, float]) -> dict[str, float]:
+    def apply_symbol_shocks(self, items: list[SnapshotItem], symbol_shocks: dict[str, float]) -> dict[str, float]:
         impacts = {}
         for item in items:
             if item.symbol in symbol_shocks:
