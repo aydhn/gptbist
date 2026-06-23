@@ -359,3 +359,24 @@ def test_should_generate_daily_signal_no_now_before_target(mock_istanbul_now, se
     mock_calendar.market_open_datetime.return_value = datetime(2023, 10, 2, 10, 0, tzinfo=timezone.utc)
     mock_calendar.market_close_datetime.return_value = datetime(2023, 10, 2, 18, 0, tzinfo=timezone.utc)
     assert session_service.should_generate_daily_signal() is False
+
+@patch("bist_signal_bot.calendar.session.istanbul_now")
+def test_should_generate_intraday_signal_no_now(mock_istanbul_now, session_service, mock_calendar):
+    now = datetime(2023, 10, 2, 14, 0, tzinfo=timezone.utc)
+    mock_istanbul_now.return_value = now
+
+    mock_calendar.market_open_datetime.return_value = datetime(2023, 10, 2, 10, 0, tzinfo=timezone.utc)
+    mock_calendar.market_close_datetime.return_value = datetime(2023, 10, 2, 18, 0, tzinfo=timezone.utc)
+
+    # Enabled and open
+    assert session_service.should_generate_intraday_signal() is True
+
+    # Disabled
+    session_service.intraday_signal_enabled = False
+    assert session_service.should_generate_intraday_signal() is False
+
+    # Enabled but closed
+    session_service.intraday_signal_enabled = True
+    now_closed = datetime(2023, 10, 2, 9, 0, tzinfo=timezone.utc)
+    mock_istanbul_now.return_value = now_closed
+    assert session_service.should_generate_intraday_signal() is False
