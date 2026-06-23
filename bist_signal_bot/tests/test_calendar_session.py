@@ -380,3 +380,20 @@ def test_should_generate_intraday_signal_no_now(mock_istanbul_now, session_servi
     now_closed = datetime(2023, 10, 2, 9, 0, tzinfo=timezone.utc)
     mock_istanbul_now.return_value = now_closed
     assert session_service.should_generate_intraday_signal() is False
+
+@patch("bist_signal_bot.calendar.session.BistMarketCalendar")
+def test_from_settings_defaults(mock_calendar_class):
+    from bist_signal_bot.config.settings import Settings
+
+    mock_calendar_instance = Mock()
+    mock_calendar_class.from_settings.return_value = mock_calendar_instance
+
+    settings = Settings()
+
+    service = BistMarketSessionService.from_settings(settings)
+
+    mock_calendar_class.from_settings.assert_called_once_with(settings)
+    assert service.calendar == mock_calendar_instance
+    assert service.signal_after_close_minutes == 15
+    assert service.intraday_signal_enabled is False
+    assert service.daily_signal_enabled is True
