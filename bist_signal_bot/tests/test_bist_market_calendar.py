@@ -1,6 +1,6 @@
 import pytest
 from datetime import date
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 from bist_signal_bot.calendar.market_calendar import BistMarketCalendar
 from bist_signal_bot.config.settings import Settings
@@ -38,3 +38,61 @@ def test_bist_market_calendar_from_settings_empty_holidays():
     assert cal.regular_open == "09:30"
     assert cal.regular_close == "16:00"
     assert len(cal.manual_holidays) == 0
+
+def test_market_close_datetime_trading_day():
+    """Test market_close_datetime returns correct datetime for a trading day."""
+    cal = BistMarketCalendar(
+        timezone_name="Europe/Istanbul",
+        regular_close="18:00"
+    )
+    # A known trading day (assuming it's not a manual holiday)
+    # 2024-01-02 was a Tuesday
+    d = date(2024, 1, 2)
+    with patch("bist_signal_bot.core.time_utils.get_settings") as mock_settings:
+        mock_settings.return_value.MARKET_TIMEZONE = "Europe/Istanbul"
+        dt = cal.market_close_datetime(d)
+    assert dt is not None
+    assert dt.year == 2024
+    assert dt.month == 1
+    assert dt.day == 2
+    assert dt.hour == 18
+    assert dt.minute == 0
+    assert dt.tzinfo is not None
+
+def test_market_close_datetime_non_trading_day():
+    """Test market_close_datetime returns None for a non-trading day."""
+    cal = BistMarketCalendar(
+        manual_holidays={date(2024, 1, 1)}
+    )
+    # Weekend
+    assert cal.market_close_datetime(date(2024, 1, 6)) is None
+    # Holiday
+    assert cal.market_close_datetime(date(2024, 1, 1)) is None
+
+def test_market_open_datetime_trading_day():
+    """Test market_open_datetime returns correct datetime for a trading day."""
+    cal = BistMarketCalendar(
+        timezone_name="Europe/Istanbul",
+        regular_open="10:00"
+    )
+    d = date(2024, 1, 2)
+    with patch("bist_signal_bot.core.time_utils.get_settings") as mock_settings:
+        mock_settings.return_value.MARKET_TIMEZONE = "Europe/Istanbul"
+        dt = cal.market_open_datetime(d)
+    assert dt is not None
+    assert dt.year == 2024
+    assert dt.month == 1
+    assert dt.day == 2
+    assert dt.hour == 10
+    assert dt.minute == 0
+    assert dt.tzinfo is not None
+
+def test_market_open_datetime_non_trading_day():
+    """Test market_open_datetime returns None for a non-trading day."""
+    cal = BistMarketCalendar(
+        manual_holidays={date(2024, 1, 1)}
+    )
+    # Weekend
+    assert cal.market_open_datetime(date(2024, 1, 6)) is None
+    # Holiday
+    assert cal.market_open_datetime(date(2024, 1, 1)) is None
