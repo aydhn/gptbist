@@ -227,6 +227,24 @@ class SignalScannerEngine:
                 elapsed_seconds=time.time() - start_time
             )
 
+    def _apply_portfolio_decisions(self, results: List["SymbolScanResult"], portfolio_decision: Any) -> None:
+        if not portfolio_decision or not hasattr(portfolio_decision, "allocations") or not portfolio_decision.allocations:
+            return
+
+        alloc_map = {alloc.signal: alloc for alloc in portfolio_decision.allocations}
+        for res in results:
+            if not res.signal:
+                continue
+
+            alloc = alloc_map.get(res.signal)
+            if not alloc:
+                continue
+
+            res.portfolio_status = alloc.status.value
+            if alloc.status.value in ["REJECTED", "REDUCED"] and res.status == ScanCandidateStatus.PASSED:
+                # Keep PASSED but note portfolio status, or change status. Let's keep PASSED and add reason.
+                res.reasons.append(f"Portfolio Engine: {alloc.status.value}")
+
     def scan(self, request: ScanRequest) -> ScanReport:
         if self.kill_switch.is_active(KillSwitchScope.SCANNER):
             self.logger.warning("SCANNER kill switch is active. Scan aborted.")
@@ -295,15 +313,7 @@ class SignalScannerEngine:
                 try:
                     portfolio_decision = self.portfolio_risk_engine.evaluate_portfolio_signals(valid_signals, p_state)
                     # Update metadata with portfolio status
-                    for res in results:
-                        if res.signal:
-                            for alloc in portfolio_decision.allocations:
-                                if alloc.signal == res.signal:
-                                    res.portfolio_status = alloc.status.value
-                                    if alloc.status.value in ["REJECTED", "REDUCED"]:
-                                        if res.status == ScanCandidateStatus.PASSED:
-                                             # Keep PASSED but note portfolio status, or change status. Let's keep PASSED and add reason.
-                                             res.reasons.append(f"Portfolio Engine: {alloc.status.value}")
+                    self._apply_portfolio_decisions(results, portfolio_decision)
                 except Exception as e:
                     self.logger.error(f"Portfolio risk failed: {e}")
                     issues.append(SymbolScanIssue(stage="PORTFOLIO", message=str(e)))
