@@ -96,3 +96,47 @@ def test_market_open_datetime_non_trading_day():
     assert cal.market_open_datetime(date(2024, 1, 6)) is None
     # Holiday
     assert cal.market_open_datetime(date(2024, 1, 1)) is None
+
+from bist_signal_bot.core.exceptions import MarketCalendarError
+
+def test_trading_days_between_normal():
+    """Test trading_days_between returns correct trading days."""
+    cal = BistMarketCalendar(
+        manual_holidays={date(2024, 1, 1)}
+    )
+    # Start: 2023-12-29 (Friday)
+    # 2023-12-30 (Saturday, Weekend)
+    # 2023-12-31 (Sunday, Weekend)
+    # 2024-01-01 (Monday, Holiday)
+    # 2024-01-02 (Tuesday, Trading day)
+    # 2024-01-03 (Wednesday, Trading day)
+    start = date(2023, 12, 29)
+    end = date(2024, 1, 3)
+
+    days = cal.trading_days_between(start, end)
+
+    assert len(days) == 3
+    assert days[0] == date(2023, 12, 29)
+    assert days[1] == date(2024, 1, 2)
+    assert days[2] == date(2024, 1, 3)
+
+def test_trading_days_between_invalid_dates():
+    """Test trading_days_between raises MarketCalendarError when start > end."""
+    cal = BistMarketCalendar()
+    with pytest.raises(MarketCalendarError, match="Start date cannot be after end date."):
+        cal.trading_days_between(date(2024, 1, 3), date(2024, 1, 1))
+
+def test_trading_days_between_single_trading_day():
+    """Test trading_days_between returns a single day when start and end are the same trading day."""
+    cal = BistMarketCalendar()
+    d = date(2024, 1, 2) # Tuesday
+    days = cal.trading_days_between(d, d)
+    assert len(days) == 1
+    assert days[0] == d
+
+def test_trading_days_between_single_non_trading_day():
+    """Test trading_days_between returns empty list when start and end are the same non-trading day."""
+    cal = BistMarketCalendar()
+    d = date(2024, 1, 6) # Saturday
+    days = cal.trading_days_between(d, d)
+    assert len(days) == 0
