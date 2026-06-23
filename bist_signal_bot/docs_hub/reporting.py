@@ -68,14 +68,22 @@ def format_coverage_text(result: DocsCoverageResult) -> str:
 def format_handoff_text(manifest: MVPHandoffManifest) -> str:
     return f"MVP Handoff QA Status: {manifest.qa_status}"
 
-def format_docs_hub_report_markdown(report: DocsHubReport) -> str:
-    lines = [
+def _format_report_header(report: DocsHubReport) -> list[str]:
+    return [
         f"# Documentation Hub Report ({report.generated_at})",
         "",
         "## Key Findings"
     ]
-    for finding in report.key_findings:
-        lines.append(f"- {finding}")
 
-    lines.extend(["", "---", f"_{report.disclaimer}_"])
+def _format_key_findings(findings: list[str]) -> list[str]:
+    return [f"- {finding}" for finding in findings]
+
+def _format_disclaimer(disclaimer: str) -> list[str]:
+    return ["", "---", f"_{disclaimer}_"]
+
+def format_docs_hub_report_markdown(report: DocsHubReport) -> str:
+    lines = []
+    lines.extend(_format_report_header(report))
+    lines.extend(_format_key_findings(report.key_findings))
+    lines.extend(_format_disclaimer(report.disclaimer))
     return "\n".join(lines)
