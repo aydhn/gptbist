@@ -38,3 +38,18 @@ def test_bist_market_calendar_from_settings_empty_holidays():
     assert cal.regular_open == "09:30"
     assert cal.regular_close == "16:00"
     assert len(cal.manual_holidays) == 0
+
+def test_bist_market_calendar_is_weekend():
+    """Test is_weekend method correctly identifies weekends."""
+    cal = BistMarketCalendar()
+
+    # Weekdays
+    assert cal.is_weekend(date(2023, 10, 2)) is False # Monday
+    assert cal.is_weekend(date(2023, 10, 3)) is False # Tuesday
+    assert cal.is_weekend(date(2023, 10, 4)) is False # Wednesday
+    assert cal.is_weekend(date(2023, 10, 5)) is False # Thursday
+    assert cal.is_weekend(date(2023, 10, 6)) is False # Friday
+
+    # Weekends
+    assert cal.is_weekend(date(2023, 10, 7)) is True # Saturday
+    assert cal.is_weekend(date(2023, 10, 8)) is True # Sunday
