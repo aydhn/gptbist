@@ -1,4 +1,3 @@
-import uuid
 import numpy as np
 from typing import Any
 
@@ -17,7 +16,6 @@ class DrawdownSimulator:
         if not series.returns:
             warnings.append("Return series is empty.")
             return DrawdownSimulationResult(
-                result_id=str(uuid.uuid4()),
                 status=StressStatus.ERROR,
                 warnings=warnings
             )
@@ -31,7 +29,6 @@ class DrawdownSimulator:
         recovery_days = self.estimate_recovery_days(underwater)
 
         return DrawdownSimulationResult(
-            result_id=str(uuid.uuid4()),
             status=status,
             max_drawdown_pct=max_dd,
             average_drawdown_pct=avg_dd,
