@@ -50,3 +50,64 @@ def test_create_scan_output_dir(tmp_path):
     # Verify it creates the directory on disk
     assert os.path.exists(output_dir)
     assert os.path.isdir(output_dir)
+
+def test_save_csv(tmp_path):
+    from bist_signal_bot.scanner.models import ScanRankingItem, SymbolScanResult, SymbolScanIssue, ScanCandidateStatus
+
+    settings = Settings()
+    store = ScanReportStore(settings, base_dir=tmp_path)
+    req = ScanRequest(strategy_name="test_strat_csv", universe_mode=ScanUniverseMode.SYMBOLS, symbols=["A"])
+    report = ScanReport(
+        request=req,
+        rankings=[ScanRankingItem(symbol="A", rank_score=80.0, rank=1, status="PASSED")],
+        results=[SymbolScanResult(symbol="A", status=ScanCandidateStatus.PASSED, rank=1, rank_score=80.0)],
+        issues=[SymbolScanIssue(symbol="A", stage="Test", message="Some issue")]
+    )
+
+    paths = store.save_csv(report)
+
+    assert "rankings" in paths
+    assert "results" in paths
+    assert "issues" in paths
+    assert os.path.exists(paths["rankings"])
+    assert os.path.exists(paths["results"])
+    assert os.path.exists(paths["issues"])
+
+def test_save_csv_empty(tmp_path):
+    from bist_signal_bot.scanner.models import ScanCandidateStatus
+
+    settings = Settings()
+    store = ScanReportStore(settings, base_dir=tmp_path)
+    req = ScanRequest(strategy_name="test_strat_csv_empty", universe_mode=ScanUniverseMode.SYMBOLS, symbols=["A"])
+    report = ScanReport(
+        request=req,
+        rankings=[],
+        results=[],
+        issues=[]
+    )
+
+    paths = store.save_csv(report)
+
+    assert "rankings" not in paths
+    assert "results" not in paths
+    assert "issues" not in paths
+    assert len(paths) == 0
+
+def test_save_csv_custom_dir(tmp_path):
+    from bist_signal_bot.scanner.models import ScanRankingItem
+
+    settings = Settings()
+    store = ScanReportStore(settings, base_dir=tmp_path)
+    req = ScanRequest(strategy_name="test_strat_csv_custom", universe_mode=ScanUniverseMode.SYMBOLS, symbols=["A"])
+    report = ScanReport(
+        request=req,
+        rankings=[ScanRankingItem(symbol="A", rank_score=80.0, rank=1, status="PASSED")]
+    )
+
+    custom_dir = tmp_path / "custom" / "path"
+    custom_dir.mkdir(parents=True)
+    paths = store.save_csv(report, output_dir=custom_dir)
+
+    assert "rankings" in paths
+    assert paths["rankings"].parent == custom_dir
+    assert os.path.exists(paths["rankings"])
