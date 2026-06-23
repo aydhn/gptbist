@@ -28,10 +28,10 @@ python -m bist_signal_bot.cli.maintenance backup-create --verify
 ### Restore Etmek
 ```bash
 # Restore dry-run (planı gösterir)
-python -m bist_signal_bot.cli.maintenance restore --backup data/maintenance/backups/xxx/backup.zip
+python -m bist_signal_bot.cli.maintenance restore --backup data/maintenance/backups/20240101_120000/backup.zip
 
 # Gerçek restore işlemi
-python -m bist_signal_bot.cli.maintenance restore --backup data/maintenance/backups/xxx/backup.zip --confirm
+python -m bist_signal_bot.cli.maintenance restore --backup data/maintenance/backups/20240101_120000/backup.zip --confirm
 ```
 
 ### Doctor (Sağlık Kontrolü)
