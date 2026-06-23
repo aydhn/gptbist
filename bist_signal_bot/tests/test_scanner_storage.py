@@ -16,3 +16,12 @@ def test_scan_report_store_save(tmp_path):
     assert "markdown" in paths
     assert os.path.exists(paths["json"])
     assert os.path.exists(paths["markdown"])
+
+def test_get_scans_dir(tmp_path):
+    settings = Settings()
+    store = ScanReportStore(settings, base_dir=tmp_path)
+
+    scans_dir = store.get_scans_dir()
+
+    assert scans_dir == tmp_path
+    assert isinstance(scans_dir, type(tmp_path))
