@@ -380,3 +380,34 @@ def test_should_generate_intraday_signal_no_now(mock_istanbul_now, session_servi
     now_closed = datetime(2023, 10, 2, 9, 0, tzinfo=timezone.utc)
     mock_istanbul_now.return_value = now_closed
     assert session_service.should_generate_intraday_signal() is False
+
+@patch.object(BistMarketSessionService, "is_market_open")
+def test_should_generate_intraday_signal_unit(mock_is_market_open, session_service):
+    """
+    Focused unit test for should_generate_intraday_signal testing the exact logic
+    without relying on downstream calendar status calculations.
+    """
+    now = datetime(2023, 10, 2, 14, 0, tzinfo=timezone.utc)
+
+    # Test case 1: intraday_signal_enabled is False -> should return False immediately
+    session_service.intraday_signal_enabled = False
+    assert session_service.should_generate_intraday_signal(now) is False
+    mock_is_market_open.assert_not_called()
+
+    # Test case 2: intraday_signal_enabled is True, is_market_open returns True
+    session_service.intraday_signal_enabled = True
+    mock_is_market_open.return_value = True
+    assert session_service.should_generate_intraday_signal(now) is True
+    mock_is_market_open.assert_called_once_with(now)
+
+    # Test case 3: intraday_signal_enabled is True, is_market_open returns False
+    mock_is_market_open.reset_mock()
+    mock_is_market_open.return_value = False
+    assert session_service.should_generate_intraday_signal(now) is False
+    mock_is_market_open.assert_called_once_with(now)
+
+    # Test case 4: None passed as now argument
+    mock_is_market_open.reset_mock()
+    mock_is_market_open.return_value = True
+    assert session_service.should_generate_intraday_signal(None) is True
+    mock_is_market_open.assert_called_once_with(None)
