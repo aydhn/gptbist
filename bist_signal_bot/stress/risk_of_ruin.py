@@ -1,4 +1,3 @@
-import uuid
 import numpy as np
 
 from bist_signal_bot.stress.models import (
@@ -17,7 +16,6 @@ class RiskOfRuinEstimator:
         if not series.returns:
             warnings.append("Return series is empty.")
             return RiskOfRuinResult(
-                result_id=str(uuid.uuid4()),
                 status=StressStatus.ERROR,
                 ruin_threshold_pct=ruin_threshold_pct,
                 warnings=warnings
@@ -46,7 +44,6 @@ class RiskOfRuinEstimator:
             status = StressStatus.FAIL
 
         return RiskOfRuinResult(
-            result_id=str(uuid.uuid4()),
             status=status,
             ruin_threshold_pct=ruin_threshold_pct,
             estimated_ruin_probability_pct=ruin_prob,

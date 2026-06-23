@@ -1,3 +1,4 @@
+import uuid
 import math
 from enum import Enum
 from typing import Any
@@ -103,7 +104,7 @@ class MonteCarloConfig(BaseModel):
         return self
 
 class MonteCarloResult(BaseModel):
-    result_id: str
+    result_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     config: MonteCarloConfig
     status: StressStatus
     final_values: list[float] = Field(default_factory=list)
@@ -120,7 +121,7 @@ class MonteCarloResult(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 class ShockScenarioResult(BaseModel):
-    result_id: str
+    result_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     scenario: StressScenario
     status: StressStatus
     estimated_portfolio_impact_pct: float | None = None
@@ -132,7 +133,7 @@ class ShockScenarioResult(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 class DrawdownSimulationResult(BaseModel):
-    result_id: str
+    result_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     status: StressStatus
     max_drawdown_pct: float | None = None
     average_drawdown_pct: float | None = None
@@ -144,7 +145,7 @@ class DrawdownSimulationResult(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 class RiskOfRuinResult(BaseModel):
-    result_id: str
+    result_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     status: StressStatus
     ruin_threshold_pct: float
     estimated_ruin_probability_pct: float | None = None
