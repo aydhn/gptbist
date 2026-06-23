@@ -177,6 +177,37 @@ class CorporateActionStore:
 
         return False
 
+
+    def _parse_csv_row(self, row: dict, index: int) -> tuple[dict, list[CorporateActionValidationIssue]]:
+        clean_row = {}
+        issues = []
+        for k, v in row.items():
+            if k == "metadata":
+                if v is not None and str(v).strip() != "":
+                    try:
+                        clean_row[k] = json.loads(v)
+                    except:
+                        clean_row[k] = {}
+                        issues.append(
+                            CorporateActionValidationIssue(
+                                symbol=row.get("symbol"),
+                                issue_type="METADATA_PARSE_ERROR",
+                                message=f"Row {index}: Failed to parse metadata JSON",
+                                severity="WARNING"
+                            )
+                        )
+                else:
+                    clean_row[k] = {}
+            elif not v or str(v).strip() == "":
+                clean_row[k] = None
+            elif k in ["ratio", "cash_amount"] and v is not None:
+                clean_row[k] = float(v)
+            elif k == "verified" and v is not None:
+                clean_row[k] = str(v).lower() in ("true", "1", "yes", "y")
+            else:
+                clean_row[k] = v
+        return clean_row, issues
+
     def import_actions(self, path: Path, merge: bool = True) -> CorporateActionValidationReport:
         if not path.exists():
             raise CorporateActionStoreError(f"Import file not found: {path}")
@@ -214,34 +245,8 @@ class CorporateActionStore:
                     reader = csv.DictReader(f)
                     for i, row in enumerate(reader):
                         try:
-                            # Handle clean row dict to convert empty strings to None
-                            clean_row = {}
-                            for k, v in row.items():
-                                if k == "metadata":
-                                    if v is not None and str(v).strip() != "":
-                                        try:
-                                            clean_row[k] = json.loads(v)
-                                        except:
-                                            clean_row[k] = {}
-                                            issues.append(
-                                                CorporateActionValidationIssue(
-                                                    symbol=row.get("symbol"),
-                                                    issue_type="METADATA_PARSE_ERROR",
-                                                    message=f"Row {i+2}: Failed to parse metadata JSON",
-                                                    severity="WARNING"
-                                                )
-                                            )
-                                    else:
-                                        clean_row[k] = {}
-                                elif not v or str(v).strip() == "":
-                                    clean_row[k] = None
-                                elif k in ["ratio", "cash_amount"] and v is not None:
-                                    clean_row[k] = float(v)
-                                elif k == "verified" and v is not None:
-                                    clean_row[k] = str(v).lower() in ("true", "1", "yes", "y")
-                                else:
-                                    clean_row[k] = v
-
+                            clean_row, row_issues = self._parse_csv_row(row, i+2)
+                            issues.extend(row_issues)
                             new_actions.append(CorporateAction(**clean_row))
                         except Exception as e:
                             issues.append(
