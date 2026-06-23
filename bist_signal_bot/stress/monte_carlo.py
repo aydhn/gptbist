@@ -1,6 +1,4 @@
-import uuid
 import numpy as np
-from typing import Any
 
 from bist_signal_bot.stress.models import (
     ReturnSeries,
@@ -19,7 +17,6 @@ class MonteCarloSimulator:
         if not series.returns:
             warnings.append("Return series is empty. Cannot run Monte Carlo.")
             return MonteCarloResult(
-                result_id=str(uuid.uuid4()),
                 config=config,
                 status=StressStatus.ERROR,
                 warnings=warnings
@@ -50,7 +47,6 @@ class MonteCarloSimulator:
         final_values = [p[-1] for p in equity_paths]
 
         return MonteCarloResult(
-            result_id=str(uuid.uuid4()),
             config=config,
             status=status,
             final_values=final_values,
