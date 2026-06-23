@@ -39,8 +39,8 @@ def scan_issues_to_dataframe(issues: List[SymbolScanIssue]) -> pd.DataFrame:
     data = [i.dict() for i in issues]
     return pd.DataFrame(data)
 
-def format_scan_report_text(report: ScanReport) -> str:
-    lines = [
+def _format_text_header(report: ScanReport) -> List[str]:
+    return [
         "BIST Bot Signal Scan Report",
         "===========================",
         f"Strategy: {report.request.strategy_name}",
@@ -52,6 +52,8 @@ def format_scan_report_text(report: ScanReport) -> str:
         "Top Candidates:"
     ]
 
+def _format_text_top_candidates(report: ScanReport) -> List[str]:
+    lines = []
     top = report.top_candidates(report.request.top_n)
     if not top:
         lines.append("No passed candidates found.")
@@ -59,19 +61,29 @@ def format_scan_report_text(report: ScanReport) -> str:
         for r in top:
             sig_dir = r.signal.direction.value if r.signal else "N/A"
             lines.append(f"  {r.rank}. {r.symbol} - {sig_dir} - Score: {r.rank_score:.1f} - Status: {r.status.value}")
+    return lines
 
+def _format_text_portfolio_summary(report: ScanReport) -> List[str]:
+    lines = []
     if report.portfolio_decision:
         lines.append("---------------------------")
         lines.append("Portfolio Risk Summary:")
         lines.append(f"  Status: {report.portfolio_decision.status.value}")
         lines.append(f"  Allocations: {len(report.portfolio_decision.allocations)}")
+    return lines
 
+def format_scan_report_text(report: ScanReport) -> str:
+    lines = []
+    lines.extend(_format_text_header(report))
+    lines.extend(_format_text_top_candidates(report))
+    lines.extend(_format_text_portfolio_summary(report))
     lines.append("---------------------------")
     lines.append(report.disclaimer)
     return "\n".join(lines)
 
-def format_scan_markdown(report: ScanReport) -> str:
-    lines = [
+
+def _format_md_header_and_summary(report: ScanReport) -> List[str]:
+    return [
         "# BIST Bot Signal Scan Report",
         "",
         f"**Strategy**: `{report.request.strategy_name}`",
@@ -91,20 +103,25 @@ def format_scan_markdown(report: ScanReport) -> str:
         f"- **Error**: {report.error_count}",
         f"- **Watch Only**: {report.watch_only_count}",
         "",
+    ]
+
+def _format_md_top_candidates(report: ScanReport) -> List[str]:
+    lines = [
         "## Top Candidates",
         "| Rank | Symbol | Direction | Signal Score | Final Score | Status |",
         "|---|---|---|---|---|---|"
     ]
-
     top = report.top_candidates(report.request.top_n)
     for r in top:
         sig_dir = r.signal.direction.value if r.signal else "N/A"
         sig_score = f"{r.signal.score:.1f}" if r.signal and r.signal.score else "N/A"
         risk_score = f"{r.risk_decision.final_score:.1f}" if r.risk_decision and r.risk_decision.final_score else "N/A"
         lines.append(f"| {r.rank} | {r.symbol} | {sig_dir} | {sig_score} | {risk_score} | {r.status.value} |")
-
     lines.append("")
+    return lines
 
+def _format_md_portfolio_summary(report: ScanReport) -> List[str]:
+    lines = []
     if report.portfolio_decision:
         lines.append("## Portfolio Risk Summary")
         lines.append(f"Status: **{report.portfolio_decision.status.value}**")
@@ -113,14 +130,23 @@ def format_scan_markdown(report: ScanReport) -> str:
             for reason in report.portfolio_decision.reasons:
                 lines.append(f"- {reason}")
         lines.append("")
+    return lines
 
+def _format_md_issues(report: ScanReport) -> List[str]:
+    lines = []
     if report.issues:
         lines.append("## Issues")
         for iss in report.issues:
             lines.append(f"- **{iss.severity}** [{iss.stage}] {iss.symbol or 'System'}: {iss.message}")
         lines.append("")
+    return lines
 
+def format_scan_markdown(report: ScanReport) -> str:
+    lines = []
+    lines.extend(_format_md_header_and_summary(report))
+    lines.extend(_format_md_top_candidates(report))
+    lines.extend(_format_md_portfolio_summary(report))
+    lines.extend(_format_md_issues(report))
     lines.append("---")
     lines.append(f"*{report.disclaimer}*")
-
     return "\n".join(lines)
