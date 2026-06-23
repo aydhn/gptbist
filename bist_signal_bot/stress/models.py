@@ -1,9 +1,9 @@
 import uuid
-import math
 from enum import Enum
 from typing import Any
 from datetime import datetime
 from pydantic import BaseModel, Field, model_validator
+
 
 class StressInputType(str, Enum):
     PORTFOLIO_RESEARCH_SNAPSHOT = "PORTFOLIO_RESEARCH_SNAPSHOT"
@@ -12,6 +12,7 @@ class StressInputType(str, Enum):
     BACKTEST_EQUITY_CURVE = "BACKTEST_EQUITY_CURVE"
     CUSTOM_RETURNS = "CUSTOM_RETURNS"
     MOCK = "MOCK"
+
 
 class StressScenarioType(str, Enum):
     MARKET_SHOCK = "MARKET_SHOCK"
@@ -23,6 +24,7 @@ class StressScenarioType(str, Enum):
     LOSING_STREAK = "LOSING_STREAK"
     CUSTOM = "CUSTOM"
 
+
 class StressStatus(str, Enum):
     PASS = "PASS"
     WARN = "WARN"
@@ -31,17 +33,20 @@ class StressStatus(str, Enum):
     SKIPPED = "SKIPPED"
     ERROR = "ERROR"
 
+
 class MonteCarloMethod(str, Enum):
     BOOTSTRAP = "BOOTSTRAP"
     BLOCK_BOOTSTRAP = "BLOCK_BOOTSTRAP"
     NORMAL_PARAMETRIC = "NORMAL_PARAMETRIC"
     HISTORICAL_SHUFFLE = "HISTORICAL_SHUFFLE"
 
+
 class StressSeverity(str, Enum):
     LOW = "LOW"
     MEDIUM = "MEDIUM"
     HIGH = "HIGH"
     EXTREME = "EXTREME"
+
 
 class ReturnSeries(BaseModel):
     series_id: str = Field(default_factory=lambda: str(uuid.uuid4()), description="Unique identifier for the return series")
@@ -51,7 +56,9 @@ class ReturnSeries(BaseModel):
     start_date: datetime | None = Field(None, description="Start date of the returns data")
     end_date: datetime | None = Field(None, description="End date of the returns data")
     frequency: str = Field(..., description="Frequency of the returns, e.g. daily, weekly")
-    warnings: list[str] = Field(default_factory=list, description="Warnings generated during series creation")
+    warnings: list[str] = Field(
+        default_factory=list, description="Warnings generated during series creation"
+    )
     metadata: dict[str, Any] = Field(default_factory=dict, description="Extra metadata")
 
     @model_validator(mode="after")
@@ -59,14 +66,17 @@ class ReturnSeries(BaseModel):
         if not self.returns:
             self.warnings.append("Return series is empty.")
 
-        cleaned = [r for r in self.returns if not math.isnan(r) and not math.isinf(r)]
+        cleaned = [r for r in self.returns if r == r and r not in (float("inf"), float("-inf"))]
         if len(cleaned) != len(self.returns):
-            self.warnings.append(f"Cleaned {len(self.returns) - len(cleaned)} invalid returns (NaN/inf).")
+            self.warnings.append(
+                f"Cleaned {len(self.returns) - len(cleaned)} invalid returns (NaN/inf)."
+            )
         self.returns = cleaned
 
         if not self.frequency:
             raise ValueError("frequency is required.")
         return self
+
 
 class StressScenario(BaseModel):
     scenario_id: str
@@ -81,6 +91,7 @@ class StressScenario(BaseModel):
     losing_streak_days: int | None = None
     liquidity_haircut_pct: float | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)
+
 
 class MonteCarloConfig(BaseModel):
     method: MonteCarloMethod
@@ -103,6 +114,7 @@ class MonteCarloConfig(BaseModel):
             raise ValueError("block_size must be positive if provided")
         return self
 
+
 class MonteCarloResult(BaseModel):
     result_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     config: MonteCarloConfig
@@ -117,8 +129,11 @@ class MonteCarloResult(BaseModel):
     ruin_probability_pct: float | None = None
     sample_paths: list[list[float]] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)
-    disclaimer: str = "Monte Carlo result is research-only. Past results do not guarantee future performance. No real order was sent."
+    disclaimer: str = (
+        "Monte Carlo result is research-only. Past results do not guarantee future performance. No real order was sent."
+    )
     metadata: dict[str, Any] = Field(default_factory=dict)
+
 
 class ShockScenarioResult(BaseModel):
     result_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
@@ -129,8 +144,11 @@ class ShockScenarioResult(BaseModel):
     item_impacts: dict[str, float] = Field(default_factory=dict)
     exposure_impacts: dict[str, float] = Field(default_factory=dict)
     warnings: list[str] = Field(default_factory=list)
-    disclaimer: str = "Shock scenario is hypothetical research-only. Not investment advice. No real order was sent."
+    disclaimer: str = (
+        "Shock scenario is hypothetical research-only. Not investment advice. No real order was sent."
+    )
     metadata: dict[str, Any] = Field(default_factory=dict)
+
 
 class DrawdownSimulationResult(BaseModel):
     result_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
@@ -141,8 +159,11 @@ class DrawdownSimulationResult(BaseModel):
     recovery_days_estimate: int | None = None
     underwater_curve: list[dict[str, Any]] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)
-    disclaimer: str = "Drawdown simulation is hypothetical research-only. Not investment advice. No real order was sent."
+    disclaimer: str = (
+        "Drawdown simulation is hypothetical research-only. Not investment advice. No real order was sent."
+    )
     metadata: dict[str, Any] = Field(default_factory=dict)
+
 
 class RiskOfRuinResult(BaseModel):
     result_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
@@ -153,8 +174,11 @@ class RiskOfRuinResult(BaseModel):
     worst_loss_streak: int | None = None
     required_buffer_estimate_pct: float | None = None
     warnings: list[str] = Field(default_factory=list)
-    disclaimer: str = "Risk-of-ruin output is a research estimate only. It is not a certainty. No real order was sent."
+    disclaimer: str = (
+        "Risk-of-ruin output is a research estimate only. It is not a certainty. No real order was sent."
+    )
     metadata: dict[str, Any] = Field(default_factory=dict)
+
 
 class StressTestRequest(BaseModel):
     input_type: StressInputType
@@ -182,6 +206,7 @@ class StressTestRequest(BaseModel):
         self.symbols = [s.strip().upper() for s in self.symbols if s.strip()]
         return self
 
+
 class StressTestResult(BaseModel):
     stress_id: str
     request: StressTestRequest
@@ -195,7 +220,9 @@ class StressTestResult(BaseModel):
     stress_rating: StressSeverity
     output_files: dict[str, str] = Field(default_factory=dict)
     warnings: list[str] = Field(default_factory=list)
-    disclaimer: str = "Stress test result is research-only. Not investment advice. No real order was sent."
+    disclaimer: str = (
+        "Stress test result is research-only. Not investment advice. No real order was sent."
+    )
     metadata: dict[str, Any] = Field(default_factory=dict)
 
     def summary(self) -> dict[str, Any]:
@@ -205,10 +232,18 @@ class StressTestResult(BaseModel):
             "stress_score": self.stress_score,
             "stress_rating": self.stress_rating.value,
             "warnings_count": len(self.warnings),
-            "mc_p05_return_pct": self.monte_carlo_result.final_return_pct_p05 if self.monte_carlo_result else None,
-            "ruin_prob_pct": self.risk_of_ruin_result.estimated_ruin_probability_pct if self.risk_of_ruin_result else None,
-            "max_drawdown_pct": self.drawdown_result.max_drawdown_pct if self.drawdown_result else None,
-            "shock_count": len(self.shock_results)
+            "mc_p05_return_pct": (
+                self.monte_carlo_result.final_return_pct_p05 if self.monte_carlo_result else None
+            ),
+            "ruin_prob_pct": (
+                self.risk_of_ruin_result.estimated_ruin_probability_pct
+                if self.risk_of_ruin_result
+                else None
+            ),
+            "max_drawdown_pct": (
+                self.drawdown_result.max_drawdown_pct if self.drawdown_result else None
+            ),
+            "shock_count": len(self.shock_results),
         }
 
     def safe_public_dict(self) -> dict[str, Any]:
@@ -217,5 +252,5 @@ class StressTestResult(BaseModel):
             "status": self.status.value,
             "stress_rating": self.stress_rating.value,
             "disclaimer": self.disclaimer,
-            "summary": self.summary()
+            "summary": self.summary(),
         }
