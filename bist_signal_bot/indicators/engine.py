@@ -18,7 +18,7 @@ class IndicatorEngine:
         self.settings = settings or Settings()
         self.logger = logger or logging.getLogger(__name__)
 
-    def calculate(self, data: Union[MarketDataFrame, pd.DataFrame], request: IndicatorRequest) -> Tuple[pd.DataFrame, IndicatorResult]:
+    def calculate(self, data: Union[MarketDataFrame, pd.DataFrame], request: IndicatorRequest, merge: bool = True) -> Tuple[pd.DataFrame, IndicatorResult]:
         start_time = time.time()
 
         # Extract dataframe if MarketDataFrame is provided
@@ -53,7 +53,10 @@ class IndicatorEngine:
             nan_count = result_df.isna().sum().sum()
 
             # Combine into input
-            df = pd.concat([df, result_df], axis=1)
+            if merge:
+                df = pd.concat([df, result_df], axis=1)
+            else:
+                df = result_df
 
         except (IndicatorValidationError, IndicatorCalculationError, IndicatorRegistryError) as e:
             status = "FAILED"
@@ -90,22 +93,22 @@ class IndicatorEngine:
         success_count = 0
         failed_count = 0
 
+        collected_dfs = [df]
+
         for request in requests:
             try:
-                df, result = self.calculate(df, request)
+                res_df, result = self.calculate(df, request, merge=False)
                 results.append(result)
                 if result.status == "SUCCESS":
                     success_count += 1
+                    collected_dfs.append(res_df)
                 else:
                     failed_count += 1
                     if not continue_on_error:
-                        # We just let it raise a generic error or original if available in calculate.
-                        # Wait, we must explicitly raise the exception here if we want to fail fast
                         raise IndicatorCalculationError(f"Calculation failed for {request.name}")
             except Exception as e:
                 if not continue_on_error:
                     raise
-                # Create a failed result if an unhandled exception occurred
                 failed_count += 1
                 results.append(IndicatorResult(
                     indicator=request.name,
@@ -116,6 +119,9 @@ class IndicatorEngine:
                     issues=[IndicatorIssue(indicator=request.name, message=str(e), severity="ERROR")],
                     elapsed_seconds=0.0
                 ))
+
+        if len(collected_dfs) > 1:
+            df = pd.concat(collected_dfs, axis=1)
 
         elapsed = time.time() - start_time
 
@@ -130,6 +136,8 @@ class IndicatorEngine:
 
     def calculate_default_set(self, data: Union[MarketDataFrame, pd.DataFrame]) -> IndicatorBatchResult:
         default_set_str = getattr(self.settings, 'INDICATOR_DEFAULT_SET', "sma_20,sma_50,ema_20,rsi_14,atr_14,macd,bb_20,obv,return_1,volatility_20")
+        if default_set_str is None:
+            default_set_str = "sma_20,sma_50,ema_20,rsi_14,atr_14,macd,bb_20,obv,return_1,volatility_20"
         requests_raw = default_set_str.split(",")
         requests = self.parse_requests(requests_raw)
         return self.calculate_many(data, requests)
