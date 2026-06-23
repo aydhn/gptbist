@@ -274,7 +274,24 @@ class CCIIndicator(BaseIndicator):
         tp = (data['high'] + data['low'] + data['close']) / 3
         sma_tp = tp.rolling(window=window).mean()
 
-        mad = tp.rolling(window=window).apply(lambda x: np.mean(np.abs(x - np.mean(x))), raw=True)
+        from numpy.lib.stride_tricks import sliding_window_view
+
+        tp_arr = tp.to_numpy()
+
+        # Determine if we have enough data to form at least one window
+        if len(tp_arr) >= window:
+            v = sliding_window_view(tp_arr, window_shape=window)
+            means = np.mean(v, axis=1, keepdims=True)
+            mads = np.mean(np.abs(v - means), axis=1)
+
+            mad_arr = np.empty(len(tp_arr))
+            mad_arr[:] = np.nan
+            mad_arr[window-1:] = mads
+
+            mad = pd.Series(mad_arr, index=tp.index)
+        else:
+            # If not enough data, mad is all NaNs
+            mad = pd.Series(np.nan, index=tp.index)
 
         out[col] = np.where(mad == 0, np.nan, (tp - sma_tp) / (constant * mad))
         out[col] = out[col].astype(float)
