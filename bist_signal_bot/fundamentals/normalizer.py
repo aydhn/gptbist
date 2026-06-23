@@ -20,10 +20,11 @@ class FundamentalNormalizer:
         cols = {c.lower(): c for c in df.columns}
         sym_col = cols.get("symbol", cols.get("sembol", cols.get("kod")))
         end_col = cols.get("period_end_date", cols.get("donem_sonu", cols.get("dönem_sonu", "date")))
-        for idx, row in df.iterrows():
-            sym = row[sym_col] if sym_col else request.symbol
+        for row in df.itertuples(index=False):
+            sym = getattr(row, sym_col) if sym_col else request.symbol
             if not sym: continue
-            end_date = self.parse_date(row[end_col]) if end_col else None
+            end_date_raw = getattr(row, end_col) if end_col else None
+            end_date = self.parse_date(end_date_raw) if end_date_raw else None
             if not end_date: continue
             records.append(FinancialStatementRecord(record_id=f"{sym}", symbol=str(sym), statement_type=request.statement_type or FinancialStatementType.UNKNOWN, period_type=request.period_type or FinancialPeriodType.UNKNOWN, fiscal_year=end_date.year, period_end_date=end_date, currency="TRY", values={}, imported_at=datetime.now()))
         return records
