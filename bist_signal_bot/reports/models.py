@@ -1,4 +1,3 @@
-import json
 from enum import Enum
 from typing import Any
 from datetime import datetime
@@ -165,7 +164,7 @@ class GeneratedReport(BaseModel):
         }
     def safe_public_dict(self) -> dict[str, Any]:
         # Serialize with model_dump using JSON mode to handle datetimes
-        return json.loads(self.model_dump_json())
+        return self.model_dump(mode='json')
 
 class TelegramDigest(BaseModel):
     digest_id: str
