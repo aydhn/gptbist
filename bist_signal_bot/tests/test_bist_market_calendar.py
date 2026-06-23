@@ -96,3 +96,139 @@ def test_market_open_datetime_non_trading_day():
     assert cal.market_open_datetime(date(2024, 1, 6)) is None
     # Holiday
     assert cal.market_open_datetime(date(2024, 1, 1)) is None
+
+def test_next_trading_day_normal():
+    """Test next_trading_day returns the very next day when it is a trading day."""
+    cal = BistMarketCalendar()
+    # 2024-01-02 is Tuesday, next day is 2024-01-03 Wednesday
+    current = date(2024, 1, 2)
+    expected_next = date(2024, 1, 3)
+    assert cal.next_trading_day(current) == expected_next
+
+def test_next_trading_day_across_weekend():
+    """Test next_trading_day correctly skips weekends."""
+    cal = BistMarketCalendar()
+    # 2024-01-05 is Friday, next day should be 2024-01-08 Monday
+    current = date(2024, 1, 5)
+    expected_next = date(2024, 1, 8)
+    assert cal.next_trading_day(current) == expected_next
+
+def test_next_trading_day_across_holiday():
+    """Test next_trading_day correctly skips a manual holiday."""
+    # 2024-01-03 Wednesday is a normal day
+    # 2024-01-04 Thursday is a holiday
+    # Next day should be 2024-01-05 Friday
+    cal = BistMarketCalendar(manual_holidays={date(2024, 1, 4)})
+    current = date(2024, 1, 3)
+    expected_next = date(2024, 1, 5)
+    assert cal.next_trading_day(current) == expected_next
+
+def test_next_trading_day_across_weekend_and_holidays():
+    """Test next_trading_day correctly skips combined weekends and holidays."""
+    # 2024-01-05 Friday is holiday
+    # 2024-01-06 Saturday is weekend
+    # 2024-01-07 Sunday is weekend
+    # 2024-01-08 Monday is holiday
+    # Next day should be 2024-01-09 Tuesday
+    holidays = {date(2024, 1, 5), date(2024, 1, 8)}
+    cal = BistMarketCalendar(manual_holidays=holidays)
+    current = date(2024, 1, 4) # Thursday
+    expected_next = date(2024, 1, 9)
+    assert cal.next_trading_day(current) == expected_next
+
+def test_next_trading_day_limit_exceeded():
+    """Test next_trading_day returns None if max_lookahead_days limit is reached."""
+    # A long holiday from Friday to next Friday (8 days total counting weekend)
+    holidays = {
+        date(2024, 1, 5), date(2024, 1, 8), date(2024, 1, 9),
+        date(2024, 1, 10), date(2024, 1, 11), date(2024, 1, 12)
+    }
+    cal = BistMarketCalendar(manual_holidays=holidays)
+    current = date(2024, 1, 4) # Thursday
+    # The next trading day is 2024-01-15 (Monday).
+    # That is 11 days later. If max_lookahead_days=10, it should fail to find it and return None.
+    assert cal.next_trading_day(current, max_lookahead_days=10) is None
+
+def test_previous_trading_day_normal():
+    """Test previous_trading_day returns the very previous day when it is a trading day."""
+    cal = BistMarketCalendar()
+    # 2024-01-03 is Wednesday, previous day is 2024-01-02 Tuesday
+    current = date(2024, 1, 3)
+    expected_prev = date(2024, 1, 2)
+    assert cal.previous_trading_day(current) == expected_prev
+
+def test_previous_trading_day_across_weekend():
+    """Test previous_trading_day correctly skips weekends."""
+    cal = BistMarketCalendar()
+    # 2024-01-08 is Monday, previous day should be 2024-01-05 Friday
+    current = date(2024, 1, 8)
+    expected_prev = date(2024, 1, 5)
+    assert cal.previous_trading_day(current) == expected_prev
+
+def test_previous_trading_day_across_holiday():
+    """Test previous_trading_day correctly skips a manual holiday."""
+    # 2024-01-05 Friday is a normal day
+    # 2024-01-04 Thursday is a holiday
+    # Previous day should be 2024-01-03 Wednesday
+    cal = BistMarketCalendar(manual_holidays={date(2024, 1, 4)})
+    current = date(2024, 1, 5)
+    expected_prev = date(2024, 1, 3)
+    assert cal.previous_trading_day(current) == expected_prev
+
+def test_previous_trading_day_across_weekend_and_holidays():
+    """Test previous_trading_day correctly skips combined weekends and holidays."""
+    # 2024-01-09 Tuesday is start day
+    # 2024-01-08 Monday is holiday
+    # 2024-01-07 Sunday is weekend
+    # 2024-01-06 Saturday is weekend
+    # 2024-01-05 Friday is holiday
+    # Previous day should be 2024-01-04 Thursday
+    holidays = {date(2024, 1, 5), date(2024, 1, 8)}
+    cal = BistMarketCalendar(manual_holidays=holidays)
+    current = date(2024, 1, 9) # Tuesday
+    expected_prev = date(2024, 1, 4)
+    assert cal.previous_trading_day(current) == expected_prev
+
+def test_previous_trading_day_limit_exceeded():
+    """Test previous_trading_day returns None if max_lookback_days limit is reached."""
+    # A long holiday from Friday to next Friday
+    holidays = {
+        date(2024, 1, 5), date(2024, 1, 8), date(2024, 1, 9),
+        date(2024, 1, 10), date(2024, 1, 11), date(2024, 1, 12)
+    }
+    cal = BistMarketCalendar(manual_holidays=holidays)
+    current = date(2024, 1, 15) # Monday
+    # The previous trading day is 2024-01-04 (Thursday).
+    # That is 11 days earlier. If max_lookback_days=10, it should fail to find it and return None.
+    assert cal.previous_trading_day(current, max_lookback_days=10) is None
+
+def test_trading_days_between_normal():
+    """Test trading_days_between returns the correct days."""
+    cal = BistMarketCalendar()
+    # Wednesday 2024-01-03 to Friday 2024-01-05
+    start = date(2024, 1, 3)
+    end = date(2024, 1, 5)
+    expected = [date(2024, 1, 3), date(2024, 1, 4), date(2024, 1, 5)]
+    assert cal.trading_days_between(start, end) == expected
+
+def test_trading_days_between_with_weekends_and_holidays():
+    """Test trading_days_between excludes weekends and holidays."""
+    holidays = {date(2024, 1, 5)} # Friday holiday
+    cal = BistMarketCalendar(manual_holidays=holidays)
+
+    # Thursday 2024-01-04 to Tuesday 2024-01-09
+    start = date(2024, 1, 4)
+    end = date(2024, 1, 9)
+    # Excludes 5th (holiday), 6th (sat), 7th (sun)
+    expected = [date(2024, 1, 4), date(2024, 1, 8), date(2024, 1, 9)]
+    assert cal.trading_days_between(start, end) == expected
+
+def test_trading_days_between_invalid_dates():
+    """Test trading_days_between raises an error if start > end."""
+    cal = BistMarketCalendar()
+    from bist_signal_bot.core.exceptions import MarketCalendarError
+    import pytest
+    start = date(2024, 1, 5)
+    end = date(2024, 1, 3)
+    with pytest.raises(MarketCalendarError, match="Start date cannot be after end date."):
+        cal.trading_days_between(start, end)
