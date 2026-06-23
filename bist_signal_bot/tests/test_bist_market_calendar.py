@@ -96,3 +96,35 @@ def test_market_open_datetime_non_trading_day():
     assert cal.market_open_datetime(date(2024, 1, 6)) is None
     # Holiday
     assert cal.market_open_datetime(date(2024, 1, 1)) is None
+
+def test_is_manual_holiday():
+    """Test is_manual_holiday correctly identifies manual holidays."""
+    holiday1 = date(2024, 1, 1)
+    holiday2 = date(2024, 4, 23)
+    non_holiday = date(2024, 1, 2)
+
+    cal = BistMarketCalendar(
+        manual_holidays={holiday1, holiday2}
+    )
+
+    assert cal.is_manual_holiday(holiday1) is True
+    assert cal.is_manual_holiday(holiday2) is True
+    assert cal.is_manual_holiday(non_holiday) is False
+
+def test_is_manual_holiday_empty():
+    """Test is_manual_holiday returns False when no holidays are defined."""
+    cal = BistMarketCalendar()
+    assert cal.is_manual_holiday(date(2024, 1, 1)) is False
+
+def test_is_weekend():
+    """Test is_weekend correctly identifies weekends."""
+    cal = BistMarketCalendar()
+
+    # 2024-01-01 is Monday (0)
+    assert cal.is_weekend(date(2024, 1, 1)) is False
+    # 2024-01-05 is Friday (4)
+    assert cal.is_weekend(date(2024, 1, 5)) is False
+    # 2024-01-06 is Saturday (5)
+    assert cal.is_weekend(date(2024, 1, 6)) is True
+    # 2024-01-07 is Sunday (6)
+    assert cal.is_weekend(date(2024, 1, 7)) is True
