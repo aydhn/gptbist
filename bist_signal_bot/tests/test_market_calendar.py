@@ -180,3 +180,28 @@ def test_next_trading_day():
     # Should be the next Monday
     next_day = cal.next_trading_day(dt)
     assert next_day == date(2025, 10, 27)
+
+def test_previous_trading_day_skip_holiday():
+    dt = date(2025, 10, 24) # Friday
+    cal = BistMarketCalendar(manual_holidays={dt})
+    # Start looking from Monday, Oct 27
+    start_dt = date(2025, 10, 27)
+    # Since Friday is holiday, previous trading day should be Thursday, Oct 23
+    prev_day = cal.previous_trading_day(start_dt)
+    assert prev_day == date(2025, 10, 23)
+
+def test_previous_trading_day_max_lookback_exceeded_due_to_holiday():
+    # Thursday to Tuesday are holidays
+    holidays = {
+        date(2025, 10, 23),
+        date(2025, 10, 24),
+        date(2025, 10, 27),
+        date(2025, 10, 28)
+    }
+    cal = BistMarketCalendar(manual_holidays=holidays)
+    # Start looking from Wednesday, Oct 29
+    start_dt = date(2025, 10, 29)
+    # Limit to 3 days lookback. It will check Oct 28 (holiday), Oct 27 (holiday), Oct 26 (weekend).
+    # Then it exceeds max_lookback_days (which is 3) and returns None.
+    prev_day = cal.previous_trading_day(start_dt, max_lookback_days=3)
+    assert prev_day is None
