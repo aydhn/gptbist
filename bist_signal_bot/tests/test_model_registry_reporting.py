@@ -3,8 +3,6 @@ from datetime import timezone
 from bist_signal_bot.model_registry.models import ModelRecord, ExperimentRun, ExperimentStatus
 from bist_signal_bot.model_registry.models import ModelKind
 from bist_signal_bot.model_registry.models import ModelRegistryStatus
-# import pytest
-# from datetime import timezone
 from bist_signal_bot.model_registry.models import ModelGovernanceAssessment, ModelGovernanceStatus
 from bist_signal_bot.model_registry.reporting import format_model_record_text, governance_assessment_to_dict, experiment_run_to_dict
 
