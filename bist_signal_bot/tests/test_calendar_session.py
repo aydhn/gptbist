@@ -32,6 +32,8 @@ def test_get_status_weekend(mock_ensure_tz, session_service, mock_calendar):
     mock_ensure_tz.return_value = now
 
     mock_calendar.is_trading_day.return_value = False
+    mock_calendar.market_open_datetime.return_value = None
+    mock_calendar.market_close_datetime.return_value = None
     mock_calendar.get_day_type.return_value = MarketDayType.WEEKEND
     mock_calendar.market_open_datetime.return_value = None
     mock_calendar.market_close_datetime.return_value = None
@@ -49,6 +51,8 @@ def test_get_status_holiday(mock_ensure_tz, session_service, mock_calendar):
     mock_ensure_tz.return_value = now
 
     mock_calendar.is_trading_day.return_value = False
+    mock_calendar.market_open_datetime.return_value = None
+    mock_calendar.market_close_datetime.return_value = None
     mock_calendar.get_day_type.return_value = MarketDayType.HOLIDAY
     mock_calendar.market_open_datetime.return_value = None
     mock_calendar.market_close_datetime.return_value = None
@@ -178,6 +182,8 @@ def test_should_generate_daily_signal(mock_ensure_tz, session_service, mock_cale
 
     # Non-trading day
     mock_calendar.is_trading_day.return_value = False
+    mock_calendar.market_open_datetime.return_value = None
+    mock_calendar.market_close_datetime.return_value = None
     assert session_service.should_generate_daily_signal(now_post) is False
 
 @patch("bist_signal_bot.calendar.session.ensure_istanbul_timezone")
@@ -193,6 +199,46 @@ def test_should_send_daily_report(mock_ensure_tz, session_service, mock_calendar
     session_service.daily_signal_enabled = False
     assert session_service.should_send_daily_report(now_post) is False
 
+@patch("bist_signal_bot.calendar.session.ensure_istanbul_timezone")
+def test_should_send_daily_report_before_target(mock_ensure_tz, session_service, mock_calendar):
+    now_pre = datetime(2023, 10, 2, 14, 0, tzinfo=timezone.utc)
+    mock_ensure_tz.return_value = now_pre
+
+    mock_calendar.market_open_datetime.return_value = datetime(2023, 10, 2, 10, 0, tzinfo=timezone.utc)
+    mock_calendar.market_close_datetime.return_value = datetime(2023, 10, 2, 18, 0, tzinfo=timezone.utc)
+
+    assert session_service.should_send_daily_report(now_pre) is False
+
+@patch("bist_signal_bot.calendar.session.ensure_istanbul_timezone")
+def test_should_send_daily_report_non_trading_day(mock_ensure_tz, session_service, mock_calendar):
+    now_post = datetime(2023, 10, 2, 18, 20, tzinfo=timezone.utc)
+    mock_ensure_tz.return_value = now_post
+
+    mock_calendar.is_trading_day.return_value = False
+    mock_calendar.market_open_datetime.return_value = None
+    mock_calendar.market_close_datetime.return_value = None
+
+    assert session_service.should_send_daily_report(now_post) is False
+
+@patch("bist_signal_bot.calendar.session.ensure_istanbul_timezone")
+def test_should_send_daily_report_no_market_close(mock_ensure_tz, session_service, mock_calendar):
+    now = datetime(2023, 10, 2, 14, 0, tzinfo=timezone.utc)
+    mock_ensure_tz.return_value = now
+
+    mock_calendar.market_open_datetime.return_value = None
+    mock_calendar.market_close_datetime.return_value = None
+
+    assert session_service.should_send_daily_report(now) is False
+
+@patch("bist_signal_bot.calendar.session.istanbul_now")
+def test_should_send_daily_report_no_now(mock_istanbul_now, session_service, mock_calendar):
+    now = datetime(2023, 10, 2, 18, 20, tzinfo=timezone.utc)
+    mock_istanbul_now.return_value = now
+
+    mock_calendar.market_open_datetime.return_value = datetime(2023, 10, 2, 10, 0, tzinfo=timezone.utc)
+    mock_calendar.market_close_datetime.return_value = datetime(2023, 10, 2, 18, 0, tzinfo=timezone.utc)
+
+    assert session_service.should_send_daily_report() is True # Passed no now
 
 @patch("bist_signal_bot.calendar.session.BistMarketCalendar")
 def test_from_settings(mock_calendar_class):
