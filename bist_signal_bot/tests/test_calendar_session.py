@@ -295,3 +295,34 @@ def test_should_generate_daily_signal_no_market_close(mock_ensure_tz, session_se
     mock_calendar.market_close_datetime.return_value = None
 
     assert session_service.should_generate_daily_signal(now) is False
+
+@patch("bist_signal_bot.calendar.session.istanbul_now")
+def test_should_generate_intraday_signal_no_now(mock_istanbul_now, session_service, mock_calendar):
+    now = datetime(2023, 10, 2, 14, 0, tzinfo=timezone.utc)
+    mock_istanbul_now.return_value = now
+
+    mock_calendar.market_open_datetime.return_value = datetime(2023, 10, 2, 10, 0, tzinfo=timezone.utc)
+    mock_calendar.market_close_datetime.return_value = datetime(2023, 10, 2, 18, 0, tzinfo=timezone.utc)
+
+    # Enabled and open
+    assert session_service.should_generate_intraday_signal() is True
+
+    # Disabled
+    session_service.intraday_signal_enabled = False
+    assert session_service.should_generate_intraday_signal() is False
+
+
+@patch("bist_signal_bot.calendar.session.istanbul_now")
+def test_should_generate_daily_signal_no_now(mock_istanbul_now, session_service, mock_calendar):
+    now_post = datetime(2023, 10, 2, 18, 20, tzinfo=timezone.utc)
+    mock_istanbul_now.return_value = now_post
+
+    mock_calendar.market_open_datetime.return_value = datetime(2023, 10, 2, 10, 0, tzinfo=timezone.utc)
+    mock_calendar.market_close_datetime.return_value = datetime(2023, 10, 2, 18, 0, tzinfo=timezone.utc)
+
+    # After target time (18:00 + 15 mins = 18:15)
+    assert session_service.should_generate_daily_signal() is True
+
+    # Disabled
+    session_service.daily_signal_enabled = False
+    assert session_service.should_generate_daily_signal() is False
