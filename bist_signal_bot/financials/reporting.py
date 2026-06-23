@@ -1,5 +1,4 @@
 import dataclasses
-# import pandas as pd
 from typing import Any
 from bist_signal_bot.financials.models import (
     FinancialStatementRecord,
@@ -36,20 +35,20 @@ def import_result_to_dict(result: FinancialImportResult) -> dict[str, Any]:
 def analysis_report_to_dict(report: FinancialAnalysisReport) -> dict[str, Any]:
     return dataclasses.asdict(report)
 
-def statements_to_dataframe(statements: list[NormalizedFinancialStatement]) -> 'pd.DataFrame':
+def statements_to_dataframe(statements: list[NormalizedFinancialStatement]) -> list[dict[str, Any]]:
     if not statements:
-        return [] # pd.DataFrame()
-    return [dataclasses.asdict(s) for s in statements] # pd.DataFrame
+        return []
+    return [dataclasses.asdict(s) for s in statements]
 
-def ratios_to_dataframe(ratios: list[FinancialRatio]) -> 'pd.DataFrame':
+def ratios_to_dataframe(ratios: list[FinancialRatio]) -> list[dict[str, Any]]:
     if not ratios:
-        return [] # pd.DataFrame()
-    return [dataclasses.asdict(r) for r in ratios] # pd.DataFrame
+        return []
+    return [dataclasses.asdict(r) for r in ratios]
 
-def trends_to_dataframe(trends: list[FinancialTrendMetric]) -> 'pd.DataFrame':
+def trends_to_dataframe(trends: list[FinancialTrendMetric]) -> list[dict[str, Any]]:
     if not trends:
-        return [] # pd.DataFrame()
-    return [dataclasses.asdict(t) for t in trends] # pd.DataFrame
+        return []
+    return [dataclasses.asdict(t) for t in trends]
 
 def format_statement_text(statement: NormalizedFinancialStatement) -> str:
     return f"Statement: {statement.symbol} {statement.fiscal_year} {statement.fiscal_period}"
