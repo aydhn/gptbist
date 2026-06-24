@@ -139,3 +139,103 @@ def test_save_csv(tmp_path):
     empty_report = ScanReport(request=req)
     empty_paths = store.save_csv(empty_report)
     assert len(empty_paths) == 0
+def test_missing_coverage(tmp_path):
+    settings = Settings()
+    store = ScanReportStore(settings, base_dir=tmp_path)
+    req = ScanRequest(strategy_name="test_strat", universe_mode=ScanUniverseMode.SYMBOLS, symbols=["A"])
+    report = ScanReport(request=req)
+
+    # test save_markdown
+    path1 = store.save_markdown(report)
+    assert path1.exists()
+
+    custom_dir = tmp_path / "custom_dir_md"
+    custom_dir.mkdir()
+    path2 = store.save_markdown(report, output_dir=custom_dir)
+    assert path2.exists()
+
+    # test list_recent_scans
+    scans = store.list_recent_scans()
+    assert len(scans) == 0
+
+    # generate some scans to list
+    store.save_json(report)
+    scans2 = store.list_recent_scans()
+    assert len(scans2) == 1
+
+def test_list_recent_scans_invalid_json(tmp_path):
+    settings = Settings()
+    store = ScanReportStore(settings, base_dir=tmp_path)
+    req = ScanRequest(strategy_name="test_strat", universe_mode=ScanUniverseMode.SYMBOLS, symbols=["A"])
+    report = ScanReport(request=req)
+
+    # create a valid scan report
+    output_dir = store.create_scan_output_dir(report)
+    valid_file = output_dir / "scan_report.json"
+    with open(valid_file, "w") as f:
+        f.write('{"request": {"strategy_name": "test"}, "started_at": "2023-01-01"}')
+
+    # create an invalid json file that should be skipped
+    invalid_dir = tmp_path / "invalid"
+    invalid_dir.mkdir()
+    invalid_file = invalid_dir / "scan_report.json"
+    with open(invalid_file, "w") as f:
+        f.write("invalid json content")
+
+    scans = store.list_recent_scans()
+    assert len(scans) == 1
+
+def test_save_report_formats(tmp_path):
+    settings = Settings()
+    store = ScanReportStore(settings, base_dir=tmp_path)
+    req = ScanRequest(strategy_name="test_strat", universe_mode=ScanUniverseMode.SYMBOLS, symbols=["A"])
+    report = ScanReport(request=req)
+
+    # test none formats
+    paths1 = store.save_report(report, formats=None)
+    assert "json" in paths1
+    assert "markdown" in paths1
+
+    # test "all" formats
+    paths2 = store.save_report(report, formats=["all"])
+    assert "json" in paths2
+    assert "markdown" in paths2
+
+def test_list_recent_scans_no_base_dir(tmp_path):
+    settings = Settings()
+    # Create a non-existent path
+    non_existent = tmp_path / "does_not_exist"
+    store = ScanReportStore(settings, base_dir=non_existent)
+
+    scans = store.list_recent_scans()
+    assert len(scans) == 0
+
+def test_save_csv_specific_cases(tmp_path):
+    settings = Settings()
+    store = ScanReportStore(settings, base_dir=tmp_path)
+
+    req = ScanRequest(strategy_name="test_specific", universe_mode=ScanUniverseMode.SYMBOLS, symbols=["A", "B"])
+    report = ScanReport(request=req)
+
+    # Test only rankings
+    report.rankings = [ScanRankingItem(symbol="A", rank_score=90.0, rank=1, status="PASSED")]
+    paths_rankings = store.save_csv(report)
+    assert "rankings" in paths_rankings
+    assert "results" not in paths_rankings
+    assert "issues" not in paths_rankings
+
+    # Reset and test only results
+    report.rankings = None
+    report.results = [SymbolScanResult(symbol="A", status=ScanCandidateStatus.PASSED, rank=1, rank_score=90.0)]
+    paths_results = store.save_csv(report)
+    assert "rankings" not in paths_results
+    assert "results" in paths_results
+    assert "issues" not in paths_results
+
+    # Reset and test only issues
+    report.results = None
+    report.issues = [SymbolScanIssue(stage="TEST", message="Test issue", severity="INFO")]
+    paths_issues = store.save_csv(report)
+    assert "rankings" not in paths_issues
+    assert "results" not in paths_issues
+    assert "issues" in paths_issues
