@@ -64,6 +64,21 @@ class BacktestEngine:
         )
 
 
+    def _execute_entry_order(self, order: BacktestOrder, exec_price: float, current_time: datetime, portfolio: BacktestPortfolio, exec_model: BacktestExecutionModel, config: BacktestConfig):
+        notional = order.metadata.get("notional", 0.0)
+        qty = exec_model.quantity_from_notional(notional, exec_price, config.use_fractional_shares)
+        if qty > 0:
+            order.quantity = qty
+            fill = exec_model.create_fill(order, exec_price, current_time)
+            if portfolio.can_open_position(order.symbol, fill.total_cost + fill.gross_notional):
+                if fill.side == OrderSide.BUY:
+                    portfolio.open_long(order.symbol, qty, fill, order.reason)
+                # In the future, we could handle shorting here if portfolio supported it
+
+    def _execute_close_order(self, order: BacktestOrder, exec_price: float, current_time: datetime, portfolio: BacktestPortfolio, exec_model: BacktestExecutionModel):
+        fill = exec_model.create_fill(order, exec_price, current_time)
+        portfolio.close_position(order.symbol, fill, order.reason)
+
     def _process_pending_orders(self, pending_orders: list[BacktestOrder], current_row: pd.Series, current_time: datetime, portfolio: BacktestPortfolio, exec_model: BacktestExecutionModel, config: BacktestConfig):
         for order in pending_orders[:]:
             try:
@@ -71,18 +86,11 @@ class BacktestEngine:
                 else: exec_price = float(current_row['close'])
 
                 if order.order_type == BacktestOrderType.CLOSE_POSITION:
-                    fill = exec_model.create_fill(order, exec_price, current_time)
-                    portfolio.close_position(order.symbol, fill, order.reason)
+                    self._execute_close_order(order, exec_price, current_time, portfolio, exec_model)
                 else:
                     if config.one_position_per_symbol and portfolio.has_position(order.symbol): pass
                     else:
-                        notional = order.metadata.get("notional", 0.0)
-                        qty = exec_model.quantity_from_notional(notional, exec_price, config.use_fractional_shares)
-                        if qty > 0:
-                            order.quantity = qty
-                            fill = exec_model.create_fill(order, exec_price, current_time)
-                            if portfolio.can_open_position(order.symbol, fill.total_cost + fill.gross_notional):
-                                if fill.side == OrderSide.BUY: portfolio.open_long(order.symbol, qty, fill, order.reason)
+                        self._execute_entry_order(order, exec_price, current_time, portfolio, exec_model, config)
             except Exception as e:
                 self.logger.warning(f"Error executing order: {e}")
             pending_orders.remove(order)
@@ -99,8 +107,7 @@ class BacktestEngine:
                     close_order = BacktestOrder(symbol=symbol, side=OrderSide.SELL if pos.side == SignalDirection.LONG else OrderSide.BUY, order_type=BacktestOrderType.CLOSE_POSITION, quantity=pos.quantity, requested_price=current_price, requested_at=current_time, reason=f"Opposite/Flat Signal: {candidate.reasons[0] if candidate.reasons else ''}")
                     orders.append(close_order)
                     if config.execution_price_mode == ExecutionPriceMode.SAME_CLOSE_FOR_RESEARCH_ONLY:
-                         fill = exec_model.create_fill(close_order, current_price, current_time)
-                         portfolio.close_position(symbol, fill, close_order.reason)
+                         self._execute_close_order(close_order, current_price, current_time, portfolio, exec_model)
                     else: pending_orders.append(close_order)
                 elif candidate.direction in [SignalDirection.LONG, SignalDirection.SHORT]:
                      if config.one_position_per_symbol and pos: pass
@@ -110,11 +117,7 @@ class BacktestEngine:
                          if entry_order:
                              orders.append(entry_order)
                              if config.execution_price_mode == ExecutionPriceMode.SAME_CLOSE_FOR_RESEARCH_ONLY:
-                                 qty = exec_model.quantity_from_notional(entry_order.metadata["notional"], current_price, config.use_fractional_shares)
-                                 if qty > 0:
-                                     entry_order.quantity = qty
-                                     fill = exec_model.create_fill(entry_order, current_price, current_time)
-                                     if fill.side == OrderSide.BUY: portfolio.open_long(symbol, qty, fill, entry_order.reason)
+                                 self._execute_entry_order(entry_order, current_price, current_time, portfolio, exec_model, config)
                              else: pending_orders.append(entry_order)
         except Exception as e:
             pass
@@ -126,8 +129,7 @@ class BacktestEngine:
             pos = portfolio.get_position(symbol)
             close_order = BacktestOrder(symbol=symbol, side=OrderSide.SELL if pos.side == SignalDirection.LONG else OrderSide.BUY, order_type=BacktestOrderType.CLOSE_POSITION, quantity=pos.quantity, requested_price=last_price, requested_at=last_time, reason="End of backtest")
             orders.append(close_order)
-            fill = exec_model.create_fill(close_order, last_price, last_time)
-            portfolio.close_position(symbol, fill, close_order.reason)
+            self._execute_close_order(close_order, last_price, last_time, portfolio, exec_model)
             portfolio.mark_to_market(last_time, {symbol: last_price})
 
     def run_single_symbol(self, strategy_name: str, symbol: str, data: MarketDataFrame | pd.DataFrame, params: dict[str, Any] | None = None, config: BacktestConfig | None = None) -> BacktestResult:
