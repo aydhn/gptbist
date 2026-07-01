@@ -59,18 +59,15 @@ class PortfolioAllocator:
 
         if request.method == AllocationMethod.EQUAL_WEIGHT:
             w = 1.0 / len(valid_decisions)
-            for d in valid_decisions:
-                raw_weights[d.signal.symbol] = w
+            raw_weights = {d.signal.symbol: w for d in valid_decisions}
 
         elif request.method == AllocationMethod.SCORE_WEIGHTED:
             total_score = sum(d.signal.score for d in valid_decisions)
             if total_score > 0:
-                for d in valid_decisions:
-                    raw_weights[d.signal.symbol] = d.signal.score / total_score
+                raw_weights = {d.signal.symbol: d.signal.score / total_score for d in valid_decisions}
             else:
                 w = 1.0 / len(valid_decisions)
-                for d in valid_decisions:
-                    raw_weights[d.signal.symbol] = w
+                raw_weights = {d.signal.symbol: w for d in valid_decisions}
 
         elif request.method == AllocationMethod.RISK_PARITY_SIMPLE:
             # Inverse risk weighting
@@ -82,12 +79,10 @@ class PortfolioAllocator:
 
             tot_inv = sum(inv_risks.values())
             if tot_inv > 0:
-                for s, ir in inv_risks.items():
-                    raw_weights[s] = ir / tot_inv
+                raw_weights = {s: ir / tot_inv for s, ir in inv_risks.items()}
             else:
                 w = 1.0 / len(valid_decisions)
-                for d in valid_decisions:
-                    raw_weights[d.signal.symbol] = w
+                raw_weights = {d.signal.symbol: w for d in valid_decisions}
 
         elif request.method == AllocationMethod.VOLATILITY_SCALED:
             # simple mock
@@ -101,15 +96,12 @@ class PortfolioAllocator:
             issues.append("LIQUIDITY_WEIGHTED fallback to EQUAL_WEIGHT")
 
         elif request.method == AllocationMethod.RISK_BUDGET:
-            for d in valid_decisions:
-                r_pct = d.risk_pct or 0.01
-                raw_weights[d.signal.symbol] = r_pct
+            raw_weights = {d.signal.symbol: d.risk_pct or 0.01 for d in valid_decisions}
 
         elif request.method == AllocationMethod.HYBRID:
             # 40% score, 30% risk, 20% liq, 10% eq
             w = 1.0 / len(valid_decisions)
-            for d in valid_decisions:
-                raw_weights[d.signal.symbol] = w
+            raw_weights = {d.signal.symbol: w for d in valid_decisions}
         else:
             w = 1.0 / len(valid_decisions)
             raw_weights = {d.signal.symbol: w for d in valid_decisions}
