@@ -1,5 +1,5 @@
 import pytest
-from bist_signal_bot.telegram_center.router import TelegramCommandRouter
+from bist_signal_bot.telegram_center.router import TelegramCommandRouter, TelegramRouterDependencies
 from bist_signal_bot.telegram_center.parser import TelegramCommandParser
 from bist_signal_bot.telegram_center.permissions import TelegramPermissionManager
 from bist_signal_bot.telegram_center.safety import TelegramCommandSafetyGuard
@@ -18,7 +18,16 @@ def router(tmp_path):
     handlers = TelegramCommandHandlers()
     store = TelegramCenterStore(base_dir=tmp_path)
     client = TelegramClient(settings)
-    return TelegramCommandRouter(parser, permission_manager, safety_guard, handlers, store, client, settings)
+    deps = TelegramRouterDependencies(
+        parser=parser,
+        permission_manager=permission_manager,
+        safety_guard=safety_guard,
+        handlers=handlers,
+        store=store,
+        client=client,
+        settings=settings
+    )
+    return TelegramCommandRouter(deps)
 
 def test_router_unauthorized_chat(router):
     result = router.route_raw_message("/status", "unknown_chat", dry_run=True)

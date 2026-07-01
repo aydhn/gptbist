@@ -10,7 +10,7 @@ class TelegramCommandSafetyGuard:
         self.settings = settings
         self.forbidden_guard = ForbiddenActionGuard()
         self.claims_guard = UnsafeClaimGuard()
-        self.redactor = SecretRedactor(settings)
+        self.redactor = SecretRedactor()
 
     def evaluate(self, command: TelegramCommand) -> tuple[TelegramCommandDecision, list[str]]:
         warnings = []

@@ -8,7 +8,7 @@ from bist_signal_bot.telegram_center.parser import TelegramCommandParser
 from bist_signal_bot.telegram_center.permissions import TelegramPermissionManager
 from bist_signal_bot.telegram_center.safety import TelegramCommandSafetyGuard
 from bist_signal_bot.telegram_center.handlers import TelegramCommandHandlers
-from bist_signal_bot.telegram_center.router import TelegramCommandRouter
+from bist_signal_bot.telegram_center.router import TelegramCommandRouter, TelegramRouterDependencies
 
 def create_telegram_client(settings: Settings | None = None) -> TelegramClient:
     settings = settings or Settings()
@@ -36,4 +36,13 @@ def create_telegram_router(settings: Settings | None = None, base_dir: Path | No
     handlers = TelegramCommandHandlers()
     store = create_telegram_store(settings, base_dir)
     client = create_telegram_client(settings)
-    return TelegramCommandRouter(parser, permission_manager, safety_guard, handlers, store, client, settings)
+    deps = TelegramRouterDependencies(
+        parser=parser,
+        permission_manager=permission_manager,
+        safety_guard=safety_guard,
+        handlers=handlers,
+        store=store,
+        client=client,
+        settings=settings
+    )
+    return TelegramCommandRouter(deps)
