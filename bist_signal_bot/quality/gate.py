@@ -28,30 +28,37 @@ except ImportError:
         def log_event(self, *args, **kwargs):
             pass
 
+from dataclasses import dataclass
+
+@dataclass
+class QualityGateDependencies:
+    test_runner: Optional[QualityTestRunner] = None
+    coverage_runner: Optional[CoverageRunner] = None
+    static_runner: Optional[StaticAnalysisRunner] = None
+    type_runner: Optional[TypeCheckRunner] = None
+    import_runner: Optional[ImportCheckRunner] = None
+    security_runner: Optional[QualitySecurityRunner] = None
+    regression_runner: Optional[RegressionSmokeRunner] = None
+    storage: Optional[QualityReportStore] = None
+
 class QualityGateRunner:
     def __init__(self,
-                 test_runner: Optional[QualityTestRunner] = None,
-                 coverage_runner: Optional[CoverageRunner] = None,
-                 static_runner: Optional[StaticAnalysisRunner] = None,
-                 type_runner: Optional[TypeCheckRunner] = None,
-                 import_runner: Optional[ImportCheckRunner] = None,
-                 security_runner: Optional[QualitySecurityRunner] = None,
-                 regression_runner: Optional[RegressionSmokeRunner] = None,
-                 storage: Optional[QualityReportStore] = None,
                  settings: Optional[Settings] = None,
-                 logger: Optional[logging.Logger] = None):
+                 logger: Optional[logging.Logger] = None,
+                 deps: Optional[QualityGateDependencies] = None):
 
         self.settings = settings or Settings()
         self.logger = logger or logging.getLogger(__name__)
+        deps = deps or QualityGateDependencies()
 
-        self.test_runner = test_runner or QualityTestRunner(settings=self.settings, logger=self.logger)
-        self.coverage_runner = coverage_runner or CoverageRunner()
-        self.static_runner = static_runner or StaticAnalysisRunner()
-        self.type_runner = type_runner or TypeCheckRunner()
-        self.import_runner = import_runner or ImportCheckRunner()
-        self.security_runner = security_runner or QualitySecurityRunner(settings=self.settings)
-        self.regression_runner = regression_runner or RegressionSmokeRunner()
-        self.storage = storage or QualityReportStore(settings=self.settings, logger=self.logger)
+        self.test_runner = deps.test_runner or QualityTestRunner(settings=self.settings, logger=self.logger)
+        self.coverage_runner = deps.coverage_runner or CoverageRunner()
+        self.static_runner = deps.static_runner or StaticAnalysisRunner()
+        self.type_runner = deps.type_runner or TypeCheckRunner()
+        self.import_runner = deps.import_runner or ImportCheckRunner()
+        self.security_runner = deps.security_runner or QualitySecurityRunner(settings=self.settings)
+        self.regression_runner = deps.regression_runner or RegressionSmokeRunner()
+        self.storage = deps.storage or QualityReportStore(settings=self.settings, logger=self.logger)
         self.audit = AuditTrailManager(settings=self.settings)
 
     def build_default_config(self, suite: Optional[QualitySuite] = None) -> QualityRunConfig:
