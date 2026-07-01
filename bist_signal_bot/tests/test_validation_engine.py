@@ -1,7 +1,7 @@
 import pytest
 import pandas as pd
 from pathlib import Path
-from bist_signal_bot.validation.engine import StrategyValidationEngine
+from bist_signal_bot.validation.engine import StrategyValidationEngine, ValidationEngineDependencies
 from bist_signal_bot.config.settings import Settings
 from bist_signal_bot.validation.models import StrategyValidationRequest
 from bist_signal_bot.validation.splits import ValidationSplitBuilder
@@ -16,7 +16,7 @@ from bist_signal_bot.validation.storage import ValidationStore
 
 def test_strategy_validation_engine_single_symbol(tmp_path):
     store = ValidationStore(tmp_path)
-    engine = StrategyValidationEngine(
+    deps = ValidationEngineDependencies(
         split_builder=ValidationSplitBuilder(),
         walk_forward_validator=WalkForwardValidator(),
         purged_cv_validator=PurgedCVValidator(),
@@ -28,6 +28,7 @@ def test_strategy_validation_engine_single_symbol(tmp_path):
         store=store,
         settings=Settings()
     )
+    engine = StrategyValidationEngine(deps)
 
     req = StrategyValidationRequest(
         strategy_name="MA",
