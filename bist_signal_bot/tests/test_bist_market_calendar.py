@@ -265,3 +265,21 @@ def test_previous_trading_day_mock_zero_lookback():
         res = cal.previous_trading_day(d, max_lookback_days=0)
         assert res is None
         mock_is_trading_day.assert_not_called()
+
+def test_is_trading_day_weekend():
+    """Test that is_trading_day returns False for weekends."""
+    cal = BistMarketCalendar()
+    # 2024-01-06 is a Saturday
+    assert not cal.is_trading_day(date(2024, 1, 6))
+
+def test_is_trading_day_holiday():
+    """Test that is_trading_day returns False for manual holidays."""
+    dt = date(2024, 1, 4)
+    cal = BistMarketCalendar(manual_holidays={dt})
+    assert not cal.is_trading_day(dt)
+
+def test_is_trading_day_normal():
+    """Test that is_trading_day returns True for normal trading days."""
+    cal = BistMarketCalendar()
+    # 2024-01-02 is a Tuesday
+    assert cal.is_trading_day(date(2024, 1, 2))
