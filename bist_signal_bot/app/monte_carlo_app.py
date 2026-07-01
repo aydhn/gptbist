@@ -14,7 +14,7 @@ from bist_signal_bot.monte_carlo.reality_check import RealityCheckEngine
 from bist_signal_bot.monte_carlo.risk_metrics import MonteCarloRiskAnalyzer
 from bist_signal_bot.monte_carlo.scoring import MonteCarloRobustnessScorer
 from bist_signal_bot.monte_carlo.storage import MonteCarloStore
-from bist_signal_bot.monte_carlo.engine import MonteCarloEngine
+from bist_signal_bot.monte_carlo.engine import MonteCarloEngine, MonteCarloComponents
 
 def create_monte_carlo_random_state(settings: Settings | None = None) -> MonteCarloRandomState:
     return MonteCarloRandomState()
@@ -68,7 +68,7 @@ def create_monte_carlo_engine(settings: Settings | None = None, base_dir: Path |
     scorer = MonteCarloRobustnessScorer()
     store = create_monte_carlo_store(s, base_dir)
 
-    return MonteCarloEngine(
+    components = MonteCarloComponents(
         trade_adapter=trade_adapter,
         bootstrap_engine=bootstrap_engine,
         path_simulator=path_simulator,
@@ -81,3 +81,5 @@ def create_monte_carlo_engine(settings: Settings | None = None, base_dir: Path |
         settings=s,
         logger=logger
     )
+
+    return MonteCarloEngine(components=components)
