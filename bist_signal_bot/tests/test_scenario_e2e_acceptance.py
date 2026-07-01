@@ -1,13 +1,13 @@
 import pytest
 from bist_signal_bot.config.settings import Settings
 from bist_signal_bot.scenarios.registry import ScenarioRegistry
-from bist_signal_bot.scenarios.runner import ScenarioRunner
+from bist_signal_bot.scenarios.runner import ScenarioRunner, ScenarioRunnerDependencies
 from bist_signal_bot.scenarios.storage import ScenarioStore
 
 def test_acceptance_scenario_instantiation():
     settings = Settings()
     registry = ScenarioRegistry()
-    runner = ScenarioRunner(settings=settings, registry=registry)
+    runner = ScenarioRunner(deps=ScenarioRunnerDependencies(settings=settings, registry=registry))
 
     # Check that acceptance scenario has required configuration without running it all to avoid network calls
     acc = registry.get_scenario("acceptance")

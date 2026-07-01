@@ -2,7 +2,7 @@ from pathlib import Path
 from typing import Optional
 
 from bist_signal_bot.config.settings import Settings
-from bist_signal_bot.scenarios.runner import ScenarioRunner
+from bist_signal_bot.scenarios.runner import ScenarioRunner, ScenarioRunnerDependencies
 from bist_signal_bot.scenarios.registry import ScenarioRegistry
 from bist_signal_bot.scenarios.storage import ScenarioStore
 from bist_signal_bot.scenarios.golden import GoldenSnapshotManager
@@ -24,10 +24,11 @@ def create_scenario_runner(settings: Optional[Settings] = None, base_dir: Option
     golden = create_golden_snapshot_manager(settings, base_dir)
     validator = ScenarioValidator(settings=settings)
 
-    return ScenarioRunner(
+    deps = ScenarioRunnerDependencies(
         registry=registry,
         storage=store,
         golden_manager=golden,
         validator=validator,
         settings=settings
     )
+    return ScenarioRunner(deps=deps)

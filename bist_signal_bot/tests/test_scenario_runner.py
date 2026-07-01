@@ -1,6 +1,6 @@
 import pytest
 from pathlib import Path
-from bist_signal_bot.scenarios.runner import ScenarioRunner
+from bist_signal_bot.scenarios.runner import ScenarioRunner, ScenarioRunnerDependencies
 from bist_signal_bot.scenarios.registry import ScenarioRegistry
 from bist_signal_bot.scenarios.models import ScenarioStatus, ScenarioType
 from bist_signal_bot.scenarios.storage import ScenarioStore
@@ -8,7 +8,7 @@ from bist_signal_bot.scenarios.storage import ScenarioStore
 def test_runner_smoke_scenario(tmp_path):
     store = ScenarioStore(base_dir=tmp_path)
     # Using a subset or mock so we don't actually wait for heavy real commands
-    runner = ScenarioRunner(storage=store)
+    runner = ScenarioRunner(deps=ScenarioRunnerDependencies(storage=store))
 
     # Let's run the smoke scenario but substitute its command for a simple one to not block
     # and fail due to environment differences.
@@ -29,7 +29,7 @@ def test_runner_smoke_scenario(tmp_path):
 
 def test_runner_continue_on_error(tmp_path):
     store = ScenarioStore(base_dir=tmp_path)
-    runner = ScenarioRunner(storage=store)
+    runner = ScenarioRunner(deps=ScenarioRunnerDependencies(storage=store))
     registry = ScenarioRegistry()
     acc = registry.get_scenario("acceptance")
 
@@ -52,7 +52,7 @@ def test_runner_continue_on_error(tmp_path):
 
 def test_runner_cleanup(tmp_path):
     store = ScenarioStore(base_dir=tmp_path)
-    runner = ScenarioRunner(storage=store)
+    runner = ScenarioRunner(deps=ScenarioRunnerDependencies(storage=store))
     registry = ScenarioRegistry()
     smoke = registry.get_scenario("smoke")
     for step in smoke.steps:
@@ -72,7 +72,7 @@ def test_runner_cleanup(tmp_path):
 
 def test_runner_golden_update_requires_confirm(tmp_path):
     store = ScenarioStore(base_dir=tmp_path)
-    runner = ScenarioRunner(storage=store)
+    runner = ScenarioRunner(deps=ScenarioRunnerDependencies(storage=store))
 
     registry = ScenarioRegistry()
     smoke = registry.get_scenario("smoke")
