@@ -21,7 +21,7 @@ from bist_signal_bot.adaptive.strategy_selector import AdaptiveStrategySelector
 from bist_signal_bot.adaptive.parameter_store import AdaptiveParameterStore
 from bist_signal_bot.adaptive.refresh_planner import AdaptiveRefreshPlanner
 from bist_signal_bot.adaptive.model_refresh import ModelRefreshPlanner
-from bist_signal_bot.adaptive.engine import AdaptiveEngine
+from bist_signal_bot.adaptive.engine import AdaptiveEngine, AdaptiveEngineDependencies
 from bist_signal_bot.adaptive.storage import AdaptiveStore
 
 def test_adaptive_policy_validation():
@@ -193,7 +193,7 @@ def test_model_refresh_planner():
 def test_adaptive_engine(tmp_path):
     s = Settings()
     s.DATA_DIR = str(tmp_path)
-    engine = AdaptiveEngine(settings=s)
+    engine = AdaptiveEngine(AdaptiveEngineDependencies(settings=s))
 
     rec = engine.recommend(["ASELS"], ["mock"])
     assert rec.status in (AdaptiveDecisionStatus.INSUFFICIENT_EVIDENCE, AdaptiveDecisionStatus.APPROVED_RESEARCH, AdaptiveDecisionStatus.SKIPPED)
