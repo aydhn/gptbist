@@ -1,8 +1,7 @@
-from bist_signal_bot.cli.validation_commands import app as validation_app
 from bist_signal_bot.cli.commands_scenarios import scenario_cli
 
 from bist_signal_bot.app.reports_app import create_report_generator, create_report_store, create_digest_builder
-from bist_signal_bot.reports.models import ReportOutputFormat, ReportType
+from bist_signal_bot.reports.models import ReportType
 import typer
 import click
 
@@ -14,20 +13,17 @@ from bist_signal_bot.storage.local_store import LocalMarketDataStore
 
 from datetime import date
 
-from bist_signal_bot.core.audit import AuditEventType, AuditEvent
+from bist_signal_bot.core.audit import AuditEventType, AuditEvent, UniverseUpdateContext
 from bist_signal_bot.data.corporate_actions import CorporateActionStore
 from bist_signal_bot.data.adjustments import PriceAdjustmentEngine
 from bist_signal_bot.data.models import CorporateAction, CorporateActionType, AdjustmentPolicy
 from bist_signal_bot.data.mock_provider import MockMarketDataProvider
 import argparse
-from bist_signal_bot.cli.context_commands import setup_context_parser, handle_context_command
+from bist_signal_bot.cli.context_commands import handle_context_command
 
-from bist_signal_bot.cli.ensemble_commands import setup_ensemble_parser, handle_ensemble_command
 from bist_signal_bot.cli.valuation_commands import *
-from bist_signal_bot.cli.parsers import add_valuation_parser
 
 import sys
-from bist_signal_bot.cli.bootstrap_cli import handle_bootstrap
 
 import platform
 from datetime import datetime
@@ -36,12 +32,9 @@ from bist_signal_bot.app.bootstrap import ApplicationContext
 from bist_signal_bot.app.healthcheck import run_healthcheck
 from bist_signal_bot.cli.formatting import print_output, format_success, format_warning, format_error
 from bist_signal_bot.config.secrets import settings_safe_dump
-from bist_signal_bot.data.mock_provider import MockMarketDataProvider
 from bist_signal_bot.data.symbol_utils import normalize_symbol
 from bist_signal_bot.data.quality import DataQualityChecker
-from bist_signal_bot.core.exceptions import InvalidSymbolError
 from bist_signal_bot.storage.paths import get_market_data_dir, get_metadata_dir, get_market_data_index_path
-from bist_signal_bot.calendar.session import BistMarketSessionService
 
 
 def cmd_healthcheck(args, app_context: ApplicationContext) -> int:
@@ -556,7 +549,7 @@ def cmd_universe(args, app_context) -> int:
 def cmd_adjust_data(args: argparse.Namespace, ctx: ApplicationContext) -> int:
     from bist_signal_bot.data.models import Timeframe
     from bist_signal_bot.data.mock_provider import MockMarketDataProvider
-    from bist_signal_bot.cli.formatting import format_success, format_error, print_output
+    from bist_signal_bot.cli.formatting import format_error, print_output
     from bist_signal_bot.data.symbol_utils import ensure_valid_internal_symbol
 
     try:
@@ -573,7 +566,7 @@ def cmd_adjust_data(args: argparse.Namespace, ctx: ApplicationContext) -> int:
             policy = AdjustmentPolicy(args.policy)
         else:
             policy = AdjustmentPolicy(ctx.settings.DEFAULT_ADJUSTMENT_POLICY)
-    except Exception as e:
+    except Exception:
         print_output(format_error(f"Invalid adjustment policy: {args.policy}"), args.json)
         return 1
 
@@ -615,9 +608,11 @@ def cmd_adjust_data(args: argparse.Namespace, ctx: ApplicationContext) -> int:
         ctx.audit_logger.log_universe_update(
             event_type=AuditEventType.DATA_ADJUSTMENT,
             message=f"Adjusted data for {symbol}",
-            action="ADJUST_DATA",
-            symbols_affected=[symbol],
-            issue_count=report.issue_count()
+            context=UniverseUpdateContext(
+                action="ADJUST_DATA",
+                symbols_affected=[symbol],
+                issue_count=report.issue_count()
+            )
         )
 
         print_output(out, args.json)
@@ -638,9 +633,11 @@ def cmd_corporate_actions(args: argparse.Namespace, ctx: ApplicationContext) -> 
             ctx.audit_logger.log_universe_update(
                 event_type=AuditEventType.CORPORATE_ACTIONS_INIT,
                 message="Initialized corporate actions store",
-                action="INIT",
-                symbols_affected=[],
-                file_path=str(path)
+                context=UniverseUpdateContext(
+                    action="INIT",
+                    symbols_affected=[],
+                    file_path=str(path)
+                )
             )
             msg = f"Initialized corporate actions store at {path}"
             print_output({"message": msg, "path": str(path)} if args.json else format_success(msg), args.json)
@@ -688,8 +685,10 @@ def cmd_corporate_actions(args: argparse.Namespace, ctx: ApplicationContext) -> 
             ctx.audit_logger.log_universe_update(
                 event_type=AuditEventType.CORPORATE_ACTIONS_ADD,
                 message=f"Added action for {symbol}",
-                action="ADD",
-                symbols_affected=[symbol]
+                context=UniverseUpdateContext(
+                    action="ADD",
+                    symbols_affected=[symbol]
+                )
             )
             msg = f"Successfully added {action_type.value} action for {symbol} on {action_date}"
             print_output({"message": msg, "action": action.model_dump(mode="json")} if args.json else format_success(msg), args.json)
@@ -710,8 +709,10 @@ def cmd_corporate_actions(args: argparse.Namespace, ctx: ApplicationContext) -> 
                 ctx.audit_logger.log_universe_update(
                     event_type=AuditEventType.CORPORATE_ACTIONS_REMOVE,
                     message=f"Removed action for {symbol}",
-                    action="REMOVE",
-                    symbols_affected=[symbol]
+                    context=UniverseUpdateContext(
+                        action="REMOVE",
+                        symbols_affected=[symbol]
+                    )
                 )
                 msg = f"Successfully removed {action_type.value} action for {symbol} on {action_date}"
                 print_output({"message": msg, "removed": True} if args.json else format_success(msg), args.json)
@@ -732,11 +733,13 @@ def cmd_corporate_actions(args: argparse.Namespace, ctx: ApplicationContext) -> 
             ctx.audit_logger.log_universe_update(
                 event_type=AuditEventType.CORPORATE_ACTIONS_IMPORT,
                 message=f"Imported corporate actions from {path.name}",
-                action="IMPORT",
-                symbols_affected=[],
-                file_path=str(path),
-                validation_passed=report.passed,
-                issue_count=len(report.issues)
+                context=UniverseUpdateContext(
+                    action="IMPORT",
+                    symbols_affected=[],
+                    file_path=str(path),
+                    validation_passed=report.passed,
+                    issue_count=len(report.issues)
+                )
             )
 
             if args.json:
@@ -757,9 +760,11 @@ def cmd_corporate_actions(args: argparse.Namespace, ctx: ApplicationContext) -> 
             ctx.audit_logger.log_universe_update(
                 event_type=AuditEventType.CORPORATE_ACTIONS_EXPORT,
                 message=f"Exported corporate actions to {path.name}",
-                action="EXPORT",
-                symbols_affected=[],
-                file_path=str(path)
+                context=UniverseUpdateContext(
+                    action="EXPORT",
+                    symbols_affected=[],
+                    file_path=str(path)
+                )
             )
 
             msg = f"Exported corporate actions to {path}"
@@ -777,10 +782,12 @@ def cmd_corporate_actions(args: argparse.Namespace, ctx: ApplicationContext) -> 
             ctx.audit_logger.log_universe_update(
                 event_type=AuditEventType.CORPORATE_ACTIONS_VALIDATE,
                 message="Validated corporate actions store",
-                action="VALIDATE",
-                symbols_affected=[],
-                validation_passed=report.passed,
-                issue_count=len(report.issues)
+                context=UniverseUpdateContext(
+                    action="VALIDATE",
+                    symbols_affected=[],
+                    validation_passed=report.passed,
+                    issue_count=len(report.issues)
+                )
             )
 
             if args.json:
@@ -814,28 +821,28 @@ def cmd_clean_data(args: argparse.Namespace, ctx: ApplicationContext) -> int:
     if args.policy_missing:
         try:
             cleaner_kwargs["missing_value_policy"] = MissingValuePolicy(args.policy_missing)
-        except Exception as e:
+        except Exception:
             print_output(format_error(f"Invalid missing policy: {args.policy_missing}"), args.json)
             return 1
 
     if args.policy_invalid_ohlc:
         try:
             cleaner_kwargs["invalid_ohlc_policy"] = InvalidOhlcPolicy(args.policy_invalid_ohlc)
-        except Exception as e:
+        except Exception:
             print_output(format_error(f"Invalid invalid ohlc policy: {args.policy_invalid_ohlc}"), args.json)
             return 1
 
     if args.policy_outlier:
         try:
             cleaner_kwargs["outlier_policy"] = OutlierPolicy(args.policy_outlier)
-        except Exception as e:
+        except Exception:
             print_output(format_error(f"Invalid outlier policy: {args.policy_outlier}"), args.json)
             return 1
 
     if args.policy_duplicate:
         try:
             cleaner_kwargs["duplicate_timestamp_policy"] = DuplicateTimestampPolicy(args.policy_duplicate)
-        except Exception as e:
+        except Exception:
             print_output(format_error(f"Invalid duplicate policy: {args.policy_duplicate}"), args.json)
             return 1
 
@@ -897,7 +904,7 @@ def cmd_normalize_data(args, app_context) -> int:
     from bist_signal_bot.data.normalizer import MarketDataNormalizer
     from bist_signal_bot.data.mock_provider import MockMarketDataProvider
     from bist_signal_bot.data.models import Timeframe, DataVendor
-    from bist_signal_bot.cli.formatting import format_success, format_error, print_output
+    from bist_signal_bot.cli.formatting import format_error, print_output
     import pandas as pd
 
     symbol = args.symbol
@@ -923,7 +930,7 @@ def cmd_normalize_data(args, app_context) -> int:
             file_path = get_ohlcv_file_path(symbol, DataVendor.YFINANCE.value, timeframe.value, settings, "csv")
             try:
                 df = pd.read_csv(file_path, parse_dates=["timestamp"] if "timestamp" in pd.read_csv(file_path, nrows=0).columns else None)
-            except Exception as e:
+            except Exception:
                 df = pd.read_csv(file_path) # Fallback if no timestamp
 
             vendor = DataVendor.YFINANCE
@@ -968,9 +975,8 @@ def cmd_indicators(args: argparse.Namespace, ctx: ApplicationContext) -> int:
     from bist_signal_bot.indicators.engine import IndicatorEngine
     from bist_signal_bot.indicators.models import IndicatorCategory
     from bist_signal_bot.data.mock_provider import MockMarketDataProvider
-    from bist_signal_bot.data.models import Timeframe, DataVendor
-    from bist_signal_bot.core.audit import AuditEventType, AuditEvent
-    from bist_signal_bot.cli.formatting import format_success, format_error, print_output
+    from bist_signal_bot.data.models import Timeframe
+    from bist_signal_bot.cli.formatting import format_error, print_output
     from bist_signal_bot.data.symbol_utils import ensure_valid_internal_symbol
     from bist_signal_bot.storage.local_store import LocalMarketDataStore
 
@@ -1081,7 +1087,7 @@ def cmd_trend_features(args, ctx) -> int:
     from bist_signal_bot.indicators.engine import IndicatorEngine
     from bist_signal_bot.data.mock_provider import MockMarketDataProvider
     from bist_signal_bot.data.models import Timeframe, DataVendor
-    from bist_signal_bot.cli.formatting import format_success, format_error, print_output
+    from bist_signal_bot.cli.formatting import format_error, print_output
     from bist_signal_bot.data.symbol_utils import ensure_valid_internal_symbol
     import pandas as pd
     import time
@@ -1103,7 +1109,6 @@ def cmd_trend_features(args, ctx) -> int:
             provider = MockMarketDataProvider(rows=args.rows if args.rows else 500)
             mdf = provider.fetch_one(symbol, timeframe=Timeframe(args.timeframe))
         else:
-            from bist_signal_bot.data.universe_store import UniverseStore
             from bist_signal_bot.data.storage import LocalDataStore
 
             store = LocalDataStore(ctx.settings)
@@ -1197,7 +1202,7 @@ def cmd_momentum_features(args, ctx) -> int:
     from bist_signal_bot.indicators.engine import IndicatorEngine
     from bist_signal_bot.data.mock_provider import MockMarketDataProvider
     from bist_signal_bot.data.models import Timeframe, DataVendor
-    from bist_signal_bot.cli.formatting import format_success, format_error, print_output
+    from bist_signal_bot.cli.formatting import format_error, print_output
     from bist_signal_bot.data.symbol_utils import ensure_valid_internal_symbol
     import pandas as pd
     import time
@@ -1219,7 +1224,6 @@ def cmd_momentum_features(args, ctx) -> int:
             provider = MockMarketDataProvider(rows=args.rows if args.rows else 500)
             mdf = provider.fetch_one(symbol, timeframe=Timeframe(args.timeframe))
         else:
-            from bist_signal_bot.data.universe_store import UniverseStore
             from bist_signal_bot.data.storage import LocalDataStore
 
             store = LocalDataStore(ctx.settings)
@@ -1313,7 +1317,7 @@ def cmd_volatility_features(args, ctx) -> int:
     from bist_signal_bot.data.mock_provider import MockMarketDataProvider
     from bist_signal_bot.data.data_service import MarketDataService
     from bist_signal_bot.cli.formatting import print_output
-    from bist_signal_bot.core.audit import AuditEventType, AuditEvent
+    from bist_signal_bot.core.audit import AuditEventType
     from datetime import datetime
     import pandas as pd
     import logging
@@ -1407,11 +1411,10 @@ def cmd_volume_features(args, ctx) -> int:
     from bist_signal_bot.features.volume_features import VolumeFeatureBuilder
     from bist_signal_bot.indicators.engine import IndicatorEngine
     from bist_signal_bot.data.mock_provider import MockMarketDataProvider
-    from bist_signal_bot.data.models import Timeframe, DataVendor
-    from bist_signal_bot.cli.formatting import format_success, format_error, print_output
+    from bist_signal_bot.data.models import Timeframe
+    from bist_signal_bot.cli.formatting import print_output
     from bist_signal_bot.data.symbol_utils import ensure_valid_internal_symbol
-    from bist_signal_bot.core.audit import AuditEventType, AuditEvent
-    import pandas as pd
+    from bist_signal_bot.core.audit import AuditEventType
     import time
 
     symbol = args.symbol.upper()
@@ -1537,7 +1540,7 @@ def cmd_patterns_list(args, ctx) -> int:
     return 0
 
 def cmd_patterns_detect(args, ctx) -> int:
-    from bist_signal_bot.patterns.engine import PatternEngine, PatternRegistry
+    from bist_signal_bot.patterns.engine import PatternEngine
     from bist_signal_bot.data.mock_provider import MockMarketDataProvider
     from bist_signal_bot.data.data_service import MarketDataService
     from bist_signal_bot.cli.formatting import print_output
@@ -1592,8 +1595,7 @@ def cmd_pattern_features(args, ctx) -> int:
     from bist_signal_bot.data.mock_provider import MockMarketDataProvider
     from bist_signal_bot.data.data_service import MarketDataService
     from bist_signal_bot.cli.formatting import print_output, format_pattern_batch_result
-    from bist_signal_bot.core.audit import AuditEventType, AuditEvent
-    import pandas as pd
+    from bist_signal_bot.core.audit import AuditEventType
     import logging
 
     logger = logging.getLogger("bist_signal_bot.cli")
@@ -1689,7 +1691,7 @@ def cmd_patterns_list(args, ctx) -> int:
     return 0
 
 def cmd_patterns_detect(args, ctx) -> int:
-    from bist_signal_bot.patterns.engine import PatternEngine, PatternRegistry
+    from bist_signal_bot.patterns.engine import PatternEngine
     from bist_signal_bot.data.mock_provider import MockMarketDataProvider
     from bist_signal_bot.data.data_service import MarketDataService
     from bist_signal_bot.cli.formatting import print_output
@@ -1744,8 +1746,7 @@ def cmd_pattern_features(args, ctx) -> int:
     from bist_signal_bot.data.mock_provider import MockMarketDataProvider
     from bist_signal_bot.data.data_service import MarketDataService
     from bist_signal_bot.cli.formatting import print_output, format_pattern_batch_result
-    from bist_signal_bot.core.audit import AuditEventType, AuditEvent
-    import pandas as pd
+    from bist_signal_bot.core.audit import AuditEventType
     import logging
 
     logger = logging.getLogger("bist_signal_bot.cli")
@@ -1814,9 +1815,8 @@ def cmd_divergence_detect(args, ctx) -> int:
     from bist_signal_bot.features.divergence_features import DivergenceFeatureBuilder
     from bist_signal_bot.data.mock_provider import MockMarketDataProvider
     from bist_signal_bot.data.data_service import MarketDataService
-    from bist_signal_bot.cli.formatting import print_output, format_divergence_result
-    from bist_signal_bot.core.audit import AuditEventType, AuditEvent
-    import pandas as pd
+    from bist_signal_bot.cli.formatting import print_output
+    from bist_signal_bot.core.audit import AuditEventType
     import logging
 
     logger = logging.getLogger("bist_signal_bot.cli")
@@ -1921,7 +1921,6 @@ def cmd_mtf_features(args, ctx) -> int:
     from bist_signal_bot.data.data_service import MarketDataService
     from bist_signal_bot.data.models import Timeframe
     from bist_signal_bot.cli.formatting import print_output, format_multi_timeframe_result
-    from bist_signal_bot.core.audit import AuditEventType, AuditEvent
     import pandas as pd
     import logging
 
@@ -2036,7 +2035,7 @@ def cmd_strategies_run(args, ctx) -> int:
     from bist_signal_bot.data.mock_provider import MockMarketDataProvider
     from bist_signal_bot.data.data_service import MarketDataService
     from bist_signal_bot.cli.formatting import print_output
-    from bist_signal_bot.core.audit import AuditEventType, AuditEvent
+    from bist_signal_bot.core.audit import AuditEventType
     import logging
 
     logger = logging.getLogger("bist_signal_bot.cli")
@@ -2087,7 +2086,7 @@ def cmd_strategies_run(args, ctx) -> int:
         if args.json:
             print_output(result.summary(), as_json=True)
         else:
-            print(f"Strategy Execution Result:")
+            print("Strategy Execution Result:")
             print(f"Symbol: {symbol}")
             print(f"Strategy: {strategy_name}")
             print(f"Status: {result.status}")
@@ -2095,7 +2094,7 @@ def cmd_strategies_run(args, ctx) -> int:
 
             if result.candidate:
                 c = result.candidate
-                print(f"\n--- SIGNAL CANDIDATE ---")
+                print("\n--- SIGNAL CANDIDATE ---")
                 print(f"Direction: {c.direction.value}")
                 print(f"Score: {c.score:.1f}")
                 print(f"Strength: {c.strength.value}")
@@ -2132,7 +2131,7 @@ def cmd_strategies_batch(args, ctx) -> int:
     from bist_signal_bot.data.mock_provider import MockMarketDataProvider
     from bist_signal_bot.data.data_service import MarketDataService
     from bist_signal_bot.cli.formatting import print_output
-    from bist_signal_bot.core.audit import AuditEventType, AuditEvent
+    from bist_signal_bot.core.audit import AuditEventType
     import logging
 
     logger = logging.getLogger("bist_signal_bot.cli")
@@ -2196,11 +2195,11 @@ def cmd_strategies_batch(args, ctx) -> int:
             print(f"  WATCH: {batch_result.watch_count()}")
 
             if batch_result.issues:
-                print(f"\nTop Issues:")
+                print("\nTop Issues:")
                 for issue in batch_result.issues[:5]:
                     print(f"  - {issue}")
 
-            print(f"\nResearch signal candidates only. Not investment advice.")
+            print("\nResearch signal candidates only. Not investment advice.")
 
         return 0
 
@@ -2256,7 +2255,7 @@ def cmd_benchmarks_run(args, ctx) -> int:
     from bist_signal_bot.data.mock_provider import MockMarketDataProvider
     from bist_signal_bot.data.data_service import MarketDataService
     from bist_signal_bot.cli.formatting import print_output, format_benchmark_result
-    from bist_signal_bot.core.audit import AuditEventType, AuditEvent
+    from bist_signal_bot.core.audit import AuditEventType
     import logging
 
     logger = logging.getLogger("bist_signal_bot.cli")
@@ -2317,7 +2316,7 @@ def cmd_benchmarks_batch(args, ctx) -> int:
     from bist_signal_bot.data.mock_provider import MockMarketDataProvider
     from bist_signal_bot.data.data_service import MarketDataService
     from bist_signal_bot.cli.formatting import print_output, format_benchmark_batch
-    from bist_signal_bot.core.audit import AuditEventType, AuditEvent
+    from bist_signal_bot.core.audit import AuditEventType
     import logging
 
     logger = logging.getLogger("bist_signal_bot.cli")
@@ -2378,7 +2377,7 @@ def cmd_benchmarks_default(args, ctx) -> int:
     from bist_signal_bot.data.mock_provider import MockMarketDataProvider
     from bist_signal_bot.data.data_service import MarketDataService
     from bist_signal_bot.cli.formatting import print_output, format_benchmark_result
-    from bist_signal_bot.core.audit import AuditEventType, AuditEvent
+    from bist_signal_bot.core.audit import AuditEventType
     import logging
 
     logger = logging.getLogger("bist_signal_bot.cli")
@@ -2433,7 +2432,7 @@ def handle_costs_command(args, settings):
     from bist_signal_bot.costs.models import CostScenario, TradeCostInput, OrderSide, OrderType
     from bist_signal_bot.costs.scenarios import list_cost_scenarios, scenario_description
     from bist_signal_bot.notifications.formatter import format_transaction_cost_breakdown, format_round_trip_cost_breakdown
-    from bist_signal_bot.core.audit import AuditLogger, AuditEventType
+    from bist_signal_bot.core.audit import AuditLogger
     import json
 
     if args.costs_command == "estimate":
@@ -2518,9 +2517,8 @@ def handle_costs_command(args, settings):
 def cmd_backtest_run(args, ctx) -> int:
     import json
     from pathlib import Path
-    from bist_signal_bot.data.models import DataVendor, Timeframe
+    from bist_signal_bot.data.models import DataVendor
     from bist_signal_bot.backtesting.engine import BacktestEngine
-    from bist_signal_bot.backtesting.models import ExecutionPriceMode
     from bist_signal_bot.backtesting.reporting import BacktestReportWriter
     from bist_signal_bot.cli.formatting import format_backtest_report_text
 
@@ -2617,11 +2615,9 @@ def cmd_backtest_report(args, ctx) -> int:
     return cmd_backtest_run(args, ctx)
 
 def cmd_backtest_run(args, ctx) -> int:
-    import json
     from pathlib import Path
-    from bist_signal_bot.data.models import DataVendor, Timeframe
+    from bist_signal_bot.data.models import DataVendor
     from bist_signal_bot.backtesting.engine import BacktestEngine
-    from bist_signal_bot.backtesting.models import ExecutionPriceMode
     from bist_signal_bot.backtesting.reporting import BacktestReportWriter
     from bist_signal_bot.cli.formatting import format_backtest_report_text
     from bist_signal_bot.cli.formatting import print_output
@@ -2722,8 +2718,8 @@ def cmd_backtest_report(args, ctx) -> int:
 
 def handle_risk_commands(args, ctx):
     from bist_signal_bot.risk.engine import RiskEngine
-    from bist_signal_bot.risk.models import RiskContext, RiskSide, StopMethod, TargetMethod, PositionSizingMethod
-    from bist_signal_bot.cli.formatting import print_output, format_risk_decision_text, format_risk_batch_text
+    from bist_signal_bot.risk.models import StopMethod, TargetMethod, PositionSizingMethod
+    from bist_signal_bot.cli.formatting import print_output, format_risk_decision_text
     import json
     import datetime
 
@@ -2732,7 +2728,7 @@ def handle_risk_commands(args, ctx):
 
     if args.risk_cmd == "evaluate":
         from bist_signal_bot.data.models import DataVendor, Timeframe
-        from bist_signal_bot.strategies.engine import StrategyContext, StrategyEngine
+        from bist_signal_bot.strategies.engine import StrategyContext
         import pandas as pd
 
         if args.source == "mock":
@@ -2787,7 +2783,7 @@ def handle_risk_commands(args, ctx):
             try:
                 from bist_signal_bot.strategies.registry import get_registry
                 strategy = get_registry().get(args.strategy)
-            except Exception as e:
+            except Exception:
                 # Mock fallback
                 import datetime
                 from bist_signal_bot.strategies.base_strategy import BaseStrategy
@@ -3098,11 +3094,9 @@ def handle_validate_backtest(args):
 
 def run_portfolio_risk_evaluate(args, ctx):
     from bist_signal_bot.portfolio.risk_engine import PortfolioRiskEngine
-    from bist_signal_bot.portfolio.reporting import portfolio_risk_decision_to_dict
     from bist_signal_bot.cli.formatting import print_portfolio_decision
     from bist_signal_bot.config.settings import settings
     from bist_signal_bot.signals.engine import StrategyEngine
-    import pandas as pd
 
     # 1. Fetch data
     symbols = args.symbols or ["ASELS", "THYAO", "GARAN"]
@@ -3172,7 +3166,6 @@ def run_portfolio_risk_allocation(args, ctx):
     from bist_signal_bot.risk.models import RiskDecision, RiskDecisionStatus, RiskFilterResult, PositionSizeResult, StopTargetReference
     from bist_signal_bot.signals.models import SignalCandidate, SignalDirection
     from bist_signal_bot.cli.formatting import format_allocation_table
-    import pandas as pd
     from datetime import datetime
 
     symbols = args.symbols
@@ -3282,10 +3275,7 @@ def handle_portfolio_risk_command(args, ctx):
         print("Invalid portfolio command")
 
 def cmd_scan(args, app_context: ApplicationContext) -> int:
-    from bist_signal_bot.scanner.engine import SignalScannerEngine
-    from bist_signal_bot.scanner.models import ScanUniverseMode
     from bist_signal_bot.scanner.storage import ScanReportStore
-    from bist_signal_bot.scanner.reporting import scan_report_to_dict
 
     # We will just print a stub success to pass requirements.
     if args.scan_command == 'symbols':
@@ -3456,10 +3446,6 @@ def cmd_optimize(args, app_context: ApplicationContext) -> int:
 import json
 
 def handle_ml_dataset_command(args, settings):
-    from bist_signal_bot.ml.dataset_builder import MLDatasetBuilder
-    from bist_signal_bot.ml.models import MLDatasetRequest, FeatureStoreFormat, DatasetSplitMode
-    from bist_signal_bot.ml.feature_store import FeatureStore
-    from bist_signal_bot.ml.reporting import format_ml_dataset_text
 
     if args.ml_command == "build":
         return _handle_ml_build(args, settings)
@@ -3589,7 +3575,6 @@ def _handle_ml_config(args, settings):
 
 
 
-import json
 from bist_signal_bot.app.runtime_app import (
     create_runtime_orchestrator,
     create_runtime_pipeline_config_from_settings,
@@ -3707,7 +3692,6 @@ def cmd_monitor(args, settings):
     import json
     from bist_signal_bot.monitoring.storage import MonitoringStore
     from bist_signal_bot.monitoring.heartbeat import HeartbeatManager
-    from bist_signal_bot.monitoring.metrics import MetricsCollector
     from bist_signal_bot.monitoring.alerts import AlertManager
     from bist_signal_bot.monitoring.diagnostics import DiagnosticsRunner
     from bist_signal_bot.monitoring.self_healing import SelfHealingManager
@@ -3983,7 +3967,6 @@ def handle_security_command(args, settings):
 def handle_quality_command(args, settings):
     import json
     import sys
-    from bist_signal_bot.cli.bootstrap_cli import handle_bootstrap
 
     from bist_signal_bot.app.quality_app import create_quality_gate_runner, create_quality_config_from_settings, create_smoke_quality_config
     from bist_signal_bot.quality.models import QualitySuite, QualityGateLevel
@@ -4221,10 +4204,9 @@ def run_package_command(args, settings):
             for k, v in cfg.items():
                 print(f"{k}: {v}")
 
-from bist_signal_bot.app.docs_app import create_docs_generator, create_docs_validator, create_command_catalog_builder, create_docs_store
+from bist_signal_bot.app.docs_app import create_docs_generator, create_docs_validator, create_command_catalog_builder
 from bist_signal_bot.docs.runbooks import RunbookBuilder
-from bist_signal_bot.docs.examples import DocsExampleRunner
-from bist_signal_bot.docs.reporting import format_docs_validation_text, format_docs_generation_text, docs_generation_result_to_dict, docs_validation_report_to_dict
+from bist_signal_bot.docs.reporting import docs_generation_result_to_dict, docs_validation_report_to_dict
 from bist_signal_bot.storage.paths import get_docs_dir
 import json as json_lib
 
@@ -4286,7 +4268,7 @@ def handle_performance_command(args, settings) -> None:
     )
     from bist_signal_bot.performance.models import BenchmarkRequest, BenchmarkType
     from bist_signal_bot.performance.reporting import (
-        resource_snapshot_to_dict, benchmark_result_to_dict, baseline_to_dict,
+        benchmark_result_to_dict, baseline_to_dict,
         regression_result_to_dict, bottleneck_to_dict, format_benchmark_text,
         format_regression_text, format_bottlenecks_text
     )
@@ -4961,7 +4943,7 @@ def handle_signals_command(args: argparse.Namespace) -> None:
         if getattr(args, "json", False):
             print(json.dumps(summary, indent=2))
         else:
-            print(f"Outcome Tracking Summary:")
+            print("Outcome Tracking Summary:")
             for k, v in summary.items():
                 print(f"{k}: {v}")
     elif args.signals_cmd == "outcome-update":
@@ -5149,7 +5131,7 @@ def run_portfolio_research_command(args, settings):
 def run_drift_command(args, settings):
     subcommand = getattr(args, "subcommand", None)
     from bist_signal_bot.app.drift_app import create_drift_engine
-    from bist_signal_bot.drift.models import DriftAnalysisRequest, DriftDomain, ReferenceWindowType
+    from bist_signal_bot.drift.models import DriftAnalysisRequest, DriftDomain
     from bist_signal_bot.drift.reporting import format_drift_result_text, format_feature_drift_text, format_model_drift_text, format_calibration_text
     import json
     import traceback
@@ -5591,7 +5573,6 @@ def route_lab_command(args, app_context) -> int:
 
 def execute_maintenance(args):
     import sys
-    from bist_signal_bot.cli.bootstrap_cli import handle_bootstrap
 
     from bist_signal_bot.cli.commands_maintenance import run_maintenance_cli
 
@@ -5729,7 +5710,6 @@ def handle_governance_command(args):
         print(json.dumps(cfg, indent=2))
 
 
-import json
 
 
 @click.group()
@@ -6081,7 +6061,6 @@ def run_kb_config(args, settings=None):
 @cli.command(name='scheduler')
 def run_scheduler():
     import sys
-    from bist_signal_bot.cli.bootstrap_cli import handle_bootstrap
 
     from bist_signal_bot.cli.scheduler_cli import handle_scheduler
     import argparse
@@ -6260,10 +6239,7 @@ def deploy_command(args, settings):
 
 # Phase 69 Instruments CLI
 import click
-from bist_signal_bot.instruments.master import InstrumentMaster
 from bist_signal_bot.instruments.models import InstrumentStatus
-from bist_signal_bot.corporate_actions.importer import CorporateActionImporter
-from bist_signal_bot.data.data_quality import DataReconciliationEngine
 
 @click.group(name="instruments")
 def instruments():
@@ -6675,7 +6651,6 @@ def handle_whatif_commands(args):
                 print(f"{k}: {v}")
 
 # Keep handle_event_calendar_command inside event_calendar_group.py, just import it
-from bist_signal_bot.cli.event_calendar_group import register_event_calendar_commands, handle_event_calendar_command
 
 def register_financials_commands(subparsers):
     parser = subparsers.add_parser("financials", help="Manage financial statement intelligence")
@@ -6746,13 +6721,7 @@ def register_financials_commands(subparsers):
 from pathlib import Path
 def run_financials_command(args, settings=None):
     from bist_signal_bot.app.financials_app import (
-        create_financial_store,
-        create_financial_statement_importer,
-        create_financial_statement_normalizer,
-        create_financial_ratio_calculator,
-        create_financial_trend_analyzer,
-        create_earnings_quality_analyzer,
-        create_sector_financial_comparator
+        create_financial_statement_importer
     )
     import json
 
@@ -6921,7 +6890,6 @@ def handle_qa_command(args, settings=None):
     return 0
 
 def handle_feature_store_command(args, settings=None):
-    import json
     from bist_signal_bot.cli.formatting import print_output
     cmd = getattr(args, "feature_store_command", None)
 
@@ -7193,16 +7161,13 @@ def cmd_report_templates(args, app_context) -> int:
 
 
 import argparse
-import sys
-from pathlib import Path
 
 def synthetic_scenarios_command(args):
-    from bist_signal_bot.app.synthetic_scenarios_app import create_synthetic_scenario_library, create_synthetic_scenario_generator, create_synthetic_scenario_validator, create_synthetic_stress_case_builder, create_synthetic_edge_case_factory, create_synthetic_scenario_manifest_builder, create_synthetic_scenario_store
+    from bist_signal_bot.app.synthetic_scenarios_app import create_synthetic_scenario_library, create_synthetic_scenario_generator, create_synthetic_scenario_validator, create_synthetic_stress_case_builder, create_synthetic_edge_case_factory, create_synthetic_scenario_store
 
     lib = create_synthetic_scenario_library()
     if args.synthetic_subcmd == "list":
         kind = getattr(args, "kind", None)
-        import enum
         from bist_signal_bot.synthetic_scenarios.models import SyntheticScenarioKind
         enum_kind = None
         if kind:
@@ -7498,7 +7463,6 @@ def handle_local_ui(args, settings=None):
                 print(f"{k} = {v}")
 
 def execute_maintenance_auto_cmd(args):
-    import json
     from bist_signal_bot.cli.formatting import print_json, print_error
     from bist_signal_bot.maintenance_automation.cadence import MaintenanceCadenceRegistry
     from bist_signal_bot.maintenance_automation.models import MaintenanceCadenceKind
@@ -7579,4 +7543,3 @@ def execute_maintenance_auto_cmd(args):
         else:
             print("Config settings loaded successfully.")
 
-from bist_signal_bot.cli.release_policy_cli import handle_release_policy_command

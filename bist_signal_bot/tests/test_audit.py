@@ -57,4 +57,4 @@ def test_audit_logger_sanitizes_metadata(tmp_path):
     audit_file = tmp_path / settings.AUDIT_LOG_FILE_NAME
     with open(audit_file, encoding="utf-8") as f:
         data = json.loads(f.readlines()[0])
-        assert data["metadata"]["api_key"] == "secr...6789"
+        assert data["metadata"]["api_key"] == "***REDACTED***"

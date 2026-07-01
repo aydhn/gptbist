@@ -2,7 +2,7 @@ import logging
 from pathlib import Path
 
 from bist_signal_bot.config.settings import Settings
-from bist_signal_bot.core.audit import AuditLogger, AuditEventType
+from bist_signal_bot.core.audit import AuditLogger, AuditEventType, UniverseUpdateContext
 from bist_signal_bot.data.models import (
     SymbolGroup,
     SymbolInfo,
@@ -37,11 +37,13 @@ class UniverseUpdater:
             self.audit_logger.log_universe_update(
                 event_type=event_type,
                 message=message,
-                action=action,
-                symbols_affected=symbols,
-                file_path=path,
-                validation_passed=passed,
-                issue_count=issues
+                context=UniverseUpdateContext(
+                    action=action,
+                    symbols_affected=symbols,
+                    file_path=path,
+                    validation_passed=passed,
+                    issue_count=issues
+                )
             )
 
     def validate_universe(self, universe: SymbolUniverse) -> UniverseValidationReport:

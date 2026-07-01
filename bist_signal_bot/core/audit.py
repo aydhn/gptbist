@@ -7,7 +7,6 @@ from pathlib import Path
 from typing import Any
 
 from bist_signal_bot.config.settings import Settings
-from bist_signal_bot.security.redaction import SecretRedactor
 
 
 class AuditEventType(str, Enum):
@@ -23,6 +22,24 @@ class AuditEventType(str, Enum):
     CLI_COMMAND = "CLI_COMMAND"
     COST_MODEL_CALCULATION = "COST_MODEL_CALCULATION"
     ERROR = "ERROR"
+
+    UNIVERSE_INIT = "UNIVERSE_INIT"
+    UNIVERSE_VALIDATE = "UNIVERSE_VALIDATE"
+    UNIVERSE_ADD_SYMBOL = "UNIVERSE_ADD_SYMBOL"
+    UNIVERSE_REMOVE_SYMBOL = "UNIVERSE_REMOVE_SYMBOL"
+    UNIVERSE_ACTIVATE_SYMBOL = "UNIVERSE_ACTIVATE_SYMBOL"
+    UNIVERSE_DEACTIVATE_SYMBOL = "UNIVERSE_DEACTIVATE_SYMBOL"
+    UNIVERSE_IMPORT = "UNIVERSE_IMPORT"
+    UNIVERSE_EXPORT = "UNIVERSE_EXPORT"
+    UNIVERSE_SNAPSHOT = "UNIVERSE_SNAPSHOT"
+    CORPORATE_ACTIONS_INIT = "CORPORATE_ACTIONS_INIT"
+    CORPORATE_ACTIONS_IMPORT = "CORPORATE_ACTIONS_IMPORT"
+    CORPORATE_ACTIONS_EXPORT = "CORPORATE_ACTIONS_EXPORT"
+    CORPORATE_ACTIONS_ADD = "CORPORATE_ACTIONS_ADD"
+    CORPORATE_ACTIONS_REMOVE = "CORPORATE_ACTIONS_REMOVE"
+    CORPORATE_ACTIONS_VALIDATE = "CORPORATE_ACTIONS_VALIDATE"
+    DATA_ADJUSTMENT = "DATA_ADJUSTMENT"
+
 
     # Local Plugin Architecture Events (Phase 109)
     PLUGIN_CONTRACTS_LOADED = "PLUGIN_CONTRACTS_LOADED"
@@ -480,6 +497,15 @@ class AuditEvent:
         if self.symbol:
             self.symbol = self.symbol.upper()
 
+
+@dataclass
+class UniverseUpdateContext:
+    action: str
+    symbols_affected: list[str]
+    file_path: str | None = None
+    validation_passed: bool | None = None
+    issue_count: int | None = None
+
 class AuditLogger:
     def __init__(self, settings: Settings, logger: logging.Logger | None = None):
         self.settings = settings
@@ -576,16 +602,16 @@ class AuditLogger:
             metadata={"error_type": type(error).__name__, "context": context or {}}
         ))
 
-    def log_universe_update(self, event_type: AuditEventType, message: str, action: str, symbols_affected: list[str], file_path: str | None = None, validation_passed: bool | None = None, issue_count: int | None = None, run_id: str | None = None) -> None:
+    def log_universe_update(self, event_type: AuditEventType, message: str, context: UniverseUpdateContext, run_id: str | None = None) -> None:
         metadata = {
-            "action": action,
-            "symbols_affected": symbols_affected,
-            "file_path": file_path,
+            "action": context.action,
+            "symbols_affected": context.symbols_affected,
+            "file_path": context.file_path,
         }
-        if validation_passed is not None:
-            metadata["validation_passed"] = validation_passed
-        if issue_count is not None:
-            metadata["issue_count"] = issue_count
+        if context.validation_passed is not None:
+            metadata["validation_passed"] = context.validation_passed
+        if context.issue_count is not None:
+            metadata["issue_count"] = context.issue_count
 
         self.log_event(AuditEvent(
             event_type=event_type,
