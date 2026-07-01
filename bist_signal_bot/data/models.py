@@ -215,6 +215,7 @@ class NormalizedMarketData(BaseModel):
     market_data: MarketDataFrame
     report: NormalizationReport
 
+
 class CleaningStatus(str, Enum):
     SUCCESS = "SUCCESS"
     WARNING = "WARNING"
@@ -246,6 +247,17 @@ class DuplicateTimestampPolicy(str, Enum):
     KEEP_FIRST = "KEEP_FIRST"
     DROP_ALL = "DROP_ALL"
     FAIL = "FAIL"
+
+
+class CleaningConfig(BaseModel):
+    missing_value_policy: MissingValuePolicy = MissingValuePolicy.FORWARD_FILL
+    invalid_ohlc_policy: InvalidOhlcPolicy = InvalidOhlcPolicy.DROP_ROW
+    outlier_policy: OutlierPolicy = OutlierPolicy.FLAG_ONLY
+    duplicate_timestamp_policy: DuplicateTimestampPolicy = DuplicateTimestampPolicy.KEEP_LAST
+    max_daily_return_abs: float = 0.35
+    max_volume_zscore: float = 8.0
+    min_rows_after_cleaning: int = 100
+    strict: bool = False
 
 class CleaningIssueType(str, Enum):
     MISSING_VALUE = "MISSING_VALUE"

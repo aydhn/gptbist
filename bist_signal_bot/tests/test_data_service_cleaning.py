@@ -6,13 +6,14 @@ import numpy as np
 from bist_signal_bot.data.data_service import MarketDataService
 from bist_signal_bot.data.mock_provider import MockMarketDataProvider
 from bist_signal_bot.data.cleaning import MarketDataCleaner
+from bist_signal_bot.data.models import CleaningConfig
 from bist_signal_bot.data.models import Timeframe
 from bist_signal_bot.core.exceptions import DataCleaningError
 
 @pytest.fixture
 def service_with_cleaner():
     provider = MockMarketDataProvider(rows=50)
-    cleaner = MarketDataCleaner(min_rows_after_cleaning=10)
+    cleaner = MarketDataCleaner(config=CleaningConfig(min_rows_after_cleaning=10))
     return MarketDataService(provider=provider, cleaner=cleaner, clean_data=True)
 
 def test_service_cleans_data(service_with_cleaner):
@@ -35,7 +36,7 @@ def test_service_fails_on_cleaning_error():
             return mdf
 
     provider = BadProvider(rows=50)
-    cleaner = MarketDataCleaner(missing_value_policy="FAIL") # Will raise
+    cleaner = MarketDataCleaner(config=CleaningConfig(missing_value_policy="FAIL")) # Will raise
     service = MarketDataService(provider=provider, cleaner=cleaner, clean_data=True, fail_on_cleaning_error=True)
 
     with pytest.raises(DataCleaningError):

@@ -7,6 +7,7 @@ import typer
 import click
 
 from bist_signal_bot.data.cleaning import MarketDataCleaner
+from bist_signal_bot.data.models import CleaningConfig
 from bist_signal_bot.data.models import MissingValuePolicy, InvalidOhlcPolicy, OutlierPolicy, DuplicateTimestampPolicy
 from bist_signal_bot.data.symbol_utils import ensure_valid_internal_symbol
 from bist_signal_bot.data.models import Timeframe
@@ -809,7 +810,7 @@ def cmd_clean_data(args: argparse.Namespace, ctx: ApplicationContext) -> int:
     source = args.source
 
     # Optional policies
-    cleaner_kwargs = {"settings": ctx.settings, "strict": args.strict}
+    cleaner_kwargs = {"strict": args.strict}
 
     if args.policy_missing:
         try:
@@ -839,7 +840,8 @@ def cmd_clean_data(args: argparse.Namespace, ctx: ApplicationContext) -> int:
             print_output(format_error(f"Invalid duplicate policy: {args.policy_duplicate}"), args.json)
             return 1
 
-    cleaner = MarketDataCleaner(**cleaner_kwargs)
+    cleaner_config = CleaningConfig(**cleaner_kwargs)
+    cleaner = MarketDataCleaner(config=cleaner_config, settings=ctx.settings)
 
     try:
         mdf = None

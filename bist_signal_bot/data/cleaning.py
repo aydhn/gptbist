@@ -12,6 +12,7 @@ from bist_signal_bot.data.models import (
     CleaningIssue,
     CleaningIssueType,
     CleaningReport,
+    CleaningConfig,
     CleaningStatus,
     DuplicateTimestampPolicy,
     InvalidOhlcPolicy,
@@ -26,35 +27,21 @@ logger = logging.getLogger("bist_signal_bot.data.cleaning")
 class MarketDataCleaner:
     def __init__(
         self,
+        config: CleaningConfig | None = None,
         settings: Settings | None = None,
-        missing_value_policy: MissingValuePolicy = MissingValuePolicy.FORWARD_FILL,
-        invalid_ohlc_policy: InvalidOhlcPolicy = InvalidOhlcPolicy.DROP_ROW,
-        outlier_policy: OutlierPolicy = OutlierPolicy.FLAG_ONLY,
-        duplicate_timestamp_policy: DuplicateTimestampPolicy = DuplicateTimestampPolicy.KEEP_LAST,
-        max_daily_return_abs: float = 0.35,
-        max_volume_zscore: float = 8.0,
-        min_rows_after_cleaning: int = 100,
-        strict: bool = False,
     ):
         self.settings = settings
-        self.missing_value_policy = missing_value_policy
-        self.invalid_ohlc_policy = invalid_ohlc_policy
-        self.outlier_policy = outlier_policy
-        self.duplicate_timestamp_policy = duplicate_timestamp_policy
-        self.max_daily_return_abs = max_daily_return_abs
-        self.max_volume_zscore = max_volume_zscore
-        self.min_rows_after_cleaning = min_rows_after_cleaning
-        self.strict = strict
+        self.config = config or CleaningConfig()
 
         if settings:
-            self.missing_value_policy = MissingValuePolicy(settings.CLEANING_MISSING_VALUE_POLICY)
-            self.invalid_ohlc_policy = InvalidOhlcPolicy(settings.CLEANING_INVALID_OHLC_POLICY)
-            self.outlier_policy = OutlierPolicy(settings.CLEANING_OUTLIER_POLICY)
-            self.duplicate_timestamp_policy = DuplicateTimestampPolicy(settings.CLEANING_DUPLICATE_TIMESTAMP_POLICY)
-            self.max_daily_return_abs = settings.CLEANING_MAX_DAILY_RETURN_ABS
-            self.max_volume_zscore = settings.CLEANING_MAX_VOLUME_ZSCORE
-            self.min_rows_after_cleaning = settings.CLEANING_MIN_ROWS_AFTER_CLEANING
-            self.strict = settings.CLEANING_STRICT
+            self.config.missing_value_policy = MissingValuePolicy(settings.CLEANING_MISSING_VALUE_POLICY)
+            self.config.invalid_ohlc_policy = InvalidOhlcPolicy(settings.CLEANING_INVALID_OHLC_POLICY)
+            self.config.outlier_policy = OutlierPolicy(settings.CLEANING_OUTLIER_POLICY)
+            self.config.duplicate_timestamp_policy = DuplicateTimestampPolicy(settings.CLEANING_DUPLICATE_TIMESTAMP_POLICY)
+            self.config.max_daily_return_abs = settings.CLEANING_MAX_DAILY_RETURN_ABS
+            self.config.max_volume_zscore = settings.CLEANING_MAX_VOLUME_ZSCORE
+            self.config.min_rows_after_cleaning = settings.CLEANING_MIN_ROWS_AFTER_CLEANING
+            self.config.strict = settings.CLEANING_STRICT
 
     def clean_market_data(self, market_data: MarketDataFrame) -> CleanedMarketData:
         start_time = datetime.now(UTC)
@@ -107,7 +94,7 @@ class MarketDataCleaner:
         usable_backtest, usable_ml = self._calculate_usability(df, output_rows)
 
         status = CleaningStatus.SUCCESS
-        if self.strict and issues:
+        if self.config.strict and issues:
             status = CleaningStatus.FAILED
             if self.settings and self.settings.CLEANING_FAIL_ON_ERROR:
                 raise DataCleaningError(f"Cleaning failed strictly for {symbol}")
@@ -178,13 +165,13 @@ class MarketDataCleaner:
         keep = False
         action = "DROP_ALL"
 
-        if self.duplicate_timestamp_policy.value == "KEEP_LAST":
+        if self.config.duplicate_timestamp_policy.value == "KEEP_LAST":
             keep = 'last'
             action = "KEEP_LAST"
-        elif self.duplicate_timestamp_policy.value == "KEEP_FIRST":
+        elif self.config.duplicate_timestamp_policy.value == "KEEP_FIRST":
             keep = 'first'
             action = "KEEP_FIRST"
-        elif self.duplicate_timestamp_policy.value == "FAIL":
+        elif self.config.duplicate_timestamp_policy.value == "FAIL":
             raise DataCleaningError(f"Duplicate timestamps found for {symbol} and policy is FAIL")
 
         before_len = len(df)
@@ -281,11 +268,11 @@ class MarketDataCleaner:
             return df, 0
 
         action = "DROP_ROW"
-        if self.invalid_ohlc_policy == InvalidOhlcPolicy.LEAVE_UNCHANGED:
+        if self.config.invalid_ohlc_policy == InvalidOhlcPolicy.LEAVE_UNCHANGED:
             action = "LEAVE_UNCHANGED"
-        elif self.invalid_ohlc_policy == InvalidOhlcPolicy.FAIL:
+        elif self.config.invalid_ohlc_policy == InvalidOhlcPolicy.FAIL:
             raise DataCleaningError(f"Invalid OHLC relations found for {symbol}")
-        elif self.invalid_ohlc_policy == InvalidOhlcPolicy.DROP_ROW:
+        elif self.config.invalid_ohlc_policy == InvalidOhlcPolicy.DROP_ROW:
             df = df[~mask]
 
         issues.append(CleaningIssue(
@@ -302,10 +289,10 @@ class MarketDataCleaner:
         if total_missing == 0:
             return df, 0, 0
 
-        if self.missing_value_policy == MissingValuePolicy.FAIL:
+        if self.config.missing_value_policy == MissingValuePolicy.FAIL:
             raise DataCleaningError(f"Missing values found in {symbol} and policy is FAIL")
 
-        if self.missing_value_policy == MissingValuePolicy.LEAVE_UNCHANGED:
+        if self.config.missing_value_policy == MissingValuePolicy.LEAVE_UNCHANGED:
             issues.append(CleaningIssue(
                 issue_type=CleaningIssueType.MISSING_VALUE,
                 message=f"Found {total_missing} missing values. Policy LEAVE_UNCHANGED.",
@@ -313,15 +300,15 @@ class MarketDataCleaner:
             ))
             return df, 0, 0
 
-        action = self.missing_value_policy.value
+        action = self.config.missing_value_policy.value
         filled = 0
         before_nas = df.isna().sum().sum()
 
-        if self.missing_value_policy == MissingValuePolicy.FORWARD_FILL:
+        if self.config.missing_value_policy == MissingValuePolicy.FORWARD_FILL:
             df = df.ffill()
-        elif self.missing_value_policy == MissingValuePolicy.BACKWARD_FILL:
+        elif self.config.missing_value_policy == MissingValuePolicy.BACKWARD_FILL:
             df = df.bfill()
-        elif self.missing_value_policy == MissingValuePolicy.INTERPOLATE:
+        elif self.config.missing_value_policy == MissingValuePolicy.INTERPOLATE:
             df = df.interpolate()
 
         after_fill_nas = df.isna().sum().sum()
@@ -336,7 +323,7 @@ class MarketDataCleaner:
 
         dropped = 0
         # If policy is DROP_ROW or there are still NaNs after fill
-        if self.missing_value_policy == MissingValuePolicy.DROP_ROW or after_fill_nas > 0:
+        if self.config.missing_value_policy == MissingValuePolicy.DROP_ROW or after_fill_nas > 0:
             before_len = len(df)
             df = df.dropna()
             dropped = before_len - len(df)
@@ -356,13 +343,13 @@ class MarketDataCleaner:
             return df, 0
 
         returns = df["close"].pct_change().abs()
-        mask = returns > self.max_daily_return_abs
+        mask = returns > self.config.max_daily_return_abs
         extreme_count = mask.sum()
 
         if extreme_count == 0:
             return df, 0
 
-        df, count = self._apply_outlier_policy(df, mask, symbol, CleaningIssueType.EXTREME_RETURN, f"extreme returns > {self.max_daily_return_abs}", issues)
+        df, count = self._apply_outlier_policy(df, mask, symbol, CleaningIssueType.EXTREME_RETURN, f"extreme returns > {self.config.max_daily_return_abs}", issues)
         return df, count
 
     def _detect_extreme_volume(self, df: pd.DataFrame, symbol: str, issues: list) -> tuple[pd.DataFrame, int]:
@@ -375,26 +362,26 @@ class MarketDataCleaner:
             return df, 0
 
         zscores = ((vol - vol.mean()) / std).abs()
-        mask = zscores > self.max_volume_zscore
+        mask = zscores > self.config.max_volume_zscore
         extreme_count = mask.sum()
 
         if extreme_count == 0:
             return df, 0
 
-        df, count = self._apply_outlier_policy(df, mask, symbol, CleaningIssueType.EXTREME_VOLUME, f"extreme volume z-score > {self.max_volume_zscore}", issues)
+        df, count = self._apply_outlier_policy(df, mask, symbol, CleaningIssueType.EXTREME_VOLUME, f"extreme volume z-score > {self.config.max_volume_zscore}", issues)
         return df, count
 
     def _apply_outlier_policy(self, df: pd.DataFrame, mask: pd.Series, symbol: str, issue_type: CleaningIssueType, reason: str, issues: list) -> tuple[pd.DataFrame, int]:
         count = mask.sum()
 
-        if self.outlier_policy.value == "FAIL":
+        if self.config.outlier_policy.value == "FAIL":
             raise DataCleaningError(f"Outliers found for {symbol}: {reason} and policy is FAIL")
 
-        action = self.outlier_policy.value
+        action = self.config.outlier_policy.value
 
-        if self.outlier_policy.value == "DROP_ROW":
+        if self.config.outlier_policy.value == "DROP_ROW":
             df = df[~mask]
-        elif self.outlier_policy.value == "WINSORIZE":
+        elif self.config.outlier_policy.value == "WINSORIZE":
              # simple implementation skips for now, acts like FLAG_ONLY
              action = "SKIPPED_WINSORIZE"
 
@@ -408,7 +395,7 @@ class MarketDataCleaner:
         return df, count
 
     def _calculate_usability(self, df: pd.DataFrame, output_rows: int) -> tuple[bool, bool]:
-        if output_rows < self.min_rows_after_cleaning:
+        if output_rows < self.config.min_rows_after_cleaning:
             return False, False
 
         usable_backtest = True

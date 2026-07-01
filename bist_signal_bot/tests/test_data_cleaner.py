@@ -4,6 +4,7 @@ import pytest
 from datetime import datetime, UTC, timedelta
 
 from bist_signal_bot.data.cleaning import MarketDataCleaner
+from bist_signal_bot.data.models import CleaningConfig
 from bist_signal_bot.data.models import (
     MarketDataFrame, Timeframe, DataVendor,
     MissingValuePolicy, DuplicateTimestampPolicy, InvalidOhlcPolicy
@@ -31,7 +32,7 @@ def _make_basic_df():
     }, index=dates)
 
 def test_clean_success():
-    cleaner = MarketDataCleaner(min_rows_after_cleaning=2)
+    cleaner = MarketDataCleaner(config=CleaningConfig(min_rows_after_cleaning=2))
     mdf = _make_mdf(_make_basic_df())
     res = cleaner.clean_market_data(mdf)
 
@@ -46,7 +47,7 @@ def test_clean_mutate_not_original():
     # Add a row to drop
     df.loc[df.index[-1] + timedelta(days=1)] = [-1, 10, 5, 8, 1000]
 
-    cleaner = MarketDataCleaner(min_rows_after_cleaning=2)
+    cleaner = MarketDataCleaner(config=CleaningConfig(min_rows_after_cleaning=2))
     mdf = _make_mdf(df)
     res = cleaner.clean_market_data(mdf)
 
@@ -59,7 +60,7 @@ def test_duplicate_timestamp_keep_last():
     df = _make_basic_df()
     df = pd.concat([df, pd.DataFrame([[12.0, 12.0, 12.0, 12.0, 2000]], index=[df.index[-1]], columns=df.columns)])
 
-    cleaner = MarketDataCleaner(duplicate_timestamp_policy=DuplicateTimestampPolicy.KEEP_LAST)
+    cleaner = MarketDataCleaner(config=CleaningConfig(duplicate_timestamp_policy=DuplicateTimestampPolicy.KEEP_LAST))
     res = cleaner.clean_market_data(_make_mdf(df))
 
     assert res.report.dropped_rows == 1
@@ -69,7 +70,7 @@ def test_duplicate_timestamp_keep_first():
     df = _make_basic_df()
     df = pd.concat([df, pd.DataFrame([[12.0, 12.0, 12.0, 12.0, 2000]], index=[df.index[-1]], columns=df.columns)])
 
-    cleaner = MarketDataCleaner(duplicate_timestamp_policy=DuplicateTimestampPolicy.KEEP_FIRST)
+    cleaner = MarketDataCleaner(config=CleaningConfig(duplicate_timestamp_policy=DuplicateTimestampPolicy.KEEP_FIRST))
     res = cleaner.clean_market_data(_make_mdf(df))
 
     assert res.report.dropped_rows == 1
@@ -79,7 +80,7 @@ def test_duplicate_timestamp_fail():
     df = _make_basic_df()
     df = pd.concat([df, pd.DataFrame([[12.0, 12.0, 12.0, 12.0, 2000]], index=[df.index[-1]], columns=df.columns)])
 
-    cleaner = MarketDataCleaner(duplicate_timestamp_policy=DuplicateTimestampPolicy.FAIL)
+    cleaner = MarketDataCleaner(config=CleaningConfig(duplicate_timestamp_policy=DuplicateTimestampPolicy.FAIL))
     with pytest.raises(DataCleaningError):
         cleaner.clean_market_data(_make_mdf(df))
 
@@ -122,14 +123,14 @@ def test_drop_zero_close():
 
 def test_usable_for_backtest_false_if_small():
     df = _make_basic_df()
-    cleaner = MarketDataCleaner(min_rows_after_cleaning=10)
+    cleaner = MarketDataCleaner(config=CleaningConfig(min_rows_after_cleaning=10))
     res = cleaner.clean_market_data(_make_mdf(df))
 
     assert res.report.usable_for_backtest is False
 
 def test_metadata_contains_cleaned():
     df = _make_basic_df()
-    cleaner = MarketDataCleaner(min_rows_after_cleaning=2)
+    cleaner = MarketDataCleaner(config=CleaningConfig(min_rows_after_cleaning=2))
     res = cleaner.clean_market_data(_make_mdf(df))
 
     assert res.market_data.metadata.get("cleaned") is True
