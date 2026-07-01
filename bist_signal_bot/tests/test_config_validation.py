@@ -8,6 +8,7 @@ from bist_signal_bot.config.validation import (
     validate_iso_date_list,
     validate_market_hours,
     validate_run_mode,
+    validate_storage_format,
     validate_telegram_message_length,
     validate_time_format,
 )
@@ -70,3 +71,15 @@ def test_enforce_production_safety():
     settings.DRY_RUN = False
     with pytest.raises(OperationalSafetyError):
         enforce_production_safety(settings)
+
+def test_validate_storage_format():
+    assert validate_storage_format("csv") == "csv"
+    assert validate_storage_format("CSV") == "csv"
+    assert validate_storage_format("cSv") == "csv"
+
+    with pytest.raises(ConfigurationError) as exc_info:
+        validate_storage_format("json")
+    assert "currently only supports 'csv'" in str(exc_info.value)
+
+    with pytest.raises(ConfigurationError):
+        validate_storage_format("")
