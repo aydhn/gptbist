@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from enum import Enum
 from datetime import datetime
 from typing import Any, Optional
@@ -180,3 +181,17 @@ class SchedulerRunResult(BaseModel):
     errors: list[str] = Field(default_factory=list)
     disclaimer: str = "Scheduler run is local research automation only. Not investment advice. No real order was sent."
     metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+@dataclass
+class SchedulerOrchestratorConfig:
+    store: Any
+    calendar: Any
+    session_resolver: Any
+    trigger_evaluator: Any
+    due_finder: Any
+    lock_manager: Any
+    deduplicator: Any
+    executor: Any
+    settings: Any | None = None
+    logger: Any | None = None

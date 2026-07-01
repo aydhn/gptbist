@@ -4,6 +4,8 @@ import logging
 from typing import Any
 
 from bist_signal_bot.scheduler.models import (
+    SchedulerOrchestratorConfig,
+
     ScheduledJob,
     ScheduledJobRun,
     SchedulerRunResult,
@@ -17,30 +19,18 @@ from bist_signal_bot.scheduler.models import (
 logger = logging.getLogger(__name__)
 
 class LocalSchedulerOrchestrator:
-    def __init__(
-        self,
-        store,
-        calendar,
-        session_resolver,
-        trigger_evaluator,
-        due_finder,
-        lock_manager,
-        deduplicator,
-        executor,
-        settings=None,
-        logger=None
-    ):
-        self.store = store
-        self.calendar = calendar
-        self.session_resolver = session_resolver
-        self.trigger_evaluator = trigger_evaluator
-        self.due_finder = due_finder
-        self.lock_manager = lock_manager
-        self.deduplicator = deduplicator
-        self.executor = executor
+    def __init__(self, config: SchedulerOrchestratorConfig):
+        self.store = config.store
+        self.calendar = config.calendar
+        self.session_resolver = config.session_resolver
+        self.trigger_evaluator = config.trigger_evaluator
+        self.due_finder = config.due_finder
+        self.lock_manager = config.lock_manager
+        self.deduplicator = config.deduplicator
+        self.executor = config.executor
 
-        self.settings = settings
-        self.logger = logger or logging.getLogger(__name__)
+        self.settings = config.settings
+        self.logger = config.logger or logging.getLogger(__name__)
 
     def run_due(self, now: datetime | None = None, dry_run: bool = False, limit: int | None = None) -> SchedulerRunResult:
         if now is None:
