@@ -14,13 +14,13 @@ class TransactionCostModel:
         s = settings or Settings()
         return TransactionCostConfig(
             config_id=str(uuid.uuid4()),
-            commission_bps=getattr(s, "EXECUTION_COMMISSION_BPS", 5.0),
-            min_commission=getattr(s, "EXECUTION_MIN_COMMISSION", 0.0),
-            tax_bps_placeholder=getattr(s, "EXECUTION_TAX_BPS_PLACEHOLDER", 0.0),
-            exchange_fee_bps_placeholder=getattr(s, "EXECUTION_EXCHANGE_FEE_BPS_PLACEHOLDER", 0.0),
-            include_spread_cost=getattr(s, "EXECUTION_INCLUDE_SPREAD_COST", True),
-            include_slippage_cost=getattr(s, "EXECUTION_INCLUDE_SLIPPAGE_COST", True),
-            include_market_impact=getattr(s, "EXECUTION_INCLUDE_MARKET_IMPACT", True),
+            commission_bps=getattr(s, "EXECUTION_COMMISSION_BPS", None) or 5.0,
+            min_commission=getattr(s, "EXECUTION_MIN_COMMISSION", None) or 0.0,
+            tax_bps_placeholder=getattr(s, "EXECUTION_TAX_BPS_PLACEHOLDER", None) or 0.0,
+            exchange_fee_bps_placeholder=getattr(s, "EXECUTION_EXCHANGE_FEE_BPS_PLACEHOLDER", None) or 0.0,
+            include_spread_cost=getattr(s, "EXECUTION_INCLUDE_SPREAD_COST", True) if getattr(s, "EXECUTION_INCLUDE_SPREAD_COST", True) is not None else True,
+            include_slippage_cost=getattr(s, "EXECUTION_INCLUDE_SLIPPAGE_COST", True) if getattr(s, "EXECUTION_INCLUDE_SLIPPAGE_COST", True) is not None else True,
+            include_market_impact=getattr(s, "EXECUTION_INCLUDE_MARKET_IMPACT", True) if getattr(s, "EXECUTION_INCLUDE_MARKET_IMPACT", True) is not None else True,
             warnings=["Using default settings. Vergi/masraf placeholder'dır, resmi beyan degildir."]
         )
 

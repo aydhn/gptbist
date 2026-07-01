@@ -480,6 +480,18 @@ class AuditEvent:
         if self.symbol:
             self.symbol = self.symbol.upper()
 
+
+@dataclass
+class CostModelLogData:
+    symbol: str
+    side: str
+    quantity: float
+    price: float
+    scenario: str
+    total_cost: float
+    total_cost_bps: float
+    run_id: str | None = None
+
 class AuditLogger:
     def __init__(self, settings: Settings, logger: logging.Logger | None = None):
         self.settings = settings
@@ -609,19 +621,19 @@ class AuditLogger:
             }
         ))
 
-    def log_cost_model_calculation(self, symbol: str, side: str, quantity: float, price: float, scenario: str, total_cost: float, total_cost_bps: float, run_id: str | None = None) -> None:
+    def log_cost_model_calculation(self, data: CostModelLogData) -> None:
         self.log_event(AuditEvent(
             event_type=AuditEventType.COST_MODEL_CALCULATION,
             message="Cost model calculated",
-            symbol=symbol,
-            run_id=run_id,
+            symbol=data.symbol,
+            run_id=data.run_id,
             metadata={
-                "side": side,
-                "quantity": quantity,
-                "price": price,
-                "scenario": scenario,
-                "total_cost": total_cost,
-                "total_cost_bps": total_cost_bps
+                "side": data.side,
+                "quantity": data.quantity,
+                "price": data.price,
+                "scenario": data.scenario,
+                "total_cost": data.total_cost,
+                "total_cost_bps": data.total_cost_bps
             }
         ))
 
