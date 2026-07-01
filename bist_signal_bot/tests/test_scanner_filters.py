@@ -87,3 +87,36 @@ def test_filter_passed():
     engine = ScanFilterEngine()
     out = engine.filter_symbol_result(res, req)
     assert out.status == ScanCandidateStatus.PASSED
+
+def test_should_include_in_top_passed():
+    engine = ScanFilterEngine()
+    res = SymbolScanResult(symbol="A", status=ScanCandidateStatus.PASSED)
+    assert engine.should_include_in_top(res) is True
+
+def test_should_include_in_top_watch_only_enabled():
+    class MockSettings:
+        SCANNER_INCLUDE_WATCH_ONLY = True
+
+    engine = ScanFilterEngine(settings=MockSettings())
+    res = SymbolScanResult(symbol="A", status=ScanCandidateStatus.WATCH_ONLY)
+    assert engine.should_include_in_top(res) is True
+
+def test_should_include_in_top_watch_only_disabled():
+    class MockSettings:
+        SCANNER_INCLUDE_WATCH_ONLY = False
+
+    engine = ScanFilterEngine(settings=MockSettings())
+    res = SymbolScanResult(symbol="A", status=ScanCandidateStatus.WATCH_ONLY)
+    assert engine.should_include_in_top(res) is False
+
+def test_should_include_in_top_other_status():
+    engine = ScanFilterEngine()
+
+    res1 = SymbolScanResult(symbol="A", status=ScanCandidateStatus.ERROR)
+    assert engine.should_include_in_top(res1) is False
+
+    res2 = SymbolScanResult(symbol="A", status=ScanCandidateStatus.REJECTED)
+    assert engine.should_include_in_top(res2) is False
+
+    res3 = SymbolScanResult(symbol="A", status=ScanCandidateStatus.FILTERED)
+    assert engine.should_include_in_top(res3) is False
