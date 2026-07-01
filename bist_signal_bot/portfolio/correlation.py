@@ -97,15 +97,12 @@ class CorrelationAnalyzer:
         if corr.matrix.empty or symbol not in corr.matrix.columns:
             return None
 
-        max_corr = None
-        for ex_sym in existing_symbols:
-            if ex_sym in corr.matrix.columns and ex_sym != symbol:
-                val = corr.matrix.loc[symbol, ex_sym]
-                if pd.notna(val):
-                    if max_corr is None or val > max_corr:
-                        max_corr = float(val)
+        valid_existing = [sym for sym in existing_symbols if sym in corr.matrix.index and sym != symbol]
+        if not valid_existing:
+            return None
 
-        return max_corr
+        val = corr.matrix.loc[valid_existing, symbol].max()
+        return float(val) if pd.notna(val) else None
 
     def average_portfolio_correlation(self, symbols: list[str], corr: CorrelationMatrixResult) -> Optional[float]:
         if corr.matrix.empty:
