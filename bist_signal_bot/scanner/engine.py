@@ -3,6 +3,7 @@ from bist_signal_bot.app.context_fusion_app import create_context_fusion_engine
 import logging
 import time
 from datetime import datetime
+from dataclasses import dataclass
 from typing import List, Optional, Any, Dict
 
 from bist_signal_bot.config.settings import Settings
@@ -30,40 +31,37 @@ from bist_signal_bot.scanner.filters import ScanFilterEngine
 
 from bist_signal_bot.strategies.models import StrategyRunMode
 
+
+@dataclass
+class SignalScannerDependencies:
+    data_service: MarketDataService
+    strategy_engine: StrategyEngine
+    risk_engine: Optional[RiskEngine] = None
+    portfolio_risk_engine: Optional[PortfolioRiskEngine] = None
+    paper_engine: Optional[PaperTradingEngine] = None
+    ranker: Optional[ScanRanker] = None
+    filter_engine: Optional[ScanFilterEngine] = None
+    settings: Optional[Settings] = None
+    notifier: Optional[Any] = None
+    logger: Optional[logging.Logger] = None
+    ml_inference_engine: Optional[Any] = None
+
 class SignalScannerEngine:
-    def __init__(
-        self,
-        data_service: MarketDataService,
-        strategy_engine: StrategyEngine,
-        risk_engine: Optional[RiskEngine] = None,
-        portfolio_risk_engine: Optional[PortfolioRiskEngine] = None,
-        paper_engine: Optional[PaperTradingEngine] = None,
-        ranker: Optional[ScanRanker] = None,
-        filter_engine: Optional[ScanFilterEngine] = None,
-        settings: Optional[Settings] = None,
-        notifier: Optional[Any] = None,
-        logger: Optional[logging.Logger] = None,
-        ml_inference_engine: Optional[Any] = None
-    ):
-        self.settings = settings or Settings()
-        self.logger = logger or logging.getLogger(__name__)
-        self.data_service = data_service
-        self.strategy_engine = strategy_engine
-        self.risk_engine = risk_engine
-        self.portfolio_risk_engine = portfolio_risk_engine
-        self.paper_engine = paper_engine
-        self.ranker = ranker
-        self.filter_engine = filter_engine
-        self.notifier = notifier
+
+    def __init__(self, deps: SignalScannerDependencies):
+        self.settings = deps.settings or Settings()
+        self.logger = deps.logger or logging.getLogger(__name__)
+        self.data_service = deps.data_service
+        self.strategy_engine = deps.strategy_engine
         self.kill_switch = KillSwitchManager(self.settings, get_data_dir(self.settings))
         self.security_preflight = SecurityPreflightRunner(self.settings, kill_switch=self.kill_switch)
-        self.ml_inference_engine = ml_inference_engine
-        self.risk_engine = risk_engine or RiskEngine(settings=self.settings)
-        self.portfolio_risk_engine = portfolio_risk_engine or PortfolioRiskEngine(settings=self.settings)
-        self.paper_engine = paper_engine
-        self.ranker = ranker or ScanRanker(self.settings)
-        self.filter_engine = filter_engine or ScanFilterEngine(self.settings)
-        self.notifier = notifier
+        self.ml_inference_engine = deps.ml_inference_engine
+        self.risk_engine = deps.risk_engine or RiskEngine(settings=self.settings)
+        self.portfolio_risk_engine = deps.portfolio_risk_engine or PortfolioRiskEngine(settings=self.settings)
+        self.paper_engine = deps.paper_engine
+        self.ranker = deps.ranker or ScanRanker(self.settings)
+        self.filter_engine = deps.filter_engine or ScanFilterEngine(self.settings)
+        self.notifier = deps.notifier
         self.universe = SymbolUniverse()
 
     def resolve_symbols(self, request: ScanRequest) -> List[str]:
