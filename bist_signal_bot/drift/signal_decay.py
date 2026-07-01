@@ -64,10 +64,10 @@ class SignalDecayAnalyzer:
 
              status = DriftStatus.STABLE
              severity = DriftSeverity.LOW
-             if drop_val >= self.settings.DRIFT_SIGNAL_OUTCOME_DROP_FAIL:
+             if self.settings.DRIFT_SIGNAL_OUTCOME_DROP_FAIL is not None and drop_val >= self.settings.DRIFT_SIGNAL_OUTCOME_DROP_FAIL:
                  status = DriftStatus.DRIFTING
                  severity = DriftSeverity.HIGH
-             elif drop_val >= self.settings.DRIFT_SIGNAL_OUTCOME_DROP_WARN:
+             elif self.settings.DRIFT_SIGNAL_OUTCOME_DROP_WARN is not None and drop_val >= self.settings.DRIFT_SIGNAL_OUTCOME_DROP_WARN:
                  status = DriftStatus.WATCH
                  severity = DriftSeverity.MEDIUM
 
@@ -88,7 +88,7 @@ class SignalDecayAnalyzer:
              val = report.muted_alert_rate_change_pct
              status = DriftStatus.STABLE
              severity = DriftSeverity.LOW
-             if val >= self.settings.DRIFT_MUTED_ALERT_RATE_WARN:
+             if self.settings.DRIFT_MUTED_ALERT_RATE_WARN is not None and val >= self.settings.DRIFT_MUTED_ALERT_RATE_WARN:
                  status = DriftStatus.WATCH
                  severity = DriftSeverity.MEDIUM
 

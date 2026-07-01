@@ -82,10 +82,10 @@ class ModelDriftDetector:
         psi_status = DriftStatus.STABLE
         psi_severity = DriftSeverity.LOW
         if psi_val is not None:
-             if psi_val >= self.settings.DRIFT_MODEL_SCORE_PSI_FAIL:
+             if self.settings.DRIFT_MODEL_SCORE_PSI_FAIL is not None and psi_val >= self.settings.DRIFT_MODEL_SCORE_PSI_FAIL:
                  psi_status = DriftStatus.DRIFTING
                  psi_severity = DriftSeverity.HIGH
-             elif psi_val >= self.settings.DRIFT_MODEL_SCORE_PSI_WARN:
+             elif self.settings.DRIFT_MODEL_SCORE_PSI_WARN is not None and psi_val >= self.settings.DRIFT_MODEL_SCORE_PSI_WARN:
                  psi_status = DriftStatus.WATCH
                  psi_severity = DriftSeverity.MEDIUM
 
@@ -127,10 +127,10 @@ class ModelDriftDetector:
 
         if rate_change is not None:
             abs_change = abs(rate_change)
-            if abs_change >= self.settings.DRIFT_MODEL_POSITIVE_RATE_CHANGE_FAIL:
+            if self.settings.DRIFT_MODEL_POSITIVE_RATE_CHANGE_FAIL is not None and abs_change >= self.settings.DRIFT_MODEL_POSITIVE_RATE_CHANGE_FAIL:
                 status = DriftStatus.DRIFTING
                 severity = DriftSeverity.HIGH
-            elif abs_change >= self.settings.DRIFT_MODEL_POSITIVE_RATE_CHANGE_WARN:
+            elif self.settings.DRIFT_MODEL_POSITIVE_RATE_CHANGE_WARN is not None and abs_change >= self.settings.DRIFT_MODEL_POSITIVE_RATE_CHANGE_WARN:
                 status = DriftStatus.WATCH
                 severity = DriftSeverity.MEDIUM
 
