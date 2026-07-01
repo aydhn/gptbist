@@ -1,3 +1,4 @@
+from bist_signal_bot.scheduler.models import SchedulerOrchestratorConfig
 from pathlib import Path
 
 from bist_signal_bot.scheduler.storage import SchedulerStore
@@ -40,7 +41,7 @@ def create_scheduler_orchestrator(settings=None, base_dir=None) -> LocalSchedule
     dedupe = ScheduledJobDeduplicator()
     executor = create_scheduled_job_executor(settings, base_dir)
 
-    return LocalSchedulerOrchestrator(
+    config = SchedulerOrchestratorConfig(
         store=store,
         calendar=cal,
         session_resolver=session_resolver,
@@ -51,3 +52,4 @@ def create_scheduler_orchestrator(settings=None, base_dir=None) -> LocalSchedule
         executor=executor,
         settings=settings
     )
+    return LocalSchedulerOrchestrator(config)
