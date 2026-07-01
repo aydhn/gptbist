@@ -3,21 +3,21 @@ from datetime import timezone
 from datetime import datetime, timedelta
 import random
 import uuid
-from .models import SyntheticScenarioSpec, SyntheticDataset, SyntheticOutputKind, SyntheticScenarioStatus
+from .models import SyntheticScenarioSpec, SyntheticDataset, SyntheticOutputKind, SyntheticScenarioStatus, SyntheticScenarioGeneratorConfig
 
 class SyntheticScenarioGenerator:
-    def __init__(self, ohlcv_gen, macro_gen, breadth_gen, fin_gen, evt_gen, disc_gen, feature_gen, model_fix_gen, port_gen, stress_bld, edge_fac):
-        self.ohlcv_gen = ohlcv_gen
-        self.macro_gen = macro_gen
-        self.breadth_gen = breadth_gen
-        self.fin_gen = fin_gen
-        self.evt_gen = evt_gen
-        self.disc_gen = disc_gen
-        self.feature_gen = feature_gen
-        self.model_fix_gen = model_fix_gen
-        self.port_gen = port_gen
-        self.stress_bld = stress_bld
-        self.edge_fac = edge_fac
+    def __init__(self, config: SyntheticScenarioGeneratorConfig):
+        self.ohlcv_gen = config.ohlcv_gen
+        self.macro_gen = config.macro_gen
+        self.breadth_gen = config.breadth_gen
+        self.fin_gen = config.fin_gen
+        self.evt_gen = config.evt_gen
+        self.disc_gen = config.disc_gen
+        self.feature_gen = config.feature_gen
+        self.model_fix_gen = config.model_fix_gen
+        self.port_gen = config.port_gen
+        self.stress_bld = config.stress_bld
+        self.edge_fac = config.edge_fac
 
     def date_index(self, spec: SyntheticScenarioSpec) -> list[str]:
         start = datetime.strptime(spec.start_date, "%Y-%m-%d")

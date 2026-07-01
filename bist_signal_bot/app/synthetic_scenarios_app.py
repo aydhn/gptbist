@@ -15,6 +15,7 @@ from bist_signal_bot.synthetic_scenarios.portfolio import SyntheticPortfolioOutc
 from bist_signal_bot.synthetic_scenarios.stress import SyntheticStressCaseBuilder
 from bist_signal_bot.synthetic_scenarios.edge_cases import SyntheticEdgeCaseFactory
 from bist_signal_bot.synthetic_scenarios.generator import SyntheticScenarioGenerator
+from bist_signal_bot.synthetic_scenarios.models import SyntheticScenarioGeneratorConfig
 from bist_signal_bot.synthetic_scenarios.manifest import SyntheticScenarioManifestBuilder
 from bist_signal_bot.synthetic_scenarios.validation import SyntheticScenarioValidator
 from bist_signal_bot.storage.paths import get_synthetic_scenarios_dir
@@ -60,19 +61,20 @@ def create_synthetic_edge_case_factory(settings: Settings | None = None) -> Synt
     return SyntheticEdgeCaseFactory()
 
 def create_synthetic_scenario_generator(settings: Settings | None = None, base_dir: Path | None = None) -> SyntheticScenarioGenerator:
-    return SyntheticScenarioGenerator(
-        create_synthetic_ohlcv_generator(settings),
-        create_synthetic_macro_generator(settings),
-        create_synthetic_breadth_generator(settings),
-        create_synthetic_financials_generator(settings),
-        create_synthetic_event_generator(settings),
-        create_synthetic_disclosure_generator(settings),
-        create_synthetic_feature_frame_generator(settings),
-        create_synthetic_model_fixture_generator(settings),
-        create_synthetic_portfolio_outcome_generator(settings),
-        create_synthetic_stress_case_builder(settings),
-        create_synthetic_edge_case_factory(settings)
+    config = SyntheticScenarioGeneratorConfig(
+        ohlcv_gen=create_synthetic_ohlcv_generator(settings),
+        macro_gen=create_synthetic_macro_generator(settings),
+        breadth_gen=create_synthetic_breadth_generator(settings),
+        fin_gen=create_synthetic_financials_generator(settings),
+        evt_gen=create_synthetic_event_generator(settings),
+        disc_gen=create_synthetic_disclosure_generator(settings),
+        feature_gen=create_synthetic_feature_frame_generator(settings),
+        model_fix_gen=create_synthetic_model_fixture_generator(settings),
+        port_gen=create_synthetic_portfolio_outcome_generator(settings),
+        stress_bld=create_synthetic_stress_case_builder(settings),
+        edge_fac=create_synthetic_edge_case_factory(settings)
     )
+    return SyntheticScenarioGenerator(config)
 
 def create_synthetic_scenario_manifest_builder(settings: Settings | None = None, base_dir: Path | None = None) -> SyntheticScenarioManifestBuilder:
     return SyntheticScenarioManifestBuilder()
