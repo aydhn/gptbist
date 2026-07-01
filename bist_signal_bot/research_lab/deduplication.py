@@ -14,7 +14,7 @@ class ResearchJobDeduplicator:
             str(job.trigger.value)
         ]
         raw = "|".join(parts)
-        return hashlib.md5(raw.encode("utf-8")).hexdigest()
+        return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
     def is_duplicate(self, job: ResearchJob, existing_jobs: List[ResearchJob], window_hours: int) -> bool:
         if not job.dedupe_key:
