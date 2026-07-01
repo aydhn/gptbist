@@ -38,3 +38,26 @@ def test_send_digest_disabled():
     res = builder.send_digest(digest, MockNotifier())
     assert not res.sent
     assert "disabled" in res.warnings[0]
+
+class MockFailingNotifier:
+    def send_message(self, message):
+        raise Exception("Mock notification failure")
+
+def test_send_digest_failure():
+    settings = Settings(REPORT_TELEGRAM_DIGEST_ENABLED=True, REPORT_TELEGRAM_REQUIRE_CONFIRM=False)
+    builder = ReportDigestBuilder(settings=settings)
+    report = GeneratedReport(
+        report_id="fail_test_1",
+        report_type=ReportType.DAILY,
+        audience=ReportAudience.PERSONAL,
+        status=ReportStatus.SUCCESS,
+        title="Failure Test"
+    )
+    digest = builder.build_telegram_digest(report)
+
+    notifier = MockFailingNotifier()
+    res = builder.send_digest(digest, notifier)
+
+    assert not res.sent
+    assert res.status == ReportStatus.FAILED
+    assert any("Mock notification failure" in w for w in res.warnings)
