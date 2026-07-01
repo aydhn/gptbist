@@ -4,7 +4,7 @@ import pytest
 
 from bist_signal_bot.config.settings import Settings
 from bist_signal_bot.data.adjustments import PriceAdjustmentEngine
-from bist_signal_bot.data.data_service import MarketDataService
+from bist_signal_bot.data.data_service import MarketDataService, MarketDataServiceConfig
 from bist_signal_bot.data.mock_provider import MockMarketDataProvider
 from bist_signal_bot.data.models import AdjustmentPolicy, Timeframe, MarketDataFrame, DataVendor
 
@@ -17,11 +17,8 @@ def test_data_service_adjustment_integration():
 
     service = MarketDataService(
         provider=provider,
-        prefer_local=False,
-        clean_data=False,
-        validate_quality=False,
-        apply_price_adjustments=True,
-        adjustment_engine=engine
+        adjustment_engine=engine,
+        config=MarketDataServiceConfig(prefer_local=False, clean_data=False, validate_quality=False, apply_price_adjustments=True)
     )
 
     # Let's intercept the mock provider to return data with adj_close
@@ -54,11 +51,8 @@ def test_data_service_skips_when_disabled():
 
     service = MarketDataService(
         provider=provider,
-        prefer_local=False,
-        clean_data=False,
-        validate_quality=False,
-        apply_price_adjustments=False,  # disabled!
-        adjustment_engine=engine
+        adjustment_engine=engine,
+        config=MarketDataServiceConfig(prefer_local=False, clean_data=False, validate_quality=False, apply_price_adjustments=False)
     )
 
     mdf = service.get_ohlcv("ASELS", timeframe=Timeframe.DAILY, refresh=True, save=False)

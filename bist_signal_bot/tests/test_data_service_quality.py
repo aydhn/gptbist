@@ -4,7 +4,7 @@ import pandas as pd
 import pytest
 
 from bist_signal_bot.core.exceptions import DataQualityError
-from bist_signal_bot.data.data_service import MarketDataService
+from bist_signal_bot.data.data_service import MarketDataService, MarketDataServiceConfig
 from bist_signal_bot.data.mock_provider import MockMarketDataProvider
 from bist_signal_bot.data.models import MarketDataFrame, Timeframe
 from bist_signal_bot.data.quality import DataQualityChecker
@@ -45,7 +45,7 @@ def bad_provider():
 
 def test_data_service_generates_quality_report(clean_provider):
     checker = DataQualityChecker(min_rows=10)
-    service = MarketDataService(provider=clean_provider, quality_checker=checker, validate_quality=True)
+    service = MarketDataService(provider=clean_provider, quality_checker=checker, config=MarketDataServiceConfig(validate_quality=True))
 
     mdf = service.get_ohlcv("ASELS", Timeframe.DAILY)
     assert mdf.quality_report is not None
@@ -61,9 +61,7 @@ def test_data_service_fail_on_quality_error(bad_provider):
     service = MarketDataService(
         provider=bad_provider,
         quality_checker=checker,
-        validate_quality=True,
-        fail_on_quality_error=True,
-        clean_data=False # DISABLE CLEANER SO ERROR REACHES QUALITY CHECKER
+        config=MarketDataServiceConfig(validate_quality=True, fail_on_quality_error=True, clean_data=False)
     )
 
     with pytest.raises(DataQualityError):

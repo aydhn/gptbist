@@ -2,7 +2,7 @@
 import pytest
 
 from bist_signal_bot.config.settings import Settings
-from bist_signal_bot.data.data_service import MarketDataService
+from bist_signal_bot.data.data_service import MarketDataService, MarketDataServiceConfig
 from bist_signal_bot.data.mock_provider import MockMarketDataProvider
 from bist_signal_bot.data.models import SymbolInfo, Timeframe
 from bist_signal_bot.data.symbol_universe import SymbolUniverse
@@ -36,7 +36,7 @@ def universe():
     return u
 
 def test_data_service_fetches_and_saves(provider, universe, store):
-    service = MarketDataService(provider=provider, universe=universe, store=store, prefer_local=True)
+    service = MarketDataService(provider=provider, universe=universe, store=store, config=MarketDataServiceConfig(prefer_local=True))
 
     assert store.exists("ASELS", provider.vendor, Timeframe.DAILY) is False
 
@@ -47,7 +47,7 @@ def test_data_service_fetches_and_saves(provider, universe, store):
     assert store.exists("ASELS", provider.vendor, Timeframe.DAILY) is True
 
 def test_data_service_reads_from_local(provider, universe, store):
-    service = MarketDataService(provider=provider, universe=universe, store=store, prefer_local=True)
+    service = MarketDataService(provider=provider, universe=universe, store=store, config=MarketDataServiceConfig(prefer_local=True))
 
     # Fetch once to populate local store
     service.get_ohlcv("ASELS", Timeframe.DAILY)
@@ -66,7 +66,7 @@ def test_data_service_reads_from_local(provider, universe, store):
     assert mdf.symbol == "ASELS"
 
 def test_data_service_refresh_skips_local(provider, universe, store):
-    service = MarketDataService(provider=provider, universe=universe, store=store, prefer_local=True)
+    service = MarketDataService(provider=provider, universe=universe, store=store, config=MarketDataServiceConfig(prefer_local=True))
 
     # Fetch once to populate local store
     service.get_ohlcv("ASELS", Timeframe.DAILY)
@@ -86,7 +86,7 @@ def test_data_service_refresh_skips_local(provider, universe, store):
     assert call_count == 1
 
 def test_data_service_save_false_skips_writing(provider, universe, store):
-    service = MarketDataService(provider=provider, universe=universe, store=store, prefer_local=True)
+    service = MarketDataService(provider=provider, universe=universe, store=store, config=MarketDataServiceConfig(prefer_local=True))
 
     service.get_ohlcv("ASELS", Timeframe.DAILY, save=False)
 

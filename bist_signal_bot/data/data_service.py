@@ -21,6 +21,18 @@ from bist_signal_bot.data.models import AdjustmentReport
 
 logger = logging.getLogger("bist_signal_bot.data_service")
 
+from dataclasses import dataclass
+
+@dataclass
+class MarketDataServiceConfig:
+    prefer_local: bool = True
+    validate_quality: bool = True
+    fail_on_quality_error: bool = False
+    clean_data: bool = True
+    fail_on_cleaning_error: bool = False
+    apply_price_adjustments: bool = False
+    fail_on_adjustment_error: bool = True
+
 class MarketDataService:
     """
     Service layer to handle data fetching from a provider.
@@ -33,37 +45,31 @@ class MarketDataService:
         provider: BaseMarketDataProvider,
         universe: SymbolUniverse | None = None,
         store: LocalMarketDataStore | None = None,
-        prefer_local: bool = True,
         quality_checker: DataQualityChecker | None = None,
-        validate_quality: bool = True,
-        fail_on_quality_error: bool = False,
-
         cleaner: MarketDataCleaner | None = None,
-        clean_data: bool = True,
-        fail_on_cleaning_error: bool = False,
         adjustment_engine: PriceAdjustmentEngine | None = None,
-        apply_price_adjustments: bool = False,
-        fail_on_adjustment_error: bool = True
+        config: MarketDataServiceConfig | None = None
     ):
+        config = config or MarketDataServiceConfig()
 
         self.provider = provider
         self.universe = universe
         self.store = store
-        self.prefer_local = prefer_local
+        self.prefer_local = config.prefer_local
         self.quality_checker = quality_checker or DataQualityChecker()
-        self.validate_quality = validate_quality
-        self.fail_on_quality_error = fail_on_quality_error
+        self.validate_quality = config.validate_quality
+        self.fail_on_quality_error = config.fail_on_quality_error
         self.last_quality_reports: dict[str, DataQualityReport] = {}
 
 
         self.cleaner = cleaner or MarketDataCleaner()
-        self.clean_data = clean_data
-        self.fail_on_cleaning_error = fail_on_cleaning_error
+        self.clean_data = config.clean_data
+        self.fail_on_cleaning_error = config.fail_on_cleaning_error
         self.last_cleaning_reports = {}
 
         self.adjustment_engine = adjustment_engine or PriceAdjustmentEngine()
-        self.apply_price_adjustments = apply_price_adjustments
-        self.fail_on_adjustment_error = fail_on_adjustment_error
+        self.apply_price_adjustments = config.apply_price_adjustments
+        self.fail_on_adjustment_error = config.fail_on_adjustment_error
         self.last_adjustment_reports: dict[str, AdjustmentReport] = {}
 
     def _validate_symbol(self, symbol: str) -> None:

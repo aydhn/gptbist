@@ -4,7 +4,7 @@ import pandas as pd
 
 from bist_signal_bot.config.settings import Settings
 from bist_signal_bot.data.downloader import MarketDataDownloader
-from bist_signal_bot.data.data_service import MarketDataService
+from bist_signal_bot.data.data_service import MarketDataService, MarketDataServiceConfig
 from bist_signal_bot.data.mock_provider import MockMarketDataProvider
 from bist_signal_bot.storage.local_store import LocalMarketDataStore
 from bist_signal_bot.data.symbol_universe import SymbolUniverse, DEFAULT_SEED_SYMBOLS
@@ -16,7 +16,7 @@ def mock_downloader(tmp_path):
     universe = SymbolUniverse(DEFAULT_SEED_SYMBOLS)
     store = LocalMarketDataStore(settings)
     provider = MockMarketDataProvider(rows=50)
-    service = MarketDataService(provider=provider, universe=universe, store=store, prefer_local=True)
+    service = MarketDataService(provider=provider, universe=universe, store=store, config=MarketDataServiceConfig(prefer_local=True))
     return MarketDataDownloader(
         data_service=service,
         universe=universe,
