@@ -160,3 +160,18 @@ class SyntheticScenarioReport:
     warnings: List[str] = field(default_factory=list)
     disclaimer: str = "Synthetic scenario report is local fixture generation reporting only. It is not investment advice, market data, or permission to trade. No real order was sent."
     metadata: Dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class SyntheticScenarioGeneratorConfig:
+    ohlcv_gen: Any
+    macro_gen: Any
+    breadth_gen: Any
+    fin_gen: Any
+    evt_gen: Any
+    disc_gen: Any
+    feature_gen: Any
+    model_fix_gen: Any
+    port_gen: Any
+    stress_bld: Any
+    edge_fac: Any
