@@ -1,5 +1,5 @@
 import pytest
-from bist_signal_bot.scheduler.executor import ScheduledJobExecutor
+from bist_signal_bot.scheduler.executor import ScheduledJobExecutor, ScheduledJobDependencies
 from bist_signal_bot.scheduler.models import ScheduledJob, ScheduledJobType, ScheduledJobStatus, ScheduleTrigger, ScheduleTriggerType
 
 class MockSettings:
@@ -8,7 +8,7 @@ class MockSettings:
     SCHEDULER_REQUIRE_GOVERNANCE_GATE = False
 
 def test_executor_dry_run():
-    exec = ScheduledJobExecutor(settings=MockSettings())
+    exec = ScheduledJobExecutor(dependencies=ScheduledJobDependencies(), settings=MockSettings())
     job = ScheduledJob(
         job_id="j1", name="test", job_type=ScheduledJobType.HEALTHCHECK, status=ScheduledJobStatus.ENABLED,
         trigger=ScheduleTrigger(trigger_id="t1", trigger_type=ScheduleTriggerType.MANUAL, timezone="UTC")

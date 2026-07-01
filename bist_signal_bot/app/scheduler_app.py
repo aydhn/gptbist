@@ -7,7 +7,7 @@ from bist_signal_bot.scheduler.triggers import ScheduleTriggerEvaluator
 from bist_signal_bot.scheduler.due import DueJobFinder
 from bist_signal_bot.scheduler.locks import SchedulerLockManager
 from bist_signal_bot.scheduler.deduplication import ScheduledJobDeduplicator
-from bist_signal_bot.scheduler.executor import ScheduledJobExecutor
+from bist_signal_bot.scheduler.executor import ScheduledJobExecutor, ScheduledJobDependencies
 from bist_signal_bot.scheduler.orchestrator import LocalSchedulerOrchestrator
 
 def create_scheduler_store(settings=None, base_dir=None) -> SchedulerStore:
@@ -25,7 +25,7 @@ def create_market_session_resolver(settings=None, base_dir=None) -> MarketSessio
 def create_scheduled_job_executor(settings=None, base_dir=None) -> ScheduledJobExecutor:
     # In a full app, we would inject all engines
     # Here we inject minimal to satisfy tests
-    return ScheduledJobExecutor(settings=settings)
+    return ScheduledJobExecutor(dependencies=ScheduledJobDependencies(), settings=settings)
 
 def create_scheduler_orchestrator(settings=None, base_dir=None) -> LocalSchedulerOrchestrator:
     store = create_scheduler_store(settings, base_dir)

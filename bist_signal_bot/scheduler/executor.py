@@ -3,6 +3,7 @@ import time
 from datetime import datetime
 import logging
 from typing import Any
+from dataclasses import dataclass
 
 from bist_signal_bot.scheduler.models import (
     ScheduledJob,
@@ -13,38 +14,31 @@ from bist_signal_bot.scheduler.models import (
 )
 from bist_signal_bot.scheduler.locks import SchedulerLockManager
 
+
+@dataclass
+class ScheduledJobDependencies:
+    runtime_orchestrator: Any = None
+    report_generator: Any = None
+    research_lab_planner: Any = None
+    telegram_digest: Any = None
+    knowledge_indexer: Any = None
+    review_followup: Any = None
+    signal_lifecycle: Any = None
+    drift_engine: Any = None
+    stress_engine: Any = None
+    portfolio_engine: Any = None
+    maintenance_doctor: Any = None
+    backup_manager: Any = None
+    governance_gate: Any = None
+
 class ScheduledJobExecutor:
     def __init__(
         self,
-        runtime_orchestrator=None,
-        report_generator=None,
-        research_lab_planner=None,
-        telegram_digest=None,
-        knowledge_indexer=None,
-        review_followup=None,
-        signal_lifecycle=None,
-        drift_engine=None,
-        stress_engine=None,
-        portfolio_engine=None,
-        maintenance_doctor=None,
-        backup_manager=None,
-        governance_gate=None,
+        dependencies: ScheduledJobDependencies = None,
         settings=None,
         logger=None
     ):
-        self.runtime_orchestrator = runtime_orchestrator
-        self.report_generator = report_generator
-        self.research_lab_planner = research_lab_planner
-        self.telegram_digest = telegram_digest
-        self.knowledge_indexer = knowledge_indexer
-        self.review_followup = review_followup
-        self.signal_lifecycle = signal_lifecycle
-        self.drift_engine = drift_engine
-        self.stress_engine = stress_engine
-        self.portfolio_engine = portfolio_engine
-        self.maintenance_doctor = maintenance_doctor
-        self.backup_manager = backup_manager
-        self.governance_gate = governance_gate
+        self.deps = dependencies or ScheduledJobDependencies()
 
         self.settings = settings
         self.logger = logger or logging.getLogger(__name__)
@@ -78,7 +72,7 @@ class ScheduledJobExecutor:
         )
 
         # 1. Security Preflight / Governance Gate
-        if self.governance_gate and getattr(self.settings, 'SCHEDULER_REQUIRE_GOVERNANCE_GATE', True):
+        if self.deps.governance_gate and getattr(self.settings, 'SCHEDULER_REQUIRE_GOVERNANCE_GATE', True):
             # This is a very basic mock of what the gate might do
             # In a real setup we'd pass the job definition to the gate
             if "order" in job.name.lower() or "trade" in job.name.lower() or "broker" in job.name.lower():
@@ -138,18 +132,18 @@ class ScheduledJobExecutor:
             return {"status": "ok", "message": "Healthcheck completed"}
 
         elif job.job_type == ScheduledJobType.RUNTIME_RUN_ONCE:
-            if not self.runtime_orchestrator:
+            if not self.deps.runtime_orchestrator:
                 raise ValueError("runtime_orchestrator not provided")
             # We would build a config and run here
             return {"action": "runtime_run_once_dispatched"}
 
         elif job.job_type == ScheduledJobType.DAILY_REPORT:
-            if not self.report_generator:
+            if not self.deps.report_generator:
                 raise ValueError("report_generator not provided")
             return {"action": "daily_report_generated"}
 
         elif job.job_type == ScheduledJobType.TELEGRAM_DIGEST:
-            if not self.telegram_digest:
+            if not self.deps.telegram_digest:
                 raise ValueError("telegram_digest not provided")
             # Check settings if we force dry run for telegram
             if getattr(self.settings, 'RUNTIME_SCHEDULER_FORCE_DRY_RUN_TELEGRAM', True):
@@ -158,27 +152,27 @@ class ScheduledJobExecutor:
             return {"action": "telegram_digest_sent"}
 
         elif job.job_type == ScheduledJobType.RESEARCH_LAB_PLAN:
-            if not self.research_lab_planner:
+            if not self.deps.research_lab_planner:
                 raise ValueError("research_lab_planner not provided")
             return {"action": "research_lab_plan_generated"}
 
         elif job.job_type == ScheduledJobType.MAINTENANCE_DOCTOR:
-            if not self.maintenance_doctor:
+            if not self.deps.maintenance_doctor:
                 raise ValueError("maintenance_doctor not provided")
             return {"action": "maintenance_doctor_run"}
 
         elif job.job_type == ScheduledJobType.BACKUP_DRY_RUN:
-            if not self.backup_manager:
+            if not self.deps.backup_manager:
                 raise ValueError("backup_manager not provided")
             return {"action": "backup_dry_run_completed"}
 
         elif job.job_type == ScheduledJobType.SIGNAL_EXPIRE:
-            if not self.signal_lifecycle:
+            if not self.deps.signal_lifecycle:
                 raise ValueError("signal_lifecycle not provided")
             return {"action": "stale_signals_expired"}
 
         elif job.job_type == ScheduledJobType.REVIEW_FOLLOWUP_CHECK:
-            if not self.review_followup:
+            if not self.deps.review_followup:
                 raise ValueError("review_followup not provided")
             return {"action": "review_followups_checked"}
 
