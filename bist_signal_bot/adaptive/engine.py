@@ -4,6 +4,7 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+from dataclasses import dataclass
 
 from bist_signal_bot.config.settings import Settings, get_settings
 from bist_signal_bot.adaptive.models import (
@@ -23,33 +24,35 @@ from bist_signal_bot.adaptive.model_refresh import ModelRefreshPlanner
 from bist_signal_bot.adaptive.storage import AdaptiveStore
 from bist_signal_bot.core.exceptions import AdaptiveParameterStoreError, AdaptiveError
 
-class AdaptiveEngine:
-    def __init__(
-        self,
-        policy_manager: AdaptivePolicyManager | None = None,
-        evidence_collector: AdaptiveEvidenceCollector | None = None,
-        parameter_store: AdaptiveParameterStore | None = None,
-        selector: AdaptiveStrategySelector | None = None,
-        refresh_planner: AdaptiveRefreshPlanner | None = None,
-        model_refresh_planner: ModelRefreshPlanner | None = None,
-        storage: AdaptiveStore | None = None,
-        settings: Settings | None = None,
-        logger: logging.Logger | None = None
-    ):
-        self.settings = settings or get_settings()
-        self.logger = logger or logging.getLogger(__name__)
+@dataclass
+class AdaptiveEngineDependencies:
+    policy_manager: AdaptivePolicyManager | None = None
+    evidence_collector: AdaptiveEvidenceCollector | None = None
+    parameter_store: AdaptiveParameterStore | None = None
+    selector: AdaptiveStrategySelector | None = None
+    refresh_planner: AdaptiveRefreshPlanner | None = None
+    model_refresh_planner: ModelRefreshPlanner | None = None
+    storage: AdaptiveStore | None = None
+    settings: Settings | None = None
+    logger: logging.Logger | None = None
 
-        self.policy_manager = policy_manager or AdaptivePolicyManager(self.settings, self.logger)
-        self.evidence_collector = evidence_collector or AdaptiveEvidenceCollector(self.settings, self.logger)
-        self.storage = storage or AdaptiveStore(self.settings, logger=self.logger)
-        self.parameter_store = parameter_store or AdaptiveParameterStore(self.storage.get_adaptive_dir(), self.settings, self.logger)
-        self.selector = selector or AdaptiveStrategySelector(AdaptiveScorer(), self.settings)
-        self.refresh_planner = refresh_planner or AdaptiveRefreshPlanner()
-        self.model_refresh_planner = model_refresh_planner or ModelRefreshPlanner(self.settings)
+class AdaptiveEngine:
+    def __init__(self, deps: AdaptiveEngineDependencies | None = None):
+        deps = deps or AdaptiveEngineDependencies()
+        self.settings = deps.settings or get_settings()
+        self.logger = deps.logger or logging.getLogger(__name__)
+
+        self.policy_manager = deps.policy_manager or AdaptivePolicyManager(self.settings, self.logger)
+        self.evidence_collector = deps.evidence_collector or AdaptiveEvidenceCollector(self.settings, self.logger)
+        self.storage = deps.storage or AdaptiveStore(self.settings, logger=self.logger)
+        self.parameter_store = deps.parameter_store or AdaptiveParameterStore(self.storage.get_adaptive_dir(), self.settings, self.logger)
+        self.selector = deps.selector or AdaptiveStrategySelector(AdaptiveScorer(), self.settings)
+        self.refresh_planner = deps.refresh_planner or AdaptiveRefreshPlanner()
+        self.model_refresh_planner = deps.model_refresh_planner or ModelRefreshPlanner(self.settings)
 
     @classmethod
     def from_settings(cls, settings: Settings) -> 'AdaptiveEngine':
-        return cls(settings=settings)
+        return cls(AdaptiveEngineDependencies(settings=settings))
 
     def recommend(
         self,
