@@ -28,3 +28,33 @@ def test_unsupported_format(tmp_path):
     txt_path.write_text("dummy")
     registry = LocalImportAdapterRegistry()
     assert registry.infer_format(txt_path) == ImportSourceFormat.UNKNOWN
+
+import sqlite3
+import pandas as pd
+
+def test_sqlite_injection_table_name(tmp_path):
+    # Test that a tricky table name (which might be used for SQL injection)
+    # is correctly escaped and does not throw syntax errors.
+    db_path = tmp_path / "test_malicious.sqlite"
+
+    conn = sqlite3.connect(db_path)
+    # Create a table with double quotes and spaces in its name
+    tricky_name = 'malicious" table'
+    safe_name = tricky_name.replace('"', '""')
+    conn.execute(f'CREATE TABLE "{safe_name}" (id int)')
+    safe_name = tricky_name.replace('"', '""')
+    conn.execute(f'INSERT INTO "{safe_name}" VALUES (1)')
+    conn.commit()
+    conn.close()
+
+    registry = LocalImportAdapterRegistry()
+
+    # Try reading dataframe
+    df = registry.read_dataframe(db_path, max_rows=10)
+    assert len(df) == 1
+    assert df.iloc[0]["id"] == 1
+
+    # Try reading preview
+    preview = registry.read_preview(db_path, max_rows=10)
+    assert len(preview) == 1
+    assert preview[0]["id"] == 1

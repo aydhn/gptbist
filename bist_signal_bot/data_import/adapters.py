@@ -114,7 +114,9 @@ class LocalImportAdapterRegistry:
                 if not tables:
                     return []
                 table_name = tables[0][0]
-                df = pd.read_sql_query(f"SELECT * FROM {table_name} LIMIT {max_rows}", conn)
+                escaped_table_name = table_name.replace('"', '""')
+                query = f'SELECT * FROM "{escaped_table_name}" LIMIT ?'
+                df = pd.read_sql_query(query, conn, params=[max_rows])
                 conn.close()
                 return df.to_dict(orient="records")
             except Exception as e:
@@ -148,10 +150,13 @@ class LocalImportAdapterRegistry:
              if not tables:
                  return pd.DataFrame()
              table_name = tables[0][0]
-             query = f"SELECT * FROM {table_name}"
-             if max_rows:
-                  query += f" LIMIT {max_rows}"
-             df = pd.read_sql_query(query, conn)
+             escaped_table_name = table_name.replace('"', '""')
+             query = f'SELECT * FROM "{escaped_table_name}"'
+             params = []
+             if max_rows is not None:
+                  query += " LIMIT ?"
+                  params.append(max_rows)
+             df = pd.read_sql_query(query, conn, params=params)
              conn.close()
              return df
         elif fmt == ImportSourceFormat.EXCEL:
