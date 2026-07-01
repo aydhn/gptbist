@@ -70,3 +70,20 @@ def test_enforce_production_safety():
     settings.DRY_RUN = False
     with pytest.raises(OperationalSafetyError):
         enforce_production_safety(settings)
+
+def test_enforce_production_safety_non_production():
+    settings = MockSettings()
+    settings.APP_ENV = "development"
+    settings.DEBUG_TRACEBACKS = True
+    settings.DRY_RUN = False
+    # Should pass because it's not production
+    enforce_production_safety(settings)
+
+def test_enforce_production_safety_production_exception():
+    settings = MockSettings()
+    settings.APP_ENV = "production"
+    settings.DEBUG_TRACEBACKS = True
+    settings.DRY_RUN = True
+    # Should raise because it's production and traceback is True
+    with pytest.raises(ConfigurationError):
+        enforce_production_safety(settings)
