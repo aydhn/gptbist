@@ -55,6 +55,20 @@ class DeploymentSmokeTester:
         return result
 
     def run_command(self, command: List[str], timeout_seconds: int = 30) -> EnvironmentCheckResult:
+        allowed_commands = [
+            [sys.executable, "-m", "bist_signal_bot", "healthcheck"],
+            ["echo", "hello"],
+        ]
+        if command not in allowed_commands:
+            return EnvironmentCheckResult(
+                check_id=str(uuid.uuid4()),
+                check_type=EnvironmentCheckType.CUSTOM,
+                status=DeploymentStatus.FAIL,
+                decision=DeploymentDecision.BLOCK,
+                title="Smoke Command Blocked",
+                message=f"Security violation: Command not in whitelist: {' '.join(command)}"
+            )
+
         env = os.environ.copy()
         env["BIST_BOT_FORCE_RESEARCH_ONLY"] = "true"
         env["BIST_BOT_ALLOW_BROKER"] = "false"

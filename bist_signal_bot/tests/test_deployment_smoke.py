@@ -22,3 +22,10 @@ def test_deployment_smoke_tester_run_command_mocked(tmp_path, monkeypatch):
     # Simple echo command for test, avoiding actual module execution
     res = tester.run_command(["echo", "hello"])
     assert res.status == DeploymentStatus.PASS
+
+def test_deployment_smoke_tester_run_command_blocked(tmp_path):
+    settings = Settings()
+    tester = DeploymentSmokeTester(settings, str(tmp_path))
+    res = tester.run_command(["ls", "-la"])
+    assert res.status == DeploymentStatus.FAIL
+    assert "Security violation" in res.message
