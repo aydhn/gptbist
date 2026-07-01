@@ -1,3 +1,4 @@
+import uuid
 from typing import Protocol
 
 class SnapshotItem(Protocol):
