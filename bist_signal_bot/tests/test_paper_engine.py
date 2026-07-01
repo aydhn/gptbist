@@ -1,6 +1,6 @@
 import pytest
 import pandas as pd
-from bist_signal_bot.paper.engine import PaperTradingEngine
+from bist_signal_bot.paper.engine import PaperTradingEngine, PaperTradingDependencies
 from bist_signal_bot.paper.ledger import PaperLedgerStore
 from bist_signal_bot.strategies.engine import StrategyEngine
 from bist_signal_bot.data.data_service import MarketDataService
@@ -13,12 +13,13 @@ def mock_engine(tmp_path):
     ledger = PaperLedgerStore(settings, base_dir=tmp_path)
     strat = StrategyEngine(settings)
     data = MarketDataService(settings)
-    return PaperTradingEngine(
+    deps = PaperTradingDependencies(
         ledger_store=ledger,
         strategy_engine=strat,
         data_service=data,
         settings=settings
     )
+    return PaperTradingEngine(deps)
 
 def test_engine_init(mock_engine):
     # 29. PaperTradingEngine initialize_account çalışır.
