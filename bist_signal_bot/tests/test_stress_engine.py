@@ -79,3 +79,71 @@ def test_engine_save_output_error(tmp_path):
     # Assert exception was caught and warning appended
     assert len(result_pre.warnings) == 1
     assert "Mocked storage error" in result_pre.warnings[0]
+
+def test_engine_prepare_inputs_exception():
+    engine = StressTestEngine(
+        return_builder=ReturnSeriesBuilder(),
+        monte_carlo_simulator=MonteCarloSimulator(),
+        shock_engine=ShockScenarioEngine(),
+        drawdown_simulator=DrawdownSimulator(),
+        risk_of_ruin_estimator=RiskOfRuinEstimator()
+    )
+
+    # Mock _prepare_inputs to raise Exception
+    engine._prepare_inputs = MagicMock(side_effect=Exception("Mocked input preparation error"))
+
+    req = StressTestRequest(
+        input_type=StressInputType.CUSTOM_RETURNS,
+        monte_carlo_config=MonteCarloConfig(
+            method=MonteCarloMethod.BOOTSTRAP,
+            simulations=10,
+            horizon_days=5,
+            seed=42,
+            initial_value=100.0
+        ),
+        ruin_threshold_pct=30.0,
+        save_output=False,
+        metadata={"custom_returns": []}
+    )
+
+    res = engine.run(req)
+
+    assert res.status == StressStatus.ERROR
+    assert res.stress_rating == StressSeverity.EXTREME
+    assert len(res.warnings) == 1
+    assert "Failed to prepare input: Mocked input preparation error" in res.warnings[0]
+
+def test_engine_empty_returns():
+    engine = StressTestEngine(
+        return_builder=ReturnSeriesBuilder(),
+        monte_carlo_simulator=MonteCarloSimulator(),
+        shock_engine=ShockScenarioEngine(),
+        drawdown_simulator=DrawdownSimulator(),
+        risk_of_ruin_estimator=RiskOfRuinEstimator()
+    )
+
+    # Mock _prepare_inputs to return series with no returns
+    mock_series = MagicMock()
+    mock_series.returns = []
+    engine._prepare_inputs = MagicMock(return_value=(mock_series, None))
+
+    req = StressTestRequest(
+        input_type=StressInputType.CUSTOM_RETURNS,
+        monte_carlo_config=MonteCarloConfig(
+            method=MonteCarloMethod.BOOTSTRAP,
+            simulations=10,
+            horizon_days=5,
+            seed=42,
+            initial_value=100.0
+        ),
+        ruin_threshold_pct=30.0,
+        save_output=False,
+        metadata={"custom_returns": []}
+    )
+
+    res = engine.run(req)
+
+    assert res.status == StressStatus.ERROR
+    assert res.stress_rating == StressSeverity.EXTREME
+    assert len(res.warnings) == 1
+    assert "No returns available for stress test." in res.warnings[0]
