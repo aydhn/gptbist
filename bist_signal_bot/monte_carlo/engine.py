@@ -1,6 +1,7 @@
 import logging
 import uuid
 import time
+from dataclasses import dataclass
 from typing import Any
 
 from bist_signal_bot.config.settings import Settings
@@ -22,31 +23,37 @@ from .risk_metrics import MonteCarloRiskAnalyzer
 from .scoring import MonteCarloRobustnessScorer
 from .storage import MonteCarloStore
 
+@dataclass
+class MonteCarloComponents:
+    settings: Settings | None = None
+    logger: logging.Logger | None = None
+    trade_adapter: TradeSimulationAdapter | None = None
+    bootstrap_engine: BootstrapEngine | None = None
+    path_simulator: PathSimulator | None = None
+    cost_randomizer: CostRandomizer | None = None
+    distribution_analyzer: DistributionAnalyzer | None = None
+    risk_analyzer: MonteCarloRiskAnalyzer | None = None
+    reality_check: RealityCheckEngine | None = None
+    scorer: MonteCarloRobustnessScorer | None = None
+    store: MonteCarloStore | None = None
+
+
 # ContextFusion collects monte carlo robustness
 class MonteCarloEngine:
-    def __init__(self,
-                 trade_adapter: TradeSimulationAdapter | None = None,
-                 bootstrap_engine: BootstrapEngine | None = None,
-                 path_simulator: PathSimulator | None = None,
-                 cost_randomizer: CostRandomizer | None = None,
-                 distribution_analyzer: DistributionAnalyzer | None = None,
-                 risk_analyzer: MonteCarloRiskAnalyzer | None = None,
-                 reality_check: RealityCheckEngine | None = None,
-                 scorer: MonteCarloRobustnessScorer | None = None,
-                 store: MonteCarloStore | None = None,
-                 settings: Settings | None = None,
-                 logger: logging.Logger | None = None):
-        self.settings = settings or Settings()
-        self.logger = logger or logging.getLogger("bist_signal_bot.monte_carlo")
-        self.trade_adapter = trade_adapter or TradeSimulationAdapter(self.logger)
-        self.bootstrap = bootstrap_engine or BootstrapEngine()
-        self.path_simulator = path_simulator or PathSimulator()
-        self.cost_randomizer = cost_randomizer or CostRandomizer()
-        self.distribution = distribution_analyzer or DistributionAnalyzer()
-        self.risk_analyzer = risk_analyzer or MonteCarloRiskAnalyzer()
-        self.reality_check = reality_check or RealityCheckEngine(self.settings)
-        self.scorer = scorer or MonteCarloRobustnessScorer()
-        self.store = store or MonteCarloStore(self.settings)
+    def __init__(self, components: MonteCarloComponents | None = None):
+        components = components or MonteCarloComponents()
+        self.settings = components.settings or Settings()
+        self.logger = components.logger or logging.getLogger("bist_signal_bot.monte_carlo")
+        self.trade_adapter = components.trade_adapter or TradeSimulationAdapter(self.logger)
+        self.bootstrap = components.bootstrap_engine or BootstrapEngine()
+        self.path_simulator = components.path_simulator or PathSimulator()
+        self.cost_randomizer = components.cost_randomizer or CostRandomizer()
+        self.distribution = components.distribution_analyzer or DistributionAnalyzer()
+        self.risk_analyzer = components.risk_analyzer or MonteCarloRiskAnalyzer()
+        self.reality_check = components.reality_check or RealityCheckEngine(self.settings)
+        self.scorer = components.scorer or MonteCarloRobustnessScorer()
+        self.store = components.store or MonteCarloStore(self.settings)
+
 
     def run(self, request: MonteCarloRequest, backtest_result: Any | None = None, trades: list[dict[str, Any]] | None = None, returns: list[float] | None = None) -> MonteCarloResult:
         self.logger.info(f"Starting Monte Carlo simulation (Request ID: {request.request_id})")
