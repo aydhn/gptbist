@@ -232,3 +232,36 @@ def test_trading_days_between_invalid_dates():
     end = date(2024, 1, 3)
     with pytest.raises(MarketCalendarError, match="Start date cannot be after end date."):
         cal.trading_days_between(start, end)
+
+def test_previous_trading_day_with_mocked_is_trading_day():
+    cal = BistMarketCalendar()
+    with patch.object(cal, "is_trading_day", side_effect=[False, False, True]):
+        d = date(2025, 1, 10)
+        res = cal.previous_trading_day(d)
+        assert res == date(2025, 1, 7)
+        assert cal.is_trading_day.call_count == 3
+
+def test_previous_trading_day_mock_limit_reached():
+    cal = BistMarketCalendar()
+    # Mock it so that it's always False for max_lookback_days
+    with patch.object(cal, "is_trading_day", return_value=False):
+        d = date(2025, 1, 10)
+        res = cal.previous_trading_day(d, max_lookback_days=5)
+        assert res is None
+        assert cal.is_trading_day.call_count == 5
+
+def test_previous_trading_day_mock_negative_lookback():
+    cal = BistMarketCalendar()
+    with patch.object(cal, "is_trading_day") as mock_is_trading_day:
+        d = date(2025, 1, 10)
+        res = cal.previous_trading_day(d, max_lookback_days=-1)
+        assert res is None
+        mock_is_trading_day.assert_not_called()
+
+def test_previous_trading_day_mock_zero_lookback():
+    cal = BistMarketCalendar()
+    with patch.object(cal, "is_trading_day") as mock_is_trading_day:
+        d = date(2025, 1, 10)
+        res = cal.previous_trading_day(d, max_lookback_days=0)
+        assert res is None
+        mock_is_trading_day.assert_not_called()
