@@ -4,6 +4,7 @@ from typing import Optional
 
 from bist_signal_bot.core.exceptions import PaperOrderError
 from bist_signal_bot.paper.models import (
+    CreateMarketOrderRequest,
     PaperAccount,
     PaperAccountStatus,
     PaperOrder,
@@ -20,16 +21,9 @@ class PaperOrderManager:
 
     def create_market_order(
         self,
-        account_id: str,
-        symbol: str,
-        side: PaperOrderSide,
-        quantity: float,
-        requested_price: Optional[float] = None,
-        signal: Optional[SignalCandidate] = None,
-        risk_decision: Optional[RiskDecision] = None,
-        portfolio_decision: Optional[PortfolioRiskDecision] = None
+        request: CreateMarketOrderRequest
     ) -> PaperOrder:
-        if quantity <= 0:
+        if request.quantity <= 0:
             raise PaperOrderError("Order quantity must be positive")
 
         order_id = str(uuid.uuid4())
@@ -37,27 +31,27 @@ class PaperOrderManager:
         status = PaperOrderStatus.CREATED
         reject_reason = None
 
-        if risk_decision and risk_decision.status.value != "APPROVED":
+        if request.risk_decision and request.risk_decision.status.value != "APPROVED":
              status = PaperOrderStatus.REJECTED
-             reject_reason = f"Risk rejected: {risk_decision.issues[0] if getattr(risk_decision, 'issues', None) else 'No reason provided'}"
+             reject_reason = f"Risk rejected: {request.risk_decision.issues[0] if getattr(request.risk_decision, 'issues', None) else 'No reason provided'}"
 
-        if portfolio_decision and portfolio_decision.status.value != "APPROVED":
+        if request.portfolio_decision and request.portfolio_decision.status.value != "APPROVED":
              status = PaperOrderStatus.REJECTED
-             reject_reason = f"Portfolio Risk rejected: {portfolio_decision.reasons[0] if portfolio_decision.reasons else 'No reason provided'}"
+             reject_reason = f"Portfolio Risk rejected: {request.portfolio_decision.reasons[0] if request.portfolio_decision.reasons else 'No reason provided'}"
 
         order = PaperOrder(
             order_id=order_id,
-            account_id=account_id,
-            symbol=symbol.upper(),
-            side=side,
+            account_id=request.account_id,
+            symbol=request.symbol.upper(),
+            side=request.side,
             order_type=PaperOrderType.MARKET,
             status=status,
-            quantity=quantity,
-            requested_price=requested_price,
-            signal_id=getattr(signal, "signal_id", None),
-            strategy_name=signal.strategy_name if signal else None,
-            risk_decision_summary=risk_decision.model_dump() if risk_decision else {},
-            portfolio_decision_summary=portfolio_decision.model_dump() if portfolio_decision else {},
+            quantity=request.quantity,
+            requested_price=request.requested_price,
+            signal_id=getattr(request.signal, "signal_id", None),
+            strategy_name=request.signal.strategy_name if request.signal else None,
+            risk_decision_summary=request.risk_decision.model_dump() if request.risk_decision else {},
+            portfolio_decision_summary=request.portfolio_decision.model_dump() if request.portfolio_decision else {},
             reject_reason=reject_reason
         )
 

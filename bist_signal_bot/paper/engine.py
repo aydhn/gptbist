@@ -7,6 +7,7 @@ from typing import Any, Optional
 from bist_signal_bot.config.settings import Settings
 from bist_signal_bot.core.exceptions import PaperTradingError, PaperAccountError
 from bist_signal_bot.paper.models import (
+    CreateMarketOrderRequest,
     PaperAccountStatus,
     PaperExecutionMode,
     PaperLedgerEvent,
@@ -208,13 +209,15 @@ class PaperTradingEngine:
                 try:
                     # Create Order
                     order = self.order_manager.create_market_order(
-                        account_id=request.account_id,
-                        symbol=symbol,
-                        side=PaperOrderSide.BUY,
-                        quantity=qty,
-                        signal=sig,
-                        risk_decision=risk_dec,
-                        portfolio_decision=port_dec
+                        request=CreateMarketOrderRequest(
+                            account_id=request.account_id,
+                            symbol=symbol,
+                            side=PaperOrderSide.BUY,
+                            quantity=qty,
+                            signal=sig,
+                            risk_decision=risk_dec,
+                            portfolio_decision=port_dec
+                        )
                     )
                     state.orders.append(order)
                     result.orders.append(order)
@@ -281,10 +284,12 @@ class PaperTradingEngine:
         pos = positions[0]
 
         order = self.order_manager.create_market_order(
-            account_id=account_id,
-            symbol=symbol,
-            side=PaperOrderSide.SELL,
-            quantity=pos.quantity
+            request=CreateMarketOrderRequest(
+                account_id=account_id,
+                symbol=symbol,
+                side=PaperOrderSide.SELL,
+                quantity=pos.quantity
+            )
         )
         self.order_manager.accept_order(order)
         state.orders.append(order)
