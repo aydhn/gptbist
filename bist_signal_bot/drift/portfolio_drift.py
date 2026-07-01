@@ -80,7 +80,7 @@ class PortfolioDriftAnalyzer:
 
         status = DriftStatus.STABLE
         severity = DriftSeverity.LOW
-        if normalized_shift >= self.settings.DRIFT_EXPOSURE_CHANGE_WARN:
+        if self.settings.DRIFT_EXPOSURE_CHANGE_WARN is not None and normalized_shift >= self.settings.DRIFT_EXPOSURE_CHANGE_WARN:
              status = DriftStatus.WATCH
              severity = DriftSeverity.MEDIUM
 
@@ -144,13 +144,13 @@ class PortfolioDriftAnalyzer:
                        max_sev = m.severity
                        status = m.status
 
-        if concentration_change is not None and concentration_change >= self.settings.DRIFT_CONCENTRATION_CHANGE_WARN:
-             if severities[DriftSeverity.MEDIUM] > severities[max_sev]:
+        if concentration_change is not None and self.settings.DRIFT_CONCENTRATION_CHANGE_WARN is not None and concentration_change >= self.settings.DRIFT_CONCENTRATION_CHANGE_WARN:
+             if severities.get(DriftSeverity.MEDIUM, 0) > severities.get(max_sev, 0):
                   max_sev = DriftSeverity.MEDIUM
                   status = DriftStatus.WATCH
 
-        if correlation_change is not None and correlation_change >= self.settings.DRIFT_CORRELATION_CHANGE_WARN:
-             if severities[DriftSeverity.MEDIUM] > severities[max_sev]:
+        if correlation_change is not None and self.settings.DRIFT_CORRELATION_CHANGE_WARN is not None and correlation_change >= self.settings.DRIFT_CORRELATION_CHANGE_WARN:
+             if severities.get(DriftSeverity.MEDIUM, 0) > severities.get(max_sev, 0):
                   max_sev = DriftSeverity.MEDIUM
                   status = DriftStatus.WATCH
 

@@ -37,10 +37,10 @@ class StrategyDecayAnalyzer:
         decay_score = self.calculate_decay_score(changes)
         report.decay_score = decay_score
 
-        if decay_score >= self.settings.DRIFT_STRATEGY_DECAY_SCORE_FAIL:
+        if self.settings.DRIFT_STRATEGY_DECAY_SCORE_FAIL is not None and decay_score >= self.settings.DRIFT_STRATEGY_DECAY_SCORE_FAIL:
              report.status = DriftStatus.DRIFTING
              report.severity = DriftSeverity.HIGH
-        elif decay_score >= self.settings.DRIFT_STRATEGY_DECAY_SCORE_WARN:
+        elif self.settings.DRIFT_STRATEGY_DECAY_SCORE_WARN is not None and decay_score >= self.settings.DRIFT_STRATEGY_DECAY_SCORE_WARN:
              report.status = DriftStatus.WATCH
              report.severity = DriftSeverity.MEDIUM
         else:

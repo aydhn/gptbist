@@ -2,6 +2,7 @@ import uuid
 import logging
 import time
 import pandas as pd
+from dataclasses import dataclass
 from typing import Any
 from datetime import datetime
 
@@ -22,25 +23,31 @@ from bist_signal_bot.drift.storage import DriftStore
 
 logger = logging.getLogger(__name__)
 
-class DriftEngine:
-    def __init__(self, settings: Settings | None = None, store: DriftStore | None = None,
-                 feature_detector: FeatureDriftDetector | None = None,
-                 model_detector: ModelDriftDetector | None = None,
-                 calibration_monitor: CalibrationMonitor | None = None,
-                 signal_analyzer: SignalDecayAnalyzer | None = None,
-                 strategy_analyzer: StrategyDecayAnalyzer | None = None,
-                 portfolio_analyzer: PortfolioDriftAnalyzer | None = None,
-                 reference_manager: DriftReferenceManager | None = None):
 
-        self.settings = settings or get_settings()
-        self.store = store or DriftStore(self.settings)
-        self.feature_detector = feature_detector or FeatureDriftDetector(self.settings)
-        self.model_detector = model_detector or ModelDriftDetector(self.settings)
-        self.calibration_monitor = calibration_monitor or CalibrationMonitor(self.settings)
-        self.signal_analyzer = signal_analyzer or SignalDecayAnalyzer(self.settings)
-        self.strategy_analyzer = strategy_analyzer or StrategyDecayAnalyzer(self.settings)
-        self.portfolio_analyzer = portfolio_analyzer or PortfolioDriftAnalyzer(self.settings)
-        self.reference_manager = reference_manager or DriftReferenceManager(self.settings)
+@dataclass
+class DriftEngineDependencies:
+    settings: Settings | None = None
+    store: DriftStore | None = None
+    feature_detector: FeatureDriftDetector | None = None
+    model_detector: ModelDriftDetector | None = None
+    calibration_monitor: CalibrationMonitor | None = None
+    signal_analyzer: SignalDecayAnalyzer | None = None
+    strategy_analyzer: StrategyDecayAnalyzer | None = None
+    portfolio_analyzer: PortfolioDriftAnalyzer | None = None
+    reference_manager: DriftReferenceManager | None = None
+
+class DriftEngine:
+    def __init__(self, deps: DriftEngineDependencies | None = None):
+        deps = deps or DriftEngineDependencies()
+        self.settings = deps.settings or get_settings()
+        self.store = deps.store or DriftStore(self.settings)
+        self.feature_detector = deps.feature_detector or FeatureDriftDetector(self.settings)
+        self.model_detector = deps.model_detector or ModelDriftDetector(self.settings)
+        self.calibration_monitor = deps.calibration_monitor or CalibrationMonitor(self.settings)
+        self.signal_analyzer = deps.signal_analyzer or SignalDecayAnalyzer(self.settings)
+        self.strategy_analyzer = deps.strategy_analyzer or StrategyDecayAnalyzer(self.settings)
+        self.portfolio_analyzer = deps.portfolio_analyzer or PortfolioDriftAnalyzer(self.settings)
+        self.reference_manager = deps.reference_manager or DriftReferenceManager(self.settings)
 
     def analyze(self, request: DriftAnalysisRequest) -> DriftAnalysisResult:
         start_time = time.time()
@@ -139,7 +146,8 @@ class DriftEngine:
         count = 0
 
         for r in result.strategy_decay_reports:
-             score += r.decay_score
+             if r.decay_score is not None:
+                 score += r.decay_score
              count += 1
 
         for m in result.model_results:
@@ -178,13 +186,14 @@ class DriftEngine:
         if score is not None:
              if score >= 70.0 and status != DriftStatus.SEVERE_DRIFT:
                   status = DriftStatus.DRIFTING
-                  if severities_map[max_sev] < 3: max_sev = DriftSeverity.HIGH
+                  if severities_map.get(max_sev, 0) < 3: max_sev = DriftSeverity.HIGH
              elif score >= 40.0 and status == DriftStatus.STABLE:
                   status = DriftStatus.WATCH
-                  if severities_map[max_sev] < 2: max_sev = DriftSeverity.MEDIUM
+                  if severities_map.get(max_sev, 0) < 2: max_sev = DriftSeverity.MEDIUM
 
         return status, max_sev
 
     @classmethod
     def from_settings(cls, settings: Settings | None = None) -> 'DriftEngine':
-        return cls(settings=settings)
+        deps = DriftEngineDependencies(settings=settings)
+        return cls(deps=deps)
