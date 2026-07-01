@@ -16,23 +16,34 @@ from bist_signal_bot.validation.scoring import StrategyValidationScorer
 from bist_signal_bot.validation.storage import ValidationStore
 from bist_signal_bot.config.settings import Settings
 
+from dataclasses import dataclass
+
+@dataclass
+class ValidationEngineDependencies:
+    split_builder: ValidationSplitBuilder
+    walk_forward_validator: WalkForwardValidator
+    purged_cv_validator: PurgedCVValidator
+    parameter_stability_analyzer: ParameterStabilityAnalyzer
+    overfit_diagnostics: OverfitDiagnosticsEngine
+    regime_robustness: RegimeRobustnessAnalyzer
+    cost_robustness: CostRobustnessAnalyzer
+    scorer: StrategyValidationScorer
+    store: ValidationStore
+    settings: Settings
+
 # ContextFusion collects validation overfit warnings
 class StrategyValidationEngine:
-    def __init__(
-        self, split_builder, walk_forward_validator, purged_cv_validator,
-        parameter_stability_analyzer, overfit_diagnostics, regime_robustness,
-        cost_robustness, scorer, store, settings
-    ):
-        self.split_builder = split_builder
-        self.walk_forward_validator = walk_forward_validator
-        self.purged_cv_validator = purged_cv_validator
-        self.parameter_stability_analyzer = parameter_stability_analyzer
-        self.overfit_diagnostics = overfit_diagnostics
-        self.regime_robustness = regime_robustness
-        self.cost_robustness = cost_robustness
-        self.scorer = scorer
-        self.store = store
-        self.settings = settings
+    def __init__(self, deps: ValidationEngineDependencies):
+        self.split_builder = deps.split_builder
+        self.walk_forward_validator = deps.walk_forward_validator
+        self.purged_cv_validator = deps.purged_cv_validator
+        self.parameter_stability_analyzer = deps.parameter_stability_analyzer
+        self.overfit_diagnostics = deps.overfit_diagnostics
+        self.regime_robustness = deps.regime_robustness
+        self.cost_robustness = deps.cost_robustness
+        self.scorer = deps.scorer
+        self.store = deps.store
+        self.settings = deps.settings
 
     def validate_strategy(self, request: StrategyValidationRequest) -> StrategyValidationResult:
         data = pd.DataFrame()
@@ -66,8 +77,16 @@ class StrategyValidationEngine:
     def from_settings(cls, settings: Settings) -> 'StrategyValidationEngine':
         from bist_signal_bot.storage.paths import get_validation_dir
         store = ValidationStore(get_validation_dir(settings))
-        return cls(
-            ValidationSplitBuilder(), WalkForwardValidator(), PurgedCVValidator(),
-            ParameterStabilityAnalyzer(), OverfitDiagnosticsEngine(), RegimeRobustnessAnalyzer(),
-            CostRobustnessAnalyzer(), StrategyValidationScorer(), store, settings
+        deps = ValidationEngineDependencies(
+            split_builder=ValidationSplitBuilder(),
+            walk_forward_validator=WalkForwardValidator(),
+            purged_cv_validator=PurgedCVValidator(),
+            parameter_stability_analyzer=ParameterStabilityAnalyzer(),
+            overfit_diagnostics=OverfitDiagnosticsEngine(),
+            regime_robustness=RegimeRobustnessAnalyzer(),
+            cost_robustness=CostRobustnessAnalyzer(),
+            scorer=StrategyValidationScorer(),
+            store=store,
+            settings=settings
         )
+        return cls(deps)
