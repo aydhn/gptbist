@@ -326,11 +326,18 @@ class SignalScannerEngine:
             rankings = rankings[:request.top_n]
 
         # Count
-        passed = sum(1 for r in results if r.status == ScanCandidateStatus.PASSED)
-        filtered = sum(1 for r in results if r.status == ScanCandidateStatus.FILTERED)
-        rejected = sum(1 for r in results if r.status == ScanCandidateStatus.REJECTED)
-        error = sum(1 for r in results if r.status == ScanCandidateStatus.ERROR)
-        watch = sum(1 for r in results if r.status == ScanCandidateStatus.WATCH_ONLY)
+        passed = filtered = rejected = error = watch = 0
+        for r in results:
+            if r.status == ScanCandidateStatus.PASSED:
+                passed += 1
+            elif r.status == ScanCandidateStatus.FILTERED:
+                filtered += 1
+            elif r.status == ScanCandidateStatus.REJECTED:
+                rejected += 1
+            elif r.status == ScanCandidateStatus.ERROR:
+                error += 1
+            elif r.status == ScanCandidateStatus.WATCH_ONLY:
+                watch += 1
 
         status = ScanStatus.SUCCESS
         if error > 0:
