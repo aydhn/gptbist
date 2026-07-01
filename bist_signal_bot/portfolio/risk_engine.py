@@ -119,14 +119,16 @@ class PortfolioRiskEngine:
             alloc_result.total_allocated_notional = 0.0
             alloc_result.total_allocated_pct = 0.0
 
-        status = PortfolioDecisionStatus.APPROVED
-        if all(not i.approved for i in alloc_result.items):
-            status = PortfolioDecisionStatus.REJECTED
-        elif any(not i.approved for i in alloc_result.items):
-            status = PortfolioDecisionStatus.PARTIALLY_APPROVED
-
+        total_cnt = len(alloc_result.items)
         approved_cnt = sum(1 for i in alloc_result.items if i.approved)
-        rejected_cnt = sum(1 for i in alloc_result.items if not i.approved)
+        rejected_cnt = total_cnt - approved_cnt
+
+        if approved_cnt == 0 and total_cnt > 0:
+            status = PortfolioDecisionStatus.REJECTED
+        elif approved_cnt < total_cnt:
+            status = PortfolioDecisionStatus.PARTIALLY_APPROVED
+        else:
+            status = PortfolioDecisionStatus.APPROVED
         reduced_cnt = len(alloc_result.reduced_symbols)
 
         from bist_signal_bot.core.audit import AuditLogger, AuditEventType, AuditEvent
