@@ -1,5 +1,7 @@
 import uuid
 import time
+from dataclasses import dataclass
+from typing import Any
 from bist_signal_bot.telegram_center.models import TelegramCommand, TelegramCommandResult, TelegramCommandStatus, TelegramCommandDecision, TelegramCommandType
 from bist_signal_bot.telegram_center.parser import TelegramCommandParser
 from bist_signal_bot.telegram_center.permissions import TelegramPermissionManager
@@ -9,16 +11,27 @@ from bist_signal_bot.telegram_center.storage import TelegramCenterStore
 from bist_signal_bot.telegram_center.client import TelegramClient
 from bist_signal_bot.config.settings import Settings
 
+@dataclass
+class TelegramRouterDependencies:
+    parser: TelegramCommandParser
+    permission_manager: TelegramPermissionManager
+    safety_guard: TelegramCommandSafetyGuard
+    handlers: TelegramCommandHandlers
+    store: TelegramCenterStore
+    client: TelegramClient
+    settings: Settings
+    logger: Any = None
+
 class TelegramCommandRouter:
-    def __init__(self, parser: TelegramCommandParser, permission_manager: TelegramPermissionManager, safety_guard: TelegramCommandSafetyGuard, handlers: TelegramCommandHandlers, store: TelegramCenterStore, client: TelegramClient, settings: Settings, logger=None):
-        self.parser = parser
-        self.permission_manager = permission_manager
-        self.safety_guard = safety_guard
-        self.handlers = handlers
-        self.store = store
-        self.client = client
-        self.settings = settings
-        self.logger = logger
+    def __init__(self, deps: TelegramRouterDependencies):
+        self.parser = deps.parser
+        self.permission_manager = deps.permission_manager
+        self.safety_guard = deps.safety_guard
+        self.handlers = deps.handlers
+        self.store = deps.store
+        self.client = deps.client
+        self.settings = deps.settings
+        self.logger = deps.logger
 
     def route_raw_message(self, raw_text: str, chat_id: str, user_id: str | None = None, dry_run: bool = False) -> TelegramCommandResult:
         command = self.parser.parse(raw_text, chat_id, user_id)

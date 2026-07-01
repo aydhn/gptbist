@@ -43,8 +43,8 @@ class TelegramPermissionManager:
         if not hasattr(settings, 'TELEGRAM_ALLOWED_CHAT_IDS'):
             return perms
 
-        allowed_str = getattr(settings, 'TELEGRAM_ALLOWED_CHAT_IDS', "")
-        admin_str = getattr(settings, 'TELEGRAM_ADMIN_CHAT_IDS', "")
+        allowed_str = str(getattr(settings, 'TELEGRAM_ALLOWED_CHAT_IDS', ""))
+        admin_str = str(getattr(settings, 'TELEGRAM_ADMIN_CHAT_IDS', ""))
 
         allowed_ids = [s.strip() for s in allowed_str.split(",") if s.strip()]
         admin_ids = [s.strip() for s in admin_str.split(",") if s.strip()]
