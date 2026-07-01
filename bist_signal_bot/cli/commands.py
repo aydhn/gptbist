@@ -2432,8 +2432,8 @@ def handle_costs_command(args, settings):
     from bist_signal_bot.costs.engine import TransactionCostEngine
     from bist_signal_bot.costs.models import CostScenario, TradeCostInput, OrderSide, OrderType
     from bist_signal_bot.costs.scenarios import list_cost_scenarios, scenario_description
-    from bist_signal_bot.notifications.formatter import format_transaction_cost_breakdown, format_round_trip_cost_breakdown
-    from bist_signal_bot.core.audit import AuditLogger, AuditEventType
+    from bist_signal_bot.formatting.formatter import format_transaction_cost_breakdown, format_round_trip_cost_breakdown
+    from bist_signal_bot.core.audit import AuditLogger, CostModelLogData, AuditEventType
     import json
 
     if args.costs_command == "estimate":
@@ -2456,13 +2456,15 @@ def handle_costs_command(args, settings):
 
         audit_logger = AuditLogger(settings)
         audit_logger.log_cost_model_calculation(
-            symbol=args.symbol,
-            side=args.side,
-            quantity=args.quantity,
-            price=args.price,
-            scenario=scenario.value,
-            total_cost=breakdown.total_cost,
-            total_cost_bps=breakdown.total_cost_bps
+            CostModelLogData(
+                symbol=args.symbol,
+                side=args.side,
+                quantity=args.quantity,
+                price=args.price,
+                scenario=scenario.value,
+                total_cost=breakdown.total_cost,
+                total_cost_bps=breakdown.total_cost_bps
+            )
         )
 
         if getattr(args, "json", False):
@@ -3417,7 +3419,7 @@ def cmd_optimize(args, app_context: ApplicationContext) -> int:
          formats = [f.strip() for f in fmt.split(",")]
          store.save_result(result, formats=formats)
 
-    from bist_signal_bot.core.audit import AuditLogger, AuditEventType
+    from bist_signal_bot.core.audit import AuditLogger, CostModelLogData, AuditEventType
     from bist_signal_bot.optimization.models import OptimizationResult
     from bist_signal_bot.notifications.formatter import NotificationFormatter
     from bist_signal_bot.notifications.manager import NotificationManager
