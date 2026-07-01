@@ -424,6 +424,7 @@ class MarketDataService:
 
     def compare_sources(self, symbol: str, timeframe: str, left_source: str, right_source: str) -> 'DataComparisonReport':
         from bist_signal_bot.data.comparison import MarketDataComparator
+        from bist_signal_bot.data.providers_v2.models import DataComparisonRequest
         from bist_signal_bot.data.providers_v2.models import ProviderRequest, ProviderType
 
         # Helper to fetch data for comparison
@@ -441,7 +442,7 @@ class MarketDataService:
             self.audit_logger.log(event)
 
         comp = MarketDataComparator()
-        return comp.compare(
+        req = DataComparisonRequest(
             symbol=symbol,
             timeframe=timeframe,
             left=left_df,
@@ -451,6 +452,7 @@ class MarketDataService:
             close_tolerance_pct=getattr(self.settings, "DATA_COMPARE_CLOSE_TOLERANCE_PCT", 0.10),
             volume_tolerance_pct=getattr(self.settings, "DATA_COMPARE_VOLUME_TOLERANCE_PCT", 5.0)
         )
+        return comp.compare(req)
 
     def lineage_summary(self, symbol: str | None = None) -> dict[str, Any]:
         from bist_signal_bot.data.providers_v2.lineage import DataLineageStore
