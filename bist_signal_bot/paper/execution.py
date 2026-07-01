@@ -81,10 +81,10 @@ class PaperExecutionSimulator:
             fill_price=fill_price,
             effective_price=cost_breakdown.effective_price,
             gross_notional=order.quantity * fill_price,
-            commission=cost_breakdown.commission,
-            slippage=cost_breakdown.slippage,
-            spread=cost_breakdown.spread,
-            tax=cost_breakdown.tax,
+            commission=cost_breakdown.commission.commission_amount,
+            slippage=cost_breakdown.slippage.slippage_total_amount,
+            spread=cost_breakdown.spread.spread_total_amount,
+            tax=cost_breakdown.tax_amount,
             other_fees=cost_breakdown.other_fees,
             total_cost=cost_breakdown.total_cost,
             filled_at=datetime.now(UTC),
@@ -94,12 +94,17 @@ class PaperExecutionSimulator:
         return fill
 
     def calculate_fill_cost(self, order: PaperOrder, price: float) -> TransactionCostBreakdown:
-        return self.cost_engine.calculate(
-             symbol=order.symbol,
-             side=order.side.value,
-             quantity=order.quantity,
-             price=price
+        from bist_signal_bot.costs.models import TradeCostInput, OrderSide, OrderType
+        side = OrderSide.BUY if order.side.value == "BUY" else OrderSide.SELL
+        input_data = TradeCostInput(
+            symbol=order.symbol,
+            side=side,
+            order_type=OrderType.MARKET,
+            quantity=order.quantity,
+            price=price,
+            notional=order.quantity * price
         )
+        return self.cost_engine.calculate_trade_cost(input_data)
 
     def apply_fill_to_ledger(self, state: PaperLedgerState, fill: PaperFill) -> PaperLedgerState:
         # Pre-checks

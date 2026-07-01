@@ -316,3 +316,15 @@ class PaperRunResult(BaseModel):
             "status": self.status,
             "issues_count": len(self.issues)
         }
+
+
+class CreateMarketOrderRequest(BaseModel):
+    model_config = {"arbitrary_types_allowed": True}
+    account_id: str
+    symbol: str
+    side: PaperOrderSide
+    quantity: float
+    requested_price: Optional[float] = None
+    signal: Optional[SignalCandidate] = None
+    risk_decision: Optional[RiskDecision] = None
+    portfolio_decision: Optional[PortfolioRiskDecision] = None
