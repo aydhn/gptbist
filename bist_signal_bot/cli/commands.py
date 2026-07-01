@@ -3284,7 +3284,7 @@ def handle_portfolio_risk_command(args, ctx):
         print("Invalid portfolio command")
 
 def cmd_scan(args, app_context: ApplicationContext) -> int:
-    from bist_signal_bot.scanner.engine import SignalScannerEngine
+    from bist_signal_bot.scanner.engine import SignalScannerEngine, SignalScannerDependencies
     from bist_signal_bot.scanner.models import ScanUniverseMode
     from bist_signal_bot.scanner.storage import ScanReportStore
     from bist_signal_bot.scanner.reporting import scan_report_to_dict

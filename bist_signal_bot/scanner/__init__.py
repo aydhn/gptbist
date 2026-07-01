@@ -1,5 +1,5 @@
 from .models import ScanRequest, ScanReport, SymbolScanResult, ScanUniverseMode, ScanSortKey, ScanCandidateStatus, ScanStatus, ScanRankingItem, SymbolScanIssue
-from .engine import SignalScannerEngine
+from .engine import SignalScannerEngine, SignalScannerDependencies
 from .ranking import ScanRanker
 from .filters import ScanFilterEngine
 from .reporting import format_scan_markdown, format_scan_report_text
@@ -16,6 +16,7 @@ __all__ = [
     "ScanRankingItem",
     "SymbolScanIssue",
     "SignalScannerEngine",
+    "SignalScannerDependencies",
     "ScanRanker",
     "ScanFilterEngine",
     "format_scan_markdown",

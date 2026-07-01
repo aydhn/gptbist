@@ -1,9 +1,9 @@
 from unittest.mock import patch, MagicMock
-from bist_signal_bot.scanner.engine import SignalScannerEngine
+from bist_signal_bot.scanner.engine import SignalScannerEngine, SignalScannerDependencies
 
 def test_scanner_valuation_injection():
     # Because we added a method to the engine
-    engine = SignalScannerEngine(None, None, None, None, None, None, None, None)
+    engine = SignalScannerEngine(deps=SignalScannerDependencies(data_service=None, strategy_engine=None))
     engine.settings = MagicMock()
     engine.settings.SCANNER_INCLUDE_VALUATION_CONTEXT = True
 

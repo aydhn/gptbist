@@ -1,7 +1,7 @@
 import pytest
 import pandas as pd
 from types import SimpleNamespace
-from bist_signal_bot.scanner.engine import SignalScannerEngine
+from bist_signal_bot.scanner.engine import SignalScannerEngine, SignalScannerDependencies
 from bist_signal_bot.scanner.models import ScanRequest, ScanUniverseMode, ScanCandidateStatus, ScanStatus, ScanSortKey
 from bist_signal_bot.config.settings import Settings
 from bist_signal_bot.strategies.models import StrategyExecutionResult, StrategyExecutionIssue
@@ -48,26 +48,26 @@ class MockPortfolioRiskEngine:
         return PortfolioRiskDecision(portfolio_state=state, input_signals=signals, trade_risk_decisions=[], approved_count=1, rejected_count=0, reduced_count=0, reject_reasons=[], warnings=[], status=PortfolioDecisionStatus.APPROVED, allocations=[])
 
 def test_resolve_symbols():
-    engine = SignalScannerEngine(data_service=MockDataService(), strategy_engine=MockStrategyEngine())
+    engine = SignalScannerEngine(deps=SignalScannerDependencies(data_service=MockDataService(), strategy_engine=MockStrategyEngine()))
     req = ScanRequest(strategy_name="t", universe_mode=ScanUniverseMode.SYMBOLS, symbols=["A", "B", "A"])
     symbols = engine.resolve_symbols(req)
     assert symbols == ["A", "B"]
 
 def test_default_risk_engines_receive_settings_by_keyword():
-    engine = SignalScannerEngine(data_service=MockDataService(), strategy_engine=MockStrategyEngine())
+    engine = SignalScannerEngine(deps=SignalScannerDependencies(data_service=MockDataService(), strategy_engine=MockStrategyEngine()))
 
     assert isinstance(engine.risk_engine, RiskEngine)
     assert isinstance(engine.portfolio_risk_engine, PortfolioRiskEngine)
     assert not isinstance(engine.risk_engine.position_sizer, Settings)
 
 def test_scan_symbol_success():
-    engine = SignalScannerEngine(data_service=MockDataService(), strategy_engine=MockStrategyEngine(), risk_engine=MockRiskEngine(), portfolio_risk_engine=MockPortfolioRiskEngine())
+    engine = SignalScannerEngine(deps=SignalScannerDependencies(data_service=MockDataService(), strategy_engine=MockStrategyEngine(), risk_engine=MockRiskEngine(), portfolio_risk_engine=MockPortfolioRiskEngine()))
     req = ScanRequest(strategy_name="t", universe_mode=ScanUniverseMode.SYMBOLS, symbols=["A"])
     res = engine.scan_symbol("A", req)
     assert res.status == ScanCandidateStatus.PASSED
 
 def test_scan_continue_on_error():
-    engine = SignalScannerEngine(data_service=MockDataService(), strategy_engine=MockStrategyEngine(), risk_engine=MockRiskEngine(), portfolio_risk_engine=MockPortfolioRiskEngine())
+    engine = SignalScannerEngine(deps=SignalScannerDependencies(data_service=MockDataService(), strategy_engine=MockStrategyEngine(), risk_engine=MockRiskEngine(), portfolio_risk_engine=MockPortfolioRiskEngine()))
     req = ScanRequest(strategy_name="t", universe_mode=ScanUniverseMode.SYMBOLS, symbols=["BADDATA", "A"], continue_on_error=True)
     report = engine.scan(req)
     assert report.status == ScanStatus.PARTIAL_SUCCESS
@@ -77,12 +77,12 @@ def test_scan_continue_on_error():
 def test_local_scan_does_not_fall_back_to_network():
     data_service = MockDataService()
     data_service.store = SimpleNamespace(exists=lambda *args, **kwargs: False)
-    engine = SignalScannerEngine(
+    engine = SignalScannerEngine(deps=SignalScannerDependencies(
         data_service=data_service,
         strategy_engine=MockStrategyEngine(),
         risk_engine=MockRiskEngine(),
         portfolio_risk_engine=MockPortfolioRiskEngine(),
-    )
+    ))
     req = ScanRequest(
         strategy_name="t",
         universe_mode=ScanUniverseMode.SYMBOLS,

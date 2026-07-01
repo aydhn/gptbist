@@ -28,12 +28,12 @@ def create_runtime_orchestrator(settings: Optional[Settings] = None, base_dir: O
     # Scanner engine
     scanner_engine = None
     try:
-        from bist_signal_bot.scanner.engine import SignalScannerEngine
-        scanner_engine = SignalScannerEngine(
+        from bist_signal_bot.scanner.engine import SignalScannerEngine, SignalScannerDependencies
+        scanner_engine = SignalScannerEngine(deps=SignalScannerDependencies(
             data_service=data_service,
             strategy_engine=strategy_engine,
             settings=settings,
-        )
+        ))
     except ImportError:
         class MockScanner:
             def scan(self, *args, **kwargs): return {"mock_scan": True}
