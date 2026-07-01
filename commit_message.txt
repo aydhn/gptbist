@@ -1,5 +1,0 @@
-🧪 Improve smoke testing error handling coverage
-
-🎯 **What:** Improved error handling test coverage for the `DeploymentSmokeTester.run_command` method in `bist_signal_bot/deployment/smoke.py`.
-📊 **Coverage:** Added test scenarios for command failure (non-zero exit code), subprocess timeout exceptions, and generic exceptions. Also added tests to ensure `dry_run=False` properly handles failures in `run_smoke_tests`.
-✨ **Result:** Test coverage for `smoke.py` is now 100%. This ensures deployment checks correctly block processes when environment issues, network timeouts, or execution errors occur.

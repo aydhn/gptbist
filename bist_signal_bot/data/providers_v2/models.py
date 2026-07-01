@@ -141,6 +141,17 @@ class FreshnessReport(BaseModel):
     warnings: List[str] = Field(default_factory=list)
     metadata: Dict[str, Any] = Field(default_factory=dict)
 
+class DataComparisonRequest(BaseModel):
+    model_config = {"arbitrary_types_allowed": True}
+    symbol: str
+    timeframe: str
+    left: Optional[pd.DataFrame] = None
+    right: Optional[pd.DataFrame] = None
+    left_source: str
+    right_source: str
+    close_tolerance_pct: float = 0.1
+    volume_tolerance_pct: float = 5.0
+
 class DataComparisonReport(BaseModel):
     symbol: str
     timeframe: str

@@ -1,6 +1,7 @@
 import pytest
 import pandas as pd
 from bist_signal_bot.data.comparison import MarketDataComparator
+from bist_signal_bot.data.providers_v2.models import DataComparisonRequest
 
 def test_data_comparator():
     comp = MarketDataComparator()
@@ -15,7 +16,17 @@ def test_data_comparator():
         'volume': [100, 215]   # Diff > 5% on second day
     })
 
-    report = comp.compare("ASELS", "1d", left, right, "local", "yf", close_tolerance_pct=0.1, volume_tolerance_pct=5.0)
+    req = DataComparisonRequest(
+        symbol="ASELS",
+        timeframe="1d",
+        left=left,
+        right=right,
+        left_source="local",
+        right_source="yf",
+        close_tolerance_pct=0.1,
+        volume_tolerance_pct=5.0
+    )
+    report = comp.compare(req)
 
     assert report.status == "WARNING"
     assert report.price_diff_count == 1
