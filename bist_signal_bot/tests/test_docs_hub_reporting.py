@@ -20,3 +20,35 @@ def test_format_docs_hub_report_markdown():
 ---
 _Test disclaimer_"""
     assert result == expected
+
+
+def test_format_docs_hub_report_markdown_empty_findings():
+    report = DocsHubReport(
+        report_id="2",
+        generated_at=datetime(2023, 10, 27, 10, 0, 0),
+        key_findings=[]
+    )
+    result = format_docs_hub_report_markdown(report)
+    expected = """# Documentation Hub Report (2023-10-27 10:00:00)
+
+## Key Findings
+
+---
+_Documentation Hub report is local software metadata only. It is not investment advice or a trading instruction. No real order was sent._"""
+    assert result == expected
+
+def test_format_docs_hub_report_markdown_default_disclaimer():
+    report = DocsHubReport(
+        report_id="3",
+        generated_at=datetime(2023, 10, 27, 10, 0, 0),
+        key_findings=["Single finding"]
+    )
+    result = format_docs_hub_report_markdown(report)
+    expected = """# Documentation Hub Report (2023-10-27 10:00:00)
+
+## Key Findings
+- Single finding
+
+---
+_Documentation Hub report is local software metadata only. It is not investment advice or a trading instruction. No real order was sent._"""
+    assert result == expected
