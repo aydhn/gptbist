@@ -232,3 +232,29 @@ def test_trading_days_between_invalid_dates():
     end = date(2024, 1, 3)
     with pytest.raises(MarketCalendarError, match="Start date cannot be after end date."):
         cal.trading_days_between(start, end)
+
+def test_trading_days_between_same_day_trading():
+    """Test trading_days_between returns the day if start == end and it's a trading day."""
+    cal = BistMarketCalendar()
+    # Wednesday 2024-01-03
+    d = date(2024, 1, 3)
+    assert cal.trading_days_between(d, d) == [d]
+
+def test_trading_days_between_same_day_non_trading():
+    """Test trading_days_between returns empty list if start == end and it's a non-trading day."""
+    holidays = {date(2024, 1, 5)} # Friday holiday
+    cal = BistMarketCalendar(manual_holidays=holidays)
+    # Weekend
+    d1 = date(2024, 1, 6) # Saturday
+    assert cal.trading_days_between(d1, d1) == []
+    # Holiday
+    d2 = date(2024, 1, 5) # Friday
+    assert cal.trading_days_between(d2, d2) == []
+
+def test_trading_days_between_only_non_trading_days():
+    """Test trading_days_between returns empty list if range has no trading days."""
+    cal = BistMarketCalendar()
+    # Saturday 2024-01-06 to Sunday 2024-01-07
+    start = date(2024, 1, 6)
+    end = date(2024, 1, 7)
+    assert cal.trading_days_between(start, end) == []
