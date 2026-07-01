@@ -26,7 +26,7 @@ class ReportDataCollector:
         except Exception as e:
             return {"error": str(e)}
 
-    def __init__(self, settings=None):
+    def __init__(self, settings=None, logger=None):
         pass
 
     def collect(self, config=None):
