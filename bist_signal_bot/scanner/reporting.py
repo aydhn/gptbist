@@ -4,7 +4,7 @@ from bist_signal_bot.scanner.models import ScanReport, SymbolScanResult, ScanRan
 
 def scan_report_to_dict(report: ScanReport) -> Dict[str, Any]:
     # Custom dict generation to avoid pydantic issues with complex types and to keep it clean
-    data = report.dict()
+    data = report.model_dump(mode='json')
     # Ensure nested objects are handled
     return data
 
