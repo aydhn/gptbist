@@ -18,28 +18,35 @@ from bist_signal_bot.governance.rules import GovernanceRuleEvaluator
 
 logger = logging.getLogger(__name__)
 
+from dataclasses import dataclass
+
+@dataclass
+class AuditReviewDependencies:
+    policy_manager: GovernancePolicyManager | None = None
+    rule_evaluator: GovernanceRuleEvaluator | None = None
+    audit_store: Any = None
+    research_ledger: Any = None
+    report_store: Any = None
+    release_store: Any = None
+    maintenance_store: Any = None
+    settings: Settings | None = None
+    base_dir: Path | None = None
+
 class AuditReviewEngine:
     def __init__(
         self,
-        policy_manager: GovernancePolicyManager | None = None,
-        rule_evaluator: GovernanceRuleEvaluator | None = None,
-        audit_store: Any = None,
-        research_ledger: Any = None,
-        report_store: Any = None,
-        release_store: Any = None,
-        maintenance_store: Any = None,
-        settings: Settings | None = None,
-        base_dir: Path | None = None,
+        deps: AuditReviewDependencies | None = None,
     ):
-        self.settings = settings or get_settings()
-        self.policy_manager = policy_manager or GovernancePolicyManager(self.settings)
-        self.rule_evaluator = rule_evaluator or GovernanceRuleEvaluator(self.settings)
-        self.audit_store = audit_store
-        self.research_ledger = research_ledger
-        self.report_store = report_store
-        self.release_store = release_store
-        self.maintenance_store = maintenance_store
-        self.base_dir = base_dir
+        deps = deps or AuditReviewDependencies()
+        self.settings = deps.settings or get_settings()
+        self.policy_manager = deps.policy_manager or GovernancePolicyManager(self.settings)
+        self.rule_evaluator = deps.rule_evaluator or GovernanceRuleEvaluator(self.settings)
+        self.audit_store = deps.audit_store
+        self.research_ledger = deps.research_ledger
+        self.report_store = deps.report_store
+        self.release_store = deps.release_store
+        self.maintenance_store = deps.maintenance_store
+        self.base_dir = deps.base_dir
 
     def review(self, request: AuditReviewRequest) -> AuditReviewResult:
         start_time = datetime.utcnow()
