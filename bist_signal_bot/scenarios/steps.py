@@ -63,6 +63,19 @@ class ScenarioStepExecutor:
 
         started_at = datetime.utcnow()
         issues = []
+
+        # Security enforcement: validate the command binary
+        allowed_binaries = {"python", "echo", "ls", "sleep", "pytest"}
+        if not step.command or step.command[0] not in allowed_binaries:
+            return ScenarioStepResult(
+                step_id=step.step_id,
+                name=step.name,
+                step_type=step.step_type,
+                status=ScenarioStatus.FAILED,
+                started_at=started_at,
+                issues=[f"Security policy violation: command '{step.command[0] if step.command else 'None'}' is not allowed."]
+            )
+
         try:
             # We don't want to actually use python -m if it's slow or destructive in tests, but let's allow it in sandbox mode.
             process = subprocess.run(
