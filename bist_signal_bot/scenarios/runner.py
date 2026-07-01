@@ -3,6 +3,7 @@ import shutil
 import uuid
 from datetime import datetime
 from pathlib import Path
+from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
 from bist_signal_bot.config.settings import Settings
@@ -14,26 +15,32 @@ from bist_signal_bot.scenarios.golden import GoldenSnapshotManager
 from bist_signal_bot.scenarios.validator import ScenarioValidator
 from bist_signal_bot.scenarios.storage import ScenarioStore
 
+
+@dataclass
+class ScenarioRunnerDependencies:
+    registry: Optional[ScenarioRegistry] = None
+    fixture_builder: Optional[ScenarioFixtureBuilder] = None
+    step_executor: Optional[ScenarioStepExecutor] = None
+    golden_manager: Optional[GoldenSnapshotManager] = None
+    validator: Optional[ScenarioValidator] = None
+    storage: Optional[ScenarioStore] = None
+    settings: Optional[Settings] = None
+    logger: Optional[logging.Logger] = None
+
 class ScenarioRunner:
     def __init__(
         self,
-        registry: Optional[ScenarioRegistry] = None,
-        fixture_builder: Optional[ScenarioFixtureBuilder] = None,
-        step_executor: Optional[ScenarioStepExecutor] = None,
-        golden_manager: Optional[GoldenSnapshotManager] = None,
-        validator: Optional[ScenarioValidator] = None,
-        storage: Optional[ScenarioStore] = None,
-        settings: Optional[Settings] = None,
-        logger: Optional[logging.Logger] = None
+        deps: Optional[ScenarioRunnerDependencies] = None
     ):
-        self.settings = settings or Settings()
-        self.logger = logger or logging.getLogger(__name__)
-        self.registry = registry or ScenarioRegistry()
-        self.fixture_builder = fixture_builder or ScenarioFixtureBuilder()
-        self.step_executor = step_executor or ScenarioStepExecutor(settings=self.settings, logger=self.logger)
-        self.storage = storage or ScenarioStore(settings=self.settings)
-        self.golden_manager = golden_manager or GoldenSnapshotManager(golden_dir=self.storage.get_golden_dir())
-        self.validator = validator or ScenarioValidator(settings=self.settings)
+        deps = deps or ScenarioRunnerDependencies()
+        self.settings = deps.settings or Settings()
+        self.logger = deps.logger or logging.getLogger(__name__)
+        self.registry = deps.registry or ScenarioRegistry()
+        self.fixture_builder = deps.fixture_builder or ScenarioFixtureBuilder()
+        self.step_executor = deps.step_executor or ScenarioStepExecutor(settings=self.settings, logger=self.logger)
+        self.storage = deps.storage or ScenarioStore(settings=self.settings)
+        self.golden_manager = deps.golden_manager or GoldenSnapshotManager(golden_dir=self.storage.get_golden_dir())
+        self.validator = deps.validator or ScenarioValidator(settings=self.settings)
 
     def run(self, scenario_id: str, update_golden: bool = False, compare_golden: Optional[bool] = None, save_outputs: bool = True, confirm_update_golden: bool = False) -> ScenarioResult:
         config = self.registry.get_scenario(scenario_id)
