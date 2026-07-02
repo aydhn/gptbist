@@ -1,5 +1,6 @@
 import logging
 import uuid
+from dataclasses import dataclass
 import pandas as pd
 from datetime import datetime, UTC
 from typing import Any, Optional
@@ -34,30 +35,32 @@ from bist_signal_bot.core.exceptions import KillSwitchActiveError
 
 from bist_signal_bot.data.data_service import MarketDataService
 
+@dataclass
+class PaperTradingDependencies:
+    ledger_store: PaperLedgerStore
+    strategy_engine: StrategyEngine
+    risk_engine: Optional[RiskEngine] = None
+    portfolio_risk_engine: Optional[PortfolioRiskEngine] = None
+    execution_simulator: Optional[PaperExecutionSimulator] = None
+    data_service: Optional[MarketDataService] = None
+    settings: Optional[Settings] = None
+    notifier: Optional[Any] = None
+    logger: Optional[logging.Logger] = None
+
 class PaperTradingEngine:
-    def __init__(
-        self,
-        ledger_store: PaperLedgerStore,
-        strategy_engine: StrategyEngine,
-        risk_engine: Optional[RiskEngine] = None,
-        portfolio_risk_engine: Optional[PortfolioRiskEngine] = None,
-        execution_simulator: Optional[PaperExecutionSimulator] = None,
-        data_service: Optional[MarketDataService] = None,
-        settings: Optional[Settings] = None,
-        notifier: Optional[Any] = None,
-        logger: Optional[logging.Logger] = None
-    ):
-        self.settings = settings or Settings()
-        self.ledger_store = ledger_store
-        self.strategy_engine = strategy_engine
-        self.risk_engine = risk_engine or RiskEngine(self.settings)
-        self.portfolio_risk_engine = portfolio_risk_engine or PortfolioRiskEngine(self.settings)
-        self.execution_simulator = execution_simulator or PaperExecutionSimulator(settings=self.settings)
-        self.data_service = data_service or MarketDataService(self.settings)
-        self.notifier = notifier
-        self.logger = logger or logging.getLogger("bist_signal_bot.paper.engine")
+    def __init__(self, deps: PaperTradingDependencies):
+        self.settings = deps.settings or Settings()
+        self.ledger_store = deps.ledger_store
+        self.strategy_engine = deps.strategy_engine
+        self.risk_engine = deps.risk_engine or RiskEngine(self.settings)
+        self.portfolio_risk_engine = deps.portfolio_risk_engine or PortfolioRiskEngine(self.settings)
+        self.execution_simulator = deps.execution_simulator or PaperExecutionSimulator(settings=self.settings)
+        self.data_service = deps.data_service or MarketDataService(self.settings)
+        self.notifier = deps.notifier
+        self.logger = deps.logger or logging.getLogger("bist_signal_bot.paper.engine")
         self.account_manager = PaperAccountManager(self.settings)
         self.order_manager = PaperOrderManager()
+        self.kill_switch = KillSwitchManager(self.settings, get_data_dir(self.settings))
 
     def initialize_account(self, account_id: Optional[str] = None, initial_cash: Optional[float] = None, overwrite: bool = False) -> PaperLedgerState:
         acc_id = account_id or self.settings.PAPER_DEFAULT_ACCOUNT_ID
