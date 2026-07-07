@@ -239,3 +239,23 @@ def test_save_csv_specific_cases(tmp_path):
     assert "rankings" not in paths_issues
     assert "results" not in paths_issues
     assert "issues" in paths_issues
+
+from unittest.mock import patch, mock_open
+
+def test_list_recent_scans_exception(tmp_path):
+    settings = Settings()
+    store = ScanReportStore(settings, base_dir=tmp_path)
+    req = ScanRequest(strategy_name="test_strat", universe_mode=ScanUniverseMode.SYMBOLS, symbols=["A"])
+    report = ScanReport(request=req)
+
+    # create a valid scan report to trigger the loop
+    output_dir = store.create_scan_output_dir(report)
+    valid_file = output_dir / "scan_report.json"
+    with open(valid_file, "w") as f:
+        f.write('{"request": {"strategy_name": "test"}, "started_at": "2023-01-01"}')
+
+    # mock open to raise an exception
+    with patch("builtins.open", side_effect=PermissionError("Permission denied")):
+        scans = store.list_recent_scans()
+
+    assert len(scans) == 0
