@@ -64,9 +64,8 @@ class ModelDriftDetector:
         score = self.drift_score(baseline_predictions, current_predictions)
         status = self.classify_drift(score)
 
-        if status in [ModelGovernanceStatus.PASS, ModelGovernanceStatus.INSUFFICIENT_DATA]:
-            # Optional: Return empty if no finding, but for tracking, maybe we want it
-            pass
+        # Optional: Return empty if no finding (e.g., status in [PASS, INSUFFICIENT_DATA]),
+        # but for tracking, we return a finding regardless of status.
 
         finding = ModelDriftFinding(
             drift_id=f"drift_{datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')}_{uuid.uuid4().hex[:8]}",
