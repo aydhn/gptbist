@@ -94,3 +94,21 @@ def test_local_scan_does_not_fall_back_to_network():
 
     assert res.status == ScanCandidateStatus.ERROR
     assert "network fallback is disabled" in res.issues[0].message
+
+def test_resolve_symbols_validation_error():
+    engine = SignalScannerEngine(deps=SignalScannerDependencies(data_service=MockDataService(), strategy_engine=MockStrategyEngine()))
+    req = ScanRequest(strategy_name="t", universe_mode=ScanUniverseMode.WATCHLIST)
+    report = engine.scan(req)
+    assert report.status == ScanStatus.FAILED
+    assert len(report.issues) == 1
+    assert report.issues[0].stage == "RESOLVE"
+    assert "Watchlist name is required" in report.issues[0].message
+
+def test_resolve_symbols_validation_error_group():
+    engine = SignalScannerEngine(deps=SignalScannerDependencies(data_service=MockDataService(), strategy_engine=MockStrategyEngine()))
+    req = ScanRequest(strategy_name="t", universe_mode=ScanUniverseMode.GROUP)
+    report = engine.scan(req)
+    assert report.status == ScanStatus.FAILED
+    assert len(report.issues) == 1
+    assert report.issues[0].stage == "RESOLVE"
+    assert "Group name is required" in report.issues[0].message
