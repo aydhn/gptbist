@@ -16,9 +16,52 @@ class PortfolioAllocator:
         self.logger = logger or logging.getLogger(__name__)
 
     def allocate(self, request: AllocationRequest) -> AllocationResult:
+        valid_decisions, rejected, items, issues, reduced = self._filter_valid_decisions(request)
+
+        if not valid_decisions:
+            return AllocationResult(
+                method=request.method,
+                items=items,
+                total_allocated_notional=0.0,
+                total_allocated_pct=0.0,
+                rejected_symbols=rejected,
+                reduced_symbols=reduced,
+                issues=issues,
+                generated_at=datetime.utcnow()
+            )
+
+        raw_weights = self._compute_raw_weights(request, valid_decisions, issues)
+
+        norm_weights = self.normalize_weights(raw_weights)
+        capped_weights = self.cap_weights(norm_weights, request.max_symbol_weight_pct)
+        final_weights = self.normalize_weights(capped_weights)
+
+        total_allocation_pct = request.total_allocation_pct
+        for k in final_weights.keys():
+            final_weights[k] *= total_allocation_pct
+
+        total_notional, act_items = self._calculate_target_allocations(
+            request, final_weights, valid_decisions, rejected, reduced
+        )
+
+        items.extend(act_items)
+
+        total_equity = request.portfolio_state.equity
+
+        return AllocationResult(
+            method=request.method,
+            items=items,
+            total_allocated_notional=total_notional,
+            total_allocated_pct=total_notional / total_equity if total_equity > 0 else 0.0,
+            rejected_symbols=rejected,
+            reduced_symbols=reduced,
+            issues=issues,
+            generated_at=datetime.utcnow()
+        )
+
+    def _filter_valid_decisions(self, request: AllocationRequest) -> tuple[list[RiskDecision], list[str], list[AllocationResultItem], list[str], list[str]]:
         valid_decisions = []
         rejected = []
-
         for d in request.risk_decisions:
             if d.status.value not in ["REJECTED", "WATCH_ONLY"]:
                 valid_decisions.append(d)
@@ -43,24 +86,14 @@ class PortfolioAllocator:
                     reasons=["Rejected by trade risk"],
                     metadata={}
                 ))
+        return valid_decisions, rejected, items, issues, reduced
 
-            return AllocationResult(
-                method=request.method,
-                items=items,
-                total_allocated_notional=0.0,
-                total_allocated_pct=0.0,
-                rejected_symbols=rejected,
-                reduced_symbols=reduced,
-                issues=issues,
-                generated_at=datetime.utcnow()
-            )
-
+    def _compute_raw_weights(self, request: AllocationRequest, valid_decisions: list[RiskDecision], issues: list[str]) -> dict[str, float]:
         raw_weights = {}
 
         if request.method == AllocationMethod.EQUAL_WEIGHT:
             w = 1.0 / len(valid_decisions)
             raw_weights = {d.signal.symbol: w for d in valid_decisions}
-
         elif request.method == AllocationMethod.SCORE_WEIGHTED:
             total_score = sum(d.signal.score for d in valid_decisions)
             if total_score > 0:
@@ -68,38 +101,29 @@ class PortfolioAllocator:
             else:
                 w = 1.0 / len(valid_decisions)
                 raw_weights = {d.signal.symbol: w for d in valid_decisions}
-
         elif request.method == AllocationMethod.RISK_PARITY_SIMPLE:
-            # Inverse risk weighting
             inv_risks = {}
             for d in valid_decisions:
                 r_pct = d.risk_pct or 0.01
                 if r_pct <= 0: r_pct = 0.01
                 inv_risks[d.signal.symbol] = 1.0 / r_pct
-
             tot_inv = sum(inv_risks.values())
             if tot_inv > 0:
                 raw_weights = {s: ir / tot_inv for s, ir in inv_risks.items()}
             else:
                 w = 1.0 / len(valid_decisions)
                 raw_weights = {d.signal.symbol: w for d in valid_decisions}
-
         elif request.method == AllocationMethod.VOLATILITY_SCALED:
-            # simple mock
             w = 1.0 / len(valid_decisions)
             raw_weights = {d.signal.symbol: w for d in valid_decisions}
             issues.append("VOLATILITY_SCALED fallback to EQUAL_WEIGHT")
-
         elif request.method == AllocationMethod.LIQUIDITY_WEIGHTED:
             w = 1.0 / len(valid_decisions)
             raw_weights = {d.signal.symbol: w for d in valid_decisions}
             issues.append("LIQUIDITY_WEIGHTED fallback to EQUAL_WEIGHT")
-
         elif request.method == AllocationMethod.RISK_BUDGET:
             raw_weights = {d.signal.symbol: d.risk_pct or 0.01 for d in valid_decisions}
-
         elif request.method == AllocationMethod.HYBRID:
-            # 40% score, 30% risk, 20% liq, 10% eq
             w = 1.0 / len(valid_decisions)
             raw_weights = {d.signal.symbol: w for d in valid_decisions}
         else:
@@ -107,15 +131,12 @@ class PortfolioAllocator:
             raw_weights = {d.signal.symbol: w for d in valid_decisions}
             issues.append("Unknown method, fallback to EQUAL_WEIGHT")
 
-        norm_weights = self.normalize_weights(raw_weights)
-        capped_weights = self.cap_weights(norm_weights, request.max_symbol_weight_pct)
-        final_weights = self.normalize_weights(capped_weights)
+        return raw_weights
 
-        # Scale by total allocation pct
-        total_allocation_pct = request.total_allocation_pct
-        for k in final_weights.keys():
-            final_weights[k] *= total_allocation_pct
-
+    def _calculate_target_allocations(
+        self, request: AllocationRequest, final_weights: dict[str, float],
+        valid_decisions: list[RiskDecision], rejected: list[str], reduced: list[str]
+    ) -> tuple[float, list[AllocationResultItem]]:
         total_equity = request.portfolio_state.equity
         available_cash = request.portfolio_state.cash
         min_notional_val = getattr(self.settings, "PORTFOLIO_MIN_ALLOCATION_NOTIONAL", 100.0)
@@ -125,25 +146,16 @@ class PortfolioAllocator:
             min_notional = 100.0
         use_fractional = getattr(self.settings, "PORTFOLIO_USE_FRACTIONAL_SHARES", False)
 
+        items = []
         total_notional = 0.0
 
-        for d in request.risk_decisions:
+        for d in valid_decisions:
             s = d.signal.symbol
-
             d_pos_size_final_notional = d.position_size.final_notional if d.position_size else None
-
-            if d.status.value in ["REJECTED", "WATCH_ONLY"]:
-                items.append(AllocationResultItem(
-                    symbol=s, approved=False, original_notional=d_pos_size_final_notional,
-                    allocated_notional=0.0, allocated_weight_pct=0.0, quantity=0.0,
-                    reduction_pct=1.0, reasons=["Rejected by trade risk"], metadata={}
-                ))
-                continue
 
             target_wt = final_weights.get(s, 0.0)
             target_notional = target_wt * total_equity
 
-            # Use original if smaller
             if d.position_size and d_pos_size_final_notional < target_notional:
                 target_notional = d_pos_size_final_notional
 
@@ -188,16 +200,7 @@ class PortfolioAllocator:
                 quantity=qty, reduction_pct=red_pct, reasons=[], metadata={}
             ))
 
-        return AllocationResult(
-            method=request.method,
-            items=items,
-            total_allocated_notional=total_notional,
-            total_allocated_pct=total_notional / total_equity if total_equity > 0 else 0.0,
-            rejected_symbols=rejected,
-            reduced_symbols=reduced,
-            issues=issues,
-            generated_at=datetime.utcnow()
-        )
+        return total_notional, items
 
     def normalize_weights(self, raw_weights: dict[str, float]) -> dict[str, float]:
         if not raw_weights:
