@@ -14,6 +14,7 @@ class EventStore:
         self.policies_file = self.base_dir / "policies" / "blackout_policies.json"
         self.assessments_file = self.base_dir / "assessments" / "event_risk_assessments.jsonl"
         self.links_file = self.base_dir / "links" / "event_links.jsonl"
+        self._events_cache: dict[str, MarketEvent] | None = None
 
         for file in [self.events_file, self.windows_file, self.policies_file, self.assessments_file, self.links_file]:
             file.parent.mkdir(parents=True, exist_ok=True)
@@ -26,6 +27,8 @@ class EventStore:
     def append_event(self, event: MarketEvent) -> Path:
         with open(self.events_file, "a") as f:
             f.write(event.model_dump_json() + "\n")
+        if self._events_cache is not None:
+            self._events_cache[event.event_id] = event
         return self.events_file
 
     def load_events(self, limit: int = 10000) -> list[MarketEvent]:
@@ -42,10 +45,9 @@ class EventStore:
         return events
 
     def get_event(self, event_id: str) -> MarketEvent | None:
-        for ev in self.load_events():
-            if ev.event_id == event_id:
-                return ev
-        return None
+        if self._events_cache is None:
+            self._events_cache = {ev.event_id: ev for ev in self.load_events()}
+        return self._events_cache.get(event_id)
 
     def append_window(self, window: EventWindow) -> Path:
         with open(self.windows_file, "a") as f:
