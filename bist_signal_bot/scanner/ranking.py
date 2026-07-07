@@ -152,5 +152,5 @@ class ScanRanker:
 def ranking_to_dataframe(rankings: List[ScanRankingItem]) -> pd.DataFrame:
     if not rankings:
         return pd.DataFrame()
-    data = [r.dict() for r in rankings]
+    data = [r.model_dump() for r in rankings]
     return pd.DataFrame(data)
