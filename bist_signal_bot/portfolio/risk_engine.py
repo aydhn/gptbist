@@ -5,7 +5,7 @@ from datetime import datetime
 
 from bist_signal_bot.config.settings import Settings
 from bist_signal_bot.signals.models import SignalCandidate
-from bist_signal_bot.risk.models import RiskDecision, RiskDecisionStatus, RiskContext
+from bist_signal_bot.risk.models import RiskDecisionStatus, RiskContext
 from bist_signal_bot.risk.engine import RiskEngine
 from bist_signal_bot.portfolio.models import (
     PortfolioState, PortfolioRiskDecision, PortfolioDecisionStatus,
