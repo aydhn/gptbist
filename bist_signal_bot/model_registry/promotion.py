@@ -62,7 +62,7 @@ class ModelPromotionManager:
             current_stage = ModelPromotionStage(model.status.value)
         except ValueError:
             # E.g. WATCH -> UNKNOWN stage mapping
-            pass
+            self.logger.debug(f"Could not map status {model.status.value} to a promotion stage. Defaulting to UNKNOWN.")
 
         gov_status, warnings = self.evaluate_promotion(model, requested_stage)
 
