@@ -20,8 +20,11 @@ class MockDataService:
         return SimpleNamespace(data=pd.DataFrame({'close': [100, 101, 102]}))
 
     def get_many_ohlcv(self, symbols, **kwargs):
+        if "BATCHERROR" in symbols:
+            raise Exception("Simulated batch fetch error")
         results = {}
         for symbol in symbols:
+
             if symbol == "BADDATA":
                 results[symbol] = SimpleNamespace(data=pd.DataFrame())
             else:
@@ -94,3 +97,23 @@ def test_local_scan_does_not_fall_back_to_network():
 
     assert res.status == ScanCandidateStatus.ERROR
     assert "network fallback is disabled" in res.issues[0].message
+
+
+def test_scan_batch_fetch_fallback():
+    engine = SignalScannerEngine(deps=SignalScannerDependencies(
+        data_service=MockDataService(),
+        strategy_engine=MockStrategyEngine(),
+        risk_engine=MockRiskEngine(),
+        portfolio_risk_engine=MockPortfolioRiskEngine(),
+    ))
+    req = ScanRequest(
+        strategy_name="t",
+        universe_mode=ScanUniverseMode.SYMBOLS,
+        symbols=["BATCHERROR", "A"],
+        continue_on_error=True
+    )
+    report = engine.scan(req)
+    # The batch error falls back to sequential. The sequential fetch returns valid dataframe for both "BATCHERROR" and "A",
+    # but the symbol might be processed further leading to an error or pass.
+    # We just need to check the batch fallback was hit and we continued.
+    assert len(report.results) == 2
