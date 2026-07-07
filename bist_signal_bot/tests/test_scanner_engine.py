@@ -117,3 +117,23 @@ def test_scan_batch_fetch_fallback():
     # but the symbol might be processed further leading to an error or pass.
     # We just need to check the batch fallback was hit and we continued.
     assert len(report.results) == 2
+
+def test_telegram_notification_failure_does_not_crash():
+    class MockNotifier:
+        def send_message(self, msg):
+            raise Exception("Telegram failure")
+
+    engine = SignalScannerEngine(deps=SignalScannerDependencies(
+        data_service=MockDataService(),
+        strategy_engine=MockStrategyEngine(),
+        notifier=MockNotifier()
+    ))
+    req = ScanRequest(
+        strategy_name="t",
+        universe_mode=ScanUniverseMode.SYMBOLS,
+        symbols=["A"],
+        send_telegram=True
+    )
+    report = engine.scan(req)
+    assert report.status == ScanStatus.SUCCESS
+    assert report.passed_count == 1
