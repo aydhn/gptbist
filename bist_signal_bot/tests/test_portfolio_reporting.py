@@ -157,3 +157,48 @@ def test_format_portfolio_risk_text():
     assert "Gross Exposure After: 70.00%" in text
     assert "Warnings: High volatility in tech sector" in text
     assert "Disclaimer: Portfolio risk research output only. Not investment advice. No order was sent." in text
+
+def test_exposure_to_dict_mocked():
+    report = MagicMock(spec=ExposureReport)
+    report.summary.return_value = {"mocked": "summary"}
+    res_dict = exposure_to_dict(report)
+    assert res_dict == {"mocked": "summary"}
+    report.summary.assert_called_once()
+
+
+def test_format_portfolio_risk_text_empty_lists():
+    decision = PortfolioRiskDecision(
+        portfolio_state=PortfolioState(equity=100000.0, cash=100000.0),
+        input_signals=[],
+        trade_risk_decisions=[],
+        allocation_result=AllocationResult(
+            method=AllocationMethod.RISK_PARITY_SIMPLE,
+            items=[],
+            total_allocated_notional=20000.0,
+            total_allocated_pct=0.2,
+            rejected_symbols=[],
+            reduced_symbols=[],
+            issues=[],
+            generated_at=datetime.now()
+        ),
+        exposure_report_before=ExposureReport(
+            gross_exposure_pct=0.5, net_exposure_pct=0.5, long_exposure_pct=0.5,
+            short_exposure_pct=0.0, max_symbol_weight_pct=0.1, sector_weights={},
+            open_position_count=5, cash_pct=0.5, issues=[], metadata={}
+        ),
+        exposure_report_after=None,
+        correlation_result=None,
+        status=PortfolioDecisionStatus.APPROVED,
+        approved_count=2,
+        rejected_count=0,
+        reduced_count=0,
+        reject_reasons=[],
+        warnings=[],
+        generated_at=datetime.now()
+    )
+
+    text = format_portfolio_risk_text(decision)
+    assert "--- Portfolio Risk Decision ---" in text
+    assert "Status: APPROVED" in text
+    assert "Reject Reasons:" not in text
+    assert "Warnings:" not in text
