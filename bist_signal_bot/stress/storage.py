@@ -101,8 +101,8 @@ class StressStore:
                                 "status": data.get("status"),
                                 "timestamp": result_dir.stat().st_mtime
                             })
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        self.logger.warning(f"Failed to parse or load recent stress result from {json_file}: {str(e)}")
 
                 if len(all_results) >= limit:
                     return all_results
