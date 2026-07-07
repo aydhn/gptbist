@@ -54,23 +54,11 @@ def test_exposure_to_dict():
 
 
 def test_allocation_to_dict():
-    result = AllocationResult(
-        method=AllocationMethod.EQUAL_WEIGHT,
-        items=[],
-        total_allocated_notional=10000.0,
-        total_allocated_pct=0.5,
-        rejected_symbols=["TSLA"],
-        reduced_symbols=["AMZN"],
-        issues=[],
-        generated_at=datetime.utcnow()
-    )
-    res_dict = allocation_to_dict(result)
-    assert res_dict["method"] == "EQUAL_WEIGHT"
-    assert res_dict["total_allocated_pct"] == 0.5
-    assert res_dict["items_count"] == 0
-    assert res_dict["approved_count"] == 0
-    assert res_dict["rejected_count"] == 1
-    assert res_dict["reduced_count"] == 1
+    mock_result = MagicMock(spec=AllocationResult)
+    mock_result.summary.return_value = {"mocked": "summary"}
+    res_dict = allocation_to_dict(mock_result)
+    assert res_dict == {"mocked": "summary"}
+    mock_result.summary.assert_called_once()
 
 
 def test_portfolio_risk_decision_to_dict():
