@@ -74,41 +74,15 @@ def test_allocation_to_dict():
 
 
 def test_portfolio_risk_decision_to_dict():
-    decision = PortfolioRiskDecision(
-        portfolio_state=PortfolioState(equity=100000.0, cash=100000.0),
-        input_signals=[],
-        trade_risk_decisions=[],
-        allocation_result=AllocationResult(
-            method=AllocationMethod.RISK_PARITY_SIMPLE,
-            items=[],
-            total_allocated_notional=0.0,
-            total_allocated_pct=0.0,
-            rejected_symbols=[],
-            reduced_symbols=[],
-            issues=[],
-            generated_at=datetime.utcnow()
-        ),
-        exposure_report_before=ExposureReport(
-            gross_exposure_pct=0.5, net_exposure_pct=0.5, long_exposure_pct=0.5,
-            short_exposure_pct=0.0, max_symbol_weight_pct=0.1, sector_weights={},
-            open_position_count=5, cash_pct=0.5, issues=[], metadata={}
-        ),
-        exposure_report_after=None,
-        correlation_result=None,
-        status=PortfolioDecisionStatus.APPROVED,
-        approved_count=2,
-        rejected_count=1,
-        reduced_count=0,
-        reject_reasons=[],
-        warnings=[],
-        generated_at=datetime.utcnow()
-    )
+    decision = MagicMock(spec=PortfolioRiskDecision)
+    decision.summary.return_value = {"status": "APPROVED", "approved_count": 2, "rejected_count": 1, "reduced_count": 0, "disclaimer": "Portfolio risk research output only. Not investment advice. No order was sent."}
     res_dict = portfolio_risk_decision_to_dict(decision)
     assert res_dict["status"] == "APPROVED"
     assert res_dict["approved_count"] == 2
     assert res_dict["rejected_count"] == 1
     assert res_dict["reduced_count"] == 0
     assert res_dict["disclaimer"] == "Portfolio risk research output only. Not investment advice. No order was sent."
+    decision.summary.assert_called_once()
 
 
 def test_format_portfolio_risk_text():
@@ -157,3 +131,22 @@ def test_format_portfolio_risk_text():
     assert "Gross Exposure After: 70.00%" in text
     assert "Warnings: High volatility in tech sector" in text
     assert "Disclaimer: Portfolio risk research output only. Not investment advice. No order was sent." in text
+
+def test_format_portfolio_risk_text_empty():
+    decision = MagicMock()
+    decision.status.value = "APPROVED"
+    decision.approved_count = 2
+    decision.rejected_count = 0
+    decision.reduced_count = 0
+    decision.reject_reasons = []
+    decision.warnings = []
+    decision.allocation_result.method.value = "EQUAL_WEIGHT"
+    decision.allocation_result.total_allocated_pct = 0.5
+    decision.exposure_report_before.gross_exposure_pct = 0.5
+    decision.exposure_report_after = None
+    decision.disclaimer = "Test disclaimer"
+
+    text = format_portfolio_risk_text(decision)
+    assert "--- Portfolio Risk Decision ---" in text
+    assert "Reject Reasons:" not in text
+    assert "Warnings:" not in text
