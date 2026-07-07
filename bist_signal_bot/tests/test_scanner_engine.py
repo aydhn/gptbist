@@ -47,6 +47,10 @@ class MockPortfolioRiskEngine:
         from bist_signal_bot.portfolio.models import PortfolioRiskDecision, PortfolioDecisionStatus
         return PortfolioRiskDecision(portfolio_state=state, input_signals=signals, trade_risk_decisions=[], approved_count=1, rejected_count=0, reduced_count=0, reject_reasons=[], warnings=[], status=PortfolioDecisionStatus.APPROVED, allocations=[])
 
+class ErrorMockPortfolioRiskEngine:
+    def evaluate_portfolio_signals(self, signals, state):
+        raise ValueError("Portfolio simulation error")
+
 def test_resolve_symbols():
     engine = SignalScannerEngine(deps=SignalScannerDependencies(data_service=MockDataService(), strategy_engine=MockStrategyEngine()))
     req = ScanRequest(strategy_name="t", universe_mode=ScanUniverseMode.SYMBOLS, symbols=["A", "B", "A"])
@@ -94,3 +98,28 @@ def test_local_scan_does_not_fall_back_to_network():
 
     assert res.status == ScanCandidateStatus.ERROR
     assert "network fallback is disabled" in res.issues[0].message
+
+def test_scan_portfolio_risk_failure():
+    engine = SignalScannerEngine(deps=SignalScannerDependencies(
+        data_service=MockDataService(),
+        strategy_engine=MockStrategyEngine(),
+        risk_engine=MockRiskEngine(),
+        portfolio_risk_engine=ErrorMockPortfolioRiskEngine()
+    ))
+    req = ScanRequest(
+        strategy_name="t",
+        universe_mode=ScanUniverseMode.SYMBOLS,
+        symbols=["A"],
+        use_portfolio_risk=True
+    )
+
+    # Run a full scan so that engine.scan evaluates portfolio risk
+    report = engine.scan(req)
+
+    assert report.status == ScanStatus.SUCCESS
+
+    issues = report.top_candidates()[0].issues if report.top_candidates() and report.top_candidates()[0].issues else report.issues
+
+    portfolio_issues = [i for i in issues if i.stage == "PORTFOLIO"]
+    assert len(portfolio_issues) == 1
+    assert "Portfolio simulation error" in portfolio_issues[0].message
