@@ -157,3 +157,12 @@ def test_format_portfolio_risk_text():
     assert "Gross Exposure After: 70.00%" in text
     assert "Warnings: High volatility in tech sector" in text
     assert "Disclaimer: Portfolio risk research output only. Not investment advice. No order was sent." in text
+
+def test_correlation_to_dict_mocked():
+    mock_result = MagicMock()
+    mock_result.summary.return_value = {"mocked": "value"}
+
+    res = correlation_to_dict(mock_result)
+
+    mock_result.summary.assert_called_once()
+    assert res == {"mocked": "value"}
