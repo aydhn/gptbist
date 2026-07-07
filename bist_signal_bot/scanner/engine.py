@@ -255,10 +255,41 @@ class SignalScannerEngine:
         except ScannerValidationError as e:
             return ScanReport(request=request, status=ScanStatus.FAILED, issues=[SymbolScanIssue(stage="RESOLVE", message=str(e))])
 
+        results, issues = self._scan_all_symbols(symbols, request)
+        results = self.filter_engine.filter_results(results, request)
+        portfolio_decision = self._simulate_portfolio_risk(results, request, issues)
+        rankings = self._rank_results(results, request)
+        passed, filtered, rejected, error, watch, status = self._count_statuses(results)
+        paper_summary = self._simulate_paper_execution(request, issues)
+
+        report = ScanReport(
+            request=request,
+            status=status,
+            total_symbols=len(symbols),
+            processed_symbols=len(results),
+            passed_count=passed,
+            filtered_count=filtered,
+            rejected_count=rejected,
+            error_count=error,
+            watch_only_count=watch,
+            results=results,
+            rankings=rankings,
+            portfolio_decision=portfolio_decision,
+            paper_result_summary=paper_summary,
+            issues=issues,
+            started_at=started_at,
+            finished_at=datetime.utcnow(),
+            elapsed_seconds=time.time() - start_time
+        )
+
+        self._save_and_send_report(request, report)
+        self._log_research_events(report)
+
+        return report
+
+    def _scan_all_symbols(self, symbols: List[str], request: ScanRequest) -> tuple[List[SymbolScanResult], List[SymbolScanIssue]]:
         results = []
         issues = []
-
-        # Batch fetch data for all symbols
         timeframe = Timeframe(request.timeframe)
         allow_network = request.source not in {"local", "local_file"}
         batch_data = {}
@@ -283,7 +314,6 @@ class SignalScannerEngine:
                     source_val = request.source.upper() if request.source.upper() in [v.value for v in DataVendor] else DataVendor.UNKNOWN
                     pre_fetched = MarketDataFrame(symbol=sym, timeframe=timeframe, source=source_val, data=None, fetched_at=dt_mod.datetime.utcnow())
             elif isinstance(batch_data, dict) and len(batch_data) == 0:
-                # If batch fetch successfully returned an empty dict, all symbols failed
                 from bist_signal_bot.data.models import MarketDataFrame, DataVendor
                 import datetime as dt_mod
                 source_val = request.source.upper() if request.source.upper() in [v.value for v in DataVendor] else DataVendor.UNKNOWN
@@ -296,34 +326,31 @@ class SignalScannerEngine:
             if res.status == ScanCandidateStatus.ERROR and not request.continue_on_error:
                 raise ScannerExecutionError(f"Failed to scan {sym}: {res.issues[0].message if res.issues else 'Unknown error'}")
 
-        # Filter
-        results = self.filter_engine.filter_results(results, request)
+        return results, issues
 
-        # Portfolio Risk (simulate)
-        portfolio_decision = None
-        if request.use_portfolio_risk and self.portfolio_risk_engine:
-            from bist_signal_bot.portfolio.models import PortfolioState
+    def _simulate_portfolio_risk(self, results: List[SymbolScanResult], request: ScanRequest, issues: List[SymbolScanIssue]) -> Optional[Any]:
+        if not request.use_portfolio_risk or not self.portfolio_risk_engine:
+            return None
+        from bist_signal_bot.portfolio.models import PortfolioState
+        valid_signals = [r.signal for r in results if r.status in [ScanCandidateStatus.PASSED, ScanCandidateStatus.WATCH_ONLY] and r.signal]
+        if valid_signals:
+            p_state = PortfolioState(equity=100000, cash=100000, account_id="test", status="ACTIVE")
+            try:
+                portfolio_decision = self.portfolio_risk_engine.evaluate_portfolio_signals(valid_signals, p_state)
+                self._apply_portfolio_decisions(results, portfolio_decision)
+                return portfolio_decision
+            except Exception as e:
+                self.logger.error(f"Portfolio risk failed: {e}")
+                issues.append(SymbolScanIssue(stage="PORTFOLIO", message=str(e)))
+        return None
 
-            # Only send valid signals
-            valid_signals = [r.signal for r in results if r.status in [ScanCandidateStatus.PASSED, ScanCandidateStatus.WATCH_ONLY] and r.signal]
-            if valid_signals:
-                p_state = PortfolioState(equity=100000, cash=100000, account_id="test", status="ACTIVE")
-                try:
-                    portfolio_decision = self.portfolio_risk_engine.evaluate_portfolio_signals(valid_signals, p_state)
-                    # Update metadata with portfolio status
-                    self._apply_portfolio_decisions(results, portfolio_decision)
-                except Exception as e:
-                    self.logger.error(f"Portfolio risk failed: {e}")
-                    issues.append(SymbolScanIssue(stage="PORTFOLIO", message=str(e)))
-
-        # Ranking
+    def _rank_results(self, results: List[SymbolScanResult], request: ScanRequest) -> List[ScanRankingItem]:
         rankings = self.ranker.rank(results, sort_key=request.sort_key, descending=request.descending, top_n=request.top_n)
-
-        # Truncate top candidates if requested (we truncate the valid ones only via ranker, but let's keep all in results and slice rankings)
         if request.top_n and request.top_n > 0:
             rankings = rankings[:request.top_n]
+        return rankings
 
-        # Count
+    def _count_statuses(self, results: List[SymbolScanResult]) -> tuple[int, int, int, int, int, ScanStatus]:
         passed = filtered = rejected = error = watch = 0
         for r in results:
             if r.status == ScanCandidateStatus.PASSED:
@@ -343,36 +370,19 @@ class SignalScannerEngine:
         if passed == 0 and watch == 0 and error == 0:
             status = ScanStatus.EMPTY
 
-        # Paper Execution Simulate
-        paper_summary = None
-        if request.use_paper:
-            if not self.settings.SCANNER_ALLOW_PAPER_EXECUTION:
-                issues.append(SymbolScanIssue(stage="PAPER", message="paper execution disabled by scanner config", severity="WARNING"))
-            elif self.paper_engine:
-                 # Minimal paper simulation run for valid signals
-                 paper_summary = {"status": "simulated", "message": "Paper run simulation placeholder"}
+        return passed, filtered, rejected, error, watch, status
 
-        report = ScanReport(
-            request=request,
-            status=status,
-            total_symbols=len(symbols),
-            processed_symbols=len(results),
-            passed_count=passed,
-            filtered_count=filtered,
-            rejected_count=rejected,
-            error_count=error,
-            watch_only_count=watch,
-            results=results,
-            rankings=rankings,
-            portfolio_decision=portfolio_decision,
-            paper_result_summary=paper_summary,
-            issues=issues,
-            started_at=started_at,
-            finished_at=datetime.utcnow(),
-            elapsed_seconds=time.time() - start_time
-        )
+    def _simulate_paper_execution(self, request: ScanRequest, issues: List[SymbolScanIssue]) -> Optional[Dict[str, Any]]:
+        if not request.use_paper:
+            return None
+        if not self.settings.SCANNER_ALLOW_PAPER_EXECUTION:
+            issues.append(SymbolScanIssue(stage="PAPER", message="paper execution disabled by scanner config", severity="WARNING"))
+            return None
+        if self.paper_engine:
+             return {"status": "simulated", "message": "Paper run simulation placeholder"}
+        return None
 
-        # Save & Send
+    def _save_and_send_report(self, request: ScanRequest, report: ScanReport) -> None:
         if request.save_report:
             from bist_signal_bot.scanner.storage import ScanReportStore
             store = ScanReportStore(self.settings)
@@ -388,11 +398,7 @@ class SignalScannerEngine:
             except Exception as e:
                 self.logger.error(f"Telegram failed: {e}")
 
-        # Audit
-
-
-
-        # Phase 47: Research Logging
+    def _log_research_events(self, report: ScanReport) -> None:
         if self.settings.ENABLE_RESEARCH_LEDGER and self.settings.RESEARCH_AUTO_LOG_SCAN:
             try:
                 from ..app.research_app import create_research_event_builder, create_research_ledger, create_signal_journal
@@ -406,8 +412,6 @@ class SignalScannerEngine:
                     journal.from_scan_report(report)
             except Exception as e:
                 self.logger.warning(f"Failed to log scan to research ledger/journal: {e}")
-
-        return report
 
 
     def build_default_request(self, strategy_name: str, **kwargs) -> ScanRequest:
