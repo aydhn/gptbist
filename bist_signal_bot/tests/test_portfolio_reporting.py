@@ -157,3 +157,50 @@ def test_format_portfolio_risk_text():
     assert "Gross Exposure After: 70.00%" in text
     assert "Warnings: High volatility in tech sector" in text
     assert "Disclaimer: Portfolio risk research output only. Not investment advice. No order was sent." in text
+
+def test_format_portfolio_risk_text_no_warnings_no_reject_reasons():
+    decision = PortfolioRiskDecision(
+        portfolio_state=PortfolioState(equity=100000.0, cash=100000.0),
+        input_signals=[],
+        trade_risk_decisions=[],
+        allocation_result=AllocationResult(
+            method=AllocationMethod.RISK_PARITY_SIMPLE,
+            items=[],
+            total_allocated_notional=20000.0,
+            total_allocated_pct=0.2,
+            rejected_symbols=[],
+            reduced_symbols=[],
+            issues=[],
+            generated_at=datetime.utcnow()
+        ),
+        exposure_report_before=ExposureReport(
+            gross_exposure_pct=0.5, net_exposure_pct=0.5, long_exposure_pct=0.5,
+            short_exposure_pct=0.0, max_symbol_weight_pct=0.1, sector_weights={},
+            open_position_count=5, cash_pct=0.5, issues=[], metadata={}
+        ),
+        exposure_report_after=ExposureReport(
+            gross_exposure_pct=0.7, net_exposure_pct=0.7, long_exposure_pct=0.7,
+            short_exposure_pct=0.0, max_symbol_weight_pct=0.1, sector_weights={},
+            open_position_count=7, cash_pct=0.3, issues=[], metadata={}
+        ),
+        correlation_result=None,
+        status=PortfolioDecisionStatus.APPROVED,
+        approved_count=2,
+        rejected_count=0,
+        reduced_count=0,
+        reject_reasons=[],
+        warnings=[],
+        generated_at=datetime.utcnow()
+    )
+
+    text = format_portfolio_risk_text(decision)
+    assert "--- Portfolio Risk Decision ---" in text
+    assert "Status: APPROVED" in text
+    assert "Approved: 2, Rejected: 0, Reduced: 0" in text
+    assert "Reject Reasons:" not in text
+    assert "Allocation Method: RISK_PARITY_SIMPLE" in text
+    assert "Total Allocated: 20.00%" in text
+    assert "Gross Exposure Before: 50.00%" in text
+    assert "Gross Exposure After: 70.00%" in text
+    assert "Warnings:" not in text
+    assert "Disclaimer: Portfolio risk research output only. Not investment advice. No order was sent." in text
