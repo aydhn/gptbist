@@ -72,7 +72,11 @@ class MLModelRegistry:
             with open(metadata_path, "r", encoding="utf-8") as f:
                 metadata_dict = json.load(f)
             artifact = MLModelArtifact(**metadata_dict)
-
+            # WARNING: joblib.load is unsafe and vulnerable to insecure deserialization.
+            # Untrusted models should not be loaded using this function as it can lead to
+            # Arbitrary Code Execution (ACE). In the future, migrate to a safe format
+            # like ONNX or implement cryptographic model signing and verification.
+            logger.warning("Loading model with joblib.load. Ensure the model source is trusted to prevent insecure deserialization.")
             estimator = joblib.load(model_path)
             preprocessor = joblib.load(prep_path) if prep_path.exists() else None
 
@@ -98,7 +102,11 @@ class MLModelRegistry:
         try:
             with open(md_path, "r", encoding="utf-8") as f:
                 metadata_dict = json.load(f)
-
+            # WARNING: joblib.load is unsafe and vulnerable to insecure deserialization.
+            # Untrusted models should not be loaded using this function as it can lead to
+            # Arbitrary Code Execution (ACE). In the future, migrate to a safe format
+            # like ONNX or implement cryptographic model signing and verification.
+            logger.warning("Loading model with joblib.load. Ensure the model source is trusted to prevent insecure deserialization.")
             estimator = joblib.load(m_path)
             preprocessor = joblib.load(p_path) if p_path.exists() else None
 
