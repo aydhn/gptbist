@@ -3,16 +3,18 @@ import logging
 from pathlib import Path
 from typing import Any, List, Dict, Optional
 
-import pandas as pd
 
 from bist_signal_bot.config.settings import Settings
 from bist_signal_bot.scanner.models import ScanReport
 from bist_signal_bot.scanner.reporting import (
-    scan_report_to_dict, scan_results_to_dataframe,
-    scan_rankings_to_dataframe, scan_issues_to_dataframe,
-    format_scan_markdown
+    scan_report_to_dict,
+    scan_results_to_dataframe,
+    scan_rankings_to_dataframe,
+    scan_issues_to_dataframe,
+    format_scan_markdown,
 )
 from bist_signal_bot.storage.paths import get_scans_dir
+
 
 class ScanReportStore:
     def __init__(self, settings: Settings, base_dir: Optional[Path] = None):
@@ -83,7 +85,12 @@ class ScanReportStore:
 
         return file_path
 
-    def save_report(self, report: ScanReport, formats: Optional[List[str]] = None, output_dir: Optional[Path] = None) -> Dict[str, Path]:
+    def save_report(
+        self,
+        report: ScanReport,
+        formats: Optional[List[str]] = None,
+        output_dir: Optional[Path] = None,
+    ) -> Dict[str, Path]:
         if not formats:
             formats = ["json", "csv", "markdown"]
 
@@ -116,15 +123,17 @@ class ScanReportStore:
 
                 # Extract summary info
                 req = data.get("request", {})
-                scans.append({
-                    "date": data.get("started_at"),
-                    "strategy": req.get("strategy_name"),
-                    "mode": req.get("universe_mode"),
-                    "status": data.get("status"),
-                    "total": data.get("total_symbols"),
-                    "passed": data.get("passed_count"),
-                    "path": str(json_file.parent)
-                })
+                scans.append(
+                    {
+                        "date": data.get("started_at"),
+                        "strategy": req.get("strategy_name"),
+                        "mode": req.get("universe_mode"),
+                        "status": data.get("status"),
+                        "total": data.get("total_symbols"),
+                        "passed": data.get("passed_count"),
+                        "path": str(json_file.parent),
+                    }
+                )
             except Exception:
                 continue
 
