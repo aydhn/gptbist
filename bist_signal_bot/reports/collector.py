@@ -1,4 +1,7 @@
 from typing import Any
+from bist_signal_bot.reports.models import ReportDataBundle, ReportConfig
+
+
 def run_daily_report(dry_run=False, include_data_catalog=False, include_feature_store=False, include_orchestrator=False):
     res = {"report": "daily"}
     if include_data_catalog:
@@ -27,10 +30,13 @@ class ReportDataCollector:
             return {"error": str(e)}
 
     def __init__(self, settings=None, logger=None):
-        pass
+        self.settings = settings
+        self.logger = logger
 
-    def collect(self, config=None):
-        return None
+    def collect(self, config: ReportConfig | None = None) -> ReportDataBundle | None:
+        if config is None:
+            return None
+        return ReportDataBundle(report_type=config.report_type)
 
 def collect_advanced_context(settings=None) -> dict:
     return {
