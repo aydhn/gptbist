@@ -137,3 +137,25 @@ def test_telegram_notification_failure_does_not_crash():
     report = engine.scan(req)
     assert report.status == ScanStatus.SUCCESS
     assert report.passed_count == 1
+
+def test_scan_symbol_exception():
+    class ExceptionStrategyEngine:
+        def run_strategy_on_data(self, *args, **kwargs):
+            raise Exception("Simulated execution exception")
+
+    engine = SignalScannerEngine(deps=SignalScannerDependencies(
+        data_service=MockDataService(),
+        strategy_engine=ExceptionStrategyEngine(),
+        risk_engine=MockRiskEngine(),
+        portfolio_risk_engine=MockPortfolioRiskEngine(),
+    ))
+    req = ScanRequest(
+        strategy_name="t",
+        universe_mode=ScanUniverseMode.SYMBOLS,
+        symbols=["A"]
+    )
+    res = engine.scan_symbol("A", req)
+    assert res.status == ScanCandidateStatus.ERROR
+    assert len(res.issues) == 1
+    assert res.issues[0].stage == "EXECUTION"
+    assert "Simulated execution exception" in res.issues[0].message
