@@ -1,6 +1,17 @@
 import pytest
-from bist_signal_bot.scanner.models import ScanReport, ScanRequest, ScanUniverseMode
-from bist_signal_bot.scanner.reporting import format_scan_markdown, scan_report_to_dict
+import pandas as pd
+from datetime import datetime, timezone
+from bist_signal_bot.scanner.models import (
+    ScanReport, ScanRequest, ScanUniverseMode, SymbolScanResult,
+    ScanCandidateStatus, ScanRankingItem, SymbolScanIssue
+)
+from bist_signal_bot.scanner.reporting import (
+    format_scan_markdown, scan_report_to_dict, scan_results_to_dataframe,
+    scan_rankings_to_dataframe, scan_issues_to_dataframe, format_scan_report_text
+)
+from bist_signal_bot.signals.models import SignalCandidate, SignalDirection, SignalStrength
+from bist_signal_bot.risk.models import RiskDecision, RiskDecisionStatus, RiskSide, RiskFilterResult
+from bist_signal_bot.portfolio.models import PortfolioRiskDecision, PortfolioState, AllocationResult, AllocationMethod, ExposureReport, PortfolioDecisionStatus
 
 def test_markdown_format():
     req = ScanRequest(strategy_name="test", universe_mode=ScanUniverseMode.ALL)
@@ -17,12 +28,8 @@ def test_scan_report_to_dict():
     assert "request" in data
     assert data["request"]["strategy_name"] == "dict_test"
     assert data["total_symbols"] == 5
-
-import pandas as pd
-from bist_signal_bot.scanner.reporting import scan_results_to_dataframe
-from bist_signal_bot.scanner.models import SymbolScanResult, ScanCandidateStatus
-from bist_signal_bot.signals.models import SignalCandidate, SignalDirection, SignalStrength
-from bist_signal_bot.risk.models import RiskDecision, RiskDecisionStatus, RiskSide, RiskFilterResult
+    assert "results" in data
+    assert isinstance(data["results"], list)
 
 def test_scan_results_to_dataframe():
     sig = SignalCandidate(
@@ -90,3 +97,72 @@ def test_scan_results_to_dataframe():
     assert row_empty["reasons"] == ""
     assert row_empty["elapsed_s"] == 0.5
     assert pd.isna(row_empty["portfolio_status"]) or row_empty["portfolio_status"] is None
+
+def test_scan_rankings_to_dataframe():
+    item1 = ScanRankingItem(symbol="AAPL", rank_score=85.5, rank=1, status="PASSED")
+    item2 = ScanRankingItem(symbol="MSFT", rank_score=80.0, rank=2, status="PASSED")
+
+    df = scan_rankings_to_dataframe([item1, item2])
+    assert len(df) == 2
+    assert "symbol" in df.columns
+    assert "rank_score" in df.columns
+    assert df.iloc[0]["symbol"] == "AAPL"
+    assert df.iloc[1]["symbol"] == "MSFT"
+
+def test_scan_issues_to_dataframe():
+    issue1 = SymbolScanIssue(symbol="AAPL", stage="DATA", message="Missing data", severity="ERROR")
+    issue2 = SymbolScanIssue(symbol="MSFT", stage="SIGNAL", message="Low volume", severity="WARNING")
+
+    df = scan_issues_to_dataframe([issue1, issue2])
+    assert len(df) == 2
+    assert "symbol" in df.columns
+    assert "stage" in df.columns
+    assert df.iloc[0]["symbol"] == "AAPL"
+    assert df.iloc[1]["symbol"] == "MSFT"
+
+def test_markdown_format_with_empty_report():
+    req = ScanRequest(strategy_name="md_empty", universe_mode=ScanUniverseMode.SYMBOLS, top_n=2)
+    report = ScanReport(request=req, results=[], issues=[])
+
+    md = format_scan_markdown(report)
+    assert "No passed candidates found." not in md
+
+    text = format_scan_report_text(report)
+    assert "No passed candidates found." in text
+
+def test_markdown_format_with_full_report():
+    req = ScanRequest(strategy_name="md_test", universe_mode=ScanUniverseMode.SYMBOLS, top_n=2)
+
+    sig1 = SignalCandidate(symbol="AAPL", strategy_name="md_test", direction=SignalDirection.LONG, score=90, strength=SignalStrength.UNKNOWN)
+    risk1 = RiskDecision(signal=sig1, status=RiskDecisionStatus.APPROVED, side=RiskSide.LONG, approved=True, filter_result=RiskFilterResult(passed=True, status=RiskDecisionStatus.APPROVED), final_score=82.0)
+    res1 = SymbolScanResult(symbol="AAPL", status=ScanCandidateStatus.PASSED, rank=1, rank_score=90.0, signal=sig1, risk_decision=risk1)
+
+    sig2 = SignalCandidate(symbol="MSFT", strategy_name="md_test", direction=SignalDirection.LONG, score=85, strength=SignalStrength.UNKNOWN)
+    risk2 = RiskDecision(signal=sig2, status=RiskDecisionStatus.APPROVED, side=RiskSide.LONG, approved=True, filter_result=RiskFilterResult(passed=True, status=RiskDecisionStatus.APPROVED), final_score=80.0)
+    res2 = SymbolScanResult(symbol="MSFT", status=ScanCandidateStatus.PASSED, rank=2, rank_score=85.0, signal=sig2, risk_decision=risk2)
+
+    portfolio_state = PortfolioState(equity=100000, cash=100000)
+    alloc_res = AllocationResult(method=AllocationMethod.EQUAL_WEIGHT, items=[], total_allocated_notional=0.0, total_allocated_pct=0.0, rejected_symbols=[], reduced_symbols=[], issues=[], generated_at=datetime.now(timezone.utc))
+    exp_report = ExposureReport(gross_exposure_pct=0.0, net_exposure_pct=0.0, long_exposure_pct=0.0, short_exposure_pct=0.0, max_symbol_weight_pct=0.0, sector_weights={}, open_position_count=0, cash_pct=1.0, issues=[], metadata={})
+
+    portfolio_dec = PortfolioRiskDecision(
+        portfolio_state=portfolio_state, input_signals=[sig1, sig2], trade_risk_decisions=[],
+        allocation_result=alloc_res, exposure_report_before=exp_report, exposure_report_after=exp_report,
+        correlation_result=None, status=PortfolioDecisionStatus.APPROVED, approved_count=2, rejected_count=0,
+        reduced_count=0, reject_reasons=["Reason 1"], warnings=[], generated_at=datetime.now(timezone.utc)
+    )
+
+    issue1 = SymbolScanIssue(symbol="AAPL", stage="DATA", message="Missing data", severity="ERROR")
+
+    report = ScanReport(request=req, results=[res1, res2], portfolio_decision=portfolio_dec, issues=[issue1])
+
+    md = format_scan_markdown(report)
+    assert "# BIST Bot Signal Scan Report" in md
+    assert "**Strategy**: `md_test`" in md
+    assert "| 1 | AAPL | LONG | 90.0 | 82.0 | PASSED |" in md
+    assert "| 2 | MSFT | LONG | 85.0 | 80.0 | PASSED |" in md
+    assert "## Portfolio Risk Summary" in md
+    assert "Status: **APPROVED**" in md
+    assert "- Reason 1" in md
+    assert "## Issues" in md
+    assert "- **ERROR** [DATA] AAPL: Missing data" in md
