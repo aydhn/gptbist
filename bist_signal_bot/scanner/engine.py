@@ -4,7 +4,7 @@ import logging
 import time
 from datetime import datetime
 from dataclasses import dataclass
-from typing import List, Optional, Any, Dict
+from typing import List, Optional, Any
 
 from bist_signal_bot.config.settings import Settings
 from bist_signal_bot.core.exceptions import ScannerValidationError, ScannerExecutionError
@@ -372,7 +372,7 @@ class SignalScannerEngine:
 
         return passed, filtered, rejected, error, watch, status
 
-    def _simulate_paper_execution(self, request: ScanRequest, issues: List[SymbolScanIssue]) -> Optional[Dict[str, Any]]:
+    def _simulate_paper_execution(self, request: ScanRequest, issues: List[SymbolScanIssue]) -> Optional[dict[str, Any]]:
         if not request.use_paper:
             return None
         if not self.settings.SCANNER_ALLOW_PAPER_EXECUTION:
