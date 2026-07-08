@@ -1,4 +1,5 @@
 from typing import Any, List, Dict
+import logging
 import pandas as pd
 import uuid
 import time
@@ -8,6 +9,8 @@ from bist_signal_bot.config.settings import Settings
 from bist_signal_bot.portfolio_construction.models import (
     PortfolioConstructionRequest, PortfolioConstructionResult, PortfolioCandidate, PortfolioWeightingMethod
 )
+
+logger = logging.getLogger(__name__)
 
 # ContextFusion collects portfolio construction context
 class PortfolioConstructionEngine:
@@ -89,7 +92,7 @@ class PortfolioConstructionEngine:
                         if not hasattr(c, "warnings"):
                             c.warnings = []
                         c.warnings.append("Value Trap Warning")
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"Failed to apply valuation filter: {e}")
 
         return candidates
