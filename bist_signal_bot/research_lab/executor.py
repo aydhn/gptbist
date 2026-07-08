@@ -1,3 +1,4 @@
+import re
 import uuid
 import time
 import subprocess
@@ -90,6 +91,13 @@ class ResearchJobExecutor:
 
         if command[0] != "python" or command[1] != "-m" or command[2] != "bist_signal_bot":
             return 1, "", f"Security Error: Unauthorized command execution blocked. Only 'python -m bist_signal_bot' is allowed."
+
+        # Security validation: strict whitelist of allowed characters for arguments to prevent command injection
+        # Allows alphanumeric, dash, underscore, and equals. Disallows shell metacharacters and arbitrary scripts.
+        allowed_pattern = re.compile(r'^[a-zA-Z0-9_=-]+$')
+        for arg in command[3:]:
+            if not allowed_pattern.match(arg):
+                return 1, "", f"Security Error: Argument '{arg}' contains unauthorized characters."
 
         merged_env = os.environ.copy()
         merged_env.update(env)
