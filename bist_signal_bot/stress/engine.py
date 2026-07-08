@@ -60,7 +60,15 @@ class StressTestEngine:
 
             symbols = [item.symbol for item in snapshot.items] if hasattr(snapshot, "items") else []
             if self.data_service and symbols:
-                data_by_symbol = {sym: self.data_service.get_historical_data(sym) for sym in symbols}
+                if hasattr(self.data_service, "get_many_ohlcv"):
+                    many_results = self.data_service.get_many_ohlcv(symbols)
+                    data_by_symbol = {
+                        sym: res.data if hasattr(res, "data") else res
+                        for sym, res in many_results.items()
+                        if res is not None
+                    }
+                else:
+                    data_by_symbol = {sym: self.data_service.get_historical_data(sym) for sym in symbols}
             else:
                 data_by_symbol = {}
 
