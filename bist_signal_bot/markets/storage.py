@@ -1,5 +1,6 @@
 import json
 import os
+import logging
 from pathlib import Path
 from typing import List, Optional, Dict, Any
 from bist_signal_bot.markets.models import (
@@ -7,6 +8,8 @@ from bist_signal_bot.markets.models import (
     MarketCalendarDay, MarketSession, MarketUniverse,
     MarketValidationResult, MarketGovernanceAssessment, MarketRegistryReport
 )
+
+logger = logging.getLogger(__name__)
 
 class MarketStore:
     def __init__(self, base_dir: Path):
@@ -41,8 +44,8 @@ class MarketStore:
                 if i >= limit: break
                 try:
                     res.append(model_cls.model_validate_json(line))
-                except:
-                    pass
+                except Exception as e:
+                    logger.debug(f"Failed to parse line {i} in {path}: {e}")
         return res
 
     def save_markets(self, markets: List[MarketDefinition]) -> Path:
@@ -58,7 +61,8 @@ class MarketStore:
             try:
                 data = json.load(f)
                 return [MarketDefinition.model_validate(m) for m in data]
-            except:
+            except Exception as e:
+                logger.warning(f"Failed to load markets from {p}: {e}")
                 return []
 
     def append_instruments(self, instruments: List[InstrumentDefinition]) -> Path:
