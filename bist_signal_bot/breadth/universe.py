@@ -47,16 +47,22 @@ class BreadthUniverseBuilder:
             return symbols
 
         active_symbols = []
-        for symbol in symbols:
-            inst = self.instrument_master.get_instrument(symbol)
+        if not symbols:
+            return active_symbols
+
+        instruments = self.instrument_master.get_instruments(symbols)
+        for symbol, inst in zip(symbols, instruments):
             if inst and inst.is_active:
                 active_symbols.append(symbol)
         return active_symbols
 
     def sector_map(self, symbols: list[str]) -> dict[str, str]:
         sector_mapping = {}
-        for symbol in symbols:
-            inst = self.instrument_master.get_instrument(symbol)
+        if not symbols:
+            return sector_mapping
+
+        instruments = self.instrument_master.get_instruments(symbols)
+        for symbol, inst in zip(symbols, instruments):
             sector = inst.sector if inst and inst.sector else "UNKNOWN"
             sector_mapping[symbol] = sector
         return sector_mapping

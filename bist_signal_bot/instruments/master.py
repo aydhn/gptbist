@@ -18,6 +18,9 @@ class InstrumentMaster:
         self._records[record.symbol] = record
         return record
 
+    def get_instruments(self, symbols: List[str]) -> List[Optional[InstrumentRecord]]:
+        return [self._records.get(symbol.upper()) for symbol in symbols]
+
     def get(self, symbol: str) -> Optional[InstrumentRecord]:
         return self._records.get(symbol.upper())
 
