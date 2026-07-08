@@ -38,11 +38,6 @@ class EnvTemplateBuilder:
                     result.warnings.append(f"File {out_path} already exists. Skipped.")
                     return result
 
-                # Not doing actual write in build_template unless it's just generating text,
-                # but wait, let's decouple generation from writing or write if requested?
-                # The instructions say build_template -> EnvTemplateResult, and write_env_file.
-                pass
-
             result.status = DeploymentStatus.PASS
             result.metadata["generated_text"] = text
             result.variables_written = len(self.safe_variable_lines(profile))
