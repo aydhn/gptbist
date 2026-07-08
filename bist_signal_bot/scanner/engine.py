@@ -13,7 +13,7 @@ from bist_signal_bot.data.models import Timeframe
 from bist_signal_bot.data.symbol_universe import SymbolUniverse
 from bist_signal_bot.strategies.engine import StrategyEngine
 from bist_signal_bot.ml.inference.engine import MLInferenceEngine
-from bist_signal_bot.ml.inference.models import MLInferenceConfig, MLFilterDecision
+from bist_signal_bot.ml.inference.models import MLInferenceConfig
 from bist_signal_bot.security.kill_switch import KillSwitchManager
 from bist_signal_bot.security.models import KillSwitchScope
 from bist_signal_bot.security.preflight import SecurityPreflightRunner
