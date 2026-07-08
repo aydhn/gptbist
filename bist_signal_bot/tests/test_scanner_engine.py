@@ -137,3 +137,41 @@ def test_telegram_notification_failure_does_not_crash():
     report = engine.scan(req)
     assert report.status == ScanStatus.SUCCESS
     assert report.passed_count == 1
+
+def test_log_research_events_failure_does_not_crash(monkeypatch):
+    from bist_signal_bot.scanner.engine import SignalScannerEngine, SignalScannerDependencies
+    from bist_signal_bot.scanner.models import ScanRequest, ScanUniverseMode
+
+    def mock_create_research_ledger(*args, **kwargs):
+        class MockLedger:
+            def append_run(self, *args, **kwargs):
+                raise Exception("Simulated ledger failure")
+        return MockLedger()
+
+    def mock_create_research_event_builder(*args, **kwargs):
+        class MockBuilder:
+            def from_scan_report(self, report):
+                return "mock_run_obj"
+        return MockBuilder()
+
+    monkeypatch.setattr("bist_signal_bot.app.research_app.create_research_ledger", mock_create_research_ledger)
+    monkeypatch.setattr("bist_signal_bot.app.research_app.create_research_event_builder", mock_create_research_event_builder)
+
+    engine = SignalScannerEngine(deps=SignalScannerDependencies(
+        data_service=MockDataService(),
+        strategy_engine=MockStrategyEngine(),
+        risk_engine=MockRiskEngine(),
+        portfolio_risk_engine=MockPortfolioRiskEngine()
+    ))
+
+    engine.settings.ENABLE_RESEARCH_LEDGER = True
+    engine.settings.RESEARCH_AUTO_LOG_SCAN = True
+
+    req = ScanRequest(
+        strategy_name="t",
+        universe_mode=ScanUniverseMode.SYMBOLS,
+        symbols=["A"]
+    )
+
+    report = engine.scan(req)
+    assert report is not None
