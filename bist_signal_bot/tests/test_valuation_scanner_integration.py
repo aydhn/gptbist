@@ -25,3 +25,24 @@ def test_scanner_valuation_injection():
 
         assert getattr(res, "valuation_score", None) == 45.0
         assert getattr(res, "valuation_risk_level", None) == "LOW"
+
+def test_scanner_valuation_injection_fallback():
+    engine = SignalScannerEngine(deps=SignalScannerDependencies(data_service=None, strategy_engine=None))
+    engine.settings = MagicMock()
+    engine.settings.SCANNER_INCLUDE_VALUATION_CONTEXT = True
+
+    from bist_signal_bot.scanner.models import SymbolScanResult
+    from bist_signal_bot.scanner.models import ScanCandidateStatus
+
+    res = SymbolScanResult(symbol="ASELS", status=ScanCandidateStatus.PASSED)
+
+    with patch("bist_signal_bot.app.valuation_app.create_valuation_store") as mock_store:
+        mock_instance = MagicMock()
+        mock_instance.load_latest_risk.side_effect = Exception("Failed to load")
+        mock_store.return_value = mock_instance
+
+        engine.add_valuation_context(res)
+
+        assert getattr(res, "valuation_score", None) is None
+        assert getattr(res, "valuation_risk_level", None) is None
+        assert getattr(res, "valuation_status", None) is None
