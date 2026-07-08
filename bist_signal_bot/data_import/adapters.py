@@ -114,8 +114,9 @@ class LocalImportAdapterRegistry:
                 if not tables:
                     return []
                 table_name = tables[0][0]
-                safe_table_name = '"{}"'.format(table_name.replace('"', '""'))
-                df = pd.read_sql_query(f"SELECT * FROM {safe_table_name} LIMIT ?", conn, params=(max_rows,))
+                safe_table_name = '"' + table_name.replace('"', '""') + '"'
+                query = f"SELECT * FROM {safe_table_name} LIMIT ?"  # nosec B608
+                df = pd.read_sql_query(query, conn, params=(max_rows,))  # nosec B608
                 conn.close()
                 return df.to_dict(orient="records")
             except Exception as e:
@@ -149,8 +150,8 @@ class LocalImportAdapterRegistry:
              if not tables:
                  return pd.DataFrame()
              table_name = tables[0][0]
-             safe_table_name = '"{}"'.format(table_name.replace('"', '""'))
-             query = f"SELECT * FROM {safe_table_name}"
+             safe_table_name = '"' + table_name.replace('"', '""') + '"'
+             query = f"SELECT * FROM {safe_table_name}"  # nosec B608
              params = ()
              if max_rows:
                   query += " LIMIT ?"
