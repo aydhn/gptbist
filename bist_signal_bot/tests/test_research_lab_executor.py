@@ -39,3 +39,16 @@ def test_executor_command_validation(executor):
     code, stdout, stderr = executor.execute_command([], 5, {})
     assert code == 1
     assert "Security Error" in stderr
+
+def test_executor_command_injection_blocked(executor):
+    code, stdout, stderr = executor.execute_command(["python", "-m", "bist_signal_bot", ";", "echo", "EXPLOITED"], 5, {})
+    assert code == 1
+    assert "Security Error" in stderr
+
+    code, stdout, stderr = executor.execute_command(["python", "-m", "bist_signal_bot", "healthcheck", "&&", "ls"], 5, {})
+    assert code == 1
+    assert "Security Error" in stderr
+
+    code, stdout, stderr = executor.execute_command(["python", "-m", "bist_signal_bot", "-c", "import os"], 5, {})
+    assert code == 1
+    assert "Security Error" in stderr
