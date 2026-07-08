@@ -53,10 +53,20 @@ def test_scan_ranker_none_at_bottom():
 
 def test_ranking_to_dataframe():
     ranker = ScanRanker()
+
+    # Empty test
+    empty_df = ranking_to_dataframe([])
+    assert empty_df.empty
+
+    # Normal test
     rankings = ranker.rank([_make_result("A", 60), _make_result("B", 80)])
     df = ranking_to_dataframe(rankings)
     assert not df.empty
     assert len(df) == 2
+    assert "symbol" in df.columns
+    assert "rank_score" in df.columns
+    assert df.iloc[0]["symbol"] == "B"
+    assert df.iloc[1]["symbol"] == "A"
 
 
 def _make_result_with_metadata(symbol, score, metadata, final_score=None):
