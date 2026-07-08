@@ -6,6 +6,8 @@ from bist_signal_bot.events.models import (
     MarketEvent, EventWindow, EventRiskAssessment, EventRiskDecision, EventSeverity
 )
 
+_SEVERITY_ORDER = {s: i for i, s in enumerate(EventSeverity)}
+
 class EventRiskEngine:
     def __init__(self, calendar=None, window_builder=None, policy_manager=None):
         self.calendar = calendar
@@ -33,7 +35,7 @@ class EventRiskEngine:
         severity = EventSeverity.LOW
 
         if windows:
-            severity = max([w.severity for w in windows], key=lambda x: list(EventSeverity).index(x))
+            severity = max((w.severity for w in windows), key=lambda x: _SEVERITY_ORDER.get(x, -1))
 
         decision = self.decision_from_score(score, severity)
         adj = self.confidence_adjustment(decision, score)
