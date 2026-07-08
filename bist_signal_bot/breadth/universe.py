@@ -57,15 +57,14 @@ class BreadthUniverseBuilder:
         return active_symbols
 
     def sector_map(self, symbols: list[str]) -> dict[str, str]:
-        sector_mapping = {}
         if not symbols:
-            return sector_mapping
+            return {}
 
         instruments = self.instrument_master.get_instruments(symbols)
-        for symbol, inst in zip(symbols, instruments):
-            sector = inst.sector if inst and inst.sector else "UNKNOWN"
-            sector_mapping[symbol] = sector
-        return sector_mapping
+        return {
+            symbol: (inst.sector if inst and inst.sector else "UNKNOWN")
+            for symbol, inst in zip(symbols, instruments)
+        }
 
     def exclude_invalid_symbols(self, symbols: list[str]) -> tuple[list[str], list[str]]:
         valid = []
