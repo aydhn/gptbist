@@ -69,7 +69,7 @@ def _format_text_portfolio_summary(report: ScanReport) -> List[str]:
         lines.append("---------------------------")
         lines.append("Portfolio Risk Summary:")
         lines.append(f"  Status: {report.portfolio_decision.status.value}")
-        lines.append(f"  Allocations: {len(report.portfolio_decision.allocations)}")
+        lines.append(f"  Allocations: {len(report.portfolio_decision.allocation_result.items)}")
     return lines
 
 def format_scan_report_text(report: ScanReport) -> str:
@@ -125,9 +125,9 @@ def _format_md_portfolio_summary(report: ScanReport) -> List[str]:
     if report.portfolio_decision:
         lines.append("## Portfolio Risk Summary")
         lines.append(f"Status: **{report.portfolio_decision.status.value}**")
-        if report.portfolio_decision.reasons:
+        if report.portfolio_decision.reject_reasons:
             lines.append("Reasons:")
-            for reason in report.portfolio_decision.reasons:
+            for reason in report.portfolio_decision.reject_reasons:
                 lines.append(f"- {reason}")
         lines.append("")
     return lines
