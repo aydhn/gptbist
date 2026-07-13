@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-from typing import Any, Dict
+from typing import Any
 
 from bist_signal_bot.indicators.base import BaseIndicator
 from bist_signal_bot.indicators.models import IndicatorSpec, IndicatorCategory, IndicatorBackend
