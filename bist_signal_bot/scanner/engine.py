@@ -101,98 +101,142 @@ class SignalScannerEngine:
 
         return unique_symbols
 
+
+    def _fetch_symbol_data(self, symbol: str, request: ScanRequest, pre_fetched_data: Optional[Any], start_time: float) -> tuple[Any, list[SymbolScanIssue], Optional[SymbolScanResult]]:
+        issues = []
+        timeframe = Timeframe(request.timeframe)
+        if pre_fetched_data is not None:
+            market_data = pre_fetched_data
+        else:
+            if request.source in {"local", "local_file"}:
+                store = getattr(self.data_service, "store", None)
+                provider = getattr(self.data_service, "provider", None)
+                vendor = getattr(provider, "vendor", None)
+                if store is None or vendor is None or not store.exists(symbol, vendor, timeframe):
+                    raise ScannerExecutionError(
+                        f"No local data found for {symbol} ({timeframe.value}); network fallback is disabled."
+                    )
+
+            market_data = self.data_service.get_ohlcv(
+                symbol,
+                timeframe=timeframe,
+                refresh=False,
+                save=False,
+                allow_provider_fallback=request.source not in {"local", "local_file"},
+            )
+        data = getattr(market_data, "data", market_data)
+        if request.rows:
+            data = data.tail(request.rows)
+
+        if data is None or data.empty:
+            issues.append(SymbolScanIssue(
+                symbol=symbol,
+                data_provider=self.settings.DEFAULT_DATA_PROVIDER,
+                data_lineage_source_id="UNKNOWN",
+                data_freshness_age_hours=0.0,
+                data_quality_warnings=[],
+                stage="DATA",
+                message="No data returned"
+            ))
+            error_result = SymbolScanResult(
+                symbol=symbol,
+                data_provider=self.settings.DEFAULT_DATA_PROVIDER,
+                data_lineage_source_id="UNKNOWN",
+                data_freshness_age_hours=0.0,
+                data_quality_warnings=[],
+                status=ScanCandidateStatus.ERROR,
+                issues=issues,
+                elapsed_seconds=time.time() - start_time
+            )
+            return data, issues, error_result
+
+        return data, issues, None
+
+    def _run_symbol_strategy(self, symbol: str, request: ScanRequest, data: Any, start_time: float) -> tuple[Optional[Any], list[SymbolScanIssue], Optional[SymbolScanResult]]:
+        issues = []
+        strat_result = self.strategy_engine.run_strategy_on_data(
+            strategy_name=request.strategy_name,
+            symbol=symbol,
+            data=data,
+            params=request.params,
+            run_mode=StrategyRunMode.RESEARCH,
+            timeframe=request.timeframe
+        )
+
+        if strat_result.status == "error":
+            issues.append(SymbolScanIssue(
+                symbol=symbol,
+                data_provider=self.settings.DEFAULT_DATA_PROVIDER,
+                data_lineage_source_id="UNKNOWN",
+                data_freshness_age_hours=0.0,
+                data_quality_warnings=[],
+                stage="STRATEGY",
+                message=strat_result.issues[0].message if strat_result.issues else "Unknown strategy error"
+            ))
+            error_result = SymbolScanResult(
+                symbol=symbol,
+                data_provider=self.settings.DEFAULT_DATA_PROVIDER,
+                data_lineage_source_id="UNKNOWN",
+                data_freshness_age_hours=0.0,
+                data_quality_warnings=[],
+                status=ScanCandidateStatus.ERROR,
+                issues=issues,
+                elapsed_seconds=time.time() - start_time
+            )
+            return None, issues, error_result
+
+        if not strat_result.candidate and not strat_result.signals:
+            issues.append(SymbolScanIssue(
+                symbol=symbol,
+                data_provider=self.settings.DEFAULT_DATA_PROVIDER,
+                data_lineage_source_id="UNKNOWN",
+                data_freshness_age_hours=0.0,
+                data_quality_warnings=[],
+                stage="STRATEGY",
+                message="No signals returned",
+                severity="INFO"
+            ))
+            filtered_result = SymbolScanResult(
+                symbol=symbol,
+                data_provider=self.settings.DEFAULT_DATA_PROVIDER,
+                data_lineage_source_id="UNKNOWN",
+                data_freshness_age_hours=0.0,
+                data_quality_warnings=[],
+                status=ScanCandidateStatus.FILTERED,
+                issues=issues,
+                reasons=["No signals returned"],
+                elapsed_seconds=time.time() - start_time
+            )
+            return None, issues, filtered_result
+
+        signal = strat_result.candidate or (strat_result.signals[0] if strat_result.signals else None)
+        return signal, issues, None
+
+    def _evaluate_trade_risk(self, request: ScanRequest, signal: Any, data: Any) -> Optional[Any]:
+        if request.use_trade_risk:
+            risk_context = self.risk_engine.build_default_context()
+            return self.risk_engine.evaluate_signal(signal, risk_context, data)
+        return None
+
     def scan_symbol(self, symbol: str, request: ScanRequest, pre_fetched_data: Optional[Any] = None) -> SymbolScanResult:
         start_time = time.time()
-        issues = []
+        all_issues = []
 
         try:
             # 1. Fetch data
-            timeframe = Timeframe(request.timeframe)
-            if pre_fetched_data is not None:
-                market_data = pre_fetched_data
-            else:
-                if request.source in {"local", "local_file"}:
-                    store = getattr(self.data_service, "store", None)
-                    provider = getattr(self.data_service, "provider", None)
-                    vendor = getattr(provider, "vendor", None)
-                    if store is None or vendor is None or not store.exists(symbol, vendor, timeframe):
-                        raise ScannerExecutionError(
-                            f"No local data found for {symbol} ({timeframe.value}); network fallback is disabled."
-                        )
-
-                market_data = self.data_service.get_ohlcv(
-                    symbol,
-                    timeframe=timeframe,
-                    refresh=False,
-                    save=False,
-                    allow_provider_fallback=request.source not in {"local", "local_file"},
-                )
-            data = getattr(market_data, "data", market_data)
-            if request.rows:
-                data = data.tail(request.rows)
-            if data is None or data.empty:
-                issues.append(SymbolScanIssue(symbol=symbol,
-                data_provider=self.settings.DEFAULT_DATA_PROVIDER,
-                data_lineage_source_id="UNKNOWN",
-                data_freshness_age_hours=0.0,
-                data_quality_warnings=[], stage="DATA", message="No data returned"))
-                return SymbolScanResult(
-                    symbol=symbol,
-                data_provider=self.settings.DEFAULT_DATA_PROVIDER,
-                data_lineage_source_id="UNKNOWN",
-                data_freshness_age_hours=0.0,
-                data_quality_warnings=[], status=ScanCandidateStatus.ERROR, issues=issues,
-                    elapsed_seconds=time.time() - start_time
-                )
+            data, issues, error_result = self._fetch_symbol_data(symbol, request, pre_fetched_data, start_time)
+            all_issues.extend(issues)
+            if error_result:
+                return error_result
 
             # 2. Run strategy
-            strat_result = self.strategy_engine.run_strategy_on_data(
-                strategy_name=request.strategy_name,
-                symbol=symbol,
-                data=data,
-                params=request.params,
-                run_mode=StrategyRunMode.RESEARCH,
-                timeframe=request.timeframe
-            )
-
-            if strat_result.status == "error":
-                issues.append(SymbolScanIssue(symbol=symbol,
-                data_provider=self.settings.DEFAULT_DATA_PROVIDER,
-                data_lineage_source_id="UNKNOWN",
-                data_freshness_age_hours=0.0,
-                data_quality_warnings=[], stage="STRATEGY", message=strat_result.issues[0].message if strat_result.issues else "Unknown strategy error"))
-                return SymbolScanResult(
-                    symbol=symbol,
-                data_provider=self.settings.DEFAULT_DATA_PROVIDER,
-                data_lineage_source_id="UNKNOWN",
-                data_freshness_age_hours=0.0,
-                data_quality_warnings=[], status=ScanCandidateStatus.ERROR, issues=issues,
-                    elapsed_seconds=time.time() - start_time
-                )
-
-            if not strat_result.candidate and not strat_result.signals:
-                issues.append(SymbolScanIssue(symbol=symbol,
-                data_provider=self.settings.DEFAULT_DATA_PROVIDER,
-                data_lineage_source_id="UNKNOWN",
-                data_freshness_age_hours=0.0,
-                data_quality_warnings=[], stage="STRATEGY", message="No signals returned", severity="INFO"))
-                return SymbolScanResult(
-                    symbol=symbol,
-                data_provider=self.settings.DEFAULT_DATA_PROVIDER,
-                data_lineage_source_id="UNKNOWN",
-                data_freshness_age_hours=0.0,
-                data_quality_warnings=[], status=ScanCandidateStatus.FILTERED, issues=issues,
-                    reasons=["No signals returned"],
-                    elapsed_seconds=time.time() - start_time
-                )
-
-            signal = strat_result.candidate or (strat_result.signals[0] if strat_result.signals else None)
+            signal, strat_issues, strat_result = self._run_symbol_strategy(symbol, request, data, start_time)
+            all_issues.extend(strat_issues)
+            if strat_result:
+                return strat_result
 
             # 3. Trade Risk
-            risk_decision = None
-            if request.use_trade_risk:
-                risk_context = self.risk_engine.build_default_context()
-                risk_decision = self.risk_engine.evaluate_signal(signal, risk_context, data)
+            risk_decision = self._evaluate_trade_risk(request, signal, data)
 
             return SymbolScanResult(
                 symbol=symbol,
@@ -203,23 +247,29 @@ class SignalScannerEngine:
                 status=ScanCandidateStatus.PASSED, # Will be filtered later
                 signal=signal,
                 risk_decision=risk_decision,
-                issues=issues,
+                issues=all_issues,
                 elapsed_seconds=time.time() - start_time
             )
 
         except Exception as e:
             self.logger.error(f"Error scanning symbol {symbol}: {e}")
-            issues.append(SymbolScanIssue(symbol=symbol,
+            all_issues.append(SymbolScanIssue(
+                symbol=symbol,
                 data_provider=self.settings.DEFAULT_DATA_PROVIDER,
                 data_lineage_source_id="UNKNOWN",
                 data_freshness_age_hours=0.0,
-                data_quality_warnings=[], stage="EXECUTION", message=str(e)))
+                data_quality_warnings=[],
+                stage="EXECUTION",
+                message=str(e)
+            ))
             return SymbolScanResult(
                 symbol=symbol,
                 data_provider=self.settings.DEFAULT_DATA_PROVIDER,
                 data_lineage_source_id="UNKNOWN",
                 data_freshness_age_hours=0.0,
-                data_quality_warnings=[], status=ScanCandidateStatus.ERROR, issues=issues,
+                data_quality_warnings=[],
+                status=ScanCandidateStatus.ERROR,
+                issues=all_issues,
                 elapsed_seconds=time.time() - start_time
             )
 
