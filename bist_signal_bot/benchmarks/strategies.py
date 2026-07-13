@@ -15,7 +15,6 @@ from bist_signal_bot.benchmarks.models import (
     BenchmarkPositionIntent,
     BenchmarkStatus
 )
-from bist_signal_bot.core.exceptions import BenchmarkExecutionError
 
 class BuyAndHoldBenchmark(BaseBenchmarkStrategy):
     def __init__(self):
