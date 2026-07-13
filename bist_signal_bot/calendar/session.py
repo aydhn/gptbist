@@ -19,19 +19,14 @@ class BistMarketSessionService:
         self.intraday_signal_enabled = intraday_signal_enabled
         self.daily_signal_enabled = daily_signal_enabled
 
-    def get_status(self, now: datetime | None = None) -> MarketSessionStatus:
-        if now is None:
-            now = istanbul_now()
-        else:
-            now = ensure_istanbul_timezone(now)
-
-        day = now.date()
-        day_type = self.calendar.get_day_type(day)
-        is_trading_day = self.calendar.is_trading_day(day)
-
-        market_open = self.calendar.market_open_datetime(day)
-        market_close = self.calendar.market_close_datetime(day)
-
+    def _get_session_details(
+        self,
+        now: datetime,
+        is_trading_day: bool,
+        day_type: MarketDayType,
+        market_open: datetime | None,
+        market_close: datetime | None
+    ) -> tuple[MarketSessionType, bool, str]:
         session_type = MarketSessionType.UNKNOWN
         is_market_open = False
         message = ""
@@ -61,6 +56,25 @@ class BistMarketSessionService:
             else:
                 session_type = MarketSessionType.CLOSED
                 message = "Market hours not defined for today."
+
+        return session_type, is_market_open, message
+
+    def get_status(self, now: datetime | None = None) -> MarketSessionStatus:
+        if now is None:
+            now = istanbul_now()
+        else:
+            now = ensure_istanbul_timezone(now)
+
+        day = now.date()
+        day_type = self.calendar.get_day_type(day)
+        is_trading_day = self.calendar.is_trading_day(day)
+
+        market_open = self.calendar.market_open_datetime(day)
+        market_close = self.calendar.market_close_datetime(day)
+
+        session_type, is_market_open, message = self._get_session_details(
+            now, is_trading_day, day_type, market_open, market_close
+        )
 
         next_trading_day = self.calendar.next_trading_day(day)
         previous_trading_day = self.calendar.previous_trading_day(day)
