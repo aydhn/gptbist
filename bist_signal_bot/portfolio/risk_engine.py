@@ -1,6 +1,8 @@
 import logging
-import pandas as pd
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import pandas as pd
 from datetime import datetime
 
 from bist_signal_bot.config.settings import Settings
@@ -9,8 +11,7 @@ from bist_signal_bot.risk.models import RiskDecisionStatus, RiskContext
 from bist_signal_bot.risk.engine import RiskEngine
 from bist_signal_bot.portfolio.models import (
     PortfolioState, PortfolioRiskDecision, PortfolioDecisionStatus,
-    PortfolioRejectReason, AllocationMethod, AllocationRequest, AllocationResultItem,
-    AllocationResult
+    PortfolioRejectReason, AllocationMethod, AllocationRequest
 )
 from bist_signal_bot.portfolio.correlation import CorrelationAnalyzer
 from bist_signal_bot.portfolio.exposure import ExposureAnalyzer
@@ -40,7 +41,7 @@ class PortfolioRiskEngine:
         self,
         signals: list[SignalCandidate],
         portfolio_state: PortfolioState,
-        data_by_symbol: Optional[dict[str, pd.DataFrame]] = None
+        data_by_symbol: Optional[dict[str, 'pd.DataFrame']] = None
     ) -> PortfolioRiskDecision:
 
         warnings = []
@@ -164,7 +165,7 @@ class PortfolioRiskEngine:
         )
 
     def evaluate_single_signal_against_portfolio(
-        self, signal: SignalCandidate, portfolio_state: PortfolioState, data_by_symbol: Optional[dict[str, pd.DataFrame]] = None
+        self, signal: SignalCandidate, portfolio_state: PortfolioState, data_by_symbol: Optional[dict[str, 'pd.DataFrame']] = None
     ) -> PortfolioRiskDecision:
         return self.evaluate_portfolio_signals([signal], portfolio_state, data_by_symbol)
 
