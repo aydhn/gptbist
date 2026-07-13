@@ -1,4 +1,3 @@
-from typing import Any
 from bist_signal_bot.signals.models import SignalStrength, SignalDirection
 
 def clamp_score(value: float, min_value: float = 0.0, max_value: float = 100.0) -> float:
