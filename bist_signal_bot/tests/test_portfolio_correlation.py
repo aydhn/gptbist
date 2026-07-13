@@ -19,7 +19,7 @@ def test_correlation_high_pairs_and_clusters():
 
     corr = analyzer.correlation_matrix(df)
     pairs = analyzer.pairwise_high_correlations(corr, 0.9)
-    assert len(pairs) == 2 # A-B (1.0), and A-C / B-C are -1.0 so their abs is 1.0
+    assert len(pairs) == 3 # A-B (1.0), and A-C / B-C are -1.0 so their abs is 1.0
 
     clusters = analyzer.build_clusters(corr, {"A": 0.5, "B": 0.5, "C": 0.0}, 0.9)
     assert len(clusters) > 0
