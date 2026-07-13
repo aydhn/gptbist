@@ -7,7 +7,7 @@ class LocalEmbeddingProvider:
 
     def __init__(self, settings: Settings | None = None):
         self.settings = settings
-        self.dim = settings.KNOWLEDGE_FALLBACK_EMBEDDING_DIM if settings else 128
+        self.dim = (settings.KNOWLEDGE_FALLBACK_EMBEDDING_DIM if hasattr(settings, "KNOWLEDGE_FALLBACK_EMBEDDING_DIM") and settings.KNOWLEDGE_FALLBACK_EMBEDDING_DIM is not None else 128) if settings else 128
         self._st_model = None
         self._st_available = False
         self._init_model()
@@ -61,7 +61,7 @@ class LocalEmbeddingProvider:
         vec = [0.0] * self.dim
         tokens = text.lower().split()
         for token in tokens:
-            h = hashlib.md5(token.encode('utf-8')).hexdigest()
+            h = hashlib.sha256(token.encode('utf-8')).hexdigest()
             idx = int(h[:8], 16) % self.dim
             val = (int(h[8:10], 16) / 255.0) * 2.0 - 1.0 # -1.0 to 1.0
             vec[idx] += val
