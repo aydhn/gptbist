@@ -404,7 +404,7 @@ class DeterministicRandomBaselineBenchmark(BaseBenchmarkStrategy):
             # Deterministic hash based on symbol, timestamp, and seed
             seed = int(params["seed"])
             hash_input = f"{symbol}_{signal_time.isoformat()}_{seed}"
-            hash_val = int(hashlib.md5(hash_input.encode()).hexdigest(), 16)
+            hash_val = int(hashlib.sha256(hash_input.encode()).hexdigest(), 16)
 
             # Map hash to a 0.0 - 1.0 probability
             rand_val = (hash_val % 10000) / 10000.0
