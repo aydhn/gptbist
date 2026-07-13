@@ -3,7 +3,7 @@ from typing import Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
     import pandas as pd
-from datetime import datetime
+from datetime import datetime, timezone
 
 from bist_signal_bot.config.settings import Settings
 from bist_signal_bot.signals.models import SignalCandidate
@@ -37,25 +37,14 @@ class PortfolioRiskEngine:
         self.exposure_analyzer = exposure_analyzer or ExposureAnalyzer()
         self.correlation_analyzer = correlation_analyzer or CorrelationAnalyzer(settings=self.settings, logger=self.logger)
 
-    def evaluate_portfolio_signals(
-        self,
-        signals: list[SignalCandidate],
-        portfolio_state: PortfolioState,
-        data_by_symbol: Optional[dict[str, 'pd.DataFrame']] = None
-    ) -> PortfolioRiskDecision:
-
-        warnings = []
-        reject_reasons = []
-
-        # 1. Trade-level evaluate
+    def _evaluate_trade_decisions(self, signals, portfolio_state):
         trade_decisions = []
         for sig in signals:
             td = self.trade_risk_engine.evaluate_signal(sig, RiskContext(equity=portfolio_state.equity, available_cash=portfolio_state.cash))
             trade_decisions.append(td)
+        return trade_decisions, [d for d in trade_decisions if d.status != RiskDecisionStatus.REJECTED]
 
-        active_decisions = [d for d in trade_decisions if d.status != RiskDecisionStatus.REJECTED]
-
-        # 2. Correlation
+    def _evaluate_correlation(self, active_decisions, portfolio_state, data_by_symbol, warnings, reject_reasons):
         corr_result = None
         if data_by_symbol and getattr(self.settings, "PORTFOLIO_ENABLE_CORRELATION_CHECK", True):
             corr_result = self.correlation_analyzer.calculate_correlation_matrix(
@@ -73,17 +62,16 @@ class PortfolioRiskEngine:
             )
             warnings.extend(corr_warnings)
 
-            # Action logic
             action = getattr(self.settings, "PORTFOLIO_CORRELATION_LIMIT_ACTION", "REDUCE")
             if corr_warnings and action == "REJECT":
-                 # Mock reject
                  for d in active_decisions:
                      if any(d.signal.symbol in w for w in corr_warnings):
                          d.status = RiskDecisionStatus.REJECTED
                          reject_reasons.append(PortfolioRejectReason.MAX_CORRELATION_EXCEEDED)
                  active_decisions = [d for d in active_decisions if d.status != RiskDecisionStatus.REJECTED]
+        return corr_result, active_decisions
 
-        # 3. Allocation
+    def _perform_allocation(self, signals, trade_decisions, portfolio_state):
         alloc_method_str = getattr(self.settings, "PORTFOLIO_ALLOCATION_METHOD", "HYBRID")
         try:
             method = AllocationMethod(alloc_method_str)
@@ -99,9 +87,9 @@ class PortfolioRiskEngine:
             max_symbol_weight_pct=getattr(self.settings, "PORTFOLIO_MAX_SYMBOL_WEIGHT_PCT", 0.20)
         )
 
-        alloc_result = self.allocator.allocate(req)
+        return self.allocator.allocate(req)
 
-        # 4. Exposure
+    def _evaluate_exposure(self, alloc_result, portfolio_state, warnings, reject_reasons):
         exp_before = self.exposure_analyzer.calculate_exposure(portfolio_state)
         exp_after = self.exposure_analyzer.simulate_post_allocation_exposure(portfolio_state, alloc_result)
 
@@ -109,7 +97,6 @@ class PortfolioRiskEngine:
         if not ok:
             warnings.extend(exp_issues)
             reject_reasons.extend(exp_reasons)
-            # Simplistic approach: if exposure limits violated, reject everything in this round
             for item in alloc_result.items:
                 item.approved = False
                 item.allocated_notional = 0.0
@@ -120,6 +107,9 @@ class PortfolioRiskEngine:
             alloc_result.total_allocated_notional = 0.0
             alloc_result.total_allocated_pct = 0.0
 
+        return exp_before, exp_after
+
+    def _log_decision(self, alloc_result):
         total_cnt = len(alloc_result.items)
         approved_cnt = sum(1 for i in alloc_result.items if i.approved)
         rejected_cnt = total_cnt - approved_cnt
@@ -145,6 +135,23 @@ class PortfolioRiskEngine:
                 "allocation": alloc_result.total_allocated_pct
             })
         ))
+        return status, approved_cnt, rejected_cnt, reduced_cnt
+
+    def evaluate_portfolio_signals(
+        self,
+        signals: list[SignalCandidate],
+        portfolio_state: PortfolioState,
+        data_by_symbol: Optional[dict[str, 'pd.DataFrame']] = None
+    ) -> PortfolioRiskDecision:
+
+        warnings = []
+        reject_reasons = []
+
+        trade_decisions, active_decisions = self._evaluate_trade_decisions(signals, portfolio_state)
+        corr_result, active_decisions = self._evaluate_correlation(active_decisions, portfolio_state, data_by_symbol, warnings, reject_reasons)
+        alloc_result = self._perform_allocation(signals, trade_decisions, portfolio_state)
+        exp_before, exp_after = self._evaluate_exposure(alloc_result, portfolio_state, warnings, reject_reasons)
+        status, approved_cnt, rejected_cnt, reduced_cnt = self._log_decision(alloc_result)
 
         return PortfolioRiskDecision(
             portfolio_state=portfolio_state,
@@ -160,10 +167,9 @@ class PortfolioRiskEngine:
             reduced_count=reduced_cnt,
             reject_reasons=reject_reasons,
             warnings=warnings,
-            generated_at=datetime.utcnow(),
+            generated_at=datetime.now(timezone.utc),
             metadata={}
         )
-
     def evaluate_single_signal_against_portfolio(
         self, signal: SignalCandidate, portfolio_state: PortfolioState, data_by_symbol: Optional[dict[str, 'pd.DataFrame']] = None
     ) -> PortfolioRiskDecision:
