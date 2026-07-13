@@ -17,7 +17,6 @@ surface is fully backwards compatible: ``Settings()``, ``get_settings()`` and th
 module-level ``settings`` singleton all behave as before — except they now return
 **real values from ``.env`` instead of the string ``"mock_value"``**.
 """
-from __future__ import annotations
 
 import os
 import re
