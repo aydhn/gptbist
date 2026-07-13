@@ -1,5 +1,4 @@
-import pandas as pd
-from typing import List, Optional
+from typing import List, Optional, TYPE_CHECKING
 
 from bist_signal_bot.config.settings import Settings
 from bist_signal_bot.scanner.models import (
@@ -8,6 +7,9 @@ from bist_signal_bot.scanner.models import (
     ScanRankingItem,
     ScanCandidateStatus,
 )
+
+if TYPE_CHECKING:
+    import pandas as pd
 
 
 class ScanRanker:
@@ -157,7 +159,8 @@ class ScanRanker:
         return None
 
 
-def ranking_to_dataframe(rankings: List[ScanRankingItem]) -> pd.DataFrame:
+def ranking_to_dataframe(rankings: List[ScanRankingItem]) -> 'pd.DataFrame':
+    import pandas as pd
     if not rankings:
         return pd.DataFrame()
     data = [r.model_dump() for r in rankings]
