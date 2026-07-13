@@ -1,17 +1,21 @@
 import json
-import os
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from bist_signal_bot.config.settings import Settings
 from bist_signal_bot.scenarios.models import ScenarioResult
-from bist_signal_bot.storage.paths import get_scenarios_dir, get_scenario_runs_dir, get_scenario_golden_dir
+from bist_signal_bot.storage.paths import (
+    get_scenarios_dir,
+    get_scenario_runs_dir,
+    get_scenario_golden_dir,
+)
+
 
 class ScenarioStore:
     def __init__(self, settings: Optional[Settings] = None, base_dir: Optional[Path] = None):
         self.settings = settings or Settings()
-        self.base_dir = base_dir # Can override for tests
+        self.base_dir = base_dir  # Can override for tests
 
     def get_scenarios_dir(self) -> Path:
         if self.base_dir:
@@ -29,9 +33,9 @@ class ScenarioStore:
 
     def get_golden_dir(self) -> Path:
         if self.base_dir:
-             p = self.base_dir / "scenarios" / "golden"
-             p.mkdir(parents=True, exist_ok=True)
-             return p
+            p = self.base_dir / "scenarios" / "golden"
+            p.mkdir(parents=True, exist_ok=True)
+            return p
         return get_scenario_golden_dir(self.settings)
 
     def create_run_dir(self, result_or_run_id: Any) -> Path:
@@ -41,13 +45,18 @@ class ScenarioStore:
         p.mkdir(parents=True, exist_ok=True)
         return p
 
-    def save_result(self, result: ScenarioResult, output_dir: Optional[Path] = None) -> Dict[str, Path]:
-        from bist_signal_bot.scenarios.reporting import format_scenario_markdown, scenario_step_results_to_dataframe
+    def save_result(
+        self, result: ScenarioResult, output_dir: Optional[Path] = None
+    ) -> Dict[str, Path]:
+        from bist_signal_bot.scenarios.reporting import (
+            format_scenario_markdown,
+        )
+
         dir_path = output_dir or self.create_run_dir(result)
 
         json_path = dir_path / "scenario_result.json"
         with open(json_path, "w") as f:
-            json.dump(result.model_dump(mode='json'), f, indent=2)
+            json.dump(result.model_dump(mode="json"), f, indent=2)
 
         md_path = dir_path / "scenario_report.md"
         with open(md_path, "w") as f:
@@ -58,7 +67,7 @@ class ScenarioStore:
         result.output_files = {
             "json": str(json_path),
             "markdown": str(md_path),
-            "csv": str(csv_path)
+            "csv": str(csv_path),
         }
 
         return {"json": json_path, "markdown": md_path, "csv": csv_path}
@@ -83,21 +92,25 @@ class ScenarioStore:
             return runs
 
         for date_dir in sorted(runs_dir.iterdir(), reverse=True):
-            if not date_dir.is_dir(): continue
+            if not date_dir.is_dir():
+                continue
             for run_dir in date_dir.iterdir():
-                if not run_dir.is_dir(): continue
+                if not run_dir.is_dir():
+                    continue
                 json_path = run_dir / "scenario_result.json"
                 if json_path.exists():
                     try:
                         with open(json_path, "r") as f:
                             data = json.load(f)
-                            runs.append({
-                                "run_id": data.get("run_id"),
-                                "scenario_id": data.get("scenario", {}).get("scenario_id"),
-                                "status": data.get("status"),
-                                "elapsed_seconds": data.get("elapsed_seconds", 0),
-                                "started_at": data.get("started_at")
-                            })
+                            runs.append(
+                                {
+                                    "run_id": data.get("run_id"),
+                                    "scenario_id": data.get("scenario", {}).get("scenario_id"),
+                                    "status": data.get("status"),
+                                    "elapsed_seconds": data.get("elapsed_seconds", 0),
+                                    "started_at": data.get("started_at"),
+                                }
+                            )
                     except Exception:
                         pass
 
@@ -106,6 +119,7 @@ class ScenarioStore:
 
     def save_steps_csv(self, result: ScenarioResult, output_dir: Path) -> Path:
         from bist_signal_bot.scenarios.reporting import scenario_step_results_to_dataframe
+
         df = scenario_step_results_to_dataframe(result.step_results)
         csv_path = output_dir / "steps.csv"
         df.to_csv(csv_path, index=False)
