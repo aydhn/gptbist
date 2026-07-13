@@ -46,11 +46,10 @@ def test_sqlite_injection_preview(tmp_path):
     conn.close()
 
     registry = LocalImportAdapterRegistry()
-    preview = registry.read_preview(db_path, max_rows=1)
-
-    assert len(preview) == 1
-    assert preview[0]["id"] == 1
-    assert preview[0]["name"] == "test"
+    import pytest
+    from bist_signal_bot.core.exceptions import DataImportAdapterError
+    with pytest.raises(DataImportAdapterError, match="Invalid table name detected"):
+        registry.read_preview(db_path, max_rows=1)
 
 def test_sqlite_injection_dataframe(tmp_path):
     db_path = tmp_path / "test.db"
@@ -67,8 +66,7 @@ def test_sqlite_injection_dataframe(tmp_path):
     conn.close()
 
     registry = LocalImportAdapterRegistry()
-    df = registry.read_dataframe(db_path, max_rows=1)
-
-    assert len(df) == 1
-    assert df.iloc[0]["id"] == 1
-    assert df.iloc[0]["name"] == "test"
+    import pytest
+    from bist_signal_bot.core.exceptions import DataImportAdapterError
+    with pytest.raises(DataImportAdapterError, match="Invalid table name detected"):
+        registry.read_dataframe(db_path, max_rows=1)

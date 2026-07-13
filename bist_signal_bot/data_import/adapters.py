@@ -1,3 +1,4 @@
+import re
 import json
 import sqlite3
 from pathlib import Path
@@ -114,8 +115,12 @@ class LocalImportAdapterRegistry:
                 if not tables:
                     return []
                 table_name = tables[0][0]
-                safe_table_name = '"' + table_name.replace('"', '""') + '"'
-                query = f"SELECT * FROM {safe_table_name} LIMIT ?"  # nosec B608
+                # Strictly validate that the table name only contains safe characters
+                if not re.match(r'^[a-zA-Z0-9_]+$', table_name):
+                    raise DataImportAdapterError(f"Invalid table name detected: {table_name}")
+
+                safe_table_name = f'"{table_name}"'
+                query = f"SELECT * FROM {safe_table_name} LIMIT ?"
                 df = pd.read_sql_query(query, conn, params=(max_rows,))  # nosec B608
                 conn.close()
                 return df.to_dict(orient="records")
@@ -150,8 +155,12 @@ class LocalImportAdapterRegistry:
              if not tables:
                  return pd.DataFrame()
              table_name = tables[0][0]
-             safe_table_name = '"' + table_name.replace('"', '""') + '"'
-             query = f"SELECT * FROM {safe_table_name}"  # nosec B608
+             # Strictly validate that the table name only contains safe characters
+             if not re.match(r'^[a-zA-Z0-9_]+$', table_name):
+                 raise DataImportAdapterError(f"Invalid table name detected: {table_name}")
+
+             safe_table_name = f'"{table_name}"'
+             query = f"SELECT * FROM {safe_table_name}"
              params = ()
              if max_rows:
                   query += " LIMIT ?"
