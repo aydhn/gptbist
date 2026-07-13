@@ -2,9 +2,8 @@ from bist_signal_bot.config.settings import get_settings
 from typing import Any
 import json
 
-def run_healthcheck(settings=None, as_json=False):
-    settings = settings or get_settings()
-    res = {
+def _build_core_health_report(settings):
+    return {
         "status": "pass",
         "review_workflow": {
             "enabled": True,
@@ -99,11 +98,7 @@ def run_healthcheck(settings=None, as_json=False):
         }
     }
 
-    add_feature_store_health(res, settings)
-    add_research_orchestrator_health(res, settings)
-    append_final_audit_health(res, settings)
-    append_final_handoff_health(res, settings)
-
+def _print_healthcheck_summary(res, as_json):
     if as_json:
         print(json.dumps(res, indent=2))
     else:
@@ -120,6 +115,17 @@ def run_healthcheck(settings=None, as_json=False):
         if "final_handoff" in res:
             print(f"Final Handoff Enabled: {res['final_handoff']['enabled']}")
             print(f"Final Handoff Status: {res['final_handoff']['latest_handoff_status']}")
+
+def run_healthcheck(settings=None, as_json=False):
+    settings = settings or get_settings()
+    res = _build_core_health_report(settings)
+
+    add_feature_store_health(res, settings)
+    add_research_orchestrator_health(res, settings)
+    append_final_audit_health(res, settings)
+    append_final_handoff_health(res, settings)
+
+    _print_healthcheck_summary(res, as_json)
 
     return res
 
@@ -200,6 +206,7 @@ def check_report_templates_health():
         "composer_capable": True,
         "latest_validation_status": "PASS"
     }
+
 def check_local_ui(settings=None) -> dict:
     from bist_signal_bot.app.local_ui_app import create_local_ui_capability_detector
     try:
