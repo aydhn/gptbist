@@ -11,6 +11,7 @@ from bist_signal_bot.security.redaction import SecretRedactor
 
 
 class AuditEventType(str, Enum):
+    PORTFOLIO_RISK_EVALUATED = "PORTFOLIO_RISK_EVALUATED"
 
     # Core application events
     APP_START = "APP_START"
