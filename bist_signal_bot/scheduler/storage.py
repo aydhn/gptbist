@@ -137,6 +137,25 @@ class SchedulerStore:
     def update_job(self, job: ScheduledJob) -> Path:
         return self.save_job(job)
 
+    def update_jobs_batch(self, jobs_to_update: list[ScheduledJob]) -> Path:
+        if not jobs_to_update:
+            return self.jobs_file
+
+        jobs = self.load_jobs()
+        update_map = {j.job_id: j for j in jobs_to_update}
+
+        # Replace existing jobs or append if they don't exist
+        for i, j in enumerate(jobs):
+            if j.job_id in update_map:
+                jobs[i] = update_map.pop(j.job_id)
+
+        jobs.extend(update_map.values())
+
+        with open(self.jobs_file, 'w', encoding='utf-8') as f:
+            for j in jobs:
+                f.write(json.dumps(self._job_to_dict(j)) + '\n')
+        return self.jobs_file
+
     def append_run(self, run: ScheduledJobRun) -> Path:
         d = {
             "run_id": run.run_id,

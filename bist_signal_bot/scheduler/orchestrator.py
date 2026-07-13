@@ -111,6 +111,7 @@ class LocalSchedulerOrchestrator:
 
             failed_count = 0
 
+            jobs_updated = []
             for job in jobs_to_run:
                 run = self.executor.execute(job, dry_run=dry_run)
                 runs.append(run)
@@ -119,10 +120,14 @@ class LocalSchedulerOrchestrator:
                 if not dry_run and run.status == ScheduledJobStatus.SUCCESS:
                     job.last_run_at = now
                     job.updated_at = now
-                    self.store.update_job(job)
+                    jobs_updated.append(job)
 
                 self.store.append_run(run)
 
+            if jobs_updated:
+                self.store.update_jobs_batch(jobs_updated)
+
+            for run in runs:
                 if run.status == ScheduledJobStatus.SUCCESS:
                     success_count += 1
                 elif run.status == ScheduledJobStatus.FAILED:
