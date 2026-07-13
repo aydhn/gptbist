@@ -172,3 +172,11 @@ def test_create_valuation_linker_success():
     }):
          linker = create_valuation_linker()
          assert isinstance(linker.financials_engine, MockFinancialEngine)
+
+def test_create_valuation_risk_engine_with_settings_and_basedir():
+    settings = MockSettings()
+    base_dir = Path("/tmp/test_val_risk_engine")
+    engine = create_valuation_risk_engine(settings=settings, base_dir=base_dir)
+    assert isinstance(engine, ValuationRiskEngine)
+    assert engine.settings is settings
+    assert isinstance(engine.scorer, ValuationScorer)
