@@ -37,3 +37,9 @@ def test_create_portfolio_construction_scorer():
     scorer = create_portfolio_construction_scorer(settings=settings)
     assert scorer is not None
     assert type(scorer).__name__ == 'PortfolioConstructionScorer'
+
+def test_create_diversification_scorer():
+    settings = MockSettings()
+    scorer = create_diversification_scorer(settings=settings)
+    assert scorer is not None
+    assert type(scorer).__name__ == 'DiversificationScorer'
