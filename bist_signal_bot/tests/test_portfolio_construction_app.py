@@ -31,3 +31,9 @@ def test_other_factories():
     assert create_diversification_scorer(settings=settings) is not None
     assert create_portfolio_construction_scorer(settings=settings) is not None
     assert create_portfolio_construction_store(settings=settings, base_dir=Path('.')) is not None
+
+def test_create_portfolio_construction_scorer():
+    settings = MockSettings()
+    scorer = create_portfolio_construction_scorer(settings=settings)
+    assert scorer is not None
+    assert type(scorer).__name__ == 'PortfolioConstructionScorer'
