@@ -2,7 +2,6 @@
 import json
 from pathlib import Path
 from datetime import datetime
-from typing import Any
 
 from bist_signal_bot.config.settings import Settings
 from bist_signal_bot.storage.paths import get_data_dir
