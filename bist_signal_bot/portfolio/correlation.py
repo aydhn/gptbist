@@ -136,8 +136,9 @@ class CorrelationAnalyzer:
             warnings.append("Correlation matrix is empty, correlation checks bypassed")
             return warnings
 
+        columns_set = set(corr.matrix.columns)
         for c_sym in candidate_symbols:
-            if c_sym not in corr.matrix.columns:
+            if c_sym not in columns_set:
                 warnings.append(f"No correlation data for candidate {c_sym}")
                 continue
 
