@@ -51,6 +51,7 @@ def test_create_error_taxonomy_builder():
 def test_create_calibration_scorer():
     scorer = create_calibration_scorer()
     assert type(scorer).__name__ == "CalibrationScorer"
+    assert isinstance(scorer.settings, Settings)
 
 def test_create_calibration_scorer_with_settings():
     settings = Settings()
