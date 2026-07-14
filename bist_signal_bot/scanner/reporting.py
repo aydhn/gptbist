@@ -1,5 +1,7 @@
-import pandas as pd
-from typing import Any, List, Dict
+from typing import Any, List, Dict, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import pandas as pd
 from bist_signal_bot.scanner.models import ScanReport, SymbolScanResult, ScanRankingItem, SymbolScanIssue
 
 def scan_report_to_dict(report: ScanReport) -> Dict[str, Any]:
@@ -8,7 +10,8 @@ def scan_report_to_dict(report: ScanReport) -> Dict[str, Any]:
     # Ensure nested objects are handled
     return data
 
-def scan_results_to_dataframe(results: List[SymbolScanResult]) -> pd.DataFrame:
+def scan_results_to_dataframe(results: List[SymbolScanResult]) -> 'pd.DataFrame':
+    import pandas as pd
     data = []
     for r in results:
         sig = r.signal
@@ -31,11 +34,13 @@ def scan_results_to_dataframe(results: List[SymbolScanResult]) -> pd.DataFrame:
         data.append(row)
     return pd.DataFrame(data)
 
-def scan_rankings_to_dataframe(rankings: List[ScanRankingItem]) -> pd.DataFrame:
+def scan_rankings_to_dataframe(rankings: List[ScanRankingItem]) -> 'pd.DataFrame':
+    import pandas as pd
     data = [r.dict() for r in rankings]
     return pd.DataFrame(data)
 
-def scan_issues_to_dataframe(issues: List[SymbolScanIssue]) -> pd.DataFrame:
+def scan_issues_to_dataframe(issues: List[SymbolScanIssue]) -> 'pd.DataFrame':
+    import pandas as pd
     data = [i.dict() for i in issues]
     return pd.DataFrame(data)
 
