@@ -1,7 +1,8 @@
+import pandas as pd
 from enum import Enum
 from typing import Any, List, Optional, Dict
-from datetime import datetime
-from pydantic import BaseModel, Field
+from datetime import datetime, timezone
+from pydantic import BaseModel, Field, ConfigDict
 
 from bist_signal_bot.signals.models import SignalCandidate
 from bist_signal_bot.risk.models import RiskDecision
@@ -43,7 +44,7 @@ class ScanSortKey(str, Enum):
     ML_PROBABILITY = "ML_PROBABILITY"
 
 class ScanRequest(BaseModel):
-    model_config = {"arbitrary_types_allowed": True}
+    model_config = ConfigDict(arbitrary_types_allowed=True)
     strategy_name: str
     universe_mode: ScanUniverseMode
     symbols: List[str] = Field(default_factory=list)
@@ -68,7 +69,7 @@ class ScanRequest(BaseModel):
     metadata: Dict[str, Any] = Field(default_factory=dict)
 
 class SymbolScanIssue(BaseModel):
-    model_config = {"arbitrary_types_allowed": True}
+    model_config = ConfigDict(arbitrary_types_allowed=True)
     symbol: Optional[str] = None
     stage: str
     message: str
@@ -80,7 +81,7 @@ class SymbolScanResult(BaseModel):
     valuation_risk_level: Optional[str] = None
     valuation_status: Optional[str] = None
     key_valuation_metrics: Dict[str, Any] = Field(default_factory=dict)
-    model_config = {"arbitrary_types_allowed": True}
+    model_config = ConfigDict(arbitrary_types_allowed=True)
     symbol: str
     status: ScanCandidateStatus
     unified_context_snapshot_id: Optional[str] = None
@@ -118,7 +119,7 @@ class SymbolScanResult(BaseModel):
         }
 
 class ScanRankingItem(BaseModel):
-    model_config = {"arbitrary_types_allowed": True}
+    model_config = ConfigDict(arbitrary_types_allowed=True)
     symbol: str
     rank_score: float
     rank: int
@@ -134,7 +135,7 @@ class ScanRankingItem(BaseModel):
     metadata: Dict[str, Any] = Field(default_factory=dict)
 
 class ScanReport(BaseModel):
-    model_config = {"arbitrary_types_allowed": True}
+    model_config = ConfigDict(arbitrary_types_allowed=True)
     request: ScanRequest
     status: ScanStatus = ScanStatus.EMPTY
     unified_context_snapshot_id: Optional[str] = None
@@ -155,8 +156,8 @@ class ScanReport(BaseModel):
     portfolio_decision: Optional[PortfolioRiskDecision] = None
     paper_result_summary: Optional[Dict[str, Any]] = None
     issues: List[SymbolScanIssue] = Field(default_factory=list)
-    started_at: datetime = Field(default_factory=datetime.utcnow)
-    finished_at: datetime = Field(default_factory=datetime.utcnow)
+    started_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    finished_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     elapsed_seconds: float = 0.0
     output_files: Dict[str, str] = Field(default_factory=dict)
     disclaimer: str = "Signal scan research output only. Not investment advice. No real order was sent."
@@ -190,3 +191,6 @@ class ScanReport(BaseModel):
 
     def safe_public_dict(self) -> Dict[str, Any]:
         return self.summary()
+
+
+ScanReport.model_rebuild()
