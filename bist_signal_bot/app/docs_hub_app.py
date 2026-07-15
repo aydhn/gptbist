@@ -24,7 +24,7 @@ def create_architecture_map_builder(settings: Optional[Settings] = None, base_di
     return ArchitectureMapBuilder(settings, base_dir)
 
 def create_command_cookbook_builder(settings: Optional[Settings] = None, base_dir: Optional[Path] = None) -> CommandCookbookBuilder:
-    return CommandCookbookBuilder(settings, base_dir)
+    return CommandCookbookBuilder()
 
 def create_troubleshooting_kb_builder(settings: Optional[Settings] = None) -> TroubleshootingKBBuilder:
     return TroubleshootingKBBuilder(settings)

@@ -5,9 +5,6 @@ from typing import Optional
 from bist_signal_bot.docs_hub.models import CommandCookbook, CommandCookbookEntry
 
 class CommandCookbookBuilder:
-    def __init__(self, settings=None, base_dir=None):
-        pass
-
     def build_cookbook(self) -> CommandCookbook:
         entries = self.entries_from_cli_registry() + self.entries_from_bootstrap_recipes()
         return CommandCookbook(
