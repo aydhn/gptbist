@@ -33,6 +33,8 @@ class FallbackProviderRouter:
         all_responses = []
         pending_symbols = set(request.symbols)
 
+        # Note: This loop iterates sequentially over providers for fallback logic, not over symbols.
+        # It passes batched symbols to `provider.fetch(sub_request)`, avoiding N+1 problems per symbol.
         for p_type in provider_order:
             if not pending_symbols:
                 break
