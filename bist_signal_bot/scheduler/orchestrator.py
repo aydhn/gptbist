@@ -146,7 +146,12 @@ class LocalSchedulerOrchestrator:
                 job.updated_at = now
                 jobs_updated.append(job)
 
-            self.store.append_run(run)
+        if runs:
+            if hasattr(self.store, "append_runs_batch"):
+                self.store.append_runs_batch(runs)
+            else:
+                for run in runs:
+                    self.store.append_run(run)
 
         if jobs_updated:
             self.store.update_jobs_batch(jobs_updated)

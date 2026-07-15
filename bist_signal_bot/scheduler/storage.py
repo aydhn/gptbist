@@ -13,11 +13,12 @@ from bist_signal_bot.scheduler.models import (
     ScheduledJobStatus,
     ScheduledJobDecision,
     ScheduleTriggerType,
-    MarketSessionType
+    MarketSessionType,
 )
 from bist_signal_bot.storage.paths import get_scheduler_dir
 
 logger = logging.getLogger(__name__)
+
 
 class SchedulerStore:
     def __init__(self, data_dir: Path | str = "data"):
@@ -45,7 +46,7 @@ class SchedulerStore:
                 "market_sessions": [s.value for s in job.trigger.market_sessions],
                 "only_trading_days": job.trigger.only_trading_days,
                 "skip_holidays": job.trigger.skip_holidays,
-                "metadata": job.trigger.metadata
+                "metadata": job.trigger.metadata,
             },
             "command_preview": job.command_preview,
             "enabled": job.enabled,
@@ -60,7 +61,7 @@ class SchedulerStore:
             "created_at": job.created_at.isoformat(),
             "updated_at": job.updated_at.isoformat(),
             "metadata": job.metadata,
-            "warnings": job.warnings
+            "warnings": job.warnings,
         }
         return d
 
@@ -77,7 +78,7 @@ class SchedulerStore:
             market_sessions=[MarketSessionType(s) for s in td.get("market_sessions", [])],
             only_trading_days=td.get("only_trading_days", False),
             skip_holidays=td.get("skip_holidays", False),
-            metadata=td.get("metadata", {})
+            metadata=td.get("metadata", {}),
         )
 
         return ScheduledJob(
@@ -99,7 +100,7 @@ class SchedulerStore:
             created_at=datetime.fromisoformat(d["created_at"]),
             updated_at=datetime.fromisoformat(d["updated_at"]),
             metadata=d.get("metadata", {}),
-            warnings=d.get("warnings", [])
+            warnings=d.get("warnings", []),
         )
 
     def save_job(self, job: ScheduledJob) -> Path:
@@ -108,9 +109,9 @@ class SchedulerStore:
         jobs = [j for j in jobs if j.job_id != job.job_id]
         jobs.append(job)
 
-        with open(self.jobs_file, 'w', encoding='utf-8') as f:
+        with open(self.jobs_file, "w", encoding="utf-8") as f:
             for j in jobs:
-                f.write(json.dumps(self._job_to_dict(j)) + '\n')
+                f.write(json.dumps(self._job_to_dict(j)) + "\n")
         return self.jobs_file
 
     def load_jobs(self, limit: int = 1000) -> list[ScheduledJob]:
@@ -118,9 +119,10 @@ class SchedulerStore:
             return []
 
         jobs = []
-        with open(self.jobs_file, 'r', encoding='utf-8') as f:
+        with open(self.jobs_file, "r", encoding="utf-8") as f:
             for line in f:
-                if not line.strip(): continue
+                if not line.strip():
+                    continue
                 try:
                     jobs.append(self._dict_to_job(json.loads(line)))
                 except Exception as e:
@@ -151,32 +153,15 @@ class SchedulerStore:
 
         jobs.extend(update_map.values())
 
-        with open(self.jobs_file, 'w', encoding='utf-8') as f:
+        with open(self.jobs_file, "w", encoding="utf-8") as f:
             for j in jobs:
-                f.write(json.dumps(self._job_to_dict(j)) + '\n')
+                f.write(json.dumps(self._job_to_dict(j)) + "\n")
         return self.jobs_file
 
     def append_run(self, run: ScheduledJobRun) -> Path:
-        d = {
-            "run_id": run.run_id,
-            "job_id": run.job_id,
-            "job_name": run.job_name,
-            "job_type": run.job_type.value,
-            "started_at": run.started_at.isoformat(),
-            "finished_at": run.finished_at.isoformat() if run.finished_at else None,
-            "status": run.status.value,
-            "decision": run.decision.value,
-            "elapsed_seconds": run.elapsed_seconds,
-            "exit_code": run.exit_code,
-            "output_refs": run.output_refs,
-            "warnings": run.warnings,
-            "errors": run.errors,
-            "disclaimer": run.disclaimer,
-            "metadata": run.metadata
-        }
-
-        with open(self.runs_file, 'a', encoding='utf-8') as f:
-            f.write(json.dumps(d) + '\n')
+        self.scheduler_dir.mkdir(parents=True, exist_ok=True)
+        with open(self.runs_file, "a", encoding="utf-8") as f:
+            f.write(json.dumps(self._run_to_dict(run)) + "\n")
 
         return self.runs_file
 
@@ -186,10 +171,10 @@ class SchedulerStore:
 
         runs = []
         # Load all, filter, sort (descending), limit - inefficient for huge files but ok for local MVP
-        with open(self.runs_file, 'r', encoding='utf-8') as f:
+        with open(self.runs_file, "r", encoding="utf-8") as f:
             lines = [line for line in f if line.strip()]
 
-        for line in reversed(lines): # Read backwards
+        for line in reversed(lines):  # Read backwards
             try:
                 d = json.loads(line)
                 if job_id and d.get("job_id") != job_id:
@@ -211,7 +196,9 @@ class SchedulerStore:
                 job_name=d["job_name"],
                 job_type=ScheduledJobType(d["job_type"]),
                 started_at=datetime.fromisoformat(d["started_at"]),
-                finished_at=datetime.fromisoformat(d["finished_at"]) if d.get("finished_at") else None,
+                finished_at=datetime.fromisoformat(d["finished_at"])
+                if d.get("finished_at")
+                else None,
                 status=ScheduledJobStatus(d.get("status", "UNKNOWN")),
                 decision=ScheduledJobDecision(d.get("decision", "ERROR")),
                 elapsed_seconds=d.get("elapsed_seconds", 0.0),
@@ -219,8 +206,11 @@ class SchedulerStore:
                 output_refs=d.get("output_refs", {}),
                 warnings=d.get("warnings", []),
                 errors=d.get("errors", []),
-                disclaimer=d.get("disclaimer", "Scheduled job run is research-only. Not investment advice. No real order was sent."),
-                metadata=d.get("metadata", {})
+                disclaimer=d.get(
+                    "disclaimer",
+                    "Scheduled job run is research-only. Not investment advice. No real order was sent.",
+                ),
+                metadata=d.get("metadata", {}),
             )
             res.append(run)
 
@@ -229,3 +219,35 @@ class SchedulerStore:
     def save_scheduler_run(self, result: SchedulerRunResult) -> dict[str, Path]:
         # Would save to reports folder
         return {}
+
+    def _run_to_dict(self, run):
+        return {
+            "run_id": run.run_id,
+            "job_id": run.job_id,
+            "job_name": run.job_name,
+            "job_type": run.job_type.value,
+            "started_at": run.started_at.isoformat(),
+            "finished_at": run.finished_at.isoformat() if run.finished_at else None,
+            "status": run.status.value,
+            "decision": run.decision.value,
+            "elapsed_seconds": run.elapsed_seconds,
+            "exit_code": run.exit_code,
+            "output_refs": run.output_refs,
+            "warnings": run.warnings,
+            "errors": run.errors,
+            "disclaimer": run.disclaimer,
+            "metadata": run.metadata,
+        }
+
+    def append_runs_batch(self, runs: list) -> None:
+        if not runs:
+            return
+
+        self.scheduler_dir.mkdir(parents=True, exist_ok=True)
+
+        lines = []
+        for run in runs:
+            lines.append(json.dumps(self._run_to_dict(run)) + "\n")
+
+        with open(self.runs_file, "a", encoding="utf-8") as f:
+            f.writelines(lines)
