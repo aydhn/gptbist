@@ -84,13 +84,16 @@ class ResearchJobExecutor:
 
     def execute_command(self, command: List[str], timeout_seconds: int, env: Dict[str, str]) -> Tuple[int, str, str]:
         import os
+        import sys
 
         # Security validation: strictly allow only bist_signal_bot module execution
         if not command or len(command) < 3:
             return 1, "", f"Security Error: Command too short or empty."
 
-        if command[0] != "python" or command[1] != "-m" or command[2] != "bist_signal_bot":
+        if command[0] not in ("python", sys.executable) or command[1] != "-m" or command[2] != "bist_signal_bot":
             return 1, "", f"Security Error: Unauthorized command execution blocked. Only 'python -m bist_signal_bot' is allowed."
+
+        command[0] = sys.executable
 
         # Security validation: strict whitelist of allowed characters for arguments to prevent command injection
         # Allows alphanumeric, dash, underscore, and equals. Disallows shell metacharacters and arbitrary scripts.
@@ -108,7 +111,8 @@ class ResearchJobExecutor:
                 stderr=subprocess.PIPE,
                 timeout=timeout_seconds,
                 env=merged_env,
-                text=True
+                text=True,
+                shell=False
             )
             return proc.returncode, proc.stdout, proc.stderr
         except subprocess.TimeoutExpired as e:
