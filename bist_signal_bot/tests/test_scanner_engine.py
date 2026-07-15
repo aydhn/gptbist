@@ -1,8 +1,7 @@
-import pytest
 import pandas as pd
 from types import SimpleNamespace
 from bist_signal_bot.scanner.engine import SignalScannerEngine, SignalScannerDependencies
-from bist_signal_bot.scanner.models import ScanRequest, ScanUniverseMode, ScanCandidateStatus, ScanStatus, ScanSortKey
+from bist_signal_bot.scanner.models import ScanRequest, ScanUniverseMode, ScanCandidateStatus, ScanStatus
 from bist_signal_bot.config.settings import Settings
 from bist_signal_bot.strategies.models import StrategyExecutionResult, StrategyExecutionIssue
 from bist_signal_bot.signals.models import SignalCandidate, SignalDirection, SignalStrength
@@ -159,3 +158,29 @@ def test_scan_symbol_exception():
     assert len(res.issues) == 1
     assert res.issues[0].stage == "EXECUTION"
     assert "Simulated execution exception" in res.issues[0].message
+
+def test_scan_resolve_symbols_validation_error():
+    from bist_signal_bot.core.exceptions import ScannerValidationError
+    from unittest.mock import MagicMock
+
+    engine = SignalScannerEngine(deps=SignalScannerDependencies(
+        data_service=MockDataService(),
+        strategy_engine=MockStrategyEngine()
+    ))
+
+    # Mock resolve_symbols to raise ScannerValidationError
+    engine.resolve_symbols = MagicMock(side_effect=ScannerValidationError("Test validation error"))
+
+    req = ScanRequest(
+        strategy_name="t",
+        universe_mode=ScanUniverseMode.SYMBOLS,
+        symbols=["A"]
+    )
+
+    report = engine.scan(req)
+
+    # Verify the fallback mechanism
+    assert report.status == ScanStatus.FAILED
+    assert len(report.issues) == 1
+    assert report.issues[0].stage == "RESOLVE"
+    assert "Test validation error" in report.issues[0].message
