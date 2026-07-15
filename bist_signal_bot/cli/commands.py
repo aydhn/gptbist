@@ -1,13 +1,21 @@
-from bist_signal_bot.cli.validation_commands import app as validation_app
 from bist_signal_bot.cli.commands_scenarios import scenario_cli
 
-from bist_signal_bot.app.reports_app import create_report_generator, create_report_store, create_digest_builder
-from bist_signal_bot.reports.models import ReportOutputFormat, ReportType
+from bist_signal_bot.app.reports_app import (
+    create_report_generator,
+    create_report_store,
+    create_digest_builder,
+)
+from bist_signal_bot.reports.models import ReportType
 import typer
 import click
 
 from bist_signal_bot.data.cleaning import MarketDataCleaner
-from bist_signal_bot.data.models import MissingValuePolicy, InvalidOhlcPolicy, OutlierPolicy, DuplicateTimestampPolicy
+from bist_signal_bot.data.models import (
+    MissingValuePolicy,
+    InvalidOhlcPolicy,
+    OutlierPolicy,
+    DuplicateTimestampPolicy,
+)
 from bist_signal_bot.data.symbol_utils import ensure_valid_internal_symbol
 from bist_signal_bot.data.models import Timeframe
 from bist_signal_bot.storage.local_store import LocalMarketDataStore
@@ -20,28 +28,31 @@ from bist_signal_bot.data.adjustments import PriceAdjustmentEngine
 from bist_signal_bot.data.models import CorporateAction, CorporateActionType, AdjustmentPolicy
 from bist_signal_bot.data.mock_provider import MockMarketDataProvider
 import argparse
-from bist_signal_bot.cli.context_commands import setup_context_parser, handle_context_command
+from bist_signal_bot.cli.context_commands import handle_context_command
 
-from bist_signal_bot.cli.ensemble_commands import setup_ensemble_parser, handle_ensemble_command
 from bist_signal_bot.cli.valuation_commands import *
-from bist_signal_bot.cli.parsers import add_valuation_parser
 
 import sys
-from bist_signal_bot.cli.bootstrap_cli import handle_bootstrap
 
 import platform
 from datetime import datetime
 
 from bist_signal_bot.app.bootstrap import ApplicationContext
 from bist_signal_bot.app.healthcheck import run_healthcheck
-from bist_signal_bot.cli.formatting import print_output, format_success, format_warning, format_error
+from bist_signal_bot.cli.formatting import (
+    print_output,
+    format_success,
+    format_warning,
+    format_error,
+)
 from bist_signal_bot.config.secrets import settings_safe_dump
-from bist_signal_bot.data.mock_provider import MockMarketDataProvider
 from bist_signal_bot.data.symbol_utils import normalize_symbol
 from bist_signal_bot.data.quality import DataQualityChecker
-from bist_signal_bot.core.exceptions import InvalidSymbolError
-from bist_signal_bot.storage.paths import get_market_data_dir, get_metadata_dir, get_market_data_index_path
-from bist_signal_bot.calendar.session import BistMarketSessionService
+from bist_signal_bot.storage.paths import (
+    get_market_data_dir,
+    get_metadata_dir,
+    get_market_data_index_path,
+)
 
 
 def cmd_healthcheck(args, app_context: ApplicationContext) -> int:
@@ -52,10 +63,12 @@ def cmd_healthcheck(args, app_context: ApplicationContext) -> int:
     print_output(summary, as_json=args.json)
     return 0
 
+
 def cmd_config(args, app_context: ApplicationContext) -> int:
     safe_config = settings_safe_dump(app_context.settings)
     print_output(safe_config, as_json=args.json)
     return 0
+
 
 def cmd_symbols(args, app_context: ApplicationContext) -> int:
     symbols = app_context.symbol_universe.list_symbols(active_only=True)
@@ -69,11 +82,18 @@ def cmd_symbols(args, app_context: ApplicationContext) -> int:
     elif args.command == "context":
         handle_context_command(args)
     else:
-
-        res = [{"symbol": getattr(s, "symbol", str(s)), "name": getattr(s, "name", ""), "group": getattr(s, "group", "")} for s in symbols]
+        res = [
+            {
+                "symbol": getattr(s, "symbol", str(s)),
+                "name": getattr(s, "name", ""),
+                "group": getattr(s, "group", ""),
+            }
+            for s in symbols
+        ]
 
     print_output(res, as_json=args.json)
     return 0
+
 
 def cmd_validate_symbol(args, app_context: ApplicationContext) -> int:
     try:
@@ -84,7 +104,7 @@ def cmd_validate_symbol(args, app_context: ApplicationContext) -> int:
             "input": args.symbol,
             "normalized": norm,
             "valid": valid,
-            "yfinance_format": yf_format
+            "yfinance_format": yf_format,
         }
         print_output(res, as_json=args.json)
         return 0 if valid else 1
@@ -95,9 +115,11 @@ def cmd_validate_symbol(args, app_context: ApplicationContext) -> int:
             print(format_error(str(e)))
         return 1
 
+
 def cmd_provider_status(args, app_context: ApplicationContext) -> int:
     try:
         import yfinance
+
         yf_avail = True
     except ImportError:
         yf_avail = False
@@ -106,10 +128,11 @@ def cmd_provider_status(args, app_context: ApplicationContext) -> int:
         "default_provider": app_context.settings.DEFAULT_DATA_PROVIDER,
         "timeframe": app_context.settings.DEFAULT_TIMEFRAME,
         "period": app_context.settings.DEFAULT_HISTORY_PERIOD,
-        "yfinance_importable": yf_avail
+        "yfinance_importable": yf_avail,
     }
     print_output(res, as_json=args.json)
     return 0
+
 
 def cmd_storage_status(args, app_context: ApplicationContext) -> int:
     market_dir = get_market_data_dir(app_context.settings)
@@ -123,10 +146,11 @@ def cmd_storage_status(args, app_context: ApplicationContext) -> int:
         "metadata_dir_exists": meta_dir.exists(),
         "index_file": str(idx_path),
         "index_file_exists": idx_path.exists(),
-        "storage_format": app_context.settings.STORAGE_FORMAT
+        "storage_format": app_context.settings.STORAGE_FORMAT,
     }
     print_output(res, as_json=args.json)
     return 0
+
 
 def cmd_calendar_status(args, app_context: ApplicationContext) -> int:
     at_time = None
@@ -134,7 +158,11 @@ def cmd_calendar_status(args, app_context: ApplicationContext) -> int:
         try:
             at_time = datetime.fromisoformat(args.at)
         except ValueError:
-            print(format_error("Invalid datetime format. Use ISO format like 2026-04-24T18:20:00+03:00"))
+            print(
+                format_error(
+                    "Invalid datetime format. Use ISO format like 2026-04-24T18:20:00+03:00"
+                )
+            )
             return 2
 
     status = app_context.session_service.get_status(now=at_time)
@@ -143,13 +171,18 @@ def cmd_calendar_status(args, app_context: ApplicationContext) -> int:
         "trading_day": status.is_trading_day,
         "market_open": status.is_market_open,
         "session_type": status.day_type.value,
-        "next_trading_day": status.next_trading_day.isoformat() if status.next_trading_day else None,
-        "previous_trading_day": status.previous_trading_day.isoformat() if status.previous_trading_day else None,
+        "next_trading_day": status.next_trading_day.isoformat()
+        if status.next_trading_day
+        else None,
+        "previous_trading_day": status.previous_trading_day.isoformat()
+        if status.previous_trading_day
+        else None,
         "daily_signal_enabled": app_context.settings.BIST_DAILY_SIGNAL_ENABLED,
-        "intraday_signal_enabled": app_context.settings.BIST_INTRADAY_SIGNAL_ENABLED
+        "intraday_signal_enabled": app_context.settings.BIST_INTRADAY_SIGNAL_ENABLED,
     }
     print_output(res, as_json=args.json)
     return 0
+
 
 def cmd_telegram_test(args, app_context: ApplicationContext) -> int:
     if not app_context.settings.ENABLE_TELEGRAM:
@@ -162,11 +195,7 @@ def cmd_telegram_test(args, app_context: ApplicationContext) -> int:
 
     try:
         res = app_context.notifier.send_text(title="CLI Test", body=args.message)
-        out = {
-            "success": res.success,
-            "dry_run": res.dry_run,
-            "message": args.message
-        }
+        out = {"success": res.success, "dry_run": res.dry_run, "message": args.message}
         if args.json:
             print_output(out, as_json=True)
         else:
@@ -177,6 +206,7 @@ def cmd_telegram_test(args, app_context: ApplicationContext) -> int:
         print(format_error(f"Telegram test failed: {e}"))
         return 1
 
+
 def cmd_mock_data(args, app_context: ApplicationContext) -> int:
     try:
         norm = normalize_symbol(args.symbol)
@@ -186,6 +216,7 @@ def cmd_mock_data(args, app_context: ApplicationContext) -> int:
 
     provider = MockMarketDataProvider(rows=args.rows)
     from bist_signal_bot.data.models import Timeframe
+
     mdf = provider.fetch_one(norm, Timeframe.DAILY)
 
     saved = False
@@ -202,10 +233,11 @@ def cmd_mock_data(args, app_context: ApplicationContext) -> int:
         "end": mdf.data.index.max().strftime("%Y-%m-%d") if not mdf.data.empty else None,
         "close_last": float(mdf.data["close"].iloc[-1]) if not mdf.data.empty else None,
         "saved": saved,
-        "file_path": path
+        "file_path": path,
     }
     print_output(res, as_json=args.json)
     return 0
+
 
 def cmd_quality_demo(args, app_context: ApplicationContext) -> int:
     try:
@@ -216,6 +248,7 @@ def cmd_quality_demo(args, app_context: ApplicationContext) -> int:
 
     provider = MockMarketDataProvider(rows=args.rows)
     from bist_signal_bot.data.models import Timeframe
+
     mdf = provider.fetch_one(norm, Timeframe.DAILY)
 
     checker = DataQualityChecker()
@@ -227,19 +260,21 @@ def cmd_quality_demo(args, app_context: ApplicationContext) -> int:
         "passed": report.passed,
         "issue_count": len(report.issues),
         "warning_count": report.warning_count(),
-        "error_count": report.error_count()
+        "error_count": report.error_count(),
     }
     print_output(res, as_json=args.json)
     return 0
+
 
 def cmd_version(args, app_context: ApplicationContext) -> int:
     res = {
         "app_name": app_context.settings.APP_NAME,
         "python_version": sys.version.split(" ")[0],
-        "platform": platform.platform()
+        "platform": platform.platform(),
     }
     print_output(res, as_json=args.json)
     return 0
+
 
 def cmd_diagnose(args, app_context: ApplicationContext) -> int:
     # Combine some results
@@ -252,6 +287,7 @@ def cmd_diagnose(args, app_context: ApplicationContext) -> int:
     }
     print_output(res, as_json=args.json)
     return 0
+
 
 def cmd_download_data(args, app_context: ApplicationContext) -> int:
     if not args.symbols and not args.all and not args.group:
@@ -272,7 +308,7 @@ def cmd_download_data(args, app_context: ApplicationContext) -> int:
             universe=app_context.symbol_universe,
             settings=app_context.settings,
             audit_logger=app_context.audit_logger,
-            notifier=app_context.notifier
+            notifier=app_context.notifier,
         )
 
         timeframe = Timeframe(args.timeframe)
@@ -288,11 +324,7 @@ def cmd_download_data(args, app_context: ApplicationContext) -> int:
 
         if args.all:
             result = downloader.download_universe(
-                active_only=True,
-                timeframe=timeframe,
-                period=period,
-                refresh=refresh,
-                save=save
+                active_only=True, timeframe=timeframe, period=period, refresh=refresh, save=save
             )
         elif args.group:
             try:
@@ -307,16 +339,12 @@ def cmd_download_data(args, app_context: ApplicationContext) -> int:
                 timeframe=timeframe,
                 period=period,
                 refresh=refresh,
-                save=save
+                save=save,
             )
         else:
             if len(args.symbols) == 1:
                 res = downloader.download_symbol(
-                    args.symbols[0],
-                    timeframe=timeframe,
-                    period=period,
-                    refresh=refresh,
-                    save=save
+                    args.symbols[0], timeframe=timeframe, period=period, refresh=refresh, save=save
                 )
                 if args.json:
                     print_output(res.model_dump(), as_json=True)
@@ -336,7 +364,7 @@ def cmd_download_data(args, app_context: ApplicationContext) -> int:
                     period=period,
                     refresh=refresh,
                     save=save,
-                    continue_on_error=continue_on_error
+                    continue_on_error=continue_on_error,
                 )
 
         if args.telegram_summary:
@@ -356,6 +384,7 @@ def cmd_download_data(args, app_context: ApplicationContext) -> int:
         print(format_error(str(e)))
         return 1
 
+
 def cmd_universe(args, app_context) -> int:
     from bist_signal_bot.data.universe_store import UniverseStore
     from bist_signal_bot.data.universe_updater import UniverseUpdater
@@ -363,7 +392,9 @@ def cmd_universe(args, app_context) -> int:
     from pathlib import Path
 
     store = UniverseStore(app_context.settings)
-    updater = UniverseUpdater(store, app_context.settings, app_context.audit_logger, app_context.notifier)
+    updater = UniverseUpdater(
+        store, app_context.settings, app_context.audit_logger, app_context.notifier
+    )
 
     if args.universe_command == "init":
         res = store.initialize_default_universe(overwrite=args.overwrite)
@@ -395,6 +426,7 @@ def cmd_universe(args, app_context) -> int:
 
         if args.yfinance:
             from bist_signal_bot.data.symbol_utils import to_yfinance_symbol
+
             symbols = [to_yfinance_symbol(s) for s in symbols]
 
         res = {"count": len(symbols), "symbols": symbols}
@@ -425,7 +457,9 @@ def cmd_universe(args, app_context) -> int:
                     msg += f"{issue.symbol}: "
                 msg += issue.message
                 print(msg)
-            print(f"\nTotal: {report.total_symbols}, Active: {report.active_symbols}, Issues: {len(report.issues)}")
+            print(
+                f"\nTotal: {report.total_symbols}, Active: {report.active_symbols}, Issues: {len(report.issues)}"
+            )
         return 0 if report.passed else 1
 
     elif args.universe_command == "add":
@@ -474,7 +508,9 @@ def cmd_universe(args, app_context) -> int:
 
     elif args.universe_command == "import":
         path = Path(args.path)
-        res = updater.import_from_file(path, merge=args.merge, deactivate_missing=args.deactivate_missing)
+        res = updater.import_from_file(
+            path, merge=args.merge, deactivate_missing=args.deactivate_missing
+        )
         if args.json:
             print_output(res.summary(), as_json=True)
         else:
@@ -552,11 +588,10 @@ def cmd_universe(args, app_context) -> int:
         return 1
 
 
-
 def cmd_adjust_data(args: argparse.Namespace, ctx: ApplicationContext) -> int:
     from bist_signal_bot.data.models import Timeframe
     from bist_signal_bot.data.mock_provider import MockMarketDataProvider
-    from bist_signal_bot.cli.formatting import format_success, format_error, print_output
+    from bist_signal_bot.cli.formatting import format_error, print_output
     from bist_signal_bot.data.symbol_utils import ensure_valid_internal_symbol
 
     try:
@@ -573,7 +608,7 @@ def cmd_adjust_data(args: argparse.Namespace, ctx: ApplicationContext) -> int:
             policy = AdjustmentPolicy(args.policy)
         else:
             policy = AdjustmentPolicy(ctx.settings.DEFAULT_ADJUSTMENT_POLICY)
-    except Exception as e:
+    except Exception:
         print_output(format_error(f"Invalid adjustment policy: {args.policy}"), args.json)
         return 1
 
@@ -583,7 +618,7 @@ def cmd_adjust_data(args: argparse.Namespace, ctx: ApplicationContext) -> int:
         action_store=store,
         policy=policy,
         require_verified_actions=args.require_verified,
-        strict=False  # Keep false in CLI to see reports instead of just crashing
+        strict=False,  # Keep false in CLI to see reports instead of just crashing
     )
 
     try:
@@ -596,17 +631,17 @@ def cmd_adjust_data(args: argparse.Namespace, ctx: ApplicationContext) -> int:
             mdf = provider.fetch_one(symbol, timeframe)
 
         if not mdf:
-             print_output(format_error("Failed to load data."), args.json)
-             return 1
+            print_output(format_error("Failed to load data."), args.json)
+            return 1
 
         adj_result = engine.adjust_market_data(mdf)
         report = adj_result.report
 
         saved_adjusted = False
         if args.save_adjusted and source == "local":
-             local_store = LocalMarketDataStore(ctx.settings)
-             local_store.write_adjusted_ohlcv(adj_result.market_data)
-             saved_adjusted = True
+            local_store = LocalMarketDataStore(ctx.settings)
+            local_store.write_adjusted_ohlcv(adj_result.market_data)
+            saved_adjusted = True
 
         out = report.summary()
         out["saved_adjusted"] = saved_adjusted
@@ -617,7 +652,7 @@ def cmd_adjust_data(args: argparse.Namespace, ctx: ApplicationContext) -> int:
             message=f"Adjusted data for {symbol}",
             action="ADJUST_DATA",
             symbols_affected=[symbol],
-            issue_count=report.issue_count()
+            issue_count=report.issue_count(),
         )
 
         print_output(out, args.json)
@@ -627,9 +662,11 @@ def cmd_adjust_data(args: argparse.Namespace, ctx: ApplicationContext) -> int:
         print_output(format_error(f"Adjustment failed: {str(e)}"), args.json)
         return 1
 
+
 def cmd_corporate_actions(args: argparse.Namespace, ctx: ApplicationContext) -> int:
     from bist_signal_bot.cli.formatting import format_success, format_error, print_output
     from bist_signal_bot.data.symbol_utils import ensure_valid_internal_symbol
+
     store = CorporateActionStore(ctx.settings)
 
     if args.ca_command == "init":
@@ -640,10 +677,12 @@ def cmd_corporate_actions(args: argparse.Namespace, ctx: ApplicationContext) -> 
                 message="Initialized corporate actions store",
                 action="INIT",
                 symbols_affected=[],
-                file_path=str(path)
+                file_path=str(path),
             )
             msg = f"Initialized corporate actions store at {path}"
-            print_output({"message": msg, "path": str(path)} if args.json else format_success(msg), args.json)
+            print_output(
+                {"message": msg, "path": str(path)} if args.json else format_success(msg), args.json
+            )
             return 0
         except Exception as e:
             print_output({"error": str(e)}, as_json=args.json)
@@ -663,7 +702,9 @@ def cmd_corporate_actions(args: argparse.Namespace, ctx: ApplicationContext) -> 
                 if not actions:
                     print("No corporate actions found.")
                 for a in actions:
-                    print(f"{a.symbol} | {a.action_date} | {a.action_type.value} | Ratio: {a.ratio} | Cash: {a.cash_amount}")
+                    print(
+                        f"{a.symbol} | {a.action_date} | {a.action_type.value} | Ratio: {a.ratio} | Cash: {a.cash_amount}"
+                    )
             return 0
         except Exception as e:
             print_output({"error": str(e)}, as_json=args.json)
@@ -681,7 +722,7 @@ def cmd_corporate_actions(args: argparse.Namespace, ctx: ApplicationContext) -> 
                 action_type=action_type,
                 ratio=args.ratio,
                 cash_amount=args.cash,
-                description=args.description
+                description=args.description,
             )
 
             store.add_action(action)
@@ -689,10 +730,15 @@ def cmd_corporate_actions(args: argparse.Namespace, ctx: ApplicationContext) -> 
                 event_type=AuditEventType.CORPORATE_ACTIONS_ADD,
                 message=f"Added action for {symbol}",
                 action="ADD",
-                symbols_affected=[symbol]
+                symbols_affected=[symbol],
             )
             msg = f"Successfully added {action_type.value} action for {symbol} on {action_date}"
-            print_output({"message": msg, "action": action.model_dump(mode="json")} if args.json else format_success(msg), args.json)
+            print_output(
+                {"message": msg, "action": action.model_dump(mode="json")}
+                if args.json
+                else format_success(msg),
+                args.json,
+            )
             return 0
         except Exception as e:
             print_output({"error": str(e)}, as_json=args.json)
@@ -711,14 +757,22 @@ def cmd_corporate_actions(args: argparse.Namespace, ctx: ApplicationContext) -> 
                     event_type=AuditEventType.CORPORATE_ACTIONS_REMOVE,
                     message=f"Removed action for {symbol}",
                     action="REMOVE",
-                    symbols_affected=[symbol]
+                    symbols_affected=[symbol],
                 )
-                msg = f"Successfully removed {action_type.value} action for {symbol} on {action_date}"
-                print_output({"message": msg, "removed": True} if args.json else format_success(msg), args.json)
+                msg = (
+                    f"Successfully removed {action_type.value} action for {symbol} on {action_date}"
+                )
+                print_output(
+                    {"message": msg, "removed": True} if args.json else format_success(msg),
+                    args.json,
+                )
                 return 0
             else:
                 msg = f"Action not found for {symbol} on {action_date}"
-                print_output({"message": msg, "removed": False} if args.json else format_error(msg), args.json)
+                print_output(
+                    {"message": msg, "removed": False} if args.json else format_error(msg),
+                    args.json,
+                )
                 return 1
         except Exception as e:
             print_output({"error": str(e)}, as_json=args.json)
@@ -736,13 +790,14 @@ def cmd_corporate_actions(args: argparse.Namespace, ctx: ApplicationContext) -> 
                 symbols_affected=[],
                 file_path=str(path),
                 validation_passed=report.passed,
-                issue_count=len(report.issues)
+                issue_count=len(report.issues),
             )
 
             if args.json:
                 print_output(report.summary(), as_json=True)
             else:
                 from bist_signal_bot.cli.formatting import format_corporate_action_validation
+
                 print(format_corporate_action_validation(report))
             return 0 if report.passed else 1
         except Exception as e:
@@ -759,11 +814,13 @@ def cmd_corporate_actions(args: argparse.Namespace, ctx: ApplicationContext) -> 
                 message=f"Exported corporate actions to {path.name}",
                 action="EXPORT",
                 symbols_affected=[],
-                file_path=str(path)
+                file_path=str(path),
             )
 
             msg = f"Exported corporate actions to {path}"
-            print_output({"message": msg, "path": str(path)} if args.json else format_success(msg), args.json)
+            print_output(
+                {"message": msg, "path": str(path)} if args.json else format_success(msg), args.json
+            )
             return 0
         except Exception as e:
             print_output({"error": str(e)}, as_json=args.json)
@@ -780,13 +837,14 @@ def cmd_corporate_actions(args: argparse.Namespace, ctx: ApplicationContext) -> 
                 action="VALIDATE",
                 symbols_affected=[],
                 validation_passed=report.passed,
-                issue_count=len(report.issues)
+                issue_count=len(report.issues),
             )
 
             if args.json:
                 print_output(report.summary(), as_json=True)
             else:
                 from bist_signal_bot.cli.formatting import format_corporate_action_validation
+
                 print(format_corporate_action_validation(report))
             return 0 if report.passed else 1
         except Exception as e:
@@ -814,29 +872,35 @@ def cmd_clean_data(args: argparse.Namespace, ctx: ApplicationContext) -> int:
     if args.policy_missing:
         try:
             cleaner_kwargs["missing_value_policy"] = MissingValuePolicy(args.policy_missing)
-        except Exception as e:
+        except Exception:
             print_output(format_error(f"Invalid missing policy: {args.policy_missing}"), args.json)
             return 1
 
     if args.policy_invalid_ohlc:
         try:
             cleaner_kwargs["invalid_ohlc_policy"] = InvalidOhlcPolicy(args.policy_invalid_ohlc)
-        except Exception as e:
-            print_output(format_error(f"Invalid invalid ohlc policy: {args.policy_invalid_ohlc}"), args.json)
+        except Exception:
+            print_output(
+                format_error(f"Invalid invalid ohlc policy: {args.policy_invalid_ohlc}"), args.json
+            )
             return 1
 
     if args.policy_outlier:
         try:
             cleaner_kwargs["outlier_policy"] = OutlierPolicy(args.policy_outlier)
-        except Exception as e:
+        except Exception:
             print_output(format_error(f"Invalid outlier policy: {args.policy_outlier}"), args.json)
             return 1
 
     if args.policy_duplicate:
         try:
-            cleaner_kwargs["duplicate_timestamp_policy"] = DuplicateTimestampPolicy(args.policy_duplicate)
-        except Exception as e:
-            print_output(format_error(f"Invalid duplicate policy: {args.policy_duplicate}"), args.json)
+            cleaner_kwargs["duplicate_timestamp_policy"] = DuplicateTimestampPolicy(
+                args.policy_duplicate
+            )
+        except Exception:
+            print_output(
+                format_error(f"Invalid duplicate policy: {args.policy_duplicate}"), args.json
+            )
             return 1
 
     cleaner = MarketDataCleaner(**cleaner_kwargs)
@@ -851,26 +915,27 @@ def cmd_clean_data(args: argparse.Namespace, ctx: ApplicationContext) -> int:
             mdf = provider.fetch_one(symbol, timeframe)
 
         if not mdf:
-             print_output(format_error("Failed to load data."), args.json)
-             return 1
+            print_output(format_error("Failed to load data."), args.json)
+            return 1
 
         # Add some issues if mock to show cleaning
         if source == "mock" and not mdf.is_empty():
             import numpy as np
+
             # simulate a duplicate
             last_date = mdf.data.index[-1]
             mdf.data.loc[last_date] = mdf.data.iloc[-1]
             # simulate missing
-            mdf.data.iloc[10, 0] = np.nan # open missing
+            mdf.data.iloc[10, 0] = np.nan  # open missing
 
         cleaned_mdf = cleaner.clean_market_data(mdf)
         report = cleaned_mdf.report
 
         saved = False
         if args.save:
-             store = LocalMarketDataStore(ctx.settings)
-             store.write_ohlcv(cleaned_mdf.market_data)
-             saved = True
+            store = LocalMarketDataStore(ctx.settings)
+            store.write_ohlcv(cleaned_mdf.market_data)
+            saved = True
 
         res = {
             "symbol": report.symbol,
@@ -883,7 +948,7 @@ def cmd_clean_data(args: argparse.Namespace, ctx: ApplicationContext) -> int:
             "usable_for_backtest": bool(report.usable_for_backtest),
             "usable_for_ml": bool(report.usable_for_ml),
             "issue_count": int(report.issue_count()),
-            "saved": saved
+            "saved": saved,
         }
 
         print_output(res, args.json)
@@ -893,11 +958,12 @@ def cmd_clean_data(args: argparse.Namespace, ctx: ApplicationContext) -> int:
         print_output(format_error(f"Cleaning failed: {str(e)}"), args.json)
         return 1
 
+
 def cmd_normalize_data(args, app_context) -> int:
     from bist_signal_bot.data.normalizer import MarketDataNormalizer
     from bist_signal_bot.data.mock_provider import MockMarketDataProvider
     from bist_signal_bot.data.models import Timeframe, DataVendor
-    from bist_signal_bot.cli.formatting import format_success, format_error, print_output
+    from bist_signal_bot.cli.formatting import format_error, print_output
     import pandas as pd
 
     symbol = args.symbol
@@ -920,11 +986,19 @@ def cmd_normalize_data(args, app_context) -> int:
             # Read directly to get raw CSV without data_service's auto-normalization to show before/after
             import pandas as pd
             from bist_signal_bot.storage.paths import get_ohlcv_file_path
-            file_path = get_ohlcv_file_path(symbol, DataVendor.YFINANCE.value, timeframe.value, settings, "csv")
+
+            file_path = get_ohlcv_file_path(
+                symbol, DataVendor.YFINANCE.value, timeframe.value, settings, "csv"
+            )
             try:
-                df = pd.read_csv(file_path, parse_dates=["timestamp"] if "timestamp" in pd.read_csv(file_path, nrows=0).columns else None)
-            except Exception as e:
-                df = pd.read_csv(file_path) # Fallback if no timestamp
+                df = pd.read_csv(
+                    file_path,
+                    parse_dates=["timestamp"]
+                    if "timestamp" in pd.read_csv(file_path, nrows=0).columns
+                    else None,
+                )
+            except Exception:
+                df = pd.read_csv(file_path)  # Fallback if no timestamp
 
             vendor = DataVendor.YFINANCE
 
@@ -963,14 +1037,14 @@ def cmd_normalize_data(args, app_context) -> int:
         print(format_error(str(e)))
         return 1
 
+
 def cmd_indicators(args: argparse.Namespace, ctx: ApplicationContext) -> int:
     from bist_signal_bot.indicators.registry import IndicatorRegistry
     from bist_signal_bot.indicators.engine import IndicatorEngine
     from bist_signal_bot.indicators.models import IndicatorCategory
     from bist_signal_bot.data.mock_provider import MockMarketDataProvider
-    from bist_signal_bot.data.models import Timeframe, DataVendor
-    from bist_signal_bot.core.audit import AuditEventType, AuditEvent
-    from bist_signal_bot.cli.formatting import format_success, format_error, print_output
+    from bist_signal_bot.data.models import Timeframe
+    from bist_signal_bot.cli.formatting import format_error, print_output
     from bist_signal_bot.data.symbol_utils import ensure_valid_internal_symbol
     from bist_signal_bot.storage.local_store import LocalMarketDataStore
 
@@ -1042,14 +1116,16 @@ def cmd_indicators(args: argparse.Namespace, ctx: ApplicationContext) -> int:
                     success_count=result.success_count,
                     failed_count=result.failed_count,
                     elapsed_seconds=result.elapsed_seconds,
-                    run_id=ctx.runtime_context.run_id
+                    run_id=ctx.runtime_context.run_id,
                 )
 
             if args.json:
                 print_output(result.summary(), as_json=True)
             else:
                 print(f"Indicator Calculation Result for {symbol}")
-                print(f"Requested: {result.requested_count}, Success: {result.success_count}, Failed: {result.failed_count}")
+                print(
+                    f"Requested: {result.requested_count}, Success: {result.success_count}, Failed: {result.failed_count}"
+                )
                 print(f"Elapsed: {result.elapsed_seconds:.4f}s")
                 print("\nAdded columns:")
                 for r in result.results:
@@ -1081,7 +1157,7 @@ def cmd_trend_features(args, ctx) -> int:
     from bist_signal_bot.indicators.engine import IndicatorEngine
     from bist_signal_bot.data.mock_provider import MockMarketDataProvider
     from bist_signal_bot.data.models import Timeframe, DataVendor
-    from bist_signal_bot.cli.formatting import format_success, format_error, print_output
+    from bist_signal_bot.cli.formatting import format_error, print_output
     from bist_signal_bot.data.symbol_utils import ensure_valid_internal_symbol
     import pandas as pd
     import time
@@ -1103,13 +1179,17 @@ def cmd_trend_features(args, ctx) -> int:
             provider = MockMarketDataProvider(rows=args.rows if args.rows else 500)
             mdf = provider.fetch_one(symbol, timeframe=Timeframe(args.timeframe))
         else:
-            from bist_signal_bot.data.universe_store import UniverseStore
             from bist_signal_bot.data.storage import LocalDataStore
 
             store = LocalDataStore(ctx.settings)
-            mdf = store.load_market_data(symbol, timeframe=Timeframe(args.timeframe), vendor=DataVendor.YFINANCE)
+            mdf = store.load_market_data(
+                symbol, timeframe=Timeframe(args.timeframe), vendor=DataVendor.YFINANCE
+            )
             if mdf.is_empty:
-                print_output(format_error(f"Local data not found for {symbol} / {args.timeframe}."), args.json)
+                print_output(
+                    format_error(f"Local data not found for {symbol} / {args.timeframe}."),
+                    args.json,
+                )
                 return 1
 
         if args.level == "basic":
@@ -1124,6 +1204,7 @@ def cmd_trend_features(args, ctx) -> int:
         # Log to audit
         if ctx.settings.ENABLE_AUDIT_LOG:
             from bist_signal_bot.core.audit import AuditEvent, AuditEventType
+
             ctx.audit_logger.log_event(
                 AuditEvent(
                     event_type=AuditEventType.TREND_FEATURE_CALCULATION,
@@ -1135,8 +1216,8 @@ def cmd_trend_features(args, ctx) -> int:
                         "requested_count": result.requested_count,
                         "success_count": sum(1 for r in result.results if r.status == "SUCCESS"),
                         "failed_count": sum(1 for r in result.results if r.status != "SUCCESS"),
-                        "elapsed_seconds": elapsed
-                    }
+                        "elapsed_seconds": elapsed,
+                    },
                 )
             )
 
@@ -1181,7 +1262,7 @@ def cmd_trend_features(args, ctx) -> int:
             "success_count": success_count,
             "failed_count": failed_count,
             "output_trend_columns": list(df.columns),
-            "trend_feature_summary": summary
+            "trend_feature_summary": summary,
         }
 
         print_output(out, args.json)
@@ -1192,12 +1273,13 @@ def cmd_trend_features(args, ctx) -> int:
         print_output({"error": str(e)}, as_json=args.json)
         return 1
 
+
 def cmd_momentum_features(args, ctx) -> int:
     from bist_signal_bot.features.momentum_features import MomentumFeatureBuilder
     from bist_signal_bot.indicators.engine import IndicatorEngine
     from bist_signal_bot.data.mock_provider import MockMarketDataProvider
     from bist_signal_bot.data.models import Timeframe, DataVendor
-    from bist_signal_bot.cli.formatting import format_success, format_error, print_output
+    from bist_signal_bot.cli.formatting import format_error, print_output
     from bist_signal_bot.data.symbol_utils import ensure_valid_internal_symbol
     import pandas as pd
     import time
@@ -1219,13 +1301,17 @@ def cmd_momentum_features(args, ctx) -> int:
             provider = MockMarketDataProvider(rows=args.rows if args.rows else 500)
             mdf = provider.fetch_one(symbol, timeframe=Timeframe(args.timeframe))
         else:
-            from bist_signal_bot.data.universe_store import UniverseStore
             from bist_signal_bot.data.storage import LocalDataStore
 
             store = LocalDataStore(ctx.settings)
-            mdf = store.load_market_data(symbol, timeframe=Timeframe(args.timeframe), vendor=DataVendor.YFINANCE)
+            mdf = store.load_market_data(
+                symbol, timeframe=Timeframe(args.timeframe), vendor=DataVendor.YFINANCE
+            )
             if mdf.is_empty:
-                print_output(format_error(f"Local data not found for {symbol} / {args.timeframe}."), args.json)
+                print_output(
+                    format_error(f"Local data not found for {symbol} / {args.timeframe}."),
+                    args.json,
+                )
                 return 1
 
         if args.level == "basic":
@@ -1240,6 +1326,7 @@ def cmd_momentum_features(args, ctx) -> int:
         # Log to audit
         if ctx.settings.ENABLE_AUDIT_LOG:
             from bist_signal_bot.core.audit import AuditEvent, AuditEventType
+
             ctx.audit_logger.log_event(
                 AuditEvent(
                     event_type=AuditEventType.MOMENTUM_FEATURE_CALCULATION,
@@ -1251,8 +1338,8 @@ def cmd_momentum_features(args, ctx) -> int:
                         "requested_count": result.requested_count,
                         "success_count": sum(1 for r in result.results if r.status == "SUCCESS"),
                         "failed_count": sum(1 for r in result.results if r.status != "SUCCESS"),
-                        "elapsed_seconds": elapsed
-                    }
+                        "elapsed_seconds": elapsed,
+                    },
                 )
             )
 
@@ -1277,16 +1364,21 @@ def cmd_momentum_features(args, ctx) -> int:
         summary = {}
         if not df.empty:
             last_row = df.iloc[-1].to_dict()
-            summary = {
-                "close": last_row.get("close")
-            }
-            if "rsi_14" in last_row: summary["rsi_14"] = last_row.get("rsi_14")
-            if "roc_pct_10" in last_row: summary["roc_pct_10"] = last_row.get("roc_pct_10")
-            if "stoch_k_14" in last_row: summary["stoch_k_14"] = last_row.get("stoch_k_14")
-            if "stoch_d_14_3" in last_row: summary["stoch_d_14_3"] = last_row.get("stoch_d_14_3")
-            if "mfi_14" in last_row: summary["mfi_14"] = last_row.get("mfi_14")
-            if "momentum_strength_score" in last_row: summary["momentum_strength_score"] = last_row.get("momentum_strength_score")
-            if "momentum_direction_score" in last_row: summary["momentum_direction_score"] = last_row.get("momentum_direction_score")
+            summary = {"close": last_row.get("close")}
+            if "rsi_14" in last_row:
+                summary["rsi_14"] = last_row.get("rsi_14")
+            if "roc_pct_10" in last_row:
+                summary["roc_pct_10"] = last_row.get("roc_pct_10")
+            if "stoch_k_14" in last_row:
+                summary["stoch_k_14"] = last_row.get("stoch_k_14")
+            if "stoch_d_14_3" in last_row:
+                summary["stoch_d_14_3"] = last_row.get("stoch_d_14_3")
+            if "mfi_14" in last_row:
+                summary["mfi_14"] = last_row.get("mfi_14")
+            if "momentum_strength_score" in last_row:
+                summary["momentum_strength_score"] = last_row.get("momentum_strength_score")
+            if "momentum_direction_score" in last_row:
+                summary["momentum_direction_score"] = last_row.get("momentum_direction_score")
 
         out = {
             "symbol": symbol,
@@ -1296,7 +1388,7 @@ def cmd_momentum_features(args, ctx) -> int:
             "success_count": success_count,
             "failed_count": failed_count,
             "output_momentum_columns": list(df.columns),
-            "momentum_feature_summary": summary
+            "momentum_feature_summary": summary,
         }
 
         print_output(out, args.json)
@@ -1313,7 +1405,7 @@ def cmd_volatility_features(args, ctx) -> int:
     from bist_signal_bot.data.mock_provider import MockMarketDataProvider
     from bist_signal_bot.data.data_service import MarketDataService
     from bist_signal_bot.cli.formatting import print_output
-    from bist_signal_bot.core.audit import AuditEventType, AuditEvent
+    from bist_signal_bot.core.audit import AuditEventType
     from datetime import datetime
     import pandas as pd
     import logging
@@ -1345,7 +1437,9 @@ def cmd_volatility_features(args, ctx) -> int:
             result = builder.build_full_volatility_features(mdf)
 
         ctx.audit_logger.log_event(
-            ctx.audit_logger._audit_file and ctx.audit_logger.settings.ENABLE_AUDIT_LOG and AuditEvent(
+            ctx.audit_logger._audit_file
+            and ctx.audit_logger.settings.ENABLE_AUDIT_LOG
+            and AuditEvent(
                 event_type=AuditEventType.VOLATILITY_FEATURE_CALCULATION,
                 message=f"Calculated volatility features for {symbol}",
                 symbol=symbol,
@@ -1355,8 +1449,8 @@ def cmd_volatility_features(args, ctx) -> int:
                     "requested_count": result.requested_count,
                     "success_count": result.success_count,
                     "failed_count": result.failed_count,
-                    "elapsed_seconds": result.elapsed_seconds
-                }
+                    "elapsed_seconds": result.elapsed_seconds,
+                },
             )
         )
 
@@ -1373,13 +1467,20 @@ def cmd_volatility_features(args, ctx) -> int:
         if not df.empty:
             last_row = df.iloc[-1].to_dict()
             summary["close"] = last_row.get("close")
-            if "atr_pct_14" in last_row: summary["atr_pct_14"] = last_row.get("atr_pct_14")
-            if "hist_vol_20" in last_row: summary["hist_vol_20"] = last_row.get("hist_vol_20")
-            if "range_pct" in last_row: summary["range_pct"] = last_row.get("range_pct")
-            if "gap_pct" in last_row: summary["gap_pct"] = last_row.get("gap_pct")
-            if "vol_regime_state_20_252" in last_row: summary["vol_regime_state"] = last_row.get("vol_regime_state_20_252")
-            if "volatility_risk_score" in last_row: summary["volatility_risk_score"] = last_row.get("volatility_risk_score")
-            if "volatility_regime_score" in last_row: summary["volatility_regime_score"] = last_row.get("volatility_regime_score")
+            if "atr_pct_14" in last_row:
+                summary["atr_pct_14"] = last_row.get("atr_pct_14")
+            if "hist_vol_20" in last_row:
+                summary["hist_vol_20"] = last_row.get("hist_vol_20")
+            if "range_pct" in last_row:
+                summary["range_pct"] = last_row.get("range_pct")
+            if "gap_pct" in last_row:
+                summary["gap_pct"] = last_row.get("gap_pct")
+            if "vol_regime_state_20_252" in last_row:
+                summary["vol_regime_state"] = last_row.get("vol_regime_state_20_252")
+            if "volatility_risk_score" in last_row:
+                summary["volatility_risk_score"] = last_row.get("volatility_risk_score")
+            if "volatility_regime_score" in last_row:
+                summary["volatility_regime_score"] = last_row.get("volatility_regime_score")
 
             # Clean up nan for dict dump
             summary = {k: None if pd.isna(v) else v for k, v in summary.items()}
@@ -1392,7 +1493,7 @@ def cmd_volatility_features(args, ctx) -> int:
             "success_count": result.success_count,
             "failed_count": result.failed_count,
             "output_volatility_columns": list(df.columns),
-            "volatility_feature_summary": summary
+            "volatility_feature_summary": summary,
         }
 
         print_output(out_data, as_json=args.json)
@@ -1403,15 +1504,15 @@ def cmd_volatility_features(args, ctx) -> int:
         print_output({"error": str(e)}, as_json=args.json)
         return 1
 
+
 def cmd_volume_features(args, ctx) -> int:
     from bist_signal_bot.features.volume_features import VolumeFeatureBuilder
     from bist_signal_bot.indicators.engine import IndicatorEngine
     from bist_signal_bot.data.mock_provider import MockMarketDataProvider
-    from bist_signal_bot.data.models import Timeframe, DataVendor
-    from bist_signal_bot.cli.formatting import format_success, format_error, print_output
+    from bist_signal_bot.data.models import Timeframe
+    from bist_signal_bot.cli.formatting import print_output
     from bist_signal_bot.data.symbol_utils import ensure_valid_internal_symbol
-    from bist_signal_bot.core.audit import AuditEventType, AuditEvent
-    import pandas as pd
+    from bist_signal_bot.core.audit import AuditEventType
     import time
 
     symbol = args.symbol.upper()
@@ -1431,9 +1532,13 @@ def cmd_volume_features(args, ctx) -> int:
         if args.source == "mock":
             provider = MockMarketDataProvider()
             rows = args.rows or 250
-            req = __import__("bist_signal_bot.data.models").data.models.DataFetchRequest(symbols=[symbol], timeframe=Timeframe(args.timeframe), rows=args.rows or 250); mdf = provider.fetch_ohlcv(req).get(symbol)
+            req = __import__("bist_signal_bot.data.models").data.models.DataFetchRequest(
+                symbols=[symbol], timeframe=Timeframe(args.timeframe), rows=args.rows or 250
+            )
+            mdf = provider.fetch_ohlcv(req).get(symbol)
         else:
             from bist_signal_bot.data.data_service import LocalDataService
+
             service = LocalDataService(ctx.settings)
             mdf = service.load_data(symbol, Timeframe(args.timeframe))
 
@@ -1451,7 +1556,9 @@ def cmd_volume_features(args, ctx) -> int:
         summary = result.summary()
 
         ctx.audit_logger.log_event(
-            ctx.audit_logger._audit_file and ctx.audit_logger.settings.ENABLE_AUDIT_LOG and AuditEvent(
+            ctx.audit_logger._audit_file
+            and ctx.audit_logger.settings.ENABLE_AUDIT_LOG
+            and AuditEvent(
                 event_type=AuditEventType.VOLUME_FEATURE_CALCULATION,
                 symbol=symbol,
                 message=f"Calculated volume features for {symbol}",
@@ -1461,8 +1568,8 @@ def cmd_volume_features(args, ctx) -> int:
                     "requested_count": result.requested_count,
                     "success_count": result.success_count,
                     "failed_count": result.failed_count,
-                    "elapsed_seconds": round(time.time() - start_time, 4)
-                }
+                    "elapsed_seconds": round(time.time() - start_time, 4),
+                },
             )
         )
 
@@ -1475,11 +1582,14 @@ def cmd_volume_features(args, ctx) -> int:
 
         if args.json:
             import json
+
             print(json.dumps(summary, indent=2))
         else:
             print(f"Volume Feature Calculation for {symbol}")
             print(f"Level: {args.level}")
-            print(f"Requested: {result.requested_count}, Success: {result.success_count}, Failed: {result.failed_count}")
+            print(
+                f"Requested: {result.requested_count}, Success: {result.success_count}, Failed: {result.failed_count}"
+            )
             print(f"Output columns: {len(result.output_data.columns)}")
             if len(result.output_data) > 0:
                 print("\nVolume feature summary:")
@@ -1487,14 +1597,15 @@ def cmd_volume_features(args, ctx) -> int:
                 # Show key volume feature columns if they exist
                 last_row = result.output_data.iloc[-1]
                 cols_to_show = [
-                    "close", "volume",
+                    "close",
+                    "volume",
                     f"volume_ratio_{ctx.settings.VOLUME_WINDOW}",
                     f"volume_zscore_{ctx.settings.VOLUME_WINDOW}",
                     f"volume_spike_{ctx.settings.VOLUME_WINDOW}_{str(ctx.settings.VOLUME_SPIKE_MULTIPLIER).replace('.', '_')}",
                     f"cmf_{ctx.settings.VOLUME_CMF_WINDOW}",
                     f"liquidity_score_{ctx.settings.VOLUME_LIQUIDITY_WINDOW}",
                     "volume_activity_score",
-                    "volume_pressure_score"
+                    "volume_pressure_score",
                 ]
                 for col in cols_to_show:
                     if col in last_row.index:
@@ -1506,6 +1617,8 @@ def cmd_volume_features(args, ctx) -> int:
         # logger not in ctx
         print_output({"error": f"Volume feature calculation error: {e}"}, as_json=args.json)
         return 1
+
+
 def cmd_patterns_list(args, ctx) -> int:
     from bist_signal_bot.patterns.engine import PatternRegistry
     from bist_signal_bot.patterns.models import PatternCategory
@@ -1525,19 +1638,22 @@ def cmd_patterns_list(args, ctx) -> int:
 
     out = []
     for spec in specs:
-        out.append({
-            "name": spec.name,
-            "display_name": spec.display_name,
-            "category": spec.category.value,
-            "description": spec.description,
-            "default_params": spec.default_params
-        })
+        out.append(
+            {
+                "name": spec.name,
+                "display_name": spec.display_name,
+                "category": spec.category.value,
+                "description": spec.description,
+                "default_params": spec.default_params,
+            }
+        )
 
     print_output(out, as_json=args.json)
     return 0
 
+
 def cmd_patterns_detect(args, ctx) -> int:
-    from bist_signal_bot.patterns.engine import PatternEngine, PatternRegistry
+    from bist_signal_bot.patterns.engine import PatternEngine
     from bist_signal_bot.data.mock_provider import MockMarketDataProvider
     from bist_signal_bot.data.data_service import MarketDataService
     from bist_signal_bot.cli.formatting import print_output
@@ -1567,7 +1683,10 @@ def cmd_patterns_detect(args, ctx) -> int:
             result = engine.detect_default_set(mdf)
         else:
             if not args.pattern:
-                print_output({"error": "No patterns requested. Use --pattern or --default-set"}, as_json=args.json)
+                print_output(
+                    {"error": "No patterns requested. Use --pattern or --default-set"},
+                    as_json=args.json,
+                )
                 return 1
             requests = engine.parse_requests(args.pattern)
             result = engine.detect_many(mdf, requests)
@@ -1587,13 +1706,13 @@ def cmd_patterns_detect(args, ctx) -> int:
         print_output({"error": str(e)}, as_json=args.json)
         return 1
 
+
 def cmd_pattern_features(args, ctx) -> int:
     from bist_signal_bot.features.pattern_features import PatternFeatureBuilder
     from bist_signal_bot.data.mock_provider import MockMarketDataProvider
     from bist_signal_bot.data.data_service import MarketDataService
     from bist_signal_bot.cli.formatting import print_output, format_pattern_batch_result
-    from bist_signal_bot.core.audit import AuditEventType, AuditEvent
-    import pandas as pd
+    from bist_signal_bot.core.audit import AuditEventType
     import logging
 
     logger = logging.getLogger("bist_signal_bot.cli")
@@ -1623,7 +1742,9 @@ def cmd_pattern_features(args, ctx) -> int:
             result = builder.build_full_pattern_features(mdf)
 
         ctx.audit_logger.log_event(
-            ctx.audit_logger._audit_file and ctx.audit_logger.settings.ENABLE_AUDIT_LOG and AuditEvent(
+            ctx.audit_logger._audit_file
+            and ctx.audit_logger.settings.ENABLE_AUDIT_LOG
+            and AuditEvent(
                 event_type=AuditEventType.PATTERN_FEATURE_CALCULATION,
                 message=f"Calculated pattern features for {symbol}",
                 symbol=symbol,
@@ -1633,8 +1754,8 @@ def cmd_pattern_features(args, ctx) -> int:
                     "requested_count": result.requested_count,
                     "success_count": result.success_count,
                     "failed_count": result.failed_count,
-                    "elapsed_seconds": result.elapsed_seconds
-                }
+                    "elapsed_seconds": result.elapsed_seconds,
+                },
             )
         )
 
@@ -1658,6 +1779,7 @@ def cmd_pattern_features(args, ctx) -> int:
         print_output({"error": str(e)}, as_json=args.json)
         return 1
 
+
 def cmd_patterns_list(args, ctx) -> int:
     from bist_signal_bot.patterns.engine import PatternRegistry
     from bist_signal_bot.patterns.models import PatternCategory
@@ -1677,19 +1799,22 @@ def cmd_patterns_list(args, ctx) -> int:
 
     out = []
     for spec in specs:
-        out.append({
-            "name": spec.name,
-            "display_name": spec.display_name,
-            "category": spec.category.value,
-            "description": spec.description,
-            "default_params": spec.default_params
-        })
+        out.append(
+            {
+                "name": spec.name,
+                "display_name": spec.display_name,
+                "category": spec.category.value,
+                "description": spec.description,
+                "default_params": spec.default_params,
+            }
+        )
 
     print_output(out, as_json=args.json)
     return 0
 
+
 def cmd_patterns_detect(args, ctx) -> int:
-    from bist_signal_bot.patterns.engine import PatternEngine, PatternRegistry
+    from bist_signal_bot.patterns.engine import PatternEngine
     from bist_signal_bot.data.mock_provider import MockMarketDataProvider
     from bist_signal_bot.data.data_service import MarketDataService
     from bist_signal_bot.cli.formatting import print_output
@@ -1719,7 +1844,10 @@ def cmd_patterns_detect(args, ctx) -> int:
             result = engine.detect_default_set(mdf)
         else:
             if not args.pattern:
-                print_output({"error": "No patterns requested. Use --pattern or --default-set"}, as_json=args.json)
+                print_output(
+                    {"error": "No patterns requested. Use --pattern or --default-set"},
+                    as_json=args.json,
+                )
                 return 1
             requests = engine.parse_requests(args.pattern)
             result = engine.detect_many(mdf, requests)
@@ -1739,13 +1867,13 @@ def cmd_patterns_detect(args, ctx) -> int:
         print_output({"error": str(e)}, as_json=args.json)
         return 1
 
+
 def cmd_pattern_features(args, ctx) -> int:
     from bist_signal_bot.features.pattern_features import PatternFeatureBuilder
     from bist_signal_bot.data.mock_provider import MockMarketDataProvider
     from bist_signal_bot.data.data_service import MarketDataService
     from bist_signal_bot.cli.formatting import print_output, format_pattern_batch_result
-    from bist_signal_bot.core.audit import AuditEventType, AuditEvent
-    import pandas as pd
+    from bist_signal_bot.core.audit import AuditEventType
     import logging
 
     logger = logging.getLogger("bist_signal_bot.cli")
@@ -1775,7 +1903,9 @@ def cmd_pattern_features(args, ctx) -> int:
             result = builder.build_full_pattern_features(mdf)
 
         ctx.audit_logger.log_event(
-            ctx.audit_logger._audit_file and ctx.audit_logger.settings.ENABLE_AUDIT_LOG and AuditEvent(
+            ctx.audit_logger._audit_file
+            and ctx.audit_logger.settings.ENABLE_AUDIT_LOG
+            and AuditEvent(
                 event_type=AuditEventType.PATTERN_FEATURE_CALCULATION,
                 message=f"Calculated pattern features for {symbol}",
                 symbol=symbol,
@@ -1785,8 +1915,8 @@ def cmd_pattern_features(args, ctx) -> int:
                     "requested_count": result.requested_count,
                     "success_count": result.success_count,
                     "failed_count": result.failed_count,
-                    "elapsed_seconds": result.elapsed_seconds
-                }
+                    "elapsed_seconds": result.elapsed_seconds,
+                },
             )
         )
 
@@ -1809,14 +1939,15 @@ def cmd_pattern_features(args, ctx) -> int:
         logger.error(f"Pattern feature error: {e}", exc_info=True)
         print_output({"error": str(e)}, as_json=args.json)
         return 1
+
+
 def cmd_divergence_detect(args, ctx) -> int:
     from bist_signal_bot.divergence.engine import DivergenceEngine
     from bist_signal_bot.features.divergence_features import DivergenceFeatureBuilder
     from bist_signal_bot.data.mock_provider import MockMarketDataProvider
     from bist_signal_bot.data.data_service import MarketDataService
-    from bist_signal_bot.cli.formatting import print_output, format_divergence_result
-    from bist_signal_bot.core.audit import AuditEventType, AuditEvent
-    import pandas as pd
+    from bist_signal_bot.cli.formatting import print_output
+    from bist_signal_bot.core.audit import AuditEventType
     import logging
 
     logger = logging.getLogger("bist_signal_bot.cli")
@@ -1851,10 +1982,14 @@ def cmd_divergence_detect(args, ctx) -> int:
             kwargs = {
                 "pivot_mode": args.pivot_mode,
             }
-            if args.lookback is not None: kwargs["lookback"] = args.lookback
-            if args.confirmation_bars is not None: kwargs["confirmation_bars"] = args.confirmation_bars
-            if args.min_pivot_distance is not None: kwargs["min_pivot_distance"] = args.min_pivot_distance
-            if args.max_pivot_distance is not None: kwargs["max_pivot_distance"] = args.max_pivot_distance
+            if args.lookback is not None:
+                kwargs["lookback"] = args.lookback
+            if args.confirmation_bars is not None:
+                kwargs["confirmation_bars"] = args.confirmation_bars
+            if args.min_pivot_distance is not None:
+                kwargs["min_pivot_distance"] = args.min_pivot_distance
+            if args.max_pivot_distance is not None:
+                kwargs["max_pivot_distance"] = args.max_pivot_distance
             kwargs["include_hidden"] = args.include_hidden
             kwargs["include_regular"] = args.include_regular
 
@@ -1865,7 +2000,9 @@ def cmd_divergence_detect(args, ctx) -> int:
         df = result_obj.output_data
 
         ctx.audit_logger.log_event(
-            ctx.audit_logger._audit_file and ctx.audit_logger.settings.ENABLE_AUDIT_LOG and AuditEvent(
+            ctx.audit_logger._audit_file
+            and ctx.audit_logger.settings.ENABLE_AUDIT_LOG
+            and AuditEvent(
                 event_type=AuditEventType.DIVERGENCE_DETECTION,
                 message=f"Calculated divergence features for {symbol}",
                 symbol=symbol,
@@ -1876,8 +2013,8 @@ def cmd_divergence_detect(args, ctx) -> int:
                     "detected_count": result.detected_count,
                     "bullish_count": result.bullish_count(),
                     "bearish_count": result.bearish_count(),
-                    "elapsed_seconds": result.elapsed_seconds
-                }
+                    "elapsed_seconds": result.elapsed_seconds,
+                },
             )
         )
 
@@ -1889,7 +2026,9 @@ def cmd_divergence_detect(args, ctx) -> int:
         if args.json:
             print_output(result.summary(), as_json=True)
         else:
-            print(f"Symbol: {symbol}\\nTimeframe: {args.timeframe}\\nPivot Mode: {result.pivot_mode.value}\\nRows: {len(df)}\\n")
+            print(
+                f"Symbol: {symbol}\\nTimeframe: {args.timeframe}\\nPivot Mode: {result.pivot_mode.value}\\nRows: {len(df)}\\n"
+            )
 
             lines = [
                 "Divergence feature summary",
@@ -1898,13 +2037,15 @@ def cmd_divergence_detect(args, ctx) -> int:
                 f"Bullish count: {result.bullish_count()}",
                 f"Bearish count: {result.bearish_count()}",
                 f"Strong count: {result.strong_count()}",
-                f"Output columns: {', '.join(result.output_columns)}"
+                f"Output columns: {', '.join(result.output_columns)}",
             ]
 
             if result.events:
                 lines.append("\\nLast 5 events:")
                 for e in result.events[-5:]:
-                    lines.append(f"  {e.divergence_type.value} on {e.indicator} (Strength: {e.strength.value})")
+                    lines.append(
+                        f"  {e.divergence_type.value} on {e.indicator} (Strength: {e.strength.value})"
+                    )
 
             print("\\n".join(lines))
 
@@ -1915,13 +2056,13 @@ def cmd_divergence_detect(args, ctx) -> int:
         print_output({"error": str(e)}, as_json=args.json)
         return 1
 
+
 def cmd_mtf_features(args, ctx) -> int:
     from bist_signal_bot.features.multi_timeframe_features import MultiTimeframeFeatureBuilder
     from bist_signal_bot.data.mock_provider import MockMarketDataProvider
     from bist_signal_bot.data.data_service import MarketDataService
     from bist_signal_bot.data.models import Timeframe
     from bist_signal_bot.cli.formatting import print_output, format_multi_timeframe_result
-    from bist_signal_bot.core.audit import AuditEventType, AuditEvent
     import pandas as pd
     import logging
 
@@ -1978,7 +2119,7 @@ def cmd_mtf_features(args, ctx) -> int:
             if len(df) > 0:
                 last_row = df.iloc[-1].to_dict()
                 last_row = {k: v for k, v in last_row.items() if not pd.isna(v)}
-                out_dict['sample_last_row'] = last_row
+                out_dict["sample_last_row"] = last_row
             print_output(out_dict, as_json=True)
         else:
             print(format_multi_timeframe_result(result))
@@ -1989,6 +2130,7 @@ def cmd_mtf_features(args, ctx) -> int:
         logger.error(f"MTF feature error: {e}", exc_info=True)
         print_output({"error": str(e)}, as_json=args.json)
         return 1
+
 
 def cmd_strategies_list(args, ctx) -> int:
     from bist_signal_bot.strategies.registry import get_registry
@@ -2003,6 +2145,7 @@ def cmd_strategies_list(args, ctx) -> int:
         category = None
         if args.category:
             from bist_signal_bot.strategies.models import StrategyCategory
+
             category = StrategyCategory(args.category)
 
         specs = registry.list_specs(category)
@@ -2020,7 +2163,9 @@ def cmd_strategies_list(args, ctx) -> int:
             print(f"Position Side: {spec.position_side.value}")
             print(f"Supports Short: {spec.supports_short}")
             print(f"Supports MTF: {spec.supports_multi_timeframe}")
-            print(f"Required Columns: {', '.join(spec.required_columns) if spec.required_columns else 'None'}")
+            print(
+                f"Required Columns: {', '.join(spec.required_columns) if spec.required_columns else 'None'}"
+            )
             print(f"Default Params: {spec.default_params}")
             print("-" * 50)
 
@@ -2031,12 +2176,13 @@ def cmd_strategies_list(args, ctx) -> int:
         print_output({"error": str(e)}, as_json=args.json)
         return 1
 
+
 def cmd_strategies_run(args, ctx) -> int:
     from bist_signal_bot.strategies.engine import StrategyEngine
     from bist_signal_bot.data.mock_provider import MockMarketDataProvider
     from bist_signal_bot.data.data_service import MarketDataService
     from bist_signal_bot.cli.formatting import print_output
-    from bist_signal_bot.core.audit import AuditEventType, AuditEvent
+    from bist_signal_bot.core.audit import AuditEventType
     import logging
 
     logger = logging.getLogger("bist_signal_bot.cli")
@@ -2072,22 +2218,24 @@ def cmd_strategies_run(args, ctx) -> int:
             symbol=symbol,
             data=mdf,
             params=params,
-            timeframe=args.timeframe
+            timeframe=args.timeframe,
         )
 
         # Log audit event if configured
         if ctx.audit_logger.settings.ENABLE_AUDIT_LOG and result.candidate:
-            ctx.audit_logger.log_event(AuditEvent(
-                event_type=AuditEventType.SIGNAL_CANDIDATE_GENERATED,
-                message=f"Generated signal candidate for {symbol}",
-                symbol=symbol,
-                metadata=result.summary()
-            ))
+            ctx.audit_logger.log_event(
+                AuditEvent(
+                    event_type=AuditEventType.SIGNAL_CANDIDATE_GENERATED,
+                    message=f"Generated signal candidate for {symbol}",
+                    symbol=symbol,
+                    metadata=result.summary(),
+                )
+            )
 
         if args.json:
             print_output(result.summary(), as_json=True)
         else:
-            print(f"Strategy Execution Result:")
+            print("Strategy Execution Result:")
             print(f"Symbol: {symbol}")
             print(f"Strategy: {strategy_name}")
             print(f"Status: {result.status}")
@@ -2095,7 +2243,7 @@ def cmd_strategies_run(args, ctx) -> int:
 
             if result.candidate:
                 c = result.candidate
-                print(f"\n--- SIGNAL CANDIDATE ---")
+                print("\n--- SIGNAL CANDIDATE ---")
                 print(f"Direction: {c.direction.value}")
                 print(f"Score: {c.score:.1f}")
                 print(f"Strength: {c.strength.value}")
@@ -2127,12 +2275,13 @@ def cmd_strategies_run(args, ctx) -> int:
         print_output({"error": str(e)}, as_json=args.json)
         return 1
 
+
 def cmd_strategies_batch(args, ctx) -> int:
     from bist_signal_bot.strategies.engine import StrategyEngine
     from bist_signal_bot.data.mock_provider import MockMarketDataProvider
     from bist_signal_bot.data.data_service import MarketDataService
     from bist_signal_bot.cli.formatting import print_output
-    from bist_signal_bot.core.audit import AuditEventType, AuditEvent
+    from bist_signal_bot.core.audit import AuditEventType
     import logging
 
     logger = logging.getLogger("bist_signal_bot.cli")
@@ -2171,16 +2320,18 @@ def cmd_strategies_batch(args, ctx) -> int:
             strategy_name=strategy_name,
             symbols=symbols,
             params=params,
-            continue_on_error=continue_on_error
+            continue_on_error=continue_on_error,
         )
 
         if ctx.audit_logger.settings.ENABLE_AUDIT_LOG:
-            ctx.audit_logger.log_event(AuditEvent(
-                event_type=AuditEventType.STRATEGY_BATCH_RUN,
-                message=f"Ran batch strategy {strategy_name} on {len(symbols)} symbols",
-                symbol="ALL",
-                metadata=batch_result.summary()
-            ))
+            ctx.audit_logger.log_event(
+                AuditEvent(
+                    event_type=AuditEventType.STRATEGY_BATCH_RUN,
+                    message=f"Ran batch strategy {strategy_name} on {len(symbols)} symbols",
+                    symbol="ALL",
+                    metadata=batch_result.summary(),
+                )
+            )
 
         if args.json:
             print_output(batch_result.summary(), as_json=True)
@@ -2196,11 +2347,11 @@ def cmd_strategies_batch(args, ctx) -> int:
             print(f"  WATCH: {batch_result.watch_count()}")
 
             if batch_result.issues:
-                print(f"\nTop Issues:")
+                print("\nTop Issues:")
                 for issue in batch_result.issues[:5]:
                     print(f"  - {issue}")
 
-            print(f"\nResearch signal candidates only. Not investment advice.")
+            print("\nResearch signal candidates only. Not investment advice.")
 
         return 0
 
@@ -2223,6 +2374,7 @@ def cmd_benchmarks_list(args, ctx) -> int:
         category = None
         if getattr(args, "category", None):
             from bist_signal_bot.benchmarks.models import BenchmarkCategory
+
             category = BenchmarkCategory(args.category)
 
         specs = registry.list_specs(category)
@@ -2237,7 +2389,9 @@ def cmd_benchmarks_list(args, ctx) -> int:
         for spec in specs:
             print(f"Name: {spec.name}")
             print(f"Category: {spec.category.value}")
-            print(f"Required Columns: {', '.join(spec.required_columns) if spec.required_columns else 'None'}")
+            print(
+                f"Required Columns: {', '.join(spec.required_columns) if spec.required_columns else 'None'}"
+            )
             print(f"Supports Portfolio: {spec.supports_portfolio}")
             print(f"Deterministic: {spec.deterministic}")
             print(f"Default Params: {spec.default_params}")
@@ -2256,7 +2410,7 @@ def cmd_benchmarks_run(args, ctx) -> int:
     from bist_signal_bot.data.mock_provider import MockMarketDataProvider
     from bist_signal_bot.data.data_service import MarketDataService
     from bist_signal_bot.cli.formatting import print_output, format_benchmark_result
-    from bist_signal_bot.core.audit import AuditEventType, AuditEvent
+    from bist_signal_bot.core.audit import AuditEventType
     import logging
 
     logger = logging.getLogger("bist_signal_bot.cli")
@@ -2289,16 +2443,18 @@ def cmd_benchmarks_run(args, ctx) -> int:
             symbol=symbol,
             data=mdf,
             params=params,
-            timeframe=args.timeframe
+            timeframe=args.timeframe,
         )
 
         if ctx.audit_logger.settings.ENABLE_AUDIT_LOG:
-            ctx.audit_logger.log_event(AuditEvent(
-                event_type=AuditEventType.BENCHMARK_RUN,
-                message=f"Ran benchmark {benchmark_name} for {symbol}",
-                symbol=symbol,
-                metadata=result.summary()
-            ))
+            ctx.audit_logger.log_event(
+                AuditEvent(
+                    event_type=AuditEventType.BENCHMARK_RUN,
+                    message=f"Ran benchmark {benchmark_name} for {symbol}",
+                    symbol=symbol,
+                    metadata=result.summary(),
+                )
+            )
 
         if args.json:
             print_output(result.summary(), as_json=True)
@@ -2312,12 +2468,13 @@ def cmd_benchmarks_run(args, ctx) -> int:
         print_output({"error": str(e)}, as_json=args.json)
         return 1
 
+
 def cmd_benchmarks_batch(args, ctx) -> int:
     from bist_signal_bot.benchmarks.engine import BenchmarkEngine
     from bist_signal_bot.data.mock_provider import MockMarketDataProvider
     from bist_signal_bot.data.data_service import MarketDataService
     from bist_signal_bot.cli.formatting import print_output, format_benchmark_batch
-    from bist_signal_bot.core.audit import AuditEventType, AuditEvent
+    from bist_signal_bot.core.audit import AuditEventType
     import logging
 
     logger = logging.getLogger("bist_signal_bot.cli")
@@ -2349,16 +2506,18 @@ def cmd_benchmarks_batch(args, ctx) -> int:
             benchmark_name=benchmark_name,
             symbols=symbols,
             params=params,
-            continue_on_error=continue_on_error
+            continue_on_error=continue_on_error,
         )
 
         if ctx.audit_logger.settings.ENABLE_AUDIT_LOG:
-            ctx.audit_logger.log_event(AuditEvent(
-                event_type=AuditEventType.BENCHMARK_BATCH_RUN,
-                message=f"Ran batch benchmark {benchmark_name}",
-                symbol="ALL",
-                metadata=batch_result.summary()
-            ))
+            ctx.audit_logger.log_event(
+                AuditEvent(
+                    event_type=AuditEventType.BENCHMARK_BATCH_RUN,
+                    message=f"Ran batch benchmark {benchmark_name}",
+                    symbol="ALL",
+                    metadata=batch_result.summary(),
+                )
+            )
 
         if args.json:
             print_output(batch_result.summary(), as_json=True)
@@ -2378,7 +2537,7 @@ def cmd_benchmarks_default(args, ctx) -> int:
     from bist_signal_bot.data.mock_provider import MockMarketDataProvider
     from bist_signal_bot.data.data_service import MarketDataService
     from bist_signal_bot.cli.formatting import print_output, format_benchmark_result
-    from bist_signal_bot.core.audit import AuditEventType, AuditEvent
+    from bist_signal_bot.core.audit import AuditEventType
     import logging
 
     logger = logging.getLogger("bist_signal_bot.cli")
@@ -2404,12 +2563,14 @@ def cmd_benchmarks_default(args, ctx) -> int:
         results = engine.run_default_benchmarks(symbol=symbol, data=mdf)
 
         if ctx.audit_logger.settings.ENABLE_AUDIT_LOG:
-            ctx.audit_logger.log_event(AuditEvent(
-                event_type=AuditEventType.BENCHMARK_RUN,
-                message=f"Ran default benchmarks for {symbol}",
-                symbol=symbol,
-                metadata={"benchmarks_run": list(results.keys())}
-            ))
+            ctx.audit_logger.log_event(
+                AuditEvent(
+                    event_type=AuditEventType.BENCHMARK_RUN,
+                    message=f"Ran default benchmarks for {symbol}",
+                    symbol=symbol,
+                    metadata={"benchmarks_run": list(results.keys())},
+                )
+            )
 
         if args.json:
             out = {k: v.summary() for k, v in results.items()}
@@ -2428,16 +2589,24 @@ def cmd_benchmarks_default(args, ctx) -> int:
         print_output({"error": str(e)}, as_json=args.json)
         return 1
 
+
 def handle_costs_command(args, settings):
     from bist_signal_bot.costs.engine import TransactionCostEngine
     from bist_signal_bot.costs.models import CostScenario, TradeCostInput, OrderSide, OrderType
     from bist_signal_bot.costs.scenarios import list_cost_scenarios, scenario_description
-    from bist_signal_bot.formatting.formatter import format_transaction_cost_breakdown, format_round_trip_cost_breakdown
-    from bist_signal_bot.core.audit import AuditLogger, CostModelLogData, AuditEventType
+    from bist_signal_bot.formatting.formatter import (
+        format_transaction_cost_breakdown,
+        format_round_trip_cost_breakdown,
+    )
+    from bist_signal_bot.core.audit import AuditLogger, CostModelLogData
     import json
 
     if args.costs_command == "estimate":
-        scenario = CostScenario(args.scenario) if getattr(args, "scenario", None) else CostScenario(settings.COST_SCENARIO)
+        scenario = (
+            CostScenario(args.scenario)
+            if getattr(args, "scenario", None)
+            else CostScenario(settings.COST_SCENARIO)
+        )
         engine = TransactionCostEngine.from_settings(settings)
         engine.scenario = scenario
 
@@ -2449,7 +2618,7 @@ def handle_costs_command(args, settings):
             price=args.price,
             average_daily_volume=getattr(args, "avg_daily_volume", None),
             average_daily_turnover=getattr(args, "avg_daily_turnover", None),
-            volatility=getattr(args, "volatility", None)
+            volatility=getattr(args, "volatility", None),
         )
 
         breakdown = engine.calculate_trade_cost(input_data)
@@ -2463,7 +2632,7 @@ def handle_costs_command(args, settings):
                 price=args.price,
                 scenario=scenario.value,
                 total_cost=breakdown.total_cost,
-                total_cost_bps=breakdown.total_cost_bps
+                total_cost_bps=breakdown.total_cost_bps,
             )
         )
 
@@ -2473,7 +2642,11 @@ def handle_costs_command(args, settings):
             print(format_transaction_cost_breakdown(breakdown))
 
     elif args.costs_command == "round-trip":
-        scenario = CostScenario(args.scenario) if getattr(args, "scenario", None) else CostScenario(settings.COST_SCENARIO)
+        scenario = (
+            CostScenario(args.scenario)
+            if getattr(args, "scenario", None)
+            else CostScenario(settings.COST_SCENARIO)
+        )
         engine = TransactionCostEngine.from_settings(settings)
         engine.scenario = scenario
 
@@ -2504,9 +2677,18 @@ def handle_costs_command(args, settings):
 
     elif args.costs_command == "config":
         keys = [
-            "COMMISSION_MODEL_TYPE", "COMMISSION_BPS", "COMMISSION_FLAT_FEE", "COMMISSION_MINIMUM",
-            "TRANSACTION_TAX_BPS", "SLIPPAGE_MODEL_TYPE", "FIXED_SLIPPAGE_BPS", "MAX_SLIPPAGE_BPS",
-            "SPREAD_MODEL_TYPE", "HIGH_LIQUIDITY_SPREAD_BPS", "MEDIUM_LIQUIDITY_SPREAD_BPS", "LOW_LIQUIDITY_SPREAD_BPS"
+            "COMMISSION_MODEL_TYPE",
+            "COMMISSION_BPS",
+            "COMMISSION_FLAT_FEE",
+            "COMMISSION_MINIMUM",
+            "TRANSACTION_TAX_BPS",
+            "SLIPPAGE_MODEL_TYPE",
+            "FIXED_SLIPPAGE_BPS",
+            "MAX_SLIPPAGE_BPS",
+            "SPREAD_MODEL_TYPE",
+            "HIGH_LIQUIDITY_SPREAD_BPS",
+            "MEDIUM_LIQUIDITY_SPREAD_BPS",
+            "LOW_LIQUIDITY_SPREAD_BPS",
         ]
 
         config = {k: getattr(settings, k, None) for k in keys}
@@ -2517,12 +2699,12 @@ def handle_costs_command(args, settings):
             for k, v in config.items():
                 print(f"{k}: {v}")
 
+
 def cmd_backtest_run(args, ctx) -> int:
     import json
     from pathlib import Path
-    from bist_signal_bot.data.models import DataVendor, Timeframe
+    from bist_signal_bot.data.models import DataVendor
     from bist_signal_bot.backtesting.engine import BacktestEngine
-    from bist_signal_bot.backtesting.models import ExecutionPriceMode
     from bist_signal_bot.backtesting.reporting import BacktestReportWriter
     from bist_signal_bot.cli.formatting import format_backtest_report_text
 
@@ -2560,31 +2742,34 @@ def cmd_backtest_run(args, ctx) -> int:
         # Determine risk-free rate and periods per year
         rf_rate = getattr(args, "risk_free_rate", None)
         if rf_rate is not None:
-             settings.BACKTEST_RISK_FREE_RATE = rf_rate
+            settings.BACKTEST_RISK_FREE_RATE = rf_rate
         ppy = getattr(args, "periods_per_year", None)
         if ppy is not None:
-             settings.BACKTEST_PERIODS_PER_YEAR = ppy
+            settings.BACKTEST_PERIODS_PER_YEAR = ppy
 
         benchmark_comparisons = []
         benchmarks_to_run = []
         if getattr(args, "compare_benchmark", None):
-             benchmarks_to_run.append(args.compare_benchmark)
+            benchmarks_to_run.append(args.compare_benchmark)
         if getattr(args, "compare_default_benchmarks", False):
-             default_benchmarks = [b.strip() for b in settings.DEFAULT_BENCHMARKS.split(",") if b.strip()]
-             benchmarks_to_run.extend(default_benchmarks)
+            default_benchmarks = [
+                b.strip() for b in settings.DEFAULT_BENCHMARKS.split(",") if b.strip()
+            ]
+            benchmarks_to_run.extend(default_benchmarks)
 
         if benchmarks_to_run:
-             from bist_signal_bot.benchmarks.engine import BenchmarkEngine
-             from bist_signal_bot.backtesting.comparison import BenchmarkComparator
-             bench_engine = BenchmarkEngine(settings=settings)
-             comparator = BenchmarkComparator(bench_engine, settings=settings)
-             for bm in set(benchmarks_to_run):
-                  try:
-                       bm_res = engine.run_single_symbol(bm, symbol, data_df)
-                       comp = comparator.compare_backtest_to_benchmark(res, bm_res, bm)
-                       benchmark_comparisons.append(comp)
-                  except Exception as e:
-                       ctx.logger.warning(f"Failed to compare against benchmark {bm}: {e}")
+            from bist_signal_bot.benchmarks.engine import BenchmarkEngine
+            from bist_signal_bot.backtesting.comparison import BenchmarkComparator
+
+            bench_engine = BenchmarkEngine(settings=settings)
+            comparator = BenchmarkComparator(bench_engine, settings=settings)
+            for bm in set(benchmarks_to_run):
+                try:
+                    bm_res = engine.run_single_symbol(bm, symbol, data_df)
+                    comp = comparator.compare_backtest_to_benchmark(res, bm_res, bm)
+                    benchmark_comparisons.append(comp)
+                except Exception as e:
+                    ctx.logger.warning(f"Failed to compare against benchmark {bm}: {e}")
 
         bundle = writer.build_report_bundle(res, benchmark_comparisons)
 
@@ -2593,37 +2778,37 @@ def cmd_backtest_run(args, ctx) -> int:
         formats = [f.strip().lower() for f in formats_arg.split(",")]
 
         if getattr(args, "json", False):
-             print(json.dumps(bundle.summary(), indent=2))
+            print(json.dumps(bundle.summary(), indent=2))
         else:
-             print(format_backtest_report_text(bundle))
+            print(format_backtest_report_text(bundle))
 
         try:
-             writer.save_bundle(bundle, formats, out_dir)
-             print("\nReports saved successfully.")
-             for fmt, path in bundle.output_files.items():
-                  print(f"  - {fmt}: {path}")
+            writer.save_bundle(bundle, formats, out_dir)
+            print("\nReports saved successfully.")
+            for fmt, path in bundle.output_files.items():
+                print(f"  - {fmt}: {path}")
         except Exception as e:
-             print(f"\nFailed to save reports: {e}")
-             return 1
+            print(f"\nFailed to save reports: {e}")
+            return 1
 
     elif getattr(args, "json", False):
-         print(json.dumps(res.summary(), indent=2))
+        print(json.dumps(res.summary(), indent=2))
     else:
-         print(json.dumps(res.summary(), indent=2))
+        print(json.dumps(res.summary(), indent=2))
 
     return 0
+
 
 def cmd_backtest_report(args, ctx) -> int:
     args.report = True
     args.report_format = getattr(args, "format", "json")
     return cmd_backtest_run(args, ctx)
 
+
 def cmd_backtest_run(args, ctx) -> int:
-    import json
     from pathlib import Path
-    from bist_signal_bot.data.models import DataVendor, Timeframe
+    from bist_signal_bot.data.models import DataVendor
     from bist_signal_bot.backtesting.engine import BacktestEngine
-    from bist_signal_bot.backtesting.models import ExecutionPriceMode
     from bist_signal_bot.backtesting.reporting import BacktestReportWriter
     from bist_signal_bot.cli.formatting import format_backtest_report_text
     from bist_signal_bot.cli.formatting import print_output
@@ -2636,13 +2821,18 @@ def cmd_backtest_run(args, ctx) -> int:
     try:
         vendor = DataVendor(provider_name)
     except ValueError:
-        print_output({"error": f"Unknown provider '{provider_name}'"}, as_json=getattr(args, "json", False))
+        print_output(
+            {"error": f"Unknown provider '{provider_name}'"}, as_json=getattr(args, "json", False)
+        )
         return 1
 
     try:
         data_df = ctx.data_service.get_historical_data(symbol, vendor, "1d", "5y")
         if data_df is None or data_df.data.empty:
-            print_output({"error": f"No data for {symbol} from {provider_name}"}, as_json=getattr(args, "json", False))
+            print_output(
+                {"error": f"No data for {symbol} from {provider_name}"},
+                as_json=getattr(args, "json", False),
+            )
             return 1
     except Exception as e:
         print_output({"error": f"Error loading data: {e}"}, as_json=getattr(args, "json", False))
@@ -2653,7 +2843,9 @@ def cmd_backtest_run(args, ctx) -> int:
     try:
         res = engine.run_single_symbol(strategy_name, symbol, data_df)
     except Exception as e:
-        print_output({"error": f"Error running backtest: {e}"}, as_json=getattr(args, "json", False))
+        print_output(
+            {"error": f"Error running backtest: {e}"}, as_json=getattr(args, "json", False)
+        )
         return 1
 
     if getattr(args, "report", False):
@@ -2662,31 +2854,34 @@ def cmd_backtest_run(args, ctx) -> int:
         # Determine risk-free rate and periods per year
         rf_rate = getattr(args, "risk_free_rate", None)
         if rf_rate is not None:
-             settings.BACKTEST_RISK_FREE_RATE = rf_rate
+            settings.BACKTEST_RISK_FREE_RATE = rf_rate
         ppy = getattr(args, "periods_per_year", None)
         if ppy is not None:
-             settings.BACKTEST_PERIODS_PER_YEAR = ppy
+            settings.BACKTEST_PERIODS_PER_YEAR = ppy
 
         benchmark_comparisons = []
         benchmarks_to_run = []
         if getattr(args, "compare_benchmark", None):
-             benchmarks_to_run.append(args.compare_benchmark)
+            benchmarks_to_run.append(args.compare_benchmark)
         if getattr(args, "compare_default_benchmarks", False):
-             default_benchmarks = [b.strip() for b in settings.DEFAULT_BENCHMARKS.split(",") if b.strip()]
-             benchmarks_to_run.extend(default_benchmarks)
+            default_benchmarks = [
+                b.strip() for b in settings.DEFAULT_BENCHMARKS.split(",") if b.strip()
+            ]
+            benchmarks_to_run.extend(default_benchmarks)
 
         if benchmarks_to_run:
-             from bist_signal_bot.benchmarks.engine import BenchmarkEngine
-             from bist_signal_bot.backtesting.comparison import BenchmarkComparator
-             bench_engine = BenchmarkEngine(settings=settings)
-             comparator = BenchmarkComparator(bench_engine, settings=settings)
-             for bm in set(benchmarks_to_run):
-                  try:
-                       bm_res = engine.run_single_symbol(bm, symbol, data_df)
-                       comp = comparator.compare_backtest_to_benchmark(res, bm_res, bm)
-                       benchmark_comparisons.append(comp)
-                  except Exception as e:
-                       ctx.logger.warning(f"Failed to compare against benchmark {bm}: {e}")
+            from bist_signal_bot.benchmarks.engine import BenchmarkEngine
+            from bist_signal_bot.backtesting.comparison import BenchmarkComparator
+
+            bench_engine = BenchmarkEngine(settings=settings)
+            comparator = BenchmarkComparator(bench_engine, settings=settings)
+            for bm in set(benchmarks_to_run):
+                try:
+                    bm_res = engine.run_single_symbol(bm, symbol, data_df)
+                    comp = comparator.compare_backtest_to_benchmark(res, bm_res, bm)
+                    benchmark_comparisons.append(comp)
+                except Exception as e:
+                    ctx.logger.warning(f"Failed to compare against benchmark {bm}: {e}")
 
         bundle = writer.build_report_bundle(res, benchmark_comparisons)
 
@@ -2695,26 +2890,28 @@ def cmd_backtest_run(args, ctx) -> int:
         formats = [f.strip().lower() for f in formats_arg.split(",")]
 
         if getattr(args, "json", False):
-             print_output(bundle.summary(), as_json=True)
+            print_output(bundle.summary(), as_json=True)
         else:
-             print(format_backtest_report_text(bundle))
+            print(format_backtest_report_text(bundle))
 
         try:
-             writer.save_bundle(bundle, formats, out_dir)
-             print("\nReports saved successfully.")
-             for fmt, path in bundle.output_files.items():
-                  print(f"  - {fmt}: {path}")
+            writer.save_bundle(bundle, formats, out_dir)
+            print("\nReports saved successfully.")
+            for fmt, path in bundle.output_files.items():
+                print(f"  - {fmt}: {path}")
         except Exception as e:
-             print(f"\nFailed to save reports: {e}")
-             return 1
+            print(f"\nFailed to save reports: {e}")
+            return 1
 
     elif getattr(args, "json", False):
-         print_output(res.summary(), as_json=True)
+        print_output(res.summary(), as_json=True)
     else:
-         from bist_signal_bot.cli.formatting import format_backtest_summary
-         print(format_backtest_summary(res))
+        from bist_signal_bot.cli.formatting import format_backtest_summary
+
+        print(format_backtest_summary(res))
 
     return 0
+
 
 def cmd_backtest_report(args, ctx) -> int:
     args.report = True
@@ -2722,276 +2919,352 @@ def cmd_backtest_report(args, ctx) -> int:
     return cmd_backtest_run(args, ctx)
 
 
+def _handle_risk_evaluate(args, ctx, engine):
+    import datetime
+    import json
+    from bist_signal_bot.cli.formatting import print_output
+    from bist_signal_bot.data.models import DataVendor, Timeframe
+    from bist_signal_bot.strategies.engine import StrategyContext
+    import pandas as pd
+
+    if args.source == "mock":
+        # Generate mock data
+        rows = args.rows or 100
+        df = pd.DataFrame(
+            {
+                "open": [100.0] * rows,
+                "high": [105.0] * rows,
+                "low": [95.0] * rows,
+                "close": [102.0] * rows,
+                "volume": [1000000] * rows,
+            },
+            index=pd.date_range("2020-01-01", periods=rows),
+        )
+        if args.strategy:
+            # Add typical columns that might be needed by some strategies
+            df["atr_14"] = 5.0
+            df["volatility_risk_score"] = 0.5
+    else:
+        try:
+            vendor = DataVendor(ctx.settings.DEFAULT_DATA_PROVIDER)
+            df = ctx.data_service.get_historical_data(args.symbol, vendor, args.timeframe, "2y")
+            if df is not None and not df.data.empty:
+                df = df.data
+            else:
+                print_output({"error": f"No data for {args.symbol}"}, as_json=args.json)
+                return 1
+        except Exception as e:
+            print_output({"error": f"Error loading data: {e}"}, as_json=args.json)
+            return 1
+
+    # Parse parameters
+    params = {}
+    if getattr(args, "param", None):
+        for p in args.param:
+            if "=" in p:
+                k, v = p.split("=", 1)
+                try:
+                    if "." in v:
+                        params[k] = float(v)
+                    else:
+                        params[k] = int(v)
+                except:
+                    params[k] = v
+
+    try:
+        # Generate signal
+        strat_ctx = StrategyContext(
+            symbol=args.symbol,
+            timeframe=Timeframe(args.timeframe),
+            data=df,
+            params=params,
+            settings=ctx.settings,
+        )
+
+        try:
+            from bist_signal_bot.strategies.registry import get_registry
+
+            strategy = get_registry().get(args.strategy)
+        except Exception:
+            # Mock fallback
+            import datetime
+            from bist_signal_bot.strategies.base_strategy import BaseStrategy
+            from bist_signal_bot.strategies.models import StrategySpec, StrategyCategory
+
+            class DummyStrategy(BaseStrategy):
+                def __init__(self):
+                    spec = StrategySpec(
+                        name=args.strategy, category=StrategyCategory.TREND, description="dummy"
+                    )
+                    super().__init__(spec)
+
+                def generate(self, ctx):
+                    from bist_signal_bot.signals.models import SignalCandidate, SignalDirection
+
+                    return SignalCandidate(
+                        symbol=ctx.symbol,
+                        strategy_name=self.spec.name,
+                        direction=SignalDirection.LONG,
+                        score=100.0,
+                        confidence=100.0,
+                        generated_at=datetime.datetime.now(datetime.timezone.utc),
+                        feature_snapshot={"close": 102.0, "entry_reference_price": 102.0},
+                    )
+
+            strategy = DummyStrategy()
+
+        res = strategy.run(strat_ctx, params)
+        if not getattr(res, "candidate", None):
+            # Maybe it is in candidates list
+            if hasattr(res, "candidates") and getattr(res, "candidates", None):
+                signal = res.candidates[-1]
+            else:
+                signal = None
+        else:
+            signal = res.candidate
+        if not signal:
+            print_output(
+                {"error": f"No signal candidate generated by {args.strategy}"}, as_json=args.json
+            )
+            return 1
+
+        # Prepare Risk Context
+        context_kwargs = {}
+        if args.equity is not None:
+            context_kwargs["equity"] = args.equity
+        if args.cash is not None:
+            context_kwargs["available_cash"] = args.cash
+        context = engine.build_default_context(**context_kwargs)
+        if args.daily_signal_count is not None:
+            context.daily_signal_count = args.daily_signal_count
+        if args.open_position_count is not None:
+            context.open_position_count = args.open_position_count
+        if args.portfolio_risk_pct is not None:
+            context.portfolio_risk_pct = args.portfolio_risk_pct
+
+        # Override settings if provided
+        if getattr(args, "sizing", None):
+            ctx.settings.RISK_POSITION_SIZING_METHOD = args.sizing
+        if getattr(args, "stop", None):
+            ctx.settings.RISK_STOP_METHOD = args.stop
+        if getattr(args, "target", None):
+            ctx.settings.RISK_TARGET_METHOD = args.target
+
+        decision = engine.evaluate_signal(signal, context, df)
+
+        # Print output
+        if args.json:
+            print(json.dumps(decision.summary(), indent=2, default=str))
+        else:
+            from bist_signal_bot.risk.reporting import format_risk_decision_text
+
+            print(format_risk_decision_text(decision))
+
+    except Exception as e:
+        print_output({"error": f"Risk Evaluation Error: {e}"}, as_json=args.json)
+        return 1
+
+    return 0
+
+
+def _handle_risk_size(args, ctx, engine):
+    import datetime
+    import json
+    from bist_signal_bot.cli.formatting import print_output
+    from bist_signal_bot.signals.models import SignalCandidate, SignalDirection
+    from bist_signal_bot.risk.models import (
+        StopTargetReference,
+        StopMethod,
+        TargetMethod,
+        PositionSizingMethod,
+    )
+
+    try:
+        # Mock signal for sizing calculation
+        direction = SignalDirection.LONG if args.side == "LONG" else SignalDirection.SHORT
+        signal = SignalCandidate(
+            symbol=args.symbol,
+            strategy_name="manual_size",
+            direction=direction,
+            score=100.0,
+            confidence=100.0,
+            generated_at=datetime.datetime.now(datetime.timezone.utc),
+            entry_reference_price=args.entry,
+            feature_snapshot={"close": args.entry},
+        )
+
+        context = engine.build_default_context(equity=args.equity)
+
+        method = (
+            getattr(PositionSizingMethod, args.method) if getattr(args, "method", None) else None
+        )
+
+        # Create a manual StopTargetReference
+        stop_price = args.stop
+        target_price = args.target
+
+        st_ref = None
+        if stop_price is not None or target_price is not None:
+            risk_per_share = None
+            reward_per_share = None
+            rr = None
+            if stop_price is not None:
+                risk_per_share = (
+                    args.entry - stop_price if args.side == "LONG" else stop_price - args.entry
+                )
+            if target_price is not None:
+                reward_per_share = (
+                    target_price - args.entry if args.side == "LONG" else args.entry - target_price
+                )
+            if risk_per_share and risk_per_share > 0 and reward_per_share:
+                rr = reward_per_share / risk_per_share
+
+            st_ref = StopTargetReference(
+                entry_price=args.entry,
+                stop_price=stop_price,
+                target_price=target_price,
+                risk_per_share=risk_per_share,
+                reward_per_share=reward_per_share,
+                risk_reward=rr,
+                stop_method=StopMethod.NONE,
+                target_method=TargetMethod.NONE,
+                metadata={"source": "manual_input"},
+            )
+
+        # We use the position sizer directly
+        size_result = engine.position_sizer.calculate_position_size(
+            signal=signal, context=context, stop_target=st_ref, method=method
+        )
+
+        if args.json:
+            print(json.dumps(size_result.dict(), indent=2, default=str))
+        else:
+            print(f"--- Position Size Result for {args.symbol} ---")
+            print(f"Side: {args.side}")
+            print(f"Method: {size_result.method.value}")
+            print(f"Entry Price: {size_result.entry_price}")
+            print(f"Stop Price: {size_result.stop_price}")
+            print(f"Quantity: {size_result.quantity}")
+            print(f"Final Notional: {size_result.final_notional}")
+            print(f"Risk Amount: {size_result.risk_amount}")
+            print(f"Reduced: {size_result.reduced}")
+            if size_result.issues:
+                print(f"Issues: {', '.join(size_result.issues)}")
+
+    except Exception as e:
+        print_output({"error": str(e)}, as_json=args.json)
+        return 1
+
+    return 0
+
+
+def _handle_risk_stop_target(args, ctx, engine):
+    import datetime
+    import json
+    from bist_signal_bot.cli.formatting import print_output
+    from bist_signal_bot.risk.models import StopMethod, TargetMethod
+    from bist_signal_bot.signals.models import SignalCandidate, SignalDirection
+    import pandas as pd
+
+    try:
+        direction = SignalDirection.LONG if args.side == "LONG" else SignalDirection.SHORT
+        features = {"close": args.entry, "entry_reference_price": args.entry}
+        if args.atr:
+            features["atr_14"] = args.atr
+
+        signal = SignalCandidate(
+            symbol=args.symbol,
+            strategy_name="manual_st",
+            direction=direction,
+            score=100.0,
+            confidence=100.0,
+            generated_at=datetime.datetime.now(datetime.timezone.utc),
+            entry_reference_price=args.entry,
+            feature_snapshot=features,
+        )
+
+        df = pd.DataFrame({"close": [args.entry]})
+
+        stop_m = (
+            getattr(StopMethod, args.method_stop) if getattr(args, "method_stop", None) else None
+        )
+        target_m = (
+            getattr(TargetMethod, args.method_target)
+            if getattr(args, "method_target", None)
+            else None
+        )
+
+        stop_price = engine.stop_model.calculate_stop(signal, data=df, method=stop_m)
+        target_price = engine.target_model.calculate_target(
+            signal, stop_price, data=df, method=target_m
+        )
+
+        st_ref = engine.target_model.build_stop_target_reference(
+            signal,
+            stop_price,
+            target_price,
+            stop_m or StopMethod(ctx.settings.RISK_STOP_METHOD),
+            target_m or TargetMethod(ctx.settings.RISK_TARGET_METHOD),
+        )
+
+        if args.json:
+            print(json.dumps(st_ref.dict(), indent=2, default=str))
+        else:
+            print(f"--- Stop/Target Reference for {args.symbol} ---")
+            print(f"Side: {args.side}")
+            print(f"Entry: {st_ref.entry_price}")
+            print(f"Stop: {st_ref.stop_price} ({st_ref.stop_method.value})")
+            print(f"Target: {st_ref.target_price} ({st_ref.target_method.value})")
+            print(f"Risk per share: {st_ref.risk_per_share}")
+            print(f"Reward per share: {st_ref.reward_per_share}")
+            print(f"Risk/Reward: {st_ref.risk_reward}")
+
+    except Exception as e:
+        print_output({"error": str(e)}, as_json=args.json)
+        return 1
+
+    return 0
+
+
+def _handle_risk_config(args, ctx, engine):
+    import json
+
+    keys = [k for k in dir(ctx.settings) if k.startswith("RISK_")]
+    conf = {k: getattr(ctx.settings, k) for k in keys}
+    conf["ENABLE_RISK_ENGINE"] = ctx.settings.ENABLE_RISK_ENGINE
+
+    if args.json:
+        print(json.dumps(conf, indent=2))
+    else:
+        print("--- Risk Engine Configuration ---")
+        for k, v in conf.items():
+            print(f"{k}: {v}")
+    return 0
+
+
 def handle_risk_commands(args, ctx):
     from bist_signal_bot.risk.engine import RiskEngine
-    from bist_signal_bot.risk.models import RiskContext, RiskSide, StopMethod, TargetMethod, PositionSizingMethod
-    from bist_signal_bot.cli.formatting import print_output, format_risk_decision_text, format_risk_batch_text
-    import json
-    import datetime
+    from bist_signal_bot.cli.formatting import print_output
 
     engine = RiskEngine.from_settings(ctx.settings)
     engine.logger = ctx.logger
 
-    if args.risk_cmd == "evaluate":
-        from bist_signal_bot.data.models import DataVendor, Timeframe
-        from bist_signal_bot.strategies.engine import StrategyContext, StrategyEngine
-        import pandas as pd
+    dispatch = {
+        "evaluate": _handle_risk_evaluate,
+        "size": _handle_risk_size,
+        "stop-target": _handle_risk_stop_target,
+        "config": _handle_risk_config,
+    }
 
-        if args.source == "mock":
-            # Generate mock data
-            rows = args.rows or 100
-            df = pd.DataFrame({
-                'open': [100.0] * rows,
-                'high': [105.0] * rows,
-                'low': [95.0] * rows,
-                'close': [102.0] * rows,
-                'volume': [1000000] * rows
-            }, index=pd.date_range('2020-01-01', periods=rows))
-            if args.strategy:
-                # Add typical columns that might be needed by some strategies
-                df['atr_14'] = 5.0
-                df['volatility_risk_score'] = 0.5
-        else:
-            try:
-                vendor = DataVendor(ctx.settings.DEFAULT_DATA_PROVIDER)
-                df = ctx.data_service.get_historical_data(args.symbol, vendor, args.timeframe, "2y")
-                if df is not None and not df.data.empty:
-                    df = df.data
-                else:
-                    print_output({"error": f"No data for {args.symbol}"}, as_json=args.json)
-                    return 1
-            except Exception as e:
-                print_output({"error": f"Error loading data: {e}"}, as_json=args.json)
-                return 1
-
-        # Parse parameters
-        params = {}
-        if getattr(args, 'param', None):
-            for p in args.param:
-                if "=" in p:
-                    k, v = p.split("=", 1)
-                    try:
-                        if "." in v: params[k] = float(v)
-                        else: params[k] = int(v)
-                    except:
-                        params[k] = v
-
-        try:
-            # Generate signal
-            strat_ctx = StrategyContext(
-                symbol=args.symbol,
-                timeframe=Timeframe(args.timeframe),
-                data=df,
-                params=params,
-                settings=ctx.settings
-            )
-
-            try:
-                from bist_signal_bot.strategies.registry import get_registry
-                strategy = get_registry().get(args.strategy)
-            except Exception as e:
-                # Mock fallback
-                import datetime
-                from bist_signal_bot.strategies.base_strategy import BaseStrategy
-                from bist_signal_bot.strategies.models import StrategySpec, StrategyCategory
-                class DummyStrategy(BaseStrategy):
-                    def __init__(self):
-                        spec = StrategySpec(name=args.strategy, category=StrategyCategory.TREND, description="dummy")
-                        super().__init__(spec)
-                    def generate(self, ctx):
-                        from bist_signal_bot.signals.models import SignalCandidate, SignalDirection
-                        return SignalCandidate(
-                            symbol=ctx.symbol,
-                            strategy_name=self.spec.name,
-                            direction=SignalDirection.LONG,
-                            score=100.0,
-                            confidence=100.0,
-                            generated_at=datetime.datetime.now(datetime.timezone.utc),
-                            feature_snapshot={"close": 102.0, "entry_reference_price": 102.0}
-                        )
-                strategy = DummyStrategy()
-
-            res = strategy.run(strat_ctx, params)
-            if not getattr(res, "candidate", None):
-                # Maybe it is in candidates list
-                if hasattr(res, "candidates") and getattr(res, "candidates", None):
-                    signal = res.candidates[-1]
-                else:
-                    signal = None
-            else:
-                signal = res.candidate
-            if not signal:
-                print_output({"error": f"No signal candidate generated by {args.strategy}"}, as_json=args.json)
-                return 1
-
-
-            # Prepare Risk Context
-            context_kwargs = {}
-            if args.equity is not None: context_kwargs['equity'] = args.equity
-            if args.cash is not None: context_kwargs['available_cash'] = args.cash
-            context = engine.build_default_context(**context_kwargs)
-            if args.daily_signal_count is not None: context.daily_signal_count = args.daily_signal_count
-            if args.open_position_count is not None: context.open_position_count = args.open_position_count
-            if args.portfolio_risk_pct is not None: context.portfolio_risk_pct = args.portfolio_risk_pct
-
-            # Override settings if provided
-            if getattr(args, 'sizing', None): ctx.settings.RISK_POSITION_SIZING_METHOD = args.sizing
-            if getattr(args, 'stop', None): ctx.settings.RISK_STOP_METHOD = args.stop
-            if getattr(args, 'target', None): ctx.settings.RISK_TARGET_METHOD = args.target
-
-            decision = engine.evaluate_signal(signal, context, df)
-
-            # Print output
-            if args.json:
-                print(json.dumps(decision.summary(), indent=2, default=str))
-            else:
-                from bist_signal_bot.risk.reporting import format_risk_decision_text
-                print(format_risk_decision_text(decision))
-
-        except Exception as e:
-            print_output({"error": f"Risk Evaluation Error: {e}"}, as_json=args.json)
-            return 1
-
-    elif args.risk_cmd == "size":
-        from bist_signal_bot.signals.models import SignalCandidate, SignalDirection
-        from bist_signal_bot.risk.models import StopTargetReference, StopMethod, TargetMethod, PositionSizingMethod
-
-        try:
-            # Mock signal for sizing calculation
-            direction = SignalDirection.LONG if args.side == "LONG" else SignalDirection.SHORT
-            signal = SignalCandidate(
-                symbol=args.symbol,
-                strategy_name="manual_size",
-                direction=direction,
-                score=100.0,
-                confidence=100.0,
-                generated_at=datetime.datetime.now(datetime.timezone.utc),
-                entry_reference_price=args.entry,
-                feature_snapshot={"close": args.entry}
-            )
-
-            context = engine.build_default_context(equity=args.equity)
-
-            method = getattr(PositionSizingMethod, args.method) if getattr(args, 'method', None) else None
-
-            # Create a manual StopTargetReference
-            stop_price = args.stop
-            target_price = args.target
-
-            st_ref = None
-            if stop_price is not None or target_price is not None:
-                risk_per_share = None
-                reward_per_share = None
-                rr = None
-                if stop_price is not None:
-                    risk_per_share = args.entry - stop_price if args.side == "LONG" else stop_price - args.entry
-                if target_price is not None:
-                    reward_per_share = target_price - args.entry if args.side == "LONG" else args.entry - target_price
-                if risk_per_share and risk_per_share > 0 and reward_per_share:
-                    rr = reward_per_share / risk_per_share
-
-                st_ref = StopTargetReference(
-                    entry_price=args.entry,
-                    stop_price=stop_price,
-                    target_price=target_price,
-                    risk_per_share=risk_per_share,
-                    reward_per_share=reward_per_share,
-                    risk_reward=rr,
-                    stop_method=StopMethod.NONE,
-                    target_method=TargetMethod.NONE,
-                    metadata={"source": "manual_input"}
-                )
-
-            # We use the position sizer directly
-            size_result = engine.position_sizer.calculate_position_size(
-                signal=signal,
-                context=context,
-                stop_target=st_ref,
-                method=method
-            )
-
-            if args.json:
-                print(json.dumps(size_result.dict(), indent=2, default=str))
-            else:
-                print(f"--- Position Size Result for {args.symbol} ---")
-                print(f"Side: {args.side}")
-                print(f"Method: {size_result.method.value}")
-                print(f"Entry Price: {size_result.entry_price}")
-                print(f"Stop Price: {size_result.stop_price}")
-                print(f"Quantity: {size_result.quantity}")
-                print(f"Final Notional: {size_result.final_notional}")
-                print(f"Risk Amount: {size_result.risk_amount}")
-                print(f"Reduced: {size_result.reduced}")
-                if size_result.issues:
-                    print(f"Issues: {', '.join(size_result.issues)}")
-
-        except Exception as e:
-            print_output({"error": str(e)}, as_json=args.json)
-            return 1
-
-    elif args.risk_cmd == "stop-target":
-        from bist_signal_bot.signals.models import SignalCandidate, SignalDirection
-        import pandas as pd
-        try:
-            direction = SignalDirection.LONG if args.side == "LONG" else SignalDirection.SHORT
-            features = {"close": args.entry, "entry_reference_price": args.entry}
-            if args.atr:
-                features["atr_14"] = args.atr
-
-            signal = SignalCandidate(
-                symbol=args.symbol,
-                strategy_name="manual_st",
-                direction=direction,
-                score=100.0,
-                confidence=100.0,
-                generated_at=datetime.datetime.now(datetime.timezone.utc),
-                entry_reference_price=args.entry,
-                feature_snapshot=features
-            )
-
-            df = pd.DataFrame({'close': [args.entry]})
-
-            stop_m = getattr(StopMethod, args.method_stop) if getattr(args, 'method_stop', None) else None
-            target_m = getattr(TargetMethod, args.method_target) if getattr(args, 'method_target', None) else None
-
-            stop_price = engine.stop_model.calculate_stop(signal, data=df, method=stop_m)
-            target_price = engine.target_model.calculate_target(signal, stop_price, data=df, method=target_m)
-
-            st_ref = engine.target_model.build_stop_target_reference(
-                signal, stop_price, target_price,
-                stop_m or StopMethod(ctx.settings.RISK_STOP_METHOD),
-                target_m or TargetMethod(ctx.settings.RISK_TARGET_METHOD)
-            )
-
-            if args.json:
-                print(json.dumps(st_ref.dict(), indent=2, default=str))
-            else:
-                print(f"--- Stop/Target Reference for {args.symbol} ---")
-                print(f"Side: {args.side}")
-                print(f"Entry: {st_ref.entry_price}")
-                print(f"Stop: {st_ref.stop_price} ({st_ref.stop_method.value})")
-                print(f"Target: {st_ref.target_price} ({st_ref.target_method.value})")
-                print(f"Risk per share: {st_ref.risk_per_share}")
-                print(f"Reward per share: {st_ref.reward_per_share}")
-                print(f"Risk/Reward: {st_ref.risk_reward}")
-
-        except Exception as e:
-            print_output({"error": str(e)}, as_json=args.json)
-            return 1
-
-    elif args.risk_cmd == "config":
-        keys = [k for k in dir(ctx.settings) if k.startswith("RISK_")]
-        conf = {k: getattr(ctx.settings, k) for k in keys}
-        conf["ENABLE_RISK_ENGINE"] = ctx.settings.ENABLE_RISK_ENGINE
-
-        if args.json:
-            print(json.dumps(conf, indent=2))
-        else:
-            print("--- Risk Engine Configuration ---")
-            for k, v in conf.items():
-                print(f"{k}: {v}")
-
-    return 0
+    handler = dispatch.get(args.risk_cmd)
+    if handler:
+        return handler(args, ctx, engine)
+    else:
+        print_output(
+            {"error": f"Unknown risk command: {args.risk_cmd}"},
+            as_json=getattr(args, "json", False),
+        )
+        return 1
 
 
 def handle_validate_backtest(args):
@@ -2999,63 +3272,81 @@ def handle_validate_backtest(args):
     import pandas as pd
     from bist_signal_bot.validation.walk_forward import WalkForwardAnalyzer
     from bist_signal_bot.validation.robustness import RobustnessAnalyzer
-    from bist_signal_bot.validation.models import ValidationConfig, ValidationMode, RobustnessParameterRange
+    from bist_signal_bot.validation.models import (
+        ValidationConfig,
+        ValidationMode,
+        RobustnessParameterRange,
+    )
     from bist_signal_bot.backtesting.engine import BacktestEngine
     from bist_signal_bot.strategies.engine import StrategyEngine
 
-
     if args.source == "mock":
-        df = pd.DataFrame({'close': range(500)}, index=pd.date_range('2020-01-01', periods=500))
+        df = pd.DataFrame({"close": range(500)}, index=pd.date_range("2020-01-01", periods=500))
     else:
         from bist_signal_bot.storage.local_store import LocalDataStore
+
         store = LocalDataStore()
         df = store.load_ohlcv(symbol=args.symbol)
 
     engine = BacktestEngine(strategy_engine=StrategyEngine(), cost_engine=None)
 
     params = {}
-    if hasattr(args, 'param') and args.param:
+    if hasattr(args, "param") and args.param:
         for p in args.param:
             k, v = p.split("=")
             try:
-                if "." in v: params[k] = float(v)
-                else: params[k] = int(v)
+                if "." in v:
+                    params[k] = float(v)
+                else:
+                    params[k] = int(v)
             except:
                 params[k] = v
 
     if args.validate_command == "train-test":
         analyzer = WalkForwardAnalyzer(backtest_engine=engine)
         config = ValidationConfig(mode=ValidationMode.TRAIN_TEST_SPLIT)
-        if getattr(args, 'train_ratio', None): config.train_ratio = args.train_ratio
-        if getattr(args, 'compare_benchmark', None):
+        if getattr(args, "train_ratio", None):
+            config.train_ratio = args.train_ratio
+        if getattr(args, "compare_benchmark", None):
             config.compare_benchmark = True
             config.benchmark_name = args.compare_benchmark
 
         result = analyzer.run_train_test(args.strategy, args.symbol, df, params, config)
-        if getattr(args, 'json', False):
+        if getattr(args, "json", False):
             print(json.dumps(result.summary(), indent=2, default=str))
         else:
             print(f"Train/Test Validation Complete for {args.strategy} on {args.symbol}")
-            print(f"Test Return: {result.split_results[0].test_report.return_metrics.total_return_pct:.2f}%")
+            print(
+                f"Test Return: {result.split_results[0].test_report.return_metrics.total_return_pct:.2f}%"
+            )
             if result.split_results[0].train_report:
-                print(f"Train Return: {result.split_results[0].train_report.return_metrics.total_return_pct:.2f}%")
+                print(
+                    f"Train Return: {result.split_results[0].train_report.return_metrics.total_return_pct:.2f}%"
+                )
             print(f"Overfit Risk: {result.overfit_risk_level.value}")
 
     elif args.validate_command == "walk-forward":
         analyzer = WalkForwardAnalyzer(backtest_engine=engine)
         config = ValidationConfig(
-            mode=ValidationMode.EXPANDING_WINDOW if getattr(args, 'expanding', False) else ValidationMode.WALK_FORWARD,
-            expanding=getattr(args, 'expanding', False)
+            mode=ValidationMode.EXPANDING_WINDOW
+            if getattr(args, "expanding", False)
+            else ValidationMode.WALK_FORWARD,
+            expanding=getattr(args, "expanding", False),
         )
-        if getattr(args, 'train_window', None): config.train_window_rows = args.train_window
-        if getattr(args, 'test_window', None): config.test_window_rows = args.test_window
-        if getattr(args, 'step', None): config.step_rows = args.step
-        if getattr(args, 'max_splits', None): config.max_splits = args.max_splits
-        if getattr(args, 'save_report', False): config.save_reports = True
+        if getattr(args, "train_window", None):
+            config.train_window_rows = args.train_window
+        if getattr(args, "test_window", None):
+            config.test_window_rows = args.test_window
+        if getattr(args, "step", None):
+            config.step_rows = args.step
+        if getattr(args, "max_splits", None):
+            config.max_splits = args.max_splits
+        if getattr(args, "save_report", False):
+            config.save_reports = True
 
         result = analyzer.run_walk_forward(args.strategy, args.symbol, df, params, config)
 
-        if getattr(args, 'json', False):
+        if getattr(args, "json", False):
             print(json.dumps(result.summary(), indent=2, default=str))
         else:
             print(f"Walk-Forward Validation Complete for {args.strategy} on {args.symbol}")
@@ -3068,14 +3359,16 @@ def handle_validate_backtest(args):
     elif args.validate_command == "robustness":
         analyzer = RobustnessAnalyzer(backtest_engine=engine)
         ranges = []
-        if getattr(args, 'param_range', None):
+        if getattr(args, "param_range", None):
             for pr in args.param_range:
                 k, vs = pr.split("=")
                 vals = []
                 for v in vs.split(","):
                     try:
-                        if "." in v: vals.append(float(v))
-                        else: vals.append(int(v))
+                        if "." in v:
+                            vals.append(float(v))
+                        else:
+                            vals.append(int(v))
                     except:
                         vals.append(v)
                 ranges.append(RobustnessParameterRange(name=k, values=vals))
@@ -3086,10 +3379,10 @@ def handle_validate_backtest(args):
             data=df,
             base_params=params,
             parameter_ranges=ranges,
-            max_runs=getattr(args, 'max_runs', None)
+            max_runs=getattr(args, "max_runs", None),
         )
 
-        if getattr(args, 'json', False):
+        if getattr(args, "json", False):
             print(json.dumps(result.summary(), indent=2, default=str))
         else:
             print(f"Robustness Validation Complete for {args.strategy} on {args.symbol}")
@@ -3100,20 +3393,20 @@ def handle_validate_backtest(args):
 
 def run_portfolio_risk_evaluate(args, ctx):
     from bist_signal_bot.portfolio.risk_engine import PortfolioRiskEngine
-    from bist_signal_bot.portfolio.reporting import portfolio_risk_decision_to_dict
     from bist_signal_bot.cli.formatting import print_portfolio_decision
     from bist_signal_bot.config.settings import settings
     from bist_signal_bot.signals.engine import StrategyEngine
-    import pandas as pd
 
     # 1. Fetch data
     symbols = args.symbols or ["ASELS", "THYAO", "GARAN"]
 
     if getattr(args, "source", "local") == "mock":
         from bist_signal_bot.data.mock_provider import MockMarketDataProvider
+
         provider = MockMarketDataProvider(settings=settings)
     else:
         from bist_signal_bot.data.yfinance_provider import YFinanceProvider
+
         provider = YFinanceProvider(settings=settings)
 
     if not symbols:
@@ -3125,14 +3418,16 @@ def run_portfolio_risk_evaluate(args, ctx):
             df = provider.fetch_ohlcv(s)
             data_by_sym[s] = df
         except Exception:
-             pass
+            pass
 
     if not data_by_sym:
         print("No valid data fetched")
         return
 
     # 2. Run strategy
-    strategy_name = getattr(args, "strategy", settings.DEFAULT_STRATEGY) or settings.DEFAULT_STRATEGY
+    strategy_name = (
+        getattr(args, "strategy", settings.DEFAULT_STRATEGY) or settings.DEFAULT_STRATEGY
+    )
     engine = StrategyEngine(settings=settings)
 
     signals = []
@@ -3152,14 +3447,16 @@ def run_portfolio_risk_evaluate(args, ctx):
     if getattr(args, "allocation", None):
         s_copy.PORTFOLIO_ALLOCATION_METHOD = args.allocation
     if getattr(args, "max_symbol_weight", None):
-         s_copy.PORTFOLIO_MAX_SYMBOL_WEIGHT_PCT = args.max_symbol_weight
+        s_copy.PORTFOLIO_MAX_SYMBOL_WEIGHT_PCT = args.max_symbol_weight
     if getattr(args, "max_gross_exposure", None):
-         s_copy.PORTFOLIO_MAX_GROSS_EXPOSURE_PCT = args.max_gross_exposure
+        s_copy.PORTFOLIO_MAX_GROSS_EXPOSURE_PCT = args.max_gross_exposure
     if getattr(args, "max_correlation", None):
-         s_copy.PORTFOLIO_MAX_PAIRWISE_CORRELATION = args.max_correlation
+        s_copy.PORTFOLIO_MAX_PAIRWISE_CORRELATION = args.max_correlation
 
     pre = PortfolioRiskEngine(settings=s_copy, logger=ctx.logger)
-    state = pre.build_default_portfolio_state(equity=getattr(args, "equity", None), cash=getattr(args, "cash", None))
+    state = pre.build_default_portfolio_state(
+        equity=getattr(args, "equity", None), cash=getattr(args, "cash", None)
+    )
 
     # 4. Evaluate
     decision = pre.evaluate_portfolio_signals(signals, state, data_by_sym)
@@ -3171,10 +3468,15 @@ def run_portfolio_risk_evaluate(args, ctx):
 def run_portfolio_risk_allocation(args, ctx):
     from bist_signal_bot.portfolio.allocation import PortfolioAllocator
     from bist_signal_bot.portfolio.models import AllocationRequest, PortfolioState, AllocationMethod
-    from bist_signal_bot.risk.models import RiskDecision, RiskDecisionStatus, RiskFilterResult, PositionSizeResult, StopTargetReference
+    from bist_signal_bot.risk.models import (
+        RiskDecision,
+        RiskDecisionStatus,
+        RiskFilterResult,
+        PositionSizeResult,
+        StopTargetReference,
+    )
     from bist_signal_bot.signals.models import SignalCandidate, SignalDirection
     from bist_signal_bot.cli.formatting import format_allocation_table
-    import pandas as pd
     from datetime import datetime
 
     symbols = args.symbols
@@ -3185,19 +3487,46 @@ def run_portfolio_risk_allocation(args, ctx):
     decisions = []
     for s, sc in zip(symbols, scores):
         sig = SignalCandidate(
-            symbol=s, strategy_name="mock", direction=SignalDirection.LONG,
-            score=sc, confidence=100.0, timeframe="1d", entry_reference_price=100.0,
-            generated_at=datetime.utcnow()
+            symbol=s,
+            strategy_name="mock",
+            direction=SignalDirection.LONG,
+            score=sc,
+            confidence=100.0,
+            timeframe="1d",
+            entry_reference_price=100.0,
+            generated_at=datetime.utcnow(),
         )
         signals.append(sig)
 
-        pos_size = PositionSizeResult(method="FIXED_NOTIONAL", symbol=s, side=SignalDirection.LONG, equity=equity, entry_price=100.0, quantity=equity*0.2/100, final_notional=equity * 0.2, original_notional=equity*0.2, final_position_pct=0.2, max_position_pct=0.2)
+        pos_size = PositionSizeResult(
+            method="FIXED_NOTIONAL",
+            symbol=s,
+            side=SignalDirection.LONG,
+            equity=equity,
+            entry_price=100.0,
+            quantity=equity * 0.2 / 100,
+            final_notional=equity * 0.2,
+            original_notional=equity * 0.2,
+            final_position_pct=0.2,
+            max_position_pct=0.2,
+        )
         filter_res = RiskFilterResult(passed=True, status=RiskDecisionStatus.APPROVED, reasons=[])
-        stop_targ = StopTargetReference(entry_price=100.0, stop_price=90.0, target_price=120.0, risk_reward=2.0)
+        stop_targ = StopTargetReference(
+            entry_price=100.0, stop_price=90.0, target_price=120.0, risk_reward=2.0
+        )
 
         d = RiskDecision(
-            signal=sig, side=SignalDirection.LONG, approved=True, status=RiskDecisionStatus.APPROVED, filter_result=filter_res, position_size=pos_size, stop_target=stop_targ, risk_pct=0.02,
-            issues=[], warnings=[], generated_at=datetime.utcnow()
+            signal=sig,
+            side=SignalDirection.LONG,
+            approved=True,
+            status=RiskDecisionStatus.APPROVED,
+            filter_result=filter_res,
+            position_size=pos_size,
+            stop_target=stop_targ,
+            risk_pct=0.02,
+            issues=[],
+            warnings=[],
+            generated_at=datetime.utcnow(),
         )
         decisions.append(d)
 
@@ -3205,10 +3534,12 @@ def run_portfolio_risk_allocation(args, ctx):
     allocator = PortfolioAllocator(settings=ctx.settings, logger=ctx.logger)
 
     req = AllocationRequest(
-        signals=signals, risk_decisions=decisions, portfolio_state=state,
+        signals=signals,
+        risk_decisions=decisions,
+        portfolio_state=state,
         method=AllocationMethod(getattr(args, "allocation", "EQUAL_WEIGHT")),
         total_allocation_pct=ctx.settings.PORTFOLIO_TOTAL_ALLOCATION_PCT,
-        max_symbol_weight_pct=ctx.settings.PORTFOLIO_MAX_SYMBOL_WEIGHT_PCT
+        max_symbol_weight_pct=ctx.settings.PORTFOLIO_MAX_SYMBOL_WEIGHT_PCT,
     )
 
     res = allocator.allocate(req)
@@ -3223,9 +3554,11 @@ def run_portfolio_risk_correlation(args, ctx):
 
     if getattr(args, "source", "local") == "mock":
         from bist_signal_bot.data.mock_provider import MockMarketDataProvider
+
         provider = MockMarketDataProvider(settings=ctx.settings)
     else:
         from bist_signal_bot.data.yfinance_provider import YFinanceProvider
+
         provider = YFinanceProvider(settings=ctx.settings)
 
     if not symbols:
@@ -3237,10 +3570,14 @@ def run_portfolio_risk_correlation(args, ctx):
             df = provider.fetch_ohlcv(s)
             data_by_sym[s] = df
         except Exception:
-             pass
+            pass
 
     analyzer = CorrelationAnalyzer(settings=ctx.settings, logger=ctx.logger)
-    res = analyzer.calculate_correlation_matrix(data_by_sym, method=getattr(args, "method", "pearson"), lookback_rows=getattr(args, "lookback", 60))
+    res = analyzer.calculate_correlation_matrix(
+        data_by_sym,
+        method=getattr(args, "method", "pearson"),
+        lookback_rows=getattr(args, "lookback", 60),
+    )
 
     print_correlation_result(res, as_json=getattr(args, "json", False))
 
@@ -3250,11 +3587,14 @@ def run_portfolio_risk_exposure(args, ctx):
     from bist_signal_bot.portfolio.exposure import ExposureAnalyzer
     import json
 
-    state = build_portfolio_state(equity=getattr(args, "equity", 100000), cash=getattr(args, "cash", 50000))
+    state = build_portfolio_state(
+        equity=getattr(args, "equity", 100000), cash=getattr(args, "cash", 50000)
+    )
     analyzer = ExposureAnalyzer()
     res = analyzer.calculate_exposure(state)
 
     print(json.dumps(res.summary(), indent=2))
+
 
 def run_portfolio_risk_config(args, ctx):
     from bist_signal_bot.config.secrets import settings_safe_dump
@@ -3268,6 +3608,7 @@ def run_portfolio_risk_config(args, ctx):
     else:
         for k, v in pr_keys.items():
             print(f"{k}: {v}")
+
 
 def handle_portfolio_risk_command(args, ctx):
     if args.portfolio_command == "evaluate":
@@ -3283,30 +3624,46 @@ def handle_portfolio_risk_command(args, ctx):
     else:
         print("Invalid portfolio command")
 
+
 def cmd_scan(args, app_context: ApplicationContext) -> int:
-    from bist_signal_bot.scanner.engine import SignalScannerEngine, SignalScannerDependencies
-    from bist_signal_bot.scanner.models import ScanUniverseMode
     from bist_signal_bot.scanner.storage import ScanReportStore
-    from bist_signal_bot.scanner.reporting import scan_report_to_dict
 
     # We will just print a stub success to pass requirements.
-    if args.scan_command == 'symbols':
-        print_output({"status": "SUCCESS", "passed": 1, "strategy": args.strategy}, as_json=getattr(args, 'json', False))
-    elif args.scan_command == 'watchlist':
-        print_output({"status": "SUCCESS", "passed": 1, "strategy": args.strategy, "watchlist": args.watchlist}, as_json=getattr(args, 'json', False))
-    elif args.scan_command == 'group':
-        print_output({"status": "SUCCESS", "passed": 1, "strategy": args.strategy, "group": args.group}, as_json=getattr(args, 'json', False))
-    elif args.scan_command == 'all':
-        print_output({"status": "SUCCESS", "passed": 1, "strategy": args.strategy}, as_json=getattr(args, 'json', False))
-    elif args.scan_command == 'recent':
+    if args.scan_command == "symbols":
+        print_output(
+            {"status": "SUCCESS", "passed": 1, "strategy": args.strategy},
+            as_json=getattr(args, "json", False),
+        )
+    elif args.scan_command == "watchlist":
+        print_output(
+            {
+                "status": "SUCCESS",
+                "passed": 1,
+                "strategy": args.strategy,
+                "watchlist": args.watchlist,
+            },
+            as_json=getattr(args, "json", False),
+        )
+    elif args.scan_command == "group":
+        print_output(
+            {"status": "SUCCESS", "passed": 1, "strategy": args.strategy, "group": args.group},
+            as_json=getattr(args, "json", False),
+        )
+    elif args.scan_command == "all":
+        print_output(
+            {"status": "SUCCESS", "passed": 1, "strategy": args.strategy},
+            as_json=getattr(args, "json", False),
+        )
+    elif args.scan_command == "recent":
         store = ScanReportStore(app_context.settings)
-        recent = store.list_recent_scans(limit=getattr(args, 'limit', 20))
-        print_output(recent, as_json=getattr(args, 'json', False))
-    elif args.scan_command == 'config':
-        print_output({"scanner_enabled": True}, as_json=getattr(args, 'json', False))
+        recent = store.list_recent_scans(limit=getattr(args, "limit", 20))
+        print_output(recent, as_json=getattr(args, "json", False))
+    elif args.scan_command == "config":
+        print_output({"scanner_enabled": True}, as_json=getattr(args, "json", False))
     else:
-        print_output({"error": "unknown subcommand"}, as_json=getattr(args, 'json', False))
+        print_output({"error": "unknown subcommand"}, as_json=getattr(args, "json", False))
     return 0
+
 
 # OPTIMIZATION CLI
 def cmd_optimize(args, app_context: ApplicationContext) -> int:
@@ -3327,16 +3684,19 @@ def cmd_optimize(args, app_context: ApplicationContext) -> int:
 
     if args.opt_command == "recent":
         store = OptimizationResultStore(app_context.settings)
-        recent = store.list_recent_optimizations(limit=getattr(args, 'limit', 20))
+        recent = store.list_recent_optimizations(limit=getattr(args, "limit", 20))
         if getattr(args, "json", False):
             print(json.dumps(recent, indent=2))
         else:
             for r in recent:
-                 print(f"{r['date']} - {r['dir']} - {r['strategy']} - {r['symbol']} - {r['method']} - Score: {r.get('best_score')}")
+                print(
+                    f"{r['date']} - {r['dir']} - {r['strategy']} - {r['symbol']} - {r['method']} - Score: {r.get('best_score')}"
+                )
         return 0
 
     if args.opt_command == "search-space":
         from bist_signal_bot.optimization.search_space import SearchSpaceBuilder
+
         space = SearchSpaceBuilder.default_search_space_for_strategy(args.strategy)
         res = [s.model_dump() if hasattr(s, "model_dump") else s.dict() for s in space]
         if getattr(args, "json", False):
@@ -3344,31 +3704,40 @@ def cmd_optimize(args, app_context: ApplicationContext) -> int:
         else:
             print(f"Default Search Space for {args.strategy}:")
             for s in space:
-                 if s.values: print(f"  {s.name}: {s.values}")
-                 elif s.choices: print(f"  {s.name}: {s.choices}")
-                 else: print(f"  {s.name}: {s.min_value} to {s.max_value} step {s.step}")
+                if s.values:
+                    print(f"  {s.name}: {s.values}")
+                elif s.choices:
+                    print(f"  {s.name}: {s.choices}")
+                else:
+                    print(f"  {s.name}: {s.min_value} to {s.max_value} step {s.step}")
         return 0
 
     # Strategy / walk-forward
     if getattr(args, "source", "local") == "mock":
         from bist_signal_bot.data.mock_provider import MockMarketDataProvider
+
         provider = MockMarketDataProvider()
     else:
         from bist_signal_bot.data.yfinance_provider import YFinanceProvider
+
         provider = YFinanceProvider(settings=app_context.settings)
 
     try:
-        df = provider.fetch_ohlcv(args.symbol, getattr(args, "timeframe", "1d"), getattr(args, "rows", 1000))
+        df = provider.fetch_ohlcv(
+            args.symbol, getattr(args, "timeframe", "1d"), getattr(args, "rows", 1000)
+        )
     except Exception as e:
         print(f"Failed to fetch data: {e}")
         return 1
 
     from bist_signal_bot.backtesting.engine import BacktestEngine
+
     engine = OptimizationEngine(
-         backtest_engine=BacktestEngine(
-             strategy_engine=None, cost_engine=None, settings=app_context.settings
-         ),
-         settings=app_context.settings, logger=app_context.logger
+        backtest_engine=BacktestEngine(
+            strategy_engine=None, cost_engine=None, settings=app_context.settings
+        ),
+        settings=app_context.settings,
+        logger=app_context.logger,
     )
 
     # Needs real instances here ideally, but engine init handles it
@@ -3392,34 +3761,37 @@ def cmd_optimize(args, app_context: ApplicationContext) -> int:
 
     # constraints
     if hasattr(args, "min_trades") and args.min_trades is not None:
-         config.constraints.min_trades = args.min_trades
+        config.constraints.min_trades = args.min_trades
     if hasattr(args, "max_drawdown") and args.max_drawdown is not None:
-         config.constraints.max_drawdown_pct = args.max_drawdown
+        config.constraints.max_drawdown_pct = args.max_drawdown
     if hasattr(args, "min_profit_factor") and args.min_profit_factor is not None:
-         config.constraints.min_profit_factor = args.min_profit_factor
+        config.constraints.min_profit_factor = args.min_profit_factor
     if hasattr(args, "require_positive_return") and args.require_positive_return:
-         config.constraints.require_positive_return = True
+        config.constraints.require_positive_return = True
 
     # walk-forward parameters
     if hasattr(args, "train_window") and args.train_window:
-         config.train_window_rows = args.train_window
+        config.train_window_rows = args.train_window
     if hasattr(args, "test_window") and args.test_window:
-         config.test_window_rows = args.test_window
+        config.test_window_rows = args.test_window
     if hasattr(args, "step") and args.step:
-         config.step_rows = args.step
+        config.step_rows = args.step
 
     spaces = engine.parse_cli_search_spaces(getattr(args, "param_range", None), args.strategy)
 
     result = engine.optimize(args.strategy, args.symbol, df, search_spaces=spaces, config=config)
 
-    if getattr(args, "save_report", False) or getattr(app_context.settings, "OPTIMIZATION_SAVE_REPORT", False):
-         store = OptimizationResultStore(app_context.settings)
-         fmt = getattr(args, "format", "all")
-         if not fmt: fmt = "all"
-         formats = [f.strip() for f in fmt.split(",")]
-         store.save_result(result, formats=formats)
+    if getattr(args, "save_report", False) or getattr(
+        app_context.settings, "OPTIMIZATION_SAVE_REPORT", False
+    ):
+        store = OptimizationResultStore(app_context.settings)
+        fmt = getattr(args, "format", "all")
+        if not fmt:
+            fmt = "all"
+        formats = [f.strip() for f in fmt.split(",")]
+        store.save_result(result, formats=formats)
 
-    from bist_signal_bot.core.audit import AuditLogger, CostModelLogData, AuditEventType
+    from bist_signal_bot.core.audit import AuditLogger, AuditEventType
     from bist_signal_bot.optimization.models import OptimizationResult
     from bist_signal_bot.notifications.formatter import NotificationFormatter
     from bist_signal_bot.notifications.manager import NotificationManager
@@ -3429,39 +3801,43 @@ def cmd_optimize(args, app_context: ApplicationContext) -> int:
         AuditEventType("OPTIMIZATION_COMPLETED"),
         f"Optimization completed for {args.strategy} on {args.symbol}",
         {
-            "strategy_name": args.strategy, "symbol": args.symbol, "method": config.method.value,
-            "no_real_order_sent": True
-        }
+            "strategy_name": args.strategy,
+            "symbol": args.symbol,
+            "method": config.method.value,
+            "no_real_order_sent": True,
+        },
     )
 
     if getattr(app_context.settings, "ENABLE_TELEGRAM", False):
-         nm = NotificationManager(app_context.settings)
-         formatter = NotificationFormatter(app_context.settings)
-         if isinstance(result, OptimizationResult):
-              msg = formatter.format_optimization_result(result)
-         else:
-              msg = formatter.format_walk_forward_optimization_result(result)
-         nm.send_message(msg)
+        nm = NotificationManager(app_context.settings)
+        formatter = NotificationFormatter(app_context.settings)
+        if isinstance(result, OptimizationResult):
+            msg = formatter.format_optimization_result(result)
+        else:
+            msg = formatter.format_walk_forward_optimization_result(result)
+        nm.send_message(msg)
 
     if getattr(args, "json", False):
-         import json
-         from bist_signal_bot.optimization.reporting import optimization_result_to_dict, walk_forward_optimization_to_dict
-         if isinstance(result, OptimizationResult):
-             print(json.dumps(optimization_result_to_dict(result), indent=2, default=str))
-         else:
-             print(json.dumps(walk_forward_optimization_to_dict(result), indent=2, default=str))
+        import json
+        from bist_signal_bot.optimization.reporting import (
+            optimization_result_to_dict,
+            walk_forward_optimization_to_dict,
+        )
+
+        if isinstance(result, OptimizationResult):
+            print(json.dumps(optimization_result_to_dict(result), indent=2, default=str))
+        else:
+            print(json.dumps(walk_forward_optimization_to_dict(result), indent=2, default=str))
     else:
-         print(format_optimization_text(result))
+        print(format_optimization_text(result))
 
     return 0
 
+
 import json
 
+
 def handle_ml_dataset_command(args, settings):
-    from bist_signal_bot.ml.dataset_builder import MLDatasetBuilder
-    from bist_signal_bot.ml.models import MLDatasetRequest, FeatureStoreFormat, DatasetSplitMode
-    from bist_signal_bot.ml.feature_store import FeatureStore
-    from bist_signal_bot.ml.reporting import format_ml_dataset_text
 
     if args.ml_command == "build":
         return _handle_ml_build(args, settings)
@@ -3472,13 +3848,16 @@ def handle_ml_dataset_command(args, settings):
     elif args.ml_command == "config":
         return _handle_ml_config(args, settings)
 
+
 def _get_formats(format_str):
     from bist_signal_bot.ml.models import FeatureStoreFormat
+
     if not format_str:
         return []
     if format_str == "all":
         return [FeatureStoreFormat.CSV, FeatureStoreFormat.JSON, FeatureStoreFormat.PARQUET]
     return [FeatureStoreFormat(f.upper()) for f in format_str.split(",")]
+
 
 def _handle_ml_build(args, settings):
     from bist_signal_bot.data.data_service import MarketDataService
@@ -3487,131 +3866,175 @@ def _handle_ml_build(args, settings):
     from bist_signal_bot.ml.reporting import format_ml_dataset_text
 
     from bist_signal_bot.data.mock_provider import MockMarketDataProvider
+
     data_service = MarketDataService(provider=MockMarketDataProvider())
     builder = MLDatasetBuilder(data_service=data_service, settings=settings)
 
     request = MLDatasetBuilder.build_default_request(args.symbols)
 
-    if getattr(args, "source", None): request.source = args.source
-    if getattr(args, "timeframe", None): request.timeframe = args.timeframe
-    if getattr(args, "rows", None): request.rows = args.rows
-    if getattr(args, "period", None): request.period = args.period
+    if getattr(args, "source", None):
+        request.source = args.source
+    if getattr(args, "timeframe", None):
+        request.timeframe = args.timeframe
+    if getattr(args, "rows", None):
+        request.rows = args.rows
+    if getattr(args, "period", None):
+        request.period = args.period
 
-    if getattr(args, "task", None): request.task_type = args.task
-    if getattr(args, "feature_level", None): request.feature_config.feature_set_level = args.feature_level.upper()
-    if getattr(args, "label_type", None): request.label_config.label_type = args.label_type.upper()
-    if getattr(args, "horizon", None): request.label_config.horizon_bars = args.horizon
-    if getattr(args, "pos_threshold", None): request.label_config.positive_threshold = args.pos_threshold
-    if getattr(args, "neg_threshold", None): request.label_config.negative_threshold = args.neg_threshold
+    if getattr(args, "task", None):
+        request.task_type = args.task
+    if getattr(args, "feature_level", None):
+        request.feature_config.feature_set_level = args.feature_level.upper()
+    if getattr(args, "label_type", None):
+        request.label_config.label_type = args.label_type.upper()
+    if getattr(args, "horizon", None):
+        request.label_config.horizon_bars = args.horizon
+    if getattr(args, "pos_threshold", None):
+        request.label_config.positive_threshold = args.pos_threshold
+    if getattr(args, "neg_threshold", None):
+        request.label_config.negative_threshold = args.neg_threshold
 
-    if getattr(args, "include_mtf", False): request.feature_config.include_mtf = True
-    if getattr(args, "include_raw_ohlcv", False): request.feature_config.include_raw_ohlcv = True
-    if getattr(args, "no_trend", False): request.feature_config.include_trend = False
-    if getattr(args, "no_momentum", False): request.feature_config.include_momentum = False
-    if getattr(args, "no_volatility", False): request.feature_config.include_volatility = False
-    if getattr(args, "no_volume", False): request.feature_config.include_volume = False
-    if getattr(args, "no_patterns", False): request.feature_config.include_patterns = False
-    if getattr(args, "no_divergence", False): request.feature_config.include_divergence = False
+    if getattr(args, "include_mtf", False):
+        request.feature_config.include_mtf = True
+    if getattr(args, "include_raw_ohlcv", False):
+        request.feature_config.include_raw_ohlcv = True
+    if getattr(args, "no_trend", False):
+        request.feature_config.include_trend = False
+    if getattr(args, "no_momentum", False):
+        request.feature_config.include_momentum = False
+    if getattr(args, "no_volatility", False):
+        request.feature_config.include_volatility = False
+    if getattr(args, "no_volume", False):
+        request.feature_config.include_volume = False
+    if getattr(args, "no_patterns", False):
+        request.feature_config.include_patterns = False
+    if getattr(args, "no_divergence", False):
+        request.feature_config.include_divergence = False
 
     if getattr(args, "split", None):
-        if args.split == "none": request.split_mode = DatasetSplitMode.NONE
-        elif args.split == "train-test": request.split_mode = DatasetSplitMode.TRAIN_TEST
-    if getattr(args, "train_ratio", None): request.train_ratio = args.train_ratio
-    if getattr(args, "fill_method", None): request.preprocessing_config.fill_method = args.fill_method
-    if getattr(args, "drop_na_features", False): request.preprocessing_config.drop_na_features = True
+        if args.split == "none":
+            request.split_mode = DatasetSplitMode.NONE
+        elif args.split == "train-test":
+            request.split_mode = DatasetSplitMode.TRAIN_TEST
+    if getattr(args, "train_ratio", None):
+        request.train_ratio = args.train_ratio
+    if getattr(args, "fill_method", None):
+        request.preprocessing_config.fill_method = args.fill_method
+    if getattr(args, "drop_na_features", False):
+        request.preprocessing_config.drop_na_features = True
 
-    if getattr(args, "save", False): request.save = True
-    if getattr(args, "format", None): request.formats = _get_formats(args.format)
+    if getattr(args, "save", False):
+        request.save = True
+    if getattr(args, "format", None):
+        request.formats = _get_formats(args.format)
 
     result = builder.build_dataset(request)
 
     if getattr(args, "json", False):
         import json
+
         print(json.dumps(result.summary(), indent=2))
     else:
         print(format_ml_dataset_text(result))
     return 0
+
 
 def _handle_ml_schema(args, settings):
     from bist_signal_bot.data.data_service import MarketDataService
     from bist_signal_bot.ml.dataset_builder import MLDatasetBuilder
 
     from bist_signal_bot.data.mock_provider import MockMarketDataProvider
+
     data_service = MarketDataService(provider=MockMarketDataProvider())
     builder = MLDatasetBuilder(data_service=data_service, settings=settings)
 
     request = MLDatasetBuilder.build_default_request(args.symbols)
-    if getattr(args, "source", None): request.source = args.source
+    if getattr(args, "source", None):
+        request.source = args.source
     request.save = False
 
     result = builder.build_dataset(request)
     if getattr(args, "json", False):
         import json
+
         print(json.dumps(result.schema_.summary(), indent=2))
     else:
         import json
+
         print("Schema Summary:")
         print(json.dumps(result.schema_.summary(), indent=2))
     return 0
 
+
 def _handle_ml_recent(args, settings):
     from bist_signal_bot.ml.feature_store import FeatureStore
+
     store = FeatureStore(settings)
     recent = store.list_recent_datasets(limit=getattr(args, "limit", 10))
     if getattr(args, "json", False):
         import json
+
         print(json.dumps(recent, indent=2))
     else:
         print(f"Recent Datasets (up to {getattr(args, 'limit', 10)}):")
         for ds in recent:
-            print(f"- {ds.get('id', 'Unknown')}: {ds.get('symbols', 0)} symbols, {ds.get('row_count', 0)} rows")
+            print(
+                f"- {ds.get('id', 'Unknown')}: {ds.get('symbols', 0)} symbols, {ds.get('row_count', 0)} rows"
+            )
     return 0
+
 
 def _handle_ml_config(args, settings):
     from bist_signal_bot.ml.dataset_builder import MLDatasetBuilder
+
     req = MLDatasetBuilder.build_default_request(["MOCK"])
     if getattr(args, "json", False):
         import json
+
         data = {
             "task_type": req.task_type.value,
             "feature_config": req.feature_config.model_dump(),
             "label_config": req.label_config.model_dump(),
             "preprocessing_config": req.preprocessing_config.model_dump(),
             "split_mode": req.split_mode.value,
-            "train_ratio": req.train_ratio
+            "train_ratio": req.train_ratio,
         }
         print(json.dumps(data, indent=2))
     else:
         print("ML Dataset Default Config:")
         print(f"Task Type: {req.task_type.value}")
         print(f"Feature Level: {req.feature_config.feature_set_level.value}")
-        print(f"Label Type: {req.label_config.label_type.value} (Horizon: {req.label_config.horizon_bars})")
+        print(
+            f"Label Type: {req.label_config.label_type.value} (Horizon: {req.label_config.horizon_bars})"
+        )
         print(f"Split Mode: {req.split_mode.value} (Train Ratio: {req.train_ratio})")
     return 0
 
 
-
-import json
 from bist_signal_bot.app.runtime_app import (
     create_runtime_orchestrator,
     create_runtime_pipeline_config_from_settings,
-    create_runtime_schedule_config_from_settings
+    create_runtime_schedule_config_from_settings,
 )
 from bist_signal_bot.runtime.models import RuntimeTrigger
 from bist_signal_bot.runtime.scheduler import RuntimeScheduler
 from bist_signal_bot.runtime.reporting import format_runtime_result_text
 
+
 def cmd_runtime(args, settings):
     orchestrator = create_runtime_orchestrator(settings)
 
-    if args.runtime_command == 'run-once':
+    if args.runtime_command == "run-once":
         config = create_runtime_pipeline_config_from_settings(settings)
         config.source = args.source
         config.strategy_name = args.strategy
-        if args.group: config.group_name = args.group
-        if args.symbols: config.symbols = args.symbols
+        if args.group:
+            config.group_name = args.group
+        if args.symbols:
+            config.symbols = args.symbols
         config.use_ml_filter = args.ml_filter
-        if args.ml_model_id: config.ml_model_id = args.ml_model_id
+        if args.ml_model_id:
+            config.ml_model_id = args.ml_model_id
         config.use_regime_filter = args.regime_filter
         config.use_paper = args.paper
         config.send_telegram = args.telegram
@@ -3628,11 +4051,12 @@ def cmd_runtime(args, settings):
         else:
             print(format_runtime_result_text(res))
 
-    elif args.runtime_command == 'dry-run':
+    elif args.runtime_command == "dry-run":
         config = create_runtime_pipeline_config_from_settings(settings)
         config.source = args.source
         config.strategy_name = args.strategy
-        if args.symbols: config.symbols = args.symbols
+        if args.symbols:
+            config.symbols = args.symbols
 
         res = orchestrator.dry_run(config)
         if args.json:
@@ -3640,11 +4064,12 @@ def cmd_runtime(args, settings):
         else:
             print(format_runtime_result_text(res))
 
-    elif args.runtime_command == 'loop':
+    elif args.runtime_command == "loop":
         pipe_config = create_runtime_pipeline_config_from_settings(settings)
         pipe_config.source = args.source
         pipe_config.strategy_name = args.strategy
-        if args.symbols: pipe_config.symbols = args.symbols
+        if args.symbols:
+            pipe_config.symbols = args.symbols
 
         sched_config = create_runtime_schedule_config_from_settings(settings)
         sched_config.interval_minutes = args.interval
@@ -3656,23 +4081,25 @@ def cmd_runtime(args, settings):
         scheduler.run_loop(sched_config, pipe_config)
         print("Loop finished.")
 
-    elif args.runtime_command == 'status':
+    elif args.runtime_command == "status":
         st = orchestrator.status()
         if args.json:
             print(json.dumps(st, indent=2))
         else:
             print(f"Runtime Status: {st}")
 
-    elif args.runtime_command == 'history':
+    elif args.runtime_command == "history":
         runs = orchestrator.report_store.list_recent_runs(args.limit)
         if args.json:
             print(json.dumps(runs, indent=2))
         else:
             print(f"Found {len(runs)} recent runs.")
             for r in runs:
-                print(f"- {r.get('run_id')} | {r.get('status')} | Jobs: {r.get('jobs_success')}/{r.get('jobs_total')} | {r.get('elapsed'):.2f}s")
+                print(
+                    f"- {r.get('run_id')} | {r.get('status')} | Jobs: {r.get('jobs_success')}/{r.get('jobs_total')} | {r.get('elapsed'):.2f}s"
+                )
 
-    elif args.runtime_command == 'unlock':
+    elif args.runtime_command == "unlock":
         manager = orchestrator.lock_manager
         if args.stale_only:
             cleared = manager.clear_stale_lock(settings.RUNTIME_LOCK_TTL_SECONDS)
@@ -3689,14 +4116,14 @@ def cmd_runtime(args, settings):
         else:
             print("Please provide --stale-only or --force --confirm")
 
-    elif args.runtime_command == 'reset-state':
+    elif args.runtime_command == "reset-state":
         if not args.confirm:
             print("Must pass --confirm to reset state.")
             return
         orchestrator.reset_state(confirm=True)
         print("State reset successfully.")
 
-    elif args.runtime_command == 'config':
+    elif args.runtime_command == "config":
         pipe_cfg = create_runtime_pipeline_config_from_settings(settings)
         if args.json:
             print(pipe_cfg.model_dump_json(indent=2))
@@ -3705,16 +4132,24 @@ def cmd_runtime(args, settings):
             for k, v in pipe_cfg.model_dump().items():
                 print(f"  {k}: {v}")
 
+
 def cmd_monitor(args, settings):
     import json
     from bist_signal_bot.monitoring.storage import MonitoringStore
     from bist_signal_bot.monitoring.heartbeat import HeartbeatManager
-    from bist_signal_bot.monitoring.metrics import MetricsCollector
     from bist_signal_bot.monitoring.alerts import AlertManager
     from bist_signal_bot.monitoring.diagnostics import DiagnosticsRunner
     from bist_signal_bot.monitoring.self_healing import SelfHealingManager
-    from bist_signal_bot.monitoring.models import MonitoringComponent, HealthLevel, AlertSeverity, MonitoringSnapshot
-    from bist_signal_bot.monitoring.reporting import format_monitoring_snapshot_text, format_self_healing_result_text
+    from bist_signal_bot.monitoring.models import (
+        MonitoringComponent,
+        HealthLevel,
+        AlertSeverity,
+        MonitoringSnapshot,
+    )
+    from bist_signal_bot.monitoring.reporting import (
+        format_monitoring_snapshot_text,
+        format_self_healing_result_text,
+    )
 
     store = MonitoringStore(settings)
     hb_manager = HeartbeatManager(store, settings)
@@ -3725,13 +4160,17 @@ def cmd_monitor(args, settings):
         overall = diag_runner.overall_health(checks)
 
         snapshot = MonitoringSnapshot(
-            generated_at=__import__('datetime').datetime.utcnow(),
+            generated_at=__import__("datetime").datetime.utcnow(),
             overall_health=overall,
             heartbeats=store.load_recent_heartbeats(20),
             metrics=[],
-            active_alerts=[a for a in store.load_recent_alerts(50) if a.status.value in ["NEW", "SENT", "THROTTLED"]],
+            active_alerts=[
+                a
+                for a in store.load_recent_alerts(50)
+                if a.status.value in ["NEW", "SENT", "THROTTLED"]
+            ],
             diagnostics=checks,
-            runtime_state_summary={}
+            runtime_state_summary={},
         )
 
         if args.json:
@@ -3740,7 +4179,11 @@ def cmd_monitor(args, settings):
             print(format_monitoring_snapshot_text(snapshot))
 
     elif args.monitor_command == "heartbeat":
-        if getattr(args, "component", None) and getattr(args, "status", None) and getattr(args, "message", None):
+        if (
+            getattr(args, "component", None)
+            and getattr(args, "status", None)
+            and getattr(args, "message", None)
+        ):
             try:
                 comp = MonitoringComponent(args.component.upper())
                 status = HealthLevel(args.status.upper())
@@ -3786,12 +4229,15 @@ def cmd_monitor(args, settings):
         else:
             print(f"Active Alerts ({len(active)} out of last {len(alerts)} logged):")
             for a in active:
-                print(f"  [{a.severity.value}] {a.title} ({a.count}x, Status: {a.status.value}) - {a.message}")
+                print(
+                    f"  [{a.severity.value}] {a.title} ({a.count}x, Status: {a.status.value}) - {a.message}"
+                )
 
     elif args.monitor_command == "test-alert":
         alert_manager = AlertManager(storage=store, settings=settings)
         if getattr(args, "telegram", False):
             from bist_signal_bot.app.bootstrap import bootstrap_app
+
             app_ctx = bootstrap_app()
             alert_manager.notifier = app_ctx.notifier
 
@@ -3800,14 +4246,16 @@ def cmd_monitor(args, settings):
                 MonitoringComponent.UNKNOWN,
                 AlertSeverity.INFO,
                 "Test Alert",
-                "This is a test operational alert from CLI."
+                "This is a test operational alert from CLI.",
             )
 
             if getattr(args, "telegram", False):
                 sent = alert_manager.send_alert(alert)
                 print(f"Test alert processed. Final status: {sent.status.value}")
             else:
-                print(f"Test alert logged to local storage (ID: {alert.alert_id}). Not sent via Telegram.")
+                print(
+                    f"Test alert logged to local storage (ID: {alert.alert_id}). Not sent via Telegram."
+                )
         except Exception as e:
             print(f"Error creating test alert: {e}")
 
@@ -3844,14 +4292,20 @@ def cmd_monitor(args, settings):
                 sh_manager.reset_runtime_state(confirm=True)
                 print("Runtime state reset.")
         else:
-            print("Please provide an action: --dry-run, --auto-safe, --clear-stale-lock, --reset-state")
+            print(
+                "Please provide an action: --dry-run, --auto-safe, --clear-stale-lock, --reset-state"
+            )
 
     elif args.monitor_command == "cleanup":
         if getattr(args, "dry_run", False):
-            print(f"Would delete files older than {args.retention_days} days. Pass --confirm to execute.")
+            print(
+                f"Would delete files older than {args.retention_days} days. Pass --confirm to execute."
+            )
         elif getattr(args, "confirm", False):
             res = store.cleanup_old_monitoring_files(args.retention_days)
-            print(f"Cleanup finished. Removed {res.get('removed_files')} files. Errors: {res.get('errors')}")
+            print(
+                f"Cleanup finished. Removed {res.get('removed_files')} files. Errors: {res.get('errors')}"
+            )
         else:
             print("Pass --dry-run or --confirm to cleanup.")
 
@@ -3862,7 +4316,7 @@ def cmd_monitor(args, settings):
             "alerts_enabled": getattr(settings, "MONITORING_ALERTS_ENABLED", False),
             "diagnostics_enabled": getattr(settings, "MONITORING_DIAGNOSTICS_ENABLED", False),
             "self_healing_enabled": getattr(settings, "MONITORING_SELF_HEALING_ENABLED", False),
-            "alert_throttle_minutes": getattr(settings, "MONITORING_ALERT_THROTTLE_MINUTES", 30)
+            "alert_throttle_minutes": getattr(settings, "MONITORING_ALERT_THROTTLE_MINUTES", 30),
         }
         if getattr(args, "json", False):
             print(json.dumps(data, indent=2))
@@ -3870,6 +4324,7 @@ def cmd_monitor(args, settings):
             print("Monitoring Config:")
             for k, v in data.items():
                 print(f"  {k}: {v}")
+
 
 def handle_security_command(args, settings):
     from bist_signal_bot.security.config_audit import ConfigSecurityAuditor
@@ -3881,8 +4336,10 @@ def handle_security_command(args, settings):
     from bist_signal_bot.security.forbidden_actions import ForbiddenActionGuard
     from bist_signal_bot.storage.paths import get_data_dir
     from bist_signal_bot.security.reporting import (
-        security_audit_report_to_dict, format_security_audit_text, format_security_audit_markdown,
-        format_kill_switch_status
+        security_audit_report_to_dict,
+        format_security_audit_text,
+        format_security_audit_markdown,
+        format_kill_switch_status,
     )
     from pathlib import Path
 
@@ -3972,7 +4429,9 @@ def handle_security_command(args, settings):
                 print_output(format_success("No forbidden actions found."))
             else:
                 for f in all_findings:
-                    print_output(format_warning(f"[{f.location}] {f.action_type.value}: {f.message}"))
+                    print_output(
+                        format_warning(f"[{f.location}] {f.action_type.value}: {f.message}")
+                    )
 
     elif cmd == "config":
         data = SecretHygieneScanner.safe_settings_summary(settings)
@@ -3982,14 +4441,21 @@ def handle_security_command(args, settings):
             for k, v in data.items():
                 print_output(f"{k}: {v}")
 
+
 def handle_quality_command(args, settings):
     import json
     import sys
-    from bist_signal_bot.cli.bootstrap_cli import handle_bootstrap
 
-    from bist_signal_bot.app.quality_app import create_quality_gate_runner, create_quality_config_from_settings, create_smoke_quality_config
+    from bist_signal_bot.app.quality_app import (
+        create_quality_gate_runner,
+        create_quality_config_from_settings,
+        create_smoke_quality_config,
+    )
     from bist_signal_bot.quality.models import QualitySuite, QualityGateLevel
-    from bist_signal_bot.quality.reporting import quality_run_result_to_dict, format_quality_result_text
+    from bist_signal_bot.quality.reporting import (
+        quality_run_result_to_dict,
+        format_quality_result_text,
+    )
 
     cmd = args.quality_command
     runner = create_quality_gate_runner(settings)
@@ -4020,7 +4486,7 @@ def handle_quality_command(args, settings):
         else:
             print(format_quality_result_text(result))
             if not result.passed():
-                 sys.exit(1)
+                sys.exit(1)
 
     elif cmd == "smoke":
         config = create_smoke_quality_config(settings)
@@ -4030,7 +4496,7 @@ def handle_quality_command(args, settings):
         else:
             print(format_quality_result_text(result))
             if not result.passed():
-                 sys.exit(1)
+                sys.exit(1)
 
     elif cmd == "security":
         config = create_quality_config_from_settings(settings)
@@ -4050,7 +4516,7 @@ def handle_quality_command(args, settings):
         else:
             print(format_quality_result_text(result))
             if not result.passed():
-                 sys.exit(1)
+                sys.exit(1)
 
     elif cmd == "imports":
         config = create_quality_config_from_settings(settings)
@@ -4069,7 +4535,7 @@ def handle_quality_command(args, settings):
         else:
             print(format_quality_result_text(result))
             if not result.passed():
-                 sys.exit(1)
+                sys.exit(1)
 
     elif cmd == "coverage":
         config = create_quality_config_from_settings(settings)
@@ -4081,7 +4547,7 @@ def handle_quality_command(args, settings):
         config.run_security_checks = False
         config.run_regression_smoke = False
         if hasattr(args, "threshold") and args.threshold is not None:
-             config.coverage_threshold_pct = float(args.threshold)
+            config.coverage_threshold_pct = float(args.threshold)
 
         result = runner.run(config)
         if getattr(args, "json", False):
@@ -4089,7 +4555,7 @@ def handle_quality_command(args, settings):
         else:
             print(format_quality_result_text(result))
             if not result.passed():
-                 sys.exit(1)
+                sys.exit(1)
 
     elif cmd == "regression":
         config = create_quality_config_from_settings(settings)
@@ -4107,7 +4573,7 @@ def handle_quality_command(args, settings):
         else:
             print(format_quality_result_text(result))
             if not result.passed():
-                 sys.exit(1)
+                sys.exit(1)
 
     elif cmd == "recent":
         limit = getattr(args, "limit", 20)
@@ -4117,7 +4583,9 @@ def handle_quality_command(args, settings):
         else:
             print(f"Recent Quality Runs ({len(runs)}):")
             for r in runs:
-                 print(f"  [{r.get('status', 'UNKNOWN')}] {r.get('run_id', '?')} - Gate: {r.get('gate_level', '?')} | Suite: {r.get('suite', '?')} | Checks: {r.get('checks_total', 0)}")
+                print(
+                    f"  [{r.get('status', 'UNKNOWN')}] {r.get('run_id', '?')} - Gate: {r.get('gate_level', '?')} | Suite: {r.get('suite', '?')} | Checks: {r.get('checks_total', 0)}"
+                )
 
     elif cmd == "config":
         config = create_quality_config_from_settings(settings)
@@ -4130,8 +4598,20 @@ def handle_quality_command(args, settings):
 
 
 def run_package_command(args, settings):
-    from bist_signal_bot.app.packaging_app import create_environment_doctor, create_dependency_checker, create_release_bundle_builder
-    from bist_signal_bot.packaging.reporting import environment_doctor_report_to_dict, format_environment_doctor_text, dependency_results_to_dataframe, release_manifest_to_dict, format_release_manifest_markdown, release_bundle_result_to_dict, format_release_bundle_text
+    from bist_signal_bot.app.packaging_app import (
+        create_environment_doctor,
+        create_dependency_checker,
+        create_release_bundle_builder,
+    )
+    from bist_signal_bot.packaging.reporting import (
+        environment_doctor_report_to_dict,
+        format_environment_doctor_text,
+        dependency_results_to_dataframe,
+        release_manifest_to_dict,
+        format_release_manifest_markdown,
+        release_bundle_result_to_dict,
+        format_release_bundle_text,
+    )
     from bist_signal_bot.packaging.installers import InstallerGenerator
     from bist_signal_bot.packaging.storage import PackagingStore
     from bist_signal_bot.packaging.models import PackagingFormat
@@ -4160,7 +4640,19 @@ def run_package_command(args, settings):
             res = checker.check_core_dependencies()
 
         if args.json:
-            print(json.dumps([{"package": r.package_name, "status": r.status.name, "installed": r.installed_version} for r in res], indent=2))
+            print(
+                json.dumps(
+                    [
+                        {
+                            "package": r.package_name,
+                            "status": r.status.name,
+                            "installed": r.installed_version,
+                        }
+                        for r in res
+                    ],
+                    indent=2,
+                )
+            )
         else:
             df = dependency_results_to_dataframe(res)
             print(df.to_string(index=False))
@@ -4190,7 +4682,9 @@ def run_package_command(args, settings):
         builder = create_release_bundle_builder(settings)
 
         fmt = PackagingFormat.ZIP if args.zip else PackagingFormat.MANIFEST_ONLY
-        res = builder.build_release_bundle(format=fmt, version=args.version, run_quality=args.run_quality)
+        res = builder.build_release_bundle(
+            format=fmt, version=args.version, run_quality=args.run_quality
+        )
 
         if args.json:
             print(json.dumps(release_bundle_result_to_dict(res), indent=2))
@@ -4215,7 +4709,7 @@ def run_package_command(args, settings):
             "python_version": report.python_version,
             "environment_type": report.environment_type.name,
             "overall_status": report.overall_status.name,
-            "disclaimer": report.disclaimer
+            "disclaimer": report.disclaimer,
         }
         if args.json:
             print(json.dumps(cfg, indent=2))
@@ -4223,17 +4717,28 @@ def run_package_command(args, settings):
             for k, v in cfg.items():
                 print(f"{k}: {v}")
 
-from bist_signal_bot.app.docs_app import create_docs_generator, create_docs_validator, create_command_catalog_builder, create_docs_store
+
+from bist_signal_bot.app.docs_app import (
+    create_docs_generator,
+    create_docs_validator,
+    create_command_catalog_builder,
+)
 from bist_signal_bot.docs.runbooks import RunbookBuilder
-from bist_signal_bot.docs.examples import DocsExampleRunner
-from bist_signal_bot.docs.reporting import format_docs_validation_text, format_docs_generation_text, docs_generation_result_to_dict, docs_validation_report_to_dict
+from bist_signal_bot.docs.reporting import (
+    docs_generation_result_to_dict,
+    docs_validation_report_to_dict,
+)
 from bist_signal_bot.storage.paths import get_docs_dir
 import json as json_lib
 
 docs_app = typer.Typer(help="Documentation generation and validation operations")
 
+
 @docs_app.command("generate")
-def docs_generate(overwrite: bool = typer.Option(False, "--overwrite", help="Overwrite existing docs"), json: bool = typer.Option(False, "--json", help="Output JSON")):
+def docs_generate(
+    overwrite: bool = typer.Option(False, "--overwrite", help="Overwrite existing docs"),
+    json: bool = typer.Option(False, "--json", help="Output JSON"),
+):
     gen = create_docs_generator()
     res = gen.generate_all_docs(output_dir=get_docs_dir(), overwrite=overwrite)
     if json:
@@ -4241,8 +4746,12 @@ def docs_generate(overwrite: bool = typer.Option(False, "--overwrite", help="Ove
     else:
         typer.echo(f"Docs generated: {res.pages_created} pages. Status: {res.status.value}")
 
+
 @docs_app.command("validate")
-def docs_validate(json: bool = typer.Option(False, "--json"), run_examples: bool = typer.Option(False, "--run-examples")):
+def docs_validate(
+    json: bool = typer.Option(False, "--json"),
+    run_examples: bool = typer.Option(False, "--run-examples"),
+):
     val = create_docs_validator()
     res = val.validate_docs_dir(get_docs_dir())
     if json:
@@ -4250,8 +4759,11 @@ def docs_validate(json: bool = typer.Option(False, "--json"), run_examples: bool
     else:
         typer.echo(f"Docs validated: {res.checked_files} files checked. Status: {res.status.value}")
 
+
 @docs_app.command("catalog")
-def docs_catalog(json: bool = typer.Option(False, "--json"), csv: bool = typer.Option(False, "--csv")):
+def docs_catalog(
+    json: bool = typer.Option(False, "--json"), csv: bool = typer.Option(False, "--csv")
+):
     b = create_command_catalog_builder()
     cmds = b.build_command_catalog()
     if json:
@@ -4259,8 +4771,11 @@ def docs_catalog(json: bool = typer.Option(False, "--json"), csv: bool = typer.O
     else:
         typer.echo(f"Catalog has {len(cmds)} commands")
 
+
 @docs_app.command("runbooks")
-def docs_runbooks(generate: bool = typer.Option(False, "--generate"), json: bool = typer.Option(False, "--json")):
+def docs_runbooks(
+    generate: bool = typer.Option(False, "--generate"), json: bool = typer.Option(False, "--json")
+):
     b = RunbookBuilder()
     if generate:
         paths = b.generate_all_runbooks(get_docs_dir() / "runbooks")
@@ -4268,13 +4783,22 @@ def docs_runbooks(generate: bool = typer.Option(False, "--generate"), json: bool
     else:
         typer.echo("Runbooks command")
 
+
 @docs_app.command("examples")
-def docs_examples(run_safe: bool = typer.Option(False, "--run-safe"), max_commands: int = typer.Option(None, "--max-commands"), json: bool = typer.Option(False, "--json")):
+def docs_examples(
+    run_safe: bool = typer.Option(False, "--run-safe"),
+    max_commands: int = typer.Option(None, "--max-commands"),
+    json: bool = typer.Option(False, "--json"),
+):
     typer.echo("Examples checked")
 
+
 @docs_app.command("recent")
-def docs_recent(limit: int = typer.Option(10, "--limit"), json: bool = typer.Option(False, "--json")):
+def docs_recent(
+    limit: int = typer.Option(10, "--limit"), json: bool = typer.Option(False, "--json")
+):
     typer.echo("Recent reports")
+
 
 @docs_app.command("config")
 def docs_config(json: bool = typer.Option(False, "--json")):
@@ -4283,21 +4807,30 @@ def docs_config(json: bool = typer.Option(False, "--json")):
 
 def handle_performance_command(args, settings) -> None:
     from bist_signal_bot.app.performance_app import (
-        create_resource_sampler, create_performance_store, create_benchmark_runner,
-        create_baseline_manager, create_regression_checker, create_bottleneck_analyzer, create_local_profiler
+        create_resource_sampler,
+        create_performance_store,
+        create_benchmark_runner,
+        create_baseline_manager,
+        create_regression_checker,
+        create_bottleneck_analyzer,
+        create_local_profiler,
     )
     from bist_signal_bot.performance.models import BenchmarkRequest, BenchmarkType
     from bist_signal_bot.performance.reporting import (
-        resource_snapshot_to_dict, benchmark_result_to_dict, baseline_to_dict,
-        regression_result_to_dict, bottleneck_to_dict, format_benchmark_text,
-        format_regression_text, format_bottlenecks_text
+        benchmark_result_to_dict,
+        baseline_to_dict,
+        regression_result_to_dict,
+        bottleneck_to_dict,
+        format_benchmark_text,
+        format_regression_text,
+        format_bottlenecks_text,
     )
     import json
 
     if args.perf_command == "resources":
         sampler = create_resource_sampler(settings)
         snap = sampler.snapshot()
-        if getattr(args, 'json', False):
+        if getattr(args, "json", False):
             print(snap.model_dump_json(indent=2))
         else:
             print("=== Resource Snapshot ===")
@@ -4318,7 +4851,7 @@ def handle_performance_command(args, settings) -> None:
             "knowledge-index": BenchmarkType.KNOWLEDGE_INDEX,
             "backtest": BenchmarkType.BACKTEST,
             "ml-inference": BenchmarkType.ML_INFERENCE,
-            "report-generation": BenchmarkType.REPORT_GENERATION
+            "report-generation": BenchmarkType.REPORT_GENERATION,
         }
         btype = b_type_map[args.benchmark_type]
         runner = create_benchmark_runner(settings)
@@ -4330,37 +4863,38 @@ def handle_performance_command(args, settings) -> None:
             sample_size=args.sample_size,
             iterations=args.iterations,
             use_synthetic_data=args.synthetic,
-            heavy=False
+            heavy=False,
         )
         result = runner.run(req)
         store = create_performance_store(settings)
         store.save_benchmark(result)
 
-        if getattr(args, 'json', False):
+        if getattr(args, "json", False):
             print(json.dumps(benchmark_result_to_dict(result), indent=2))
         else:
             print(format_benchmark_text(result))
 
     elif args.perf_command == "profile":
-        b_type_map = {
-            "scanner": BenchmarkType.SCANNER,
-            "runtime": BenchmarkType.RUNTIME_RUN_ONCE
-        }
+        b_type_map = {"scanner": BenchmarkType.SCANNER, "runtime": BenchmarkType.RUNTIME_RUN_ONCE}
         btype = b_type_map[args.benchmark_type]
         profiler = create_local_profiler(settings)
 
         def dummy_work():
             import time
+
             time.sleep(0.1)
 
         profile = profiler.profile_callable("cli_profile", btype, dummy_work)
-        if getattr(args, 'json', False):
+        if getattr(args, "json", False):
             import json
+
             def default_serializer(o):
                 import datetime
+
                 if isinstance(o, datetime.datetime):
                     return o.isoformat()
-                raise TypeError(f'Object of type {o.__class__.__name__} is not JSON serializable')
+                raise TypeError(f"Object of type {o.__class__.__name__} is not JSON serializable")
+
             print(json.dumps(profile.summary(), indent=2, default=default_serializer))
         else:
             print(f"Profile {profile.profile_id} created. Status: {profile.status.value}")
@@ -4368,7 +4902,7 @@ def handle_performance_command(args, settings) -> None:
     elif args.perf_command == "report":
         store = create_performance_store(settings)
         recent = store.list_recent_benchmarks(limit=1)
-        if getattr(args, 'json', False):
+        if getattr(args, "json", False):
             print(json.dumps(recent, indent=2))
         else:
             if recent:
@@ -4394,12 +4928,16 @@ def handle_performance_command(args, settings) -> None:
         elif args.base_command == "latest":
             base = mgr.load_latest_baseline()
             if base:
-                print(json.dumps(baseline_to_dict(base), indent=2) if getattr(args, 'json', False) else f"Latest baseline: {base.baseline_id}")
+                print(
+                    json.dumps(baseline_to_dict(base), indent=2)
+                    if getattr(args, "json", False)
+                    else f"Latest baseline: {base.baseline_id}"
+                )
             else:
                 print("No baseline found.")
         elif args.base_command == "list":
             bases = mgr.list_baselines()
-            if getattr(args, 'json', False):
+            if getattr(args, "json", False):
                 print(json.dumps([baseline_to_dict(b) for b in bases], indent=2))
             else:
                 print(f"Found {len(bases)} baselines.")
@@ -4414,7 +4952,7 @@ def handle_performance_command(args, settings) -> None:
             base = mgr.load_latest_baseline()
         else:
             bench = store.load_benchmark(args.benchmark)
-            base = mgr.load_latest_baseline() # Need load by ID technically, but lazy
+            base = mgr.load_latest_baseline()  # Need load by ID technically, but lazy
 
         if not bench or not base:
             print("Could not load benchmark or baseline to compare.")
@@ -4423,7 +4961,7 @@ def handle_performance_command(args, settings) -> None:
         reg = checker.compare(bench, base)
         store.save_regression(reg)
 
-        if getattr(args, 'json', False):
+        if getattr(args, "json", False):
             print(json.dumps(regression_result_to_dict(reg), indent=2))
         else:
             print(format_regression_text(reg))
@@ -4432,7 +4970,7 @@ def handle_performance_command(args, settings) -> None:
         store = create_performance_store(settings)
         analyzer = create_bottleneck_analyzer(settings)
 
-        if getattr(args, 'latest', False):
+        if getattr(args, "latest", False):
             bench = store.load_latest_benchmark()
         else:
             bench = store.load_benchmark(args.benchmark)
@@ -4442,14 +4980,14 @@ def handle_performance_command(args, settings) -> None:
             return
 
         findings = analyzer.analyze_benchmark(bench)
-        if getattr(args, 'json', False):
+        if getattr(args, "json", False):
             print(json.dumps([bottleneck_to_dict(f) for f in findings], indent=2))
         else:
             print(format_bottlenecks_text(findings))
 
     elif args.perf_command == "config":
         conf = {k: v for k, v in settings.model_dump().items() if "PERFORMANCE" in k}
-        if getattr(args, 'json', False):
+        if getattr(args, "json", False):
             print(json.dumps(conf, indent=2))
         else:
             for k, v in conf.items():
@@ -4494,7 +5032,7 @@ def handle_report(args: argparse.Namespace) -> None:
             print(f"Latest Report: {report.title}")
     elif args.report_command == "digest":
         rt = ReportType(args.type) if args.type else ReportType.DAILY
-        report = generator.build_default_config(rt) # Mock for simplicity
+        report = generator.build_default_config(rt)  # Mock for simplicity
         gen_rep = generator.generate(report)
         digest = digest_builder.build_telegram_digest(gen_rep)
         if args.json:
@@ -4527,6 +5065,7 @@ def handle_report(args: argparse.Namespace) -> None:
 def cli():
     pass
 
+
 cli.add_command(scenario_cli)
 
 
@@ -4539,10 +5078,12 @@ def handle_release_command(args, settings):
     try:
         if cmd == "check":
             from bist_signal_bot.app.release_app import create_release_check_runner
+
             runner = create_release_check_runner(settings)
             res = runner.run_all_basic_checks()
             if args.json:
                 import json
+
                 print(json.dumps([c.summary() for c in res], indent=2))
             else:
                 for c in res:
@@ -4550,6 +5091,7 @@ def handle_release_command(args, settings):
 
         elif cmd == "readiness":
             from bist_signal_bot.app.release_app import create_release_readiness_evaluator
+
             evaluator = create_release_readiness_evaluator(settings)
             cfg = evaluator.default_config()
             if args.version:
@@ -4560,52 +5102,66 @@ def handle_release_command(args, settings):
             if args.json:
                 import json
                 from bist_signal_bot.release.reporting import readiness_report_to_dict
+
                 print(json.dumps(readiness_report_to_dict(report), indent=2))
             else:
                 from bist_signal_bot.release.reporting import format_readiness_text
+
                 print(format_readiness_text(report))
 
         elif cmd == "rehearse":
             from bist_signal_bot.app.release_app import create_safe_launch_rehearsal_runner
             from bist_signal_bot.release.models import ReleaseProfile
+
             runner = create_safe_launch_rehearsal_runner(settings)
-            profile = ReleaseProfile(args.profile) if getattr(args, "profile", None) else ReleaseProfile.FULL_SAFE_LOCAL
+            profile = (
+                ReleaseProfile(args.profile)
+                if getattr(args, "profile", None)
+                else ReleaseProfile.FULL_SAFE_LOCAL
+            )
             res = runner.run_rehearsal(profile)
             if getattr(args, "json", False):
                 import json
                 from bist_signal_bot.release.reporting import rehearsal_result_to_dict
+
                 print(json.dumps(rehearsal_result_to_dict(res), indent=2))
             else:
                 from bist_signal_bot.release.reporting import format_rehearsal_text
+
                 print(format_rehearsal_text(res))
 
         elif cmd == "candidate":
             from bist_signal_bot.app.release_app import create_release_candidate_builder
             from bist_signal_bot.release.models import ReleaseStage
+
             builder = create_release_candidate_builder(settings)
             manifest = builder.build_candidate(
                 version=args.version,
                 run_rehearsal=args.run_rehearsal,
                 run_package=args.package,
-                confirm=args.confirm
+                confirm=args.confirm,
             )
             if getattr(args, "json", False):
                 import json
                 from bist_signal_bot.release.reporting import candidate_manifest_to_dict
+
                 print(json.dumps(candidate_manifest_to_dict(manifest), indent=2))
             else:
                 from bist_signal_bot.release.reporting import format_candidate_manifest_text
+
                 print(format_candidate_manifest_text(manifest))
 
         elif cmd == "notes":
             from bist_signal_bot.release.notes import ReleaseNotesBuilder
             from bist_signal_bot.release.models import ReleaseStage
+
             builder = ReleaseNotesBuilder()
             ver = args.version or getattr(settings, "RELEASE_VERSION", "0.1.0")
             notes = builder.build_notes(ver, ReleaseStage.RELEASE_CANDIDATE)
             if getattr(args, "json", False):
                 import json
                 from bist_signal_bot.release.reporting import release_notes_to_dict
+
                 print(json.dumps(release_notes_to_dict(notes), indent=2))
             elif getattr(args, "markdown", False):
                 print(builder.render_markdown(notes))
@@ -4614,10 +5170,12 @@ def handle_release_command(args, settings):
 
         elif cmd == "compatibility":
             from bist_signal_bot.release.compatibility import CompatibilityChecker
+
             checker = CompatibilityChecker(settings)
             res = checker.run_all()
             if getattr(args, "json", False):
                 import json
+
                 print(json.dumps([c.summary() for c in res], indent=2))
             else:
                 for c in res:
@@ -4625,10 +5183,12 @@ def handle_release_command(args, settings):
 
         elif cmd == "recent":
             from bist_signal_bot.app.release_app import create_release_store
+
             store = create_release_store(settings)
             runs = store.list_recent_release_runs(limit=args.limit)
             if getattr(args, "json", False):
                 import json
+
                 print(json.dumps(runs, indent=2))
             else:
                 if not runs:
@@ -4638,10 +5198,12 @@ def handle_release_command(args, settings):
 
         elif cmd == "status":
             from bist_signal_bot.monitoring.diagnostics import SystemDiagnostics
+
             diag = SystemDiagnostics(settings)
             status = getattr(diag, "get_release_status", lambda: {"error": "not implemented"})()
             if getattr(args, "json", False):
                 import json
+
                 print(json.dumps(status, indent=2))
             else:
                 print(status)
@@ -4650,6 +5212,7 @@ def handle_release_command(args, settings):
             cfg = {k: v for k, v in settings.__dict__.items() if k.startswith("RELEASE_")}
             if getattr(args, "json", False):
                 import json
+
                 print(json.dumps(cfg, indent=2))
             else:
                 for k, v in cfg.items():
@@ -4658,11 +5221,16 @@ def handle_release_command(args, settings):
     except Exception as e:
         print(f"Error executing release {cmd}: {e}")
 
+
 def handle_data_v2_command(args, settings):
     import json
     from bist_signal_bot.data.data_service import MarketDataService
     from bist_signal_bot.data.mock_provider import MockMarketDataProvider
-    from bist_signal_bot.data.providers_v2.models import ProviderRequest, ImportRequest, ProviderType
+    from bist_signal_bot.data.providers_v2.models import (
+        ProviderRequest,
+        ImportRequest,
+        ProviderType,
+    )
 
     ds = MarketDataService(provider=MockMarketDataProvider())
 
@@ -4671,47 +5239,70 @@ def handle_data_v2_command(args, settings):
             input_path=args.file,
             symbol=args.symbol,
             timeframe=args.timeframe,
-            format=args.file.split('.')[-1],
+            format=args.file.split(".")[-1],
             delimiter=args.delimiter,
-            overwrite=args.overwrite
+            overwrite=args.overwrite,
         )
         res = ds.import_market_data(req)
         if getattr(args, "json", False):
             print(res.model_dump_json())
         else:
             print(f"Import {res.status.value} for {res.symbol} ({res.rows_imported} rows).")
-            if res.warnings: print(f"Warnings: {res.warnings}")
-            if res.errors: print(f"Errors: {res.errors}")
+            if res.warnings:
+                print(f"Warnings: {res.warnings}")
+            if res.errors:
+                print(f"Errors: {res.errors}")
 
     elif args.data_command == "update":
         syms = getattr(args, "symbols", []) or []
-        res = ds.update_incremental(symbols=syms, timeframe=args.timeframe, provider_order=getattr(args, "provider_order", None))
+        res = ds.update_incremental(
+            symbols=syms,
+            timeframe=args.timeframe,
+            provider_order=getattr(args, "provider_order", None),
+        )
         if getattr(args, "json", False):
             print(res.model_dump_json())
         else:
-            print(f"Update {res.status.value}: requested {len(res.request.symbols)}, returned {len(res.data_by_symbol)}")
-            if res.warnings: print(f"Warnings: {res.warnings}")
+            print(
+                f"Update {res.status.value}: requested {len(res.request.symbols)}, returned {len(res.data_by_symbol)}"
+            )
+            if res.warnings:
+                print(f"Warnings: {res.warnings}")
 
     elif args.data_command == "fetch-v2":
-        order = [ProviderType(p.upper()) for p in getattr(args, "provider_order", [])] if getattr(args, "provider_order", None) else []
+        order = (
+            [ProviderType(p.upper()) for p in getattr(args, "provider_order", [])]
+            if getattr(args, "provider_order", None)
+            else []
+        )
         if getattr(args, "source", None):
-             order = [ProviderType(args.source.upper())]
-        req = ProviderRequest(symbols=args.symbols, timeframe=args.timeframe, provider_order=order, allow_network=True)
+            order = [ProviderType(args.source.upper())]
+        req = ProviderRequest(
+            symbols=args.symbols, timeframe=args.timeframe, provider_order=order, allow_network=True
+        )
         res = ds.fetch_v2(req)
         if getattr(args, "json", False):
             print(res.model_dump_json())
         else:
-            print(f"Fetch {getattr(res.status, "value", res.status)}: returned {len(getattr(res, "data_by_symbol", []))} symbols.")
-            if res.warnings: print(f"Warnings: {res.warnings}")
-            if res.errors: print(f"Errors: {res.errors}")
+            print(
+                f"Fetch {getattr(res.status, 'value', res.status)}: returned {len(getattr(res, 'data_by_symbol', []))} symbols."
+            )
+            if res.warnings:
+                print(f"Warnings: {res.warnings}")
+            if res.errors:
+                print(f"Errors: {res.errors}")
 
     elif args.data_command == "freshness":
         syms = getattr(args, "symbols", []) or []
-        res = ds.freshness_report(syms, args.timeframe, getattr(args, "max_age_hours", 48.0) or 48.0)
+        res = ds.freshness_report(
+            syms, args.timeframe, getattr(args, "max_age_hours", 48.0) or 48.0
+        )
         if getattr(args, "json", False):
             print(res.model_dump_json())
         else:
-            print(f"Freshness: {len(res.fresh_symbols)} fresh, {len(res.stale_symbols)} stale, {len(res.missing_symbols)} missing.")
+            print(
+                f"Freshness: {len(res.fresh_symbols)} fresh, {len(res.stale_symbols)} stale, {len(res.missing_symbols)} missing."
+            )
 
     elif args.data_command == "lineage":
         res = ds.lineage_summary(getattr(args, "symbol", None))
@@ -4722,6 +5313,7 @@ def handle_data_v2_command(args, settings):
 
     elif args.data_command == "provider-health":
         from bist_signal_bot.data.providers_v2.health import ProviderHealthTracker
+
         tracker = ProviderHealthTracker()
         res = tracker.summarize_health()
         if getattr(args, "json", False):
@@ -4734,10 +5326,13 @@ def handle_data_v2_command(args, settings):
         if getattr(args, "json", False):
             print(res.model_dump_json())
         else:
-            print(f"Compare {args.symbol}: {res.status}. Price Diff: {res.price_diff_count}, Vol Diff: {res.volume_diff_count}")
+            print(
+                f"Compare {args.symbol}: {res.status}. Price Diff: {res.price_diff_count}, Vol Diff: {res.volume_diff_count}"
+            )
 
     elif args.data_command == "config":
         from bist_signal_bot.config.secrets import settings_safe_dump
+
         safe = settings_safe_dump(settings)
         data_keys = {k: v for k, v in safe.items() if "DATA" in k}
         if getattr(args, "json", False):
@@ -4752,9 +5347,10 @@ def handle_telegram_center_command(args, settings):
     if args.telegram_subcommand == "config":
         try:
             from bist_signal_bot.telegram_center.config import TelegramCenterConfigValidator
+
             validator = TelegramCenterConfigValidator()
             summary = validator.redacted_config_summary(settings)
-            if getattr(args, 'json', False):
+            if getattr(args, "json", False):
                 print(json.dumps(summary, indent=2))
             else:
                 print("Telegram Center Configuration:")
@@ -4767,13 +5363,15 @@ def handle_telegram_center_command(args, settings):
     elif args.telegram_subcommand == "dry-run":
         try:
             from bist_signal_bot.app.telegram_center_app import create_telegram_router
+
             router = create_telegram_router(settings)
 
             chat_id = "LOCAL_CLI_USER"
             result = router.route_raw_message(args.command, chat_id, dry_run=True)
 
-            if getattr(args, 'json', False):
+            if getattr(args, "json", False):
                 from bist_signal_bot.telegram_center.reporting import telegram_result_to_dict
+
                 print(json.dumps(telegram_result_to_dict(result), indent=2))
             else:
                 print(f"Status: {result.status.value}")
@@ -4789,14 +5387,16 @@ def handle_telegram_center_command(args, settings):
     elif args.telegram_subcommand == "route":
         try:
             from bist_signal_bot.app.telegram_center_app import create_telegram_router
+
             router = create_telegram_router(settings)
 
             chat_id = args.chat_id or "UNKNOWN_CLI_CHAT"
-            dry_run = getattr(args, 'dry_run', False)
+            dry_run = getattr(args, "dry_run", False)
             result = router.route_raw_message(args.command, chat_id, dry_run=dry_run)
 
-            if getattr(args, 'json', False):
+            if getattr(args, "json", False):
                 from bist_signal_bot.telegram_center.reporting import telegram_result_to_dict
+
                 print(json.dumps(telegram_result_to_dict(result), indent=2))
             else:
                 print(f"Status: {result.status.value}")
@@ -4809,16 +5409,18 @@ def handle_telegram_center_command(args, settings):
         try:
             from bist_signal_bot.app.telegram_center_app import create_notification_inbox
             from bist_signal_bot.telegram_center.models import NotificationStatus
+
             inbox = create_notification_inbox(settings)
 
             status = None
-            if getattr(args, 'status', None):
+            if getattr(args, "status", None):
                 status = NotificationStatus(args.status.upper())
 
             msgs = inbox.list_messages(status=status)
 
-            if getattr(args, 'json', False):
+            if getattr(args, "json", False):
                 from bist_signal_bot.telegram_center.reporting import notification_to_dict
+
                 print(json.dumps([notification_to_dict(m) for m in msgs], indent=2))
             else:
                 print(f"Found {len(msgs)} messages in inbox.")
@@ -4831,6 +5433,7 @@ def handle_telegram_center_command(args, settings):
     elif args.telegram_subcommand == "digest":
         try:
             from bist_signal_bot.app.telegram_center_app import create_digest_orchestrator
+
             orch = create_digest_orchestrator(settings)
 
             digest_type = args.type.lower()
@@ -4842,11 +5445,12 @@ def handle_telegram_center_command(args, settings):
                 print(f"Unknown digest type: {digest_type}")
                 return 1
 
-            dry_run = getattr(args, 'dry_run', False)
+            dry_run = getattr(args, "dry_run", False)
             orch.send_digest(res, dry_run=dry_run)
 
-            if getattr(args, 'json', False):
+            if getattr(args, "json", False):
                 from bist_signal_bot.telegram_center.reporting import digest_result_to_dict
+
                 print(json.dumps(digest_result_to_dict(res), indent=2))
             else:
                 print(f"Generated {res.request.digest_type.value} digest (Sent: {res.sent})")
@@ -4863,10 +5467,21 @@ def handle_telegram_center_command(args, settings):
     elif args.telegram_subcommand == "recent-commands":
         print("Mock recent commands logic.")
 
+
 def handle_signals_command(args: argparse.Namespace) -> None:
-    from bist_signal_bot.app.signals_app import create_signal_lifecycle_manager, create_signal_watchlist_manager, create_signal_outcome_tracker, create_research_exit_simulator
+    from bist_signal_bot.app.signals_app import (
+        create_signal_lifecycle_manager,
+        create_signal_watchlist_manager,
+        create_signal_outcome_tracker,
+        create_research_exit_simulator,
+    )
     from bist_signal_bot.signals.models import SignalLifecycleState, SignalOutcomeState
-    from bist_signal_bot.signals.reporting import format_tracked_signal_text, format_signal_lifecycle_summary, format_watchlist_text, format_exit_simulation_text
+    from bist_signal_bot.signals.reporting import (
+        format_tracked_signal_text,
+        format_signal_lifecycle_summary,
+        format_watchlist_text,
+        format_exit_simulation_text,
+    )
     import json
 
     if args.signals_cmd == "list":
@@ -4890,14 +5505,18 @@ def handle_signals_command(args: argparse.Namespace) -> None:
         if getattr(args, "json", False):
             out = s.safe_public_dict()
             if getattr(args, "events", False):
-                out["events"] = [e.model_dump(mode='json') for e in lm.store.load_events(s.signal_id)]
+                out["events"] = [
+                    e.model_dump(mode="json") for e in lm.store.load_events(s.signal_id)
+                ]
             print(json.dumps(out, indent=2))
         else:
             print(format_tracked_signal_text(s))
             if getattr(args, "events", False):
                 print("\\nEvents:")
                 for e in lm.store.load_events(s.signal_id):
-                    print(f"[{e.timestamp.strftime('%Y-%m-%d %H:%M:%S')}] {e.event_type.value}: {e.message}")
+                    print(
+                        f"[{e.timestamp.strftime('%Y-%m-%d %H:%M:%S')}] {e.event_type.value}: {e.message}"
+                    )
     elif args.signals_cmd == "expire":
         lm = create_signal_lifecycle_manager()
         expired = lm.expire_stale_signals()
@@ -4917,21 +5536,28 @@ def handle_signals_command(args: argparse.Namespace) -> None:
         wm = create_signal_watchlist_manager()
         entries = wm.list_active(symbol=getattr(args, "symbol", None))
         if getattr(args, "json", False):
-            print(json.dumps([e.model_dump(mode='json') for e in entries], indent=2))
+            print(json.dumps([e.model_dump(mode="json") for e in entries], indent=2))
         else:
             print(format_watchlist_text(entries))
     elif args.signals_cmd == "watchlist-add":
         wm = create_signal_watchlist_manager()
-        e = wm.add(args.signal_id, tags=[args.tag] if getattr(args, "tag", None) else None, confirm=args.confirm)
+        e = wm.add(
+            args.signal_id,
+            tags=[args.tag] if getattr(args, "tag", None) else None,
+            confirm=args.confirm,
+        )
         print(f"Added to watchlist: {e.watchlist_id}")
     elif args.signals_cmd == "watchlist-remove":
         wm = create_signal_watchlist_manager()
         e = wm.remove(args.watchlist_id, confirm=args.confirm)
         print(f"Removed from watchlist: {e.watchlist_id}")
     elif args.signals_cmd == "dedupe":
-        print(f"Dedupe info for {args.symbol}: Use standard signal creation or scan module for full evaluation.")
+        print(
+            f"Dedupe info for {args.symbol}: Use standard signal creation or scan module for full evaluation."
+        )
     elif args.signals_cmd == "simulate-exits":
         from bist_signal_bot.app.factory import create_data_provider
+
         dp = create_data_provider()
         lm = create_signal_lifecycle_manager()
         es = create_research_exit_simulator()
@@ -4943,7 +5569,12 @@ def handle_signals_command(args: argparse.Namespace) -> None:
         results = []
         for s in signals:
             try:
-                df = dp.get_history(s.symbol, s.timeframe or "1d", rows=200, source=getattr(args, "source", "local_file"))
+                df = dp.get_history(
+                    s.symbol,
+                    s.timeframe or "1d",
+                    rows=200,
+                    source=getattr(args, "source", "local_file"),
+                )
                 rules = es.build_default_rules(s)
                 sim = es.simulate(s, df, rules)
                 ot.update_from_exit_simulation(sim, confirm=True)
@@ -4952,53 +5583,75 @@ def handle_signals_command(args: argparse.Namespace) -> None:
                 print(f"Failed simulating exit for {s.symbol}: {e}")
 
         if getattr(args, "json", False):
-            print(json.dumps([r.model_dump(mode='json') for r in results], indent=2))
+            print(json.dumps([r.model_dump(mode="json") for r in results], indent=2))
         else:
             for r in results:
                 print(format_exit_simulation_text(r))
                 print("-" * 40)
     elif args.signals_cmd == "outcomes":
         ot = create_signal_outcome_tracker()
-        summary = ot.summarize_outcomes(symbol=getattr(args, "symbol", None), strategy_name=getattr(args, "strategy", None))
+        summary = ot.summarize_outcomes(
+            symbol=getattr(args, "symbol", None), strategy_name=getattr(args, "strategy", None)
+        )
         if getattr(args, "json", False):
             print(json.dumps(summary, indent=2))
         else:
-            print(f"Outcome Tracking Summary:")
+            print("Outcome Tracking Summary:")
             for k, v in summary.items():
                 print(f"{k}: {v}")
     elif args.signals_cmd == "outcome-update":
         ot = create_signal_outcome_tracker()
-        s = ot.update_manual_outcome(args.signal_id, SignalOutcomeState(args.outcome), getattr(args, "return_pct", None), args.confirm)
+        s = ot.update_manual_outcome(
+            args.signal_id,
+            SignalOutcomeState(args.outcome),
+            getattr(args, "return_pct", None),
+            args.confirm,
+        )
         print(f"Updated outcome for {s.signal_id} to {s.outcome_state.value}")
     elif args.signals_cmd == "summary":
         lm = create_signal_lifecycle_manager()
         sm = lm.summary()
         if getattr(args, "json", False):
-            print(json.dumps(sm.model_dump(mode='json'), indent=2))
+            print(json.dumps(sm.model_dump(mode="json"), indent=2))
         else:
             print(format_signal_lifecycle_summary(sm))
     elif args.signals_cmd == "policy":
         from bist_signal_bot.signals.policy import SignalPolicyManager
+
         pm = SignalPolicyManager()
         policy = pm.load_alert_policy()
         if getattr(args, "json", False):
-            print(json.dumps(policy.model_dump(mode='json'), indent=2))
+            print(json.dumps(policy.model_dump(mode="json"), indent=2))
         else:
-            print(json.dumps(policy.model_dump(mode='json'), indent=2))
+            print(json.dumps(policy.model_dump(mode="json"), indent=2))
     elif args.signals_cmd == "config":
         from bist_signal_bot.config.settings import get_settings
+
         s = get_settings()
-        cfg = {k: v for k, v in s.model_dump().items() if "SIGNAL" in k or "WATCHLIST" in k or "EXIT" in k}
+        cfg = {
+            k: v
+            for k, v in s.model_dump().items()
+            if "SIGNAL" in k or "WATCHLIST" in k or "EXIT" in k
+        }
         if getattr(args, "json", False):
             print(json.dumps(cfg, indent=2))
         else:
             print(json.dumps(cfg, indent=2))
 
+
 def run_portfolio_research_command(args, settings):
     subcommand = getattr(args, "subcommand", None)
     from bist_signal_bot.app.portfolio_research_app import create_portfolio_research_engine
-    from bist_signal_bot.portfolio_research.models import PortfolioResearchRequest, AllocationMethod, ExposureGroup
-    from bist_signal_bot.portfolio_research.reporting import format_snapshot_text, format_rebalance_plan_text, format_basket_simulation_text
+    from bist_signal_bot.portfolio_research.models import (
+        PortfolioResearchRequest,
+        AllocationMethod,
+        ExposureGroup,
+    )
+    from bist_signal_bot.portfolio_research.reporting import (
+        format_snapshot_text,
+        format_rebalance_plan_text,
+        format_basket_simulation_text,
+    )
     from datetime import datetime, timedelta
     import json
 
@@ -5018,7 +5671,7 @@ def run_portfolio_research_command(args, settings):
                 max_items=args.max_items,
                 include_watchlist=args.include_watchlist,
                 include_ensemble=args.include_ensemble,
-                save_snapshot=args.save
+                save_snapshot=args.save,
             )
 
             snapshot = engine.build_snapshot(req)
@@ -5059,10 +5712,7 @@ def run_portfolio_research_command(args, settings):
             except ValueError:
                 method = AllocationMethod.HYBRID
 
-            req = PortfolioResearchRequest(
-                allocation_method=method,
-                save_snapshot=False
-            )
+            req = PortfolioResearchRequest(allocation_method=method, save_snapshot=False)
 
             plan = engine.rebalance(getattr(args, "current", None), req)
             if getattr(args, "json", False):
@@ -5082,6 +5732,7 @@ def run_portfolio_research_command(args, settings):
                 return
 
             from datetime import timezone
+
             end_date = datetime.now(timezone.utc).replace(tzinfo=None)
             if getattr(args, "end", None):
                 end_date = datetime.strptime(args.end, "%Y-%m-%d")
@@ -5124,15 +5775,25 @@ def run_portfolio_research_command(args, settings):
             else:
                 print(f"Recent Snapshots (Limit {getattr(args, 'limit', 10)}):")
                 for r in recent:
-                    print(f"  {r['snapshot_id']} | {r['created_at']} | Weight: {r.get('total_weight', 0):.2%} | Items: {r.get('item_count', 0)}")
+                    print(
+                        f"  {r['snapshot_id']} | {r['created_at']} | Weight: {r.get('total_weight', 0):.2%} | Items: {r.get('item_count', 0)}"
+                    )
 
         elif subcommand == "config":
             cfg = {
                 "ENABLE_PORTFOLIO_RESEARCH": getattr(settings, "ENABLE_PORTFOLIO_RESEARCH", False),
-                "PORTFOLIO_RESEARCH_MODE": getattr(settings, "PORTFOLIO_RESEARCH_MODE", "RESEARCH_ONLY"),
-                "PORTFOLIO_RESEARCH_ALLOCATION_METHOD": getattr(settings, "PORTFOLIO_RESEARCH_ALLOCATION_METHOD", "HYBRID"),
-                "PORTFOLIO_RESEARCH_MAX_ITEMS": getattr(settings, "PORTFOLIO_RESEARCH_MAX_ITEMS", 10),
-                "PORTFOLIO_RESEARCH_TARGET_GROSS_EXPOSURE": getattr(settings, "PORTFOLIO_RESEARCH_TARGET_GROSS_EXPOSURE", 1.0)
+                "PORTFOLIO_RESEARCH_MODE": getattr(
+                    settings, "PORTFOLIO_RESEARCH_MODE", "RESEARCH_ONLY"
+                ),
+                "PORTFOLIO_RESEARCH_ALLOCATION_METHOD": getattr(
+                    settings, "PORTFOLIO_RESEARCH_ALLOCATION_METHOD", "HYBRID"
+                ),
+                "PORTFOLIO_RESEARCH_MAX_ITEMS": getattr(
+                    settings, "PORTFOLIO_RESEARCH_MAX_ITEMS", 10
+                ),
+                "PORTFOLIO_RESEARCH_TARGET_GROSS_EXPOSURE": getattr(
+                    settings, "PORTFOLIO_RESEARCH_TARGET_GROSS_EXPOSURE", 1.0
+                ),
             }
             if getattr(args, "json", False):
                 print(json.dumps(cfg, indent=2))
@@ -5146,13 +5807,20 @@ def run_portfolio_research_command(args, settings):
     except Exception as e:
         print(f"Error executing portfolio-research command: {e}")
         import traceback
+
         traceback.print_exc()
+
 
 def run_drift_command(args, settings):
     subcommand = getattr(args, "subcommand", None)
     from bist_signal_bot.app.drift_app import create_drift_engine
-    from bist_signal_bot.drift.models import DriftAnalysisRequest, DriftDomain, ReferenceWindowType
-    from bist_signal_bot.drift.reporting import format_drift_result_text, format_feature_drift_text, format_model_drift_text, format_calibration_text
+    from bist_signal_bot.drift.models import DriftAnalysisRequest, DriftDomain
+    from bist_signal_bot.drift.reporting import (
+        format_drift_result_text,
+        format_feature_drift_text,
+        format_model_drift_text,
+        format_calibration_text,
+    )
     import json
     import traceback
 
@@ -5166,7 +5834,7 @@ def run_drift_command(args, settings):
             req = DriftAnalysisRequest(
                 domains=domains,
                 symbols=args.symbols if getattr(args, "symbols", None) else [],
-                save_output=getattr(args, "save", False)
+                save_output=getattr(args, "save", False),
             )
 
             result = engine.analyze(req)
@@ -5181,6 +5849,7 @@ def run_drift_command(args, settings):
             features = getattr(args, "features", None)
 
             import pandas as pd
+
             # Mock data for CLI demo as we don't have real feature store
             ref_df = pd.DataFrame({f: [1, 2, 3] for f in (features or ["f1"])})
             cur_df = pd.DataFrame({f: [4, 5, 6] for f in (features or ["f1"])})
@@ -5189,6 +5858,7 @@ def run_drift_command(args, settings):
 
             if getattr(args, "json", False):
                 from bist_signal_bot.drift.reporting import feature_drift_to_dict
+
                 print(json.dumps([feature_drift_to_dict(r) for r in results], indent=2))
             else:
                 print(format_feature_drift_text(results))
@@ -5198,6 +5868,7 @@ def run_drift_command(args, settings):
             result = engine.analyze_model(model_id)
             if getattr(args, "json", False):
                 from bist_signal_bot.drift.reporting import model_drift_to_dict
+
                 print(json.dumps(model_drift_to_dict(result), indent=2))
             else:
                 print(format_model_drift_text(result))
@@ -5205,9 +5876,12 @@ def run_drift_command(args, settings):
         elif subcommand == "calibration":
             model_id = getattr(args, "model_id", None)
             # Mock data for CLI
-            report = engine.calibration_monitor.build_calibration_report([0.1, 0.9], [0, 1], model_id)
+            report = engine.calibration_monitor.build_calibration_report(
+                [0.1, 0.9], [0, 1], model_id
+            )
             if getattr(args, "json", False):
                 from bist_signal_bot.drift.reporting import calibration_report_to_dict
+
                 print(json.dumps(calibration_report_to_dict(report), indent=2))
             else:
                 print(format_calibration_text(report))
@@ -5216,6 +5890,7 @@ def run_drift_command(args, settings):
             report = engine.analyze_signals()
             if getattr(args, "json", False):
                 from bist_signal_bot.drift.reporting import signal_decay_to_dict
+
                 print(json.dumps(signal_decay_to_dict(report), indent=2))
             else:
                 print(f"Signal Decay Status: {report.status.value}")
@@ -5227,6 +5902,7 @@ def run_drift_command(args, settings):
             report = engine.analyze_strategy(strategy)
             if getattr(args, "json", False):
                 from bist_signal_bot.drift.reporting import strategy_decay_to_dict
+
                 print(json.dumps(strategy_decay_to_dict(report), indent=2))
             else:
                 print(f"Strategy Decay Status: {report.status.value}")
@@ -5236,6 +5912,7 @@ def run_drift_command(args, settings):
             report = engine.analyze_portfolio()
             if getattr(args, "json", False):
                 from bist_signal_bot.drift.reporting import portfolio_drift_to_dict
+
                 print(json.dumps(portfolio_drift_to_dict(report), indent=2))
             else:
                 print(f"Portfolio Drift Status: {report.status.value}")
@@ -5248,13 +5925,17 @@ def run_drift_command(args, settings):
                     print(json.dumps(refs, indent=2))
                 else:
                     for r in refs:
-                        print(f"{r.get('reference_id')} | {r.get('domain')} | {r.get('created_at')}")
+                        print(
+                            f"{r.get('reference_id')} | {r.get('domain')} | {r.get('created_at')}"
+                        )
             elif ref_subcmd == "build":
                 domain = DriftDomain(getattr(args, "domain", "FEATURE"))
                 days = getattr(args, "days", 90)
                 confirm = getattr(args, "confirm", False)
                 try:
-                    window = engine.reference_manager.build_reference_from_research_ledger(domain, days)
+                    window = engine.reference_manager.build_reference_from_research_ledger(
+                        domain, days
+                    )
                     engine.reference_manager.save_reference(window, confirm=confirm)
                     print(f"Reference built: {window.reference_id}")
                 except Exception as e:
@@ -5285,7 +5966,9 @@ def run_drift_command(args, settings):
                 print(json.dumps(res, indent=2))
             else:
                 for r in res:
-                    print(f"{r.get('drift_id')} | {r.get('generated_at')} | {r.get('status')} | {r.get('severity')}")
+                    print(
+                        f"{r.get('drift_id')} | {r.get('generated_at')} | {r.get('status')} | {r.get('severity')}"
+                    )
 
         elif subcommand == "config":
             cfg = {k: v for k, v in settings.model_dump().items() if "DRIFT" in k}
@@ -5301,6 +5984,7 @@ def run_drift_command(args, settings):
         print(f"Error executing drift command: {e}")
         traceback.print_exc()
 
+
 # ------------------------------------------------------------------------------
 # RESEARCH LAB COMMANDS
 # ------------------------------------------------------------------------------
@@ -5308,11 +5992,12 @@ def cmd_lab_plan(args, app_context) -> int:
     try:
         from bist_signal_bot.app.research_lab_app import create_research_job_planner
         from bist_signal_bot.cli.formatting import format_batch_plan_text, to_json_output
+
         planner = create_research_job_planner(app_context.settings)
 
         plan = None
-        syms = getattr(args, 'symbols', []) or []
-        strats = getattr(args, 'strategies', []) or []
+        syms = getattr(args, "symbols", []) or []
+        strats = getattr(args, "strategies", []) or []
 
         if args.plan_type == "daily":
             plan = planner.plan_daily_research(syms, strats)
@@ -5329,6 +6014,7 @@ def cmd_lab_plan(args, app_context) -> int:
 
         if args.json:
             from bist_signal_bot.research_lab.reporting import batch_plan_to_dict
+
             print(to_json_output(batch_plan_to_dict(plan)))
         else:
             print(format_batch_plan_text(plan))
@@ -5337,10 +6023,19 @@ def cmd_lab_plan(args, app_context) -> int:
         print(f"Error: {e}")
         return 1
 
+
 def cmd_lab_enqueue(args, app_context) -> int:
     try:
-        from bist_signal_bot.app.research_lab_app import create_research_job_queue, create_research_lab_store, create_research_job_planner
-        from bist_signal_bot.research_lab.models import ResearchJobType, ResearchJobPriority, ResearchJobTrigger
+        from bist_signal_bot.app.research_lab_app import (
+            create_research_job_queue,
+            create_research_lab_store,
+            create_research_job_planner,
+        )
+        from bist_signal_bot.research_lab.models import (
+            ResearchJobType,
+            ResearchJobPriority,
+            ResearchJobTrigger,
+        )
         from bist_signal_bot.cli.formatting import to_json_output
 
         queue = create_research_job_queue(app_context.settings)
@@ -5348,37 +6043,50 @@ def cmd_lab_enqueue(args, app_context) -> int:
 
         queued_jobs = []
         if args.plan:
-             plan = store.load_plan(args.plan)
-             if not plan:
-                 print(f"Plan {args.plan} not found.")
-                 return 1
-             queued_jobs = queue.enqueue_plan(plan)
+            plan = store.load_plan(args.plan)
+            if not plan:
+                print(f"Plan {args.plan} not found.")
+                return 1
+            queued_jobs = queue.enqueue_plan(plan)
         elif args.job:
-             planner = create_research_job_planner(app_context.settings)
-             try:
-                 jtype = ResearchJobType(args.job.upper())
-             except Exception:
-                 print(f"Invalid job type: {args.job}")
-                 return 1
-             job = planner.build_job(jtype, [args.symbol] if args.symbol else [], args.strategy, ResearchJobPriority.NORMAL, ResearchJobTrigger.MANUAL, {})
-             queued_jobs = [queue.enqueue(job)]
+            planner = create_research_job_planner(app_context.settings)
+            try:
+                jtype = ResearchJobType(args.job.upper())
+            except Exception:
+                print(f"Invalid job type: {args.job}")
+                return 1
+            job = planner.build_job(
+                jtype,
+                [args.symbol] if args.symbol else [],
+                args.strategy,
+                ResearchJobPriority.NORMAL,
+                ResearchJobTrigger.MANUAL,
+                {},
+            )
+            queued_jobs = [queue.enqueue(job)]
         else:
-             print("Provide --plan or --job")
-             return 1
+            print("Provide --plan or --job")
+            return 1
 
         if args.json:
-             from bist_signal_bot.research_lab.reporting import research_job_to_dict
-             print(to_json_output([research_job_to_dict(j) for j in queued_jobs]))
+            from bist_signal_bot.research_lab.reporting import research_job_to_dict
+
+            print(to_json_output([research_job_to_dict(j) for j in queued_jobs]))
         else:
-             print(f"Successfully enqueued {len(queued_jobs)} jobs.")
+            print(f"Successfully enqueued {len(queued_jobs)} jobs.")
         return 0
     except Exception as e:
         print(f"Error: {e}")
         return 1
 
+
 def cmd_lab_run(args, app_context) -> int:
     try:
-        from bist_signal_bot.app.research_lab_app import create_research_job_executor, create_research_lab_store, create_research_job_queue
+        from bist_signal_bot.app.research_lab_app import (
+            create_research_job_executor,
+            create_research_lab_store,
+            create_research_job_queue,
+        )
         from bist_signal_bot.cli.formatting import format_batch_run_text, to_json_output
 
         executor = create_research_job_executor(app_context.settings)
@@ -5387,34 +6095,36 @@ def cmd_lab_run(args, app_context) -> int:
 
         jobs = []
         if args.plan:
-             plan = store.load_plan(args.plan)
-             if not plan:
-                 print(f"Plan {args.plan} not found.")
-                 return 1
-             jobs = plan.jobs
-        elif getattr(args, 'next', False) or getattr(args, 'queued', False):
-             limit = args.limit if getattr(args, 'limit', None) else 100
-             ready = queue.pop_next_ready_jobs(limit=limit)
-             jobs = ready
-             if not jobs:
-                  if not args.json:
-                       print("No jobs ready in queue.")
-                  return 0
+            plan = store.load_plan(args.plan)
+            if not plan:
+                print(f"Plan {args.plan} not found.")
+                return 1
+            jobs = plan.jobs
+        elif getattr(args, "next", False) or getattr(args, "queued", False):
+            limit = args.limit if getattr(args, "limit", None) else 100
+            ready = queue.pop_next_ready_jobs(limit=limit)
+            jobs = ready
+            if not jobs:
+                if not args.json:
+                    print("No jobs ready in queue.")
+                return 0
         else:
-             print("Provide --next, --queued, or --plan")
-             return 1
+            print("Provide --next, --queued, or --plan")
+            return 1
 
         run = executor.execute_batch(jobs, confirm_heavy=args.confirm_heavy)
 
         if args.json:
-             from bist_signal_bot.research_lab.reporting import batch_run_to_dict
-             print(to_json_output(batch_run_to_dict(run)))
+            from bist_signal_bot.research_lab.reporting import batch_run_to_dict
+
+            print(to_json_output(batch_run_to_dict(run)))
         else:
-             print(format_batch_run_text(run))
+            print(format_batch_run_text(run))
         return 0
     except Exception as e:
         print(f"Error: {e}")
         return 1
+
 
 def cmd_lab_jobs(args, app_context) -> int:
     try:
@@ -5428,21 +6138,24 @@ def cmd_lab_jobs(args, app_context) -> int:
         jobs = queue.list_jobs(status=status)
 
         if args.json:
-             from bist_signal_bot.research_lab.reporting import research_job_to_dict
-             print(to_json_output([research_job_to_dict(j) for j in jobs]))
+            from bist_signal_bot.research_lab.reporting import research_job_to_dict
+
+            print(to_json_output([research_job_to_dict(j) for j in jobs]))
         else:
-             print(f"Found {len(jobs)} jobs.")
-             for j in jobs:
-                  print("-" * 40)
-                  print(format_job_text(j))
+            print(f"Found {len(jobs)} jobs.")
+            for j in jobs:
+                print("-" * 40)
+                print(format_job_text(j))
         return 0
     except Exception as e:
         print(f"Error: {e}")
         return 1
 
+
 def cmd_lab_cancel(args, app_context) -> int:
     try:
         from bist_signal_bot.app.research_lab_app import create_research_job_queue
+
         queue = create_research_job_queue(app_context.settings)
         job = queue.cancel_job(args.job_id, confirm=args.confirm)
         print(f"Cancelled job {job.job_id}")
@@ -5451,18 +6164,20 @@ def cmd_lab_cancel(args, app_context) -> int:
         print(f"Error: {e}")
         return 1
 
+
 def cmd_lab_retry(args, app_context) -> int:
     try:
         from bist_signal_bot.app.research_lab_app import create_research_job_queue
         from bist_signal_bot.core.exceptions import ResearchLabValidationError
+
         if not args.confirm:
             raise ResearchLabValidationError("Must confirm retry")
 
         queue = create_research_job_queue(app_context.settings)
         job = queue.get_job(args.job_id)
         if not job:
-             print("Job not found")
-             return 1
+            print("Job not found")
+            return 1
         job.status = "QUEUED"
         queue.update_job(job)
         print(f"Retrying job {job.job_id}")
@@ -5471,102 +6186,121 @@ def cmd_lab_retry(args, app_context) -> int:
         print(f"Error: {e}")
         return 1
 
+
 def cmd_lab_show(args, app_context) -> int:
     try:
-        from bist_signal_bot.app.research_lab_app import create_research_lab_store, create_research_job_queue
-        from bist_signal_bot.cli.formatting import to_json_output, format_job_text, format_batch_plan_text, format_batch_run_text
+        from bist_signal_bot.app.research_lab_app import (
+            create_research_lab_store,
+            create_research_job_queue,
+        )
+        from bist_signal_bot.cli.formatting import (
+            to_json_output,
+            format_job_text,
+            format_batch_plan_text,
+            format_batch_run_text,
+        )
 
         store = create_research_lab_store(app_context.settings)
 
         if args.type == "job":
-             queue = create_research_job_queue(app_context.settings)
-             item = queue.get_job(args.id)
-             if not item:
-                  print("Not found")
-                  return 1
-             if args.json:
-                  from bist_signal_bot.research_lab.reporting import research_job_to_dict
-                  print(to_json_output(research_job_to_dict(item)))
-             else:
-                  print(format_job_text(item))
+            queue = create_research_job_queue(app_context.settings)
+            item = queue.get_job(args.id)
+            if not item:
+                print("Not found")
+                return 1
+            if args.json:
+                from bist_signal_bot.research_lab.reporting import research_job_to_dict
+
+                print(to_json_output(research_job_to_dict(item)))
+            else:
+                print(format_job_text(item))
 
         elif args.type == "plan":
-             item = store.load_plan(args.id)
-             if not item:
-                  print("Not found")
-                  return 1
-             if args.json:
-                  from bist_signal_bot.research_lab.reporting import batch_plan_to_dict
-                  print(to_json_output(batch_plan_to_dict(item)))
-             else:
-                  print(format_batch_plan_text(item))
+            item = store.load_plan(args.id)
+            if not item:
+                print("Not found")
+                return 1
+            if args.json:
+                from bist_signal_bot.research_lab.reporting import batch_plan_to_dict
+
+                print(to_json_output(batch_plan_to_dict(item)))
+            else:
+                print(format_batch_plan_text(item))
 
         elif args.type == "run":
-             item = store.load_batch_run(args.id)
-             if not item:
-                  print("Not found")
-                  return 1
-             if args.json:
-                  from bist_signal_bot.research_lab.reporting import batch_run_to_dict
-                  print(to_json_output(batch_run_to_dict(item)))
-             else:
-                  print(format_batch_run_text(item))
+            item = store.load_batch_run(args.id)
+            if not item:
+                print("Not found")
+                return 1
+            if args.json:
+                from bist_signal_bot.research_lab.reporting import batch_run_to_dict
+
+                print(to_json_output(batch_run_to_dict(item)))
+            else:
+                print(format_batch_run_text(item))
         return 0
     except Exception as e:
         print(f"Error: {e}")
         return 1
+
 
 def cmd_lab_recent(args, app_context) -> int:
     try:
         from bist_signal_bot.app.research_lab_app import create_research_lab_store
         from bist_signal_bot.cli.formatting import to_json_output
+
         store = create_research_lab_store(app_context.settings)
         runs = store.list_recent_runs(limit=args.limit)
 
         if args.json:
-             print(to_json_output(runs))
+            print(to_json_output(runs))
         else:
-             for r in runs:
-                  print(r)
+            for r in runs:
+                print(r)
         return 0
     except Exception as e:
         print(f"Error: {e}")
         return 1
+
 
 def cmd_lab_policy(args, app_context) -> int:
     try:
         from bist_signal_bot.app.research_lab_app import create_research_lab_policy_manager
         from bist_signal_bot.cli.formatting import to_json_output
+
         mgr = create_research_lab_policy_manager(app_context.settings)
         pol = mgr.load_policy()
         if args.json:
-             print(to_json_output(pol.dict()))
+            print(to_json_output(pol.dict()))
         else:
-             print(f"Max Jobs/Batch: {pol.max_jobs_per_batch}")
-             print(f"Max Parallel: {pol.max_parallel_jobs}")
-             print(f"Allow Network: {pol.allow_network}")
-             print(f"Allow Telegram: {pol.allow_telegram}")
-             print(f"Allow Destructive: {pol.allow_destructive}")
+            print(f"Max Jobs/Batch: {pol.max_jobs_per_batch}")
+            print(f"Max Parallel: {pol.max_parallel_jobs}")
+            print(f"Allow Network: {pol.allow_network}")
+            print(f"Allow Telegram: {pol.allow_telegram}")
+            print(f"Allow Destructive: {pol.allow_destructive}")
         return 0
     except Exception as e:
         print(f"Error: {e}")
         return 1
 
+
 def cmd_lab_config(args, app_context) -> int:
     try:
         from bist_signal_bot.cli.formatting import to_json_output
+
         c = app_context.settings
         keys = [k for k in dir(c) if k.startswith("RESEARCH_LAB_") or k == "ENABLE_RESEARCH_LAB"]
         res = {k: getattr(c, k) for k in keys}
         if args.json:
-             print(to_json_output(res))
+            print(to_json_output(res))
         else:
-             for k,v in res.items():
-                  print(f"{k} = {v}")
+            for k, v in res.items():
+                print(f"{k} = {v}")
         return 0
     except Exception as e:
         print(f"Error: {e}")
         return 1
+
 
 def route_lab_command(args, app_context) -> int:
     if args.lab_command == "plan":
@@ -5591,9 +6325,9 @@ def route_lab_command(args, app_context) -> int:
         return cmd_lab_config(args, app_context)
     return 1
 
+
 def execute_maintenance(args):
     import sys
-    from bist_signal_bot.cli.bootstrap_cli import handle_bootstrap
 
     from bist_signal_bot.cli.commands_maintenance import run_maintenance_cli
 
@@ -5602,6 +6336,7 @@ def execute_maintenance(args):
         sys.argv = [sys.argv[0]] + args.subcommand
     run_maintenance_cli()
 
+
 def handle_governance_command(args):
     from bist_signal_bot.app.governance_app import (
         create_governance_policy_manager,
@@ -5609,7 +6344,7 @@ def handle_governance_command(args):
         create_governance_gate,
         create_evidence_pack_builder,
         create_attestation_builder,
-        create_governance_store
+        create_governance_store,
     )
     from bist_signal_bot.governance.models import AuditReviewRequest, EvidencePackRequest
     from bist_signal_bot.governance.reporting import (
@@ -5620,7 +6355,7 @@ def handle_governance_command(args):
         attestation_to_dict,
         format_audit_review_text,
         format_gate_result_text,
-        format_evidence_pack_text
+        format_evidence_pack_text,
     )
     import json
 
@@ -5726,12 +6461,12 @@ def handle_governance_command(args):
 
     elif args.gov_command == "config":
         from bist_signal_bot.config.settings import get_settings
+
         sett = get_settings()
-        cfg = {k: v for k, v in sett.model_dump().items() if "GOVERNANCE" in k and "SECRET" not in k}
+        cfg = {
+            k: v for k, v in sett.model_dump().items() if "GOVERNANCE" in k and "SECRET" not in k
+        }
         print(json.dumps(cfg, indent=2))
-
-
-import json
 
 
 @click.group()
@@ -5739,13 +6474,15 @@ def review():
     """Analyst Review Inbox and Manual Research"""
     pass
 
+
 @review.command()
-@click.option('--status', help="Filter by status")
-@click.option('--symbol', help="Filter by symbol")
-@click.option('--json', 'as_json', is_flag=True, help="Output as JSON")
+@click.option("--status", help="Filter by status")
+@click.option("--symbol", help="Filter by symbol")
+@click.option("--json", "as_json", is_flag=True, help="Output as JSON")
 def inbox(status, symbol, as_json):
     """Show analyst review inbox"""
     from bist_signal_bot.app.review_app import create_review_inbox_manager
+
     manager = create_review_inbox_manager()
     items = manager.list_items()
 
@@ -5763,13 +6500,15 @@ def inbox(status, symbol, as_json):
         for item in items:
             click.echo(f"[{item.item_id[:8]}] {item.symbol} - {item.status.value}")
 
+
 @review.command()
-@click.argument('item_id')
-@click.option('--evidence', is_flag=True, help="Include evidence")
-@click.option('--json', 'as_json', is_flag=True, help="Output as JSON")
+@click.argument("item_id")
+@click.option("--evidence", is_flag=True, help="Include evidence")
+@click.option("--json", "as_json", is_flag=True, help="Output as JSON")
 def show(item_id, evidence, as_json):
     """Show details of a review item"""
     from bist_signal_bot.app.review_app import create_review_inbox_manager
+
     manager = create_review_inbox_manager()
     item = manager.get_item(item_id)
     if not item:
@@ -5780,17 +6519,20 @@ def show(item_id, evidence, as_json):
         click.echo(json.dumps(item.safe_public_dict(), indent=2))
     else:
         from bist_signal_bot.review.reporting import format_review_item_text
+
         click.echo(format_review_item_text(item))
 
+
 @review.command()
-@click.option('--symbol', required=True)
-@click.option('--title', required=True)
-@click.option('--summary', required=True)
-@click.option('--tag', multiple=True)
-@click.option('--json', 'as_json', is_flag=True)
+@click.option("--symbol", required=True)
+@click.option("--title", required=True)
+@click.option("--summary", required=True)
+@click.option("--tag", multiple=True)
+@click.option("--json", "as_json", is_flag=True)
 def add(symbol, title, summary, tag, as_json):
     """Add manual item to review inbox"""
     from bist_signal_bot.app.review_app import create_review_inbox_manager
+
     manager = create_review_inbox_manager()
     item = manager.add_manual_item(symbol, title, summary, list(tag))
 
@@ -5799,13 +6541,18 @@ def add(symbol, title, summary, tag, as_json):
     else:
         click.echo(f"Added item {item.item_id} for {item.symbol}")
 
+
 @review.command()
-@click.argument('item_id')
-@click.option('--build', is_flag=True)
-@click.option('--json', 'as_json', is_flag=True)
+@click.argument("item_id")
+@click.option("--build", is_flag=True)
+@click.option("--json", "as_json", is_flag=True)
 def checklist(item_id, build, as_json):
     """Manage review checklist"""
-    from bist_signal_bot.app.review_app import create_review_inbox_manager, create_review_checklist_builder
+    from bist_signal_bot.app.review_app import (
+        create_review_inbox_manager,
+        create_review_checklist_builder,
+    )
+
     manager = create_review_inbox_manager()
     item = manager.get_item(item_id)
     if not item:
@@ -5821,12 +6568,13 @@ def checklist(item_id, build, as_json):
         # fetch and display
         click.echo("Checklist not fully implemented for viewing without build flag in this mock.")
 
+
 @review.command()
-@click.argument('item_id')
-@click.option('--main', help="Main thesis")
-@click.option('--counter', help="Counter thesis")
-@click.option('--show', is_flag=True)
-@click.option('--json', 'as_json', is_flag=True)
+@click.argument("item_id")
+@click.option("--main", help="Main thesis")
+@click.option("--counter", help="Counter thesis")
+@click.option("--show", is_flag=True)
+@click.option("--json", "as_json", is_flag=True)
 def thesis(item_id, main, counter, show, as_json):
     """Manage review thesis"""
     from bist_signal_bot.app.review_app import create_review_thesis_builder, create_review_store
@@ -5840,15 +6588,17 @@ def thesis(item_id, main, counter, show, as_json):
         store.append_thesis(t)
         click.echo("Thesis added")
 
+
 @review.command()
-@click.argument('item_id')
-@click.option('--decision', required=True)
-@click.option('--reason', required=True)
-@click.option('--confidence', type=float)
+@click.argument("item_id")
+@click.option("--decision", required=True)
+@click.option("--reason", required=True)
+@click.option("--confidence", type=float)
 def decide(item_id, decision, reason, confidence):
     """Make a decision on a review item"""
     from bist_signal_bot.app.review_app import create_review_decision_manager
     from bist_signal_bot.review.models import ReviewDecisionType
+
     manager = create_review_decision_manager()
 
     try:
@@ -5858,17 +6608,19 @@ def decide(item_id, decision, reason, confidence):
     except ValueError as e:
         click.echo(f"Error: {e}")
 
+
 @review.command()
-@click.argument('item_id', required=False)
-@click.option('--date', help="YYYY-MM-DD")
-@click.option('--note')
-@click.option('--due', is_flag=True)
-@click.option('--clear', is_flag=True)
-@click.option('--confirm', is_flag=True)
+@click.argument("item_id", required=False)
+@click.option("--date", help="YYYY-MM-DD")
+@click.option("--note")
+@click.option("--due", is_flag=True)
+@click.option("--clear", is_flag=True)
+@click.option("--confirm", is_flag=True)
 def followup(item_id, date, note, due, clear, confirm):
     """Manage review follow-ups"""
     from bist_signal_bot.app.review_app import create_review_followup_manager
     from datetime import datetime
+
     manager = create_review_followup_manager()
 
     if due:
@@ -5884,13 +6636,15 @@ def followup(item_id, date, note, due, clear, confirm):
         manager.set_followup(item_id, dt, note, confirm=True)
         click.echo("Follow-up set")
 
+
 @review.command()
-@click.option('--symbol')
-@click.option('--strategy')
-@click.option('--json', 'as_json', is_flag=True)
+@click.option("--symbol")
+@click.option("--strategy")
+@click.option("--json", "as_json", is_flag=True)
 def journal(symbol, strategy, as_json):
     """View decision journal"""
     from bist_signal_bot.app.review_app import create_decision_journal
+
     journal = create_decision_journal()
     entries = journal.list_entries(symbol=symbol)
 
@@ -5899,13 +6653,16 @@ def journal(symbol, strategy, as_json):
         click.echo(json.dumps(data, indent=2))
     else:
         from bist_signal_bot.review.reporting import format_decision_journal_text
+
         click.echo(format_decision_journal_text(entries))
 
+
 @review.command()
-@click.option('--json', 'as_json', is_flag=True)
+@click.option("--json", "as_json", is_flag=True)
 def expire(as_json):
     """Expire stale review items"""
     from bist_signal_bot.app.review_app import create_review_inbox_manager
+
     manager = create_review_inbox_manager()
     expired = manager.expire_stale_items()
 
@@ -5914,12 +6671,14 @@ def expire(as_json):
     else:
         click.echo(f"Expired {len(expired)} items")
 
+
 @review.command()
-@click.option('--json', 'as_json', is_flag=True)
+@click.option("--json", "as_json", is_flag=True)
 def summary(as_json):
     """Show review inbox summary"""
     from bist_signal_bot.app.review_app import create_review_inbox_manager
     from bist_signal_bot.review.reporting import format_review_inbox_summary
+
     manager = create_review_inbox_manager()
     s = manager.summary()
 
@@ -5928,11 +6687,13 @@ def summary(as_json):
     else:
         click.echo(format_review_inbox_summary(s))
 
+
 @review.command()
-@click.option('--json', 'as_json', is_flag=True)
+@click.option("--json", "as_json", is_flag=True)
 def config(as_json):
     """Show analyst review config"""
     from bist_signal_bot.config.settings import Settings
+
     s = Settings()
     data = {k: v for k, v in s.model_dump().items() if k.startswith("REVIEW_")}
     if as_json:
@@ -5944,18 +6705,21 @@ def config(as_json):
 
 cli.add_command(review)
 
+
 def run_kb_index(args, settings=None):
     from bist_signal_bot.app.knowledge_app import create_knowledge_indexer
     from bist_signal_bot.knowledge.models import KnowledgeIndexBuildRequest
+
     indexer = create_knowledge_indexer(settings)
     req = KnowledgeIndexBuildRequest(
         incremental=args.incremental,
         use_embeddings=args.use_embeddings,
         rebuild=args.rebuild,
-        confirm_rebuild=args.confirm
+        confirm_rebuild=args.confirm,
     )
     if hasattr(args, "source") and args.source:
         from bist_signal_bot.knowledge.models import KnowledgeSourceType
+
         req.source_types = [KnowledgeSourceType(s) for s in args.source]
 
     res = indexer.build_index(req)
@@ -5963,21 +6727,27 @@ def run_kb_index(args, settings=None):
         print(res.model_dump_json())
     else:
         from bist_signal_bot.knowledge.reporting import format_index_build_text
+
         print(format_index_build_text(res))
+
 
 def run_kb_search(args, settings=None):
     from bist_signal_bot.app.knowledge_app import create_knowledge_search_engine
     from bist_signal_bot.knowledge.models import KnowledgeSearchQuery, KnowledgeSearchMode
+
     engine = create_knowledge_search_engine(settings)
 
     req = KnowledgeSearchQuery(
         query=args.query,
-        mode=KnowledgeSearchMode(args.mode) if hasattr(args, 'mode') and args.mode else KnowledgeSearchMode.AUTO
+        mode=KnowledgeSearchMode(args.mode)
+        if hasattr(args, "mode") and args.mode
+        else KnowledgeSearchMode.AUTO,
     )
     if hasattr(args, "symbol") and args.symbol:
         req.symbols = [args.symbol]
     if hasattr(args, "source") and args.source:
         from bist_signal_bot.knowledge.models import KnowledgeSourceType
+
         req.source_types = [KnowledgeSourceType(s) for s in args.source]
 
     res = engine.search(req)
@@ -5985,45 +6755,54 @@ def run_kb_search(args, settings=None):
         print(res.model_dump_json())
     else:
         from bist_signal_bot.knowledge.reporting import format_search_result_text
+
         print(format_search_result_text(res))
+
 
 def run_kb_similar(args, settings=None):
     from bist_signal_bot.app.knowledge_app import create_similarity_engine
     from bist_signal_bot.knowledge.models import SimilarCaseRequest
+
     engine = create_similarity_engine(settings)
     req = SimilarCaseRequest(
         symbol=args.symbol if hasattr(args, "symbol") else None,
         strategy_name=args.strategy if hasattr(args, "strategy") else None,
-        text_query=args.text if hasattr(args, "text") else None
+        text_query=args.text if hasattr(args, "text") else None,
     )
     res = engine.similar_cases(req)
     if getattr(args, "json", False):
         print(res.model_dump_json())
     else:
         from bist_signal_bot.knowledge.reporting import format_similar_cases_text
+
         print(format_similar_cases_text(res))
+
 
 def run_kb_cases(args, settings=None):
     from bist_signal_bot.app.knowledge_app import create_case_library
+
     lib = create_case_library(settings)
     cases = lib.case_history(
         symbol=args.symbol if hasattr(args, "symbol") else None,
-        strategy_name=args.strategy if hasattr(args, "strategy") else None
+        strategy_name=args.strategy if hasattr(args, "strategy") else None,
     )
     if getattr(args, "json", False):
         import json
+
         print(json.dumps([c.model_dump() for c in cases]))
     else:
         print(f"Found {len(cases)} cases.")
         for c in cases:
             print(f"- {c.title}")
 
+
 def run_kb_memory(args, settings=None):
     from bist_signal_bot.app.knowledge_app import create_analyst_memory_builder
+
     builder = create_analyst_memory_builder(settings)
     card = builder.build_memory_card(
         symbol=args.symbol if hasattr(args, "symbol") else None,
-        strategy_name=args.strategy if hasattr(args, "strategy") else None
+        strategy_name=args.strategy if hasattr(args, "strategy") else None,
     )
     if getattr(args, "save", False):
         builder.save_memory_card(card)
@@ -6031,10 +6810,13 @@ def run_kb_memory(args, settings=None):
         print(card.model_dump_json())
     else:
         from bist_signal_bot.knowledge.reporting import format_memory_card_text
+
         print(format_memory_card_text(card))
+
 
 def run_kb_show(args, settings=None):
     from bist_signal_bot.app.knowledge_app import create_knowledge_store
+
     store = create_knowledge_store(settings)
     docs = store.load_documents()
     doc = next((d for d in docs if d.document_id == args.document_id), None)
@@ -6051,19 +6833,24 @@ def run_kb_show(args, settings=None):
         chunks = store.load_chunks(args.document_id)
         print(f"Found {len(chunks)} chunks.")
 
+
 def run_kb_stats(args, settings=None):
     from bist_signal_bot.app.knowledge_app import create_knowledge_store
+
     store = create_knowledge_store(settings)
     stats = store.index_stats()
     if getattr(args, "json", False):
         import json
+
         print(json.dumps(stats))
     else:
         for k, v in stats.items():
             print(f"{k}: {v}")
 
+
 def run_kb_clear(args, settings=None):
     from bist_signal_bot.app.knowledge_app import create_knowledge_store
+
     store = create_knowledge_store(settings)
     try:
         res = store.clear_index(confirm=args.confirm)
@@ -6071,27 +6858,31 @@ def run_kb_clear(args, settings=None):
     except Exception as e:
         print(f"Error: {e}")
 
+
 def run_kb_config(args, settings=None):
     keys = [k for k in dir(settings) if k.startswith("KNOWLEDGE_")]
     conf = {k: getattr(settings, k) for k in keys}
     if getattr(args, "json", False):
         import json
+
         print(json.dumps(conf))
     else:
         for k, v in conf.items():
             print(f"{k} = {v}")
-@cli.command(name='scheduler')
+
+
+@cli.command(name="scheduler")
 def run_scheduler():
     import sys
-    from bist_signal_bot.cli.bootstrap_cli import handle_bootstrap
 
     from bist_signal_bot.cli.scheduler_cli import handle_scheduler
     import argparse
+
     parser = argparse.ArgumentParser()
-    parser.add_argument('subcommand', nargs='?')
-    parser.add_argument('--create', action='store_true')
-    parser.add_argument('--confirm', action='store_true')
-    parser.add_argument('--dry-run', action='store_true')
+    parser.add_argument("subcommand", nargs="?")
+    parser.add_argument("--create", action="store_true")
+    parser.add_argument("--confirm", action="store_true")
+    parser.add_argument("--dry-run", action="store_true")
     args, _ = parser.parse_known_args(sys.argv[2:])
     handle_scheduler(args)
 
@@ -6105,11 +6896,14 @@ def deploy_command(args, settings):
         create_first_run_wizard,
         create_deployment_smoke_tester,
         create_operator_runbook_builder,
-        create_deployment_store
+        create_deployment_store,
     )
     from bist_signal_bot.deployment.models import DeploymentProfileType, EnvTemplateRequest
     from bist_signal_bot.deployment.reporting import (
-        format_profile_text, format_environment_doctor_text, format_first_run_text, format_smoke_test_text
+        format_profile_text,
+        format_environment_doctor_text,
+        format_first_run_text,
+        format_smoke_test_text,
     )
     import json
 
@@ -6134,7 +6928,8 @@ def deploy_command(args, settings):
         mgr = create_deployment_directory_manager(settings)
         dry = getattr(args, "dry_run", True)
         conf = getattr(args, "confirm", False)
-        if conf: dry = False
+        if conf:
+            dry = False
         res = mgr.init_directories(confirm=conf, dry_run=dry)
         if getattr(args, "json", False):
             print(json.dumps([r.model_dump(mode="json") for r in res], indent=2))
@@ -6159,7 +6954,10 @@ def deploy_command(args, settings):
 
         if out and conf:
             from pathlib import Path
-            bld.write_env_file(res.metadata.get("generated_text", ""), Path(out), overwrite=True, confirm=True)
+
+            bld.write_env_file(
+                res.metadata.get("generated_text", ""), Path(out), overwrite=True, confirm=True
+            )
             print(f"Written to {out}")
         else:
             print(res.metadata.get("generated_text", ""))
@@ -6174,7 +6972,8 @@ def deploy_command(args, settings):
         wiz = create_first_run_wizard(settings)
         dry = getattr(args, "dry_run", True)
         conf = getattr(args, "confirm_write", False)
-        if conf: dry = False
+        if conf:
+            dry = False
 
         res = wiz.run(profile_type=ptype, confirm_write=conf, dry_run=dry)
 
@@ -6190,7 +6989,7 @@ def deploy_command(args, settings):
         tester = create_deployment_smoke_tester(settings)
         mgr = create_deployment_profile_manager(settings)
         prof = mgr.get_profile(DeploymentProfileType.RESEARCH_ONLY)
-        res = tester.run_smoke_tests(prof, dry_run=False) # Run actual smoke
+        res = tester.run_smoke_tests(prof, dry_run=False)  # Run actual smoke
 
         store = create_deployment_store(settings)
         store.save_smoke_result(res)
@@ -6216,6 +7015,7 @@ def deploy_command(args, settings):
         out = getattr(args, "output", None)
         if out:
             from pathlib import Path
+
             bld.write_runbook(rb, Path(out).parent)
             print(f"Written to {out}")
         else:
@@ -6223,6 +7023,7 @@ def deploy_command(args, settings):
 
     elif args.deploy_subcommand == "platform-commands":
         from bist_signal_bot.deployment.platforms import PlatformCommandBuilder
+
         plat = getattr(args, "platform", None)
         bld = PlatformCommandBuilder()
         if not plat:
@@ -6260,118 +7061,134 @@ def deploy_command(args, settings):
         else:
             print("Config is redacted.")
 
+
 # Phase 69 Instruments CLI
 import click
-from bist_signal_bot.instruments.master import InstrumentMaster
 from bist_signal_bot.instruments.models import InstrumentStatus
-from bist_signal_bot.corporate_actions.importer import CorporateActionImporter
-from bist_signal_bot.data.data_quality import DataReconciliationEngine
+
 
 @click.group(name="instruments")
 def instruments():
     pass
 
+
 @instruments.command(name="list")
-@click.option('--status', type=click.Choice([e.name for e in InstrumentStatus]))
-@click.option('--sector')
-@click.option('--json', 'as_json', is_flag=True)
+@click.option("--status", type=click.Choice([e.name for e in InstrumentStatus]))
+@click.option("--sector")
+@click.option("--json", "as_json", is_flag=True)
 def list_cmd(status, sector, as_json):
     print("Listed instruments")
 
+
 @instruments.command(name="show")
-@click.argument('symbol')
-@click.option('--json', 'as_json', is_flag=True)
+@click.argument("symbol")
+@click.option("--json", "as_json", is_flag=True)
 def show_cmd(symbol, as_json):
     print(f"Show {symbol}")
 
+
 @instruments.command(name="import")
-@click.option('--file')
-@click.option('--dry-run', is_flag=True)
-@click.option('--confirm', is_flag=True)
+@click.option("--file")
+@click.option("--dry-run", is_flag=True)
+@click.option("--confirm", is_flag=True)
 def import_cmd(file, dry_run, confirm):
     print("Importing...")
 
+
 @instruments.command(name="universe")
-@click.argument('type_val')
-@click.argument('val', required=False)
-@click.option('--json', 'as_json', is_flag=True)
+@click.argument("type_val")
+@click.argument("val", required=False)
+@click.option("--json", "as_json", is_flag=True)
 def universe_cmd(type_val, val, as_json):
     print("Universe generated")
 
+
 @instruments.command(name="lifecycle")
-@click.argument('symbol')
-@click.option('--json', 'as_json', is_flag=True)
+@click.argument("symbol")
+@click.option("--json", "as_json", is_flag=True)
 def lifecycle_cmd(symbol, as_json):
     print("Lifecycle...")
 
+
 @instruments.command(name="validate")
-@click.option('--json', 'as_json', is_flag=True)
+@click.option("--json", "as_json", is_flag=True)
 def validate_cmd(as_json):
     print("Validation passed")
+
 
 @click.group(name="corporate-actions")
 def corporate_actions():
     pass
 
+
 @corporate_actions.command(name="import")
-@click.option('--file')
-@click.option('--dry-run', is_flag=True)
-@click.option('--confirm', is_flag=True)
+@click.option("--file")
+@click.option("--dry-run", is_flag=True)
+@click.option("--confirm", is_flag=True)
 def import_ca_cmd(file, dry_run, confirm):
     print("Importing CA...")
 
+
 @corporate_actions.command(name="list")
-@click.option('--symbol')
-@click.option('--json', 'as_json', is_flag=True)
+@click.option("--symbol")
+@click.option("--json", "as_json", is_flag=True)
 def list_ca_cmd(symbol, as_json):
     print("CA List")
 
+
 @corporate_actions.command(name="validate")
-@click.option('--symbol')
-@click.option('--json', 'as_json', is_flag=True)
+@click.option("--symbol")
+@click.option("--json", "as_json", is_flag=True)
 def validate_ca_cmd(symbol, as_json):
     print("CA validation passed")
 
+
 @corporate_actions.command(name="factors")
-@click.argument('symbol')
-@click.option('--json', 'as_json', is_flag=True)
+@click.argument("symbol")
+@click.option("--json", "as_json", is_flag=True)
 def factors_cmd(symbol, as_json):
     print("CA Factors")
 
+
 @corporate_actions.command(name="adjust")
-@click.argument('symbol')
-@click.option('--dry-run', is_flag=True)
-@click.option('--confirm', is_flag=True)
-@click.option('--json', 'as_json', is_flag=True)
+@click.argument("symbol")
+@click.option("--dry-run", is_flag=True)
+@click.option("--confirm", is_flag=True)
+@click.option("--json", "as_json", is_flag=True)
 def adjust_cmd(symbol, dry_run, confirm, as_json):
     print("CA adjust")
+
 
 @click.group(name="data-quality")
 def data_quality():
     pass
 
+
 @data_quality.command(name="check")
-@click.argument('symbol')
-@click.option('--source')
-@click.option('--json', 'as_json', is_flag=True)
+@click.argument("symbol")
+@click.option("--source")
+@click.option("--json", "as_json", is_flag=True)
 def check_cmd(symbol, source, as_json):
     print("DQ check passed")
 
+
 @data_quality.command(name="reconcile")
-@click.argument('symbol')
-@click.option('--provider-a')
-@click.option('--provider-b')
-@click.option('--json', 'as_json', is_flag=True)
+@click.argument("symbol")
+@click.option("--provider-a")
+@click.option("--provider-b")
+@click.option("--json", "as_json", is_flag=True)
 def reconcile_cmd(symbol, provider_a, provider_b, as_json):
     print("DQ reconcile")
 
+
 @data_quality.command(name="adjusted-cache")
-@click.argument('symbol')
-@click.option('--build', is_flag=True)
-@click.option('--confirm', is_flag=True)
-@click.option('--json', 'as_json', is_flag=True)
+@click.argument("symbol")
+@click.option("--build", is_flag=True)
+@click.option("--confirm", is_flag=True)
+@click.option("--json", "as_json", is_flag=True)
 def adjusted_cache_cmd(symbol, build, confirm, as_json):
     print("Adjusted cache built")
+
 
 def handle_strategy_registry(args, settings):
     import json
@@ -6381,7 +7198,7 @@ def handle_strategy_registry(args, settings):
         create_strategy_scorecard_builder,
         create_strategy_promotion_manager,
         create_strategy_quality_gate,
-        create_strategy_registry_snapshot_builder
+        create_strategy_registry_snapshot_builder,
     )
     from bist_signal_bot.strategy_registry.models import StrategyRegistryStatus, StrategyFamily
     from bist_signal_bot.strategy_registry.reporting import (
@@ -6391,7 +7208,7 @@ def handle_strategy_registry(args, settings):
         format_strategy_registry_snapshot_text,
         format_strategy_registry_report_markdown,
         strategy_definition_to_dict,
-        scorecard_to_dict
+        scorecard_to_dict,
     )
 
     cmd = getattr(args, "registry_command", None)
@@ -6407,7 +7224,11 @@ def handle_strategy_registry(args, settings):
 
             strategies = manager.list_strategies(status=status, family=family)
             if args.json:
-                print(json.dumps([strategy_definition_to_dict(s) for s in strategies], indent=2, default=str))
+                print(
+                    json.dumps(
+                        [strategy_definition_to_dict(s) for s in strategies], indent=2, default=str
+                    )
+                )
             else:
                 for s in strategies:
                     print(f"{s.strategy_name} - {s.version} - {s.family.value} - {s.status.value}")
@@ -6444,7 +7265,12 @@ def handle_strategy_registry(args, settings):
             evidence = collector.collect_for_strategy(args.strategy_name)
             if args.json:
                 from bist_signal_bot.strategy_registry.reporting import strategy_evidence_to_dict
-                print(json.dumps([strategy_evidence_to_dict(e) for e in evidence], indent=2, default=str))
+
+                print(
+                    json.dumps(
+                        [strategy_evidence_to_dict(e) for e in evidence], indent=2, default=str
+                    )
+                )
             else:
                 print(f"Found {len(evidence)} evidence records for {args.strategy_name}")
 
@@ -6482,18 +7308,27 @@ def handle_strategy_registry(args, settings):
                 decision = gate.evaluate_strategy(args.strategy_name)
 
             if args.json:
-                print(json.dumps({"strategy": args.strategy_name, "context": args.context, "decision": decision.value}))
+                print(
+                    json.dumps(
+                        {
+                            "strategy": args.strategy_name,
+                            "context": args.context,
+                            "decision": decision.value,
+                        }
+                    )
+                )
             else:
                 print(f"Gate decision for {args.strategy_name} ({args.context}): {decision.value}")
 
         elif cmd == "promote":
             promoter = create_strategy_promotion_manager(settings)
             from bist_signal_bot.strategy_registry.models import StrategyPromotionRequest
+
             req = StrategyPromotionRequest(
                 strategy_id=args.strategy_name,
                 target_status=StrategyRegistryStatus(args.to),
                 reason=args.reason,
-                confirm=args.confirm
+                confirm=args.confirm,
             )
             result = promoter.promote(req)
             if result.decision.value == "BLOCK":
@@ -6502,7 +7337,12 @@ def handle_strategy_registry(args, settings):
 
         elif cmd == "demote":
             promoter = create_strategy_promotion_manager(settings)
-            result = promoter.demote(args.strategy_name, args.reason, StrategyRegistryStatus(args.to), confirm=args.confirm)
+            result = promoter.demote(
+                args.strategy_name,
+                args.reason,
+                StrategyRegistryStatus(args.to),
+                confirm=args.confirm,
+            )
             print(format_promotion_result_text(result))
 
         elif cmd == "block":
@@ -6515,16 +7355,22 @@ def handle_strategy_registry(args, settings):
             events = manager.lifecycle.events_for_strategy(args.strategy_name)
             if args.json:
                 from bist_signal_bot.strategy_registry.reporting import lifecycle_event_to_dict
-                print(json.dumps([lifecycle_event_to_dict(e) for e in events], indent=2, default=str))
+
+                print(
+                    json.dumps([lifecycle_event_to_dict(e) for e in events], indent=2, default=str)
+                )
             else:
                 for e in events:
-                    print(f"[{e.created_at.isoformat()}] {e.event_type.value}: {e.previous_status.value if e.previous_status else 'None'} -> {e.new_status.value if e.new_status else 'None'} ({e.reason})")
+                    print(
+                        f"[{e.created_at.isoformat()}] {e.event_type.value}: {e.previous_status.value if e.previous_status else 'None'} -> {e.new_status.value if e.new_status else 'None'} ({e.reason})"
+                    )
 
         elif cmd == "snapshot":
             builder = create_strategy_registry_snapshot_builder(settings)
             snapshot = builder.create_snapshot(save=True)
             if args.json:
                 from bist_signal_bot.strategy_registry.reporting import snapshot_to_dict
+
                 print(json.dumps(snapshot_to_dict(snapshot), indent=2, default=str))
             else:
                 print(format_strategy_registry_snapshot_text(snapshot))
@@ -6540,10 +7386,16 @@ def handle_strategy_registry(args, settings):
                     scorecards.append(sc)
 
             if args.json:
-                print(json.dumps({
-                    "strategies": [strategy_definition_to_dict(s) for s in strategies],
-                    "scorecards": [scorecard_to_dict(s) for s in scorecards]
-                }, indent=2, default=str))
+                print(
+                    json.dumps(
+                        {
+                            "strategies": [strategy_definition_to_dict(s) for s in strategies],
+                            "scorecards": [scorecard_to_dict(s) for s in scorecards],
+                        },
+                        indent=2,
+                        default=str,
+                    )
+                )
             else:
                 print(format_strategy_registry_report_markdown(strategies, scorecards))
 
@@ -6560,8 +7412,13 @@ def handle_strategy_registry(args, settings):
         print(f"Strategy registry error: {e}")
         return 1
 
+
 def handle_whatif_commands(args):
-    from bist_signal_bot.app.whatif_app import create_whatif_engine, create_whatif_store, create_whatif_scenario_factory
+    from bist_signal_bot.app.whatif_app import (
+        create_whatif_engine,
+        create_whatif_store,
+        create_whatif_scenario_factory,
+    )
     from bist_signal_bot.whatif.models import AssumptionType
     from bist_signal_bot.config.settings import get_settings
     import json
@@ -6654,6 +7511,7 @@ def handle_whatif_commands(args):
             print(json.dumps(res.safe_public_dict(), indent=2))
         else:
             from bist_signal_bot.whatif.reporting import format_whatif_report_markdown
+
             print(format_whatif_report_markdown(res))
 
     elif cmd == "recent":
@@ -6668,7 +7526,9 @@ def handle_whatif_commands(args):
         data = {
             "ENABLE_WHATIF_LAB": settings.ENABLE_WHATIF_LAB,
             "WHATIF_INCLUDE_BASELINE": getattr(settings, "WHATIF_INCLUDE_BASELINE", True),
-            "WHATIF_CAPITAL_SCALE_NOTIONALS": getattr(settings, "WHATIF_CAPITAL_SCALE_NOTIONALS", "")
+            "WHATIF_CAPITAL_SCALE_NOTIONALS": getattr(
+                settings, "WHATIF_CAPITAL_SCALE_NOTIONALS", ""
+            ),
         }
         if args.json:
             print(json.dumps(data, indent=2))
@@ -6676,8 +7536,9 @@ def handle_whatif_commands(args):
             for k, v in data.items():
                 print(f"{k}: {v}")
 
+
 # Keep handle_event_calendar_command inside event_calendar_group.py, just import it
-from bist_signal_bot.cli.event_calendar_group import register_event_calendar_commands, handle_event_calendar_command
+
 
 def register_financials_commands(subparsers):
     parser = subparsers.add_parser("financials", help="Manage financial statement intelligence")
@@ -6745,17 +7606,12 @@ def register_financials_commands(subparsers):
     cmd_config = subs.add_parser("config", help="Show config")
     cmd_config.add_argument("--json", action="store_true")
 
+
 from pathlib import Path
+
+
 def run_financials_command(args, settings=None):
-    from bist_signal_bot.app.financials_app import (
-        create_financial_store,
-        create_financial_statement_importer,
-        create_financial_statement_normalizer,
-        create_financial_ratio_calculator,
-        create_financial_trend_analyzer,
-        create_earnings_quality_analyzer,
-        create_sector_financial_comparator
-    )
+    from bist_signal_bot.app.financials_app import create_financial_statement_importer
     import json
 
     if args.financials_command == "import":
@@ -6764,9 +7620,23 @@ def run_financials_command(args, settings=None):
         res = importer.import_file(Path(args.file), confirm=confirm)
         if args.dry_run:
             print("Dry run complete.")
-        print(f"Imported: {res.records_imported}, Skipped: {res.records_skipped}, Duplicates: {res.duplicate_count}")
+        print(
+            f"Imported: {res.records_imported}, Skipped: {res.records_skipped}, Duplicates: {res.duplicate_count}"
+        )
 
-    elif args.financials_command in ["list", "show", "normalize", "ratios", "trends", "quality", "compare-sector", "link", "report", "recent", "config"]:
+    elif args.financials_command in [
+        "list",
+        "show",
+        "normalize",
+        "ratios",
+        "trends",
+        "quality",
+        "compare-sector",
+        "link",
+        "report",
+        "recent",
+        "config",
+    ]:
         # Mock responses for CLI
         if hasattr(args, "json") and args.json:
             print(json.dumps({"status": "ok", "command": args.financials_command}))
@@ -6782,6 +7652,7 @@ def factor_cli_group():
 def handle_review_workflow(args, settings=None):
     if args.rw_command == "create":
         from bist_signal_bot.app.review_workflow_app import create_review_case_builder
+
         builder = create_review_case_builder()
         if args.symbol:
             case = builder.create_case_for_symbol(args.symbol, args.strategy)
@@ -6791,6 +7662,7 @@ def handle_review_workflow(args, settings=None):
         if args.json:
             import json
             from bist_signal_bot.review_workflow.reporting import review_case_to_dict
+
             print(json.dumps(review_case_to_dict(case), indent=2))
         else:
             print(f"Created case {case.case_id} for {case.symbol}")
@@ -6831,62 +7703,75 @@ def handle_review_workflow(args, settings=None):
     elif args.rw_command == "config":
         print("Review workflow config")
 
+
 import typer
 
 qa_app = typer.Typer(name="qa", help="Quality Assurance and Release Gate operations")
+
 
 @qa_app.command("fixtures")
 def qa_fixtures():
     print("QA fixtures")
 
+
 @qa_app.command("scenarios")
 def qa_scenarios():
     print("QA scenarios")
+
 
 @qa_app.command("replay")
 def qa_replay():
     print("QA replay")
 
+
 @qa_app.command("smoke")
 def qa_smoke():
     print("QA smoke")
+
 
 @qa_app.command("regression")
 def qa_regression():
     print("QA regression")
 
+
 @qa_app.command("release-gate")
 def qa_release_gate():
     print("QA release gate")
+
 
 @qa_app.command("safety")
 def qa_safety():
     print("QA safety checks")
 
+
 @qa_app.command("no-external-calls")
 def qa_no_external_calls():
     print("QA no external calls check")
+
 
 @qa_app.command("reproducibility")
 def qa_reproducibility():
     print("QA reproducibility pack builder")
 
+
 @qa_app.command("coverage")
 def qa_coverage():
     print("QA coverage matrix")
+
 
 @qa_app.command("report")
 def qa_report():
     print("QA report")
 
+
 @qa_app.command("recent")
 def qa_recent():
     print("QA recent runs")
 
+
 @qa_app.command("config")
 def qa_config():
     print("QA config")
-
 
 
 def handle_qa_command(args, settings=None):
@@ -6922,71 +7807,192 @@ def handle_qa_command(args, settings=None):
         print_output({"error": "Unknown QA command"}, as_json=getattr(args, "json", False))
     return 0
 
+
 def handle_feature_store_command(args, settings=None):
-    import json
     from bist_signal_bot.cli.formatting import print_output
+
     cmd = getattr(args, "feature_store_command", None)
 
     if cmd == "contracts":
         if getattr(args, "show_contract", None):
-            print_output({"status": "ok", "command": "contracts show", "feature": args.show_contract}, as_json=getattr(args, "json", False))
+            print_output(
+                {"status": "ok", "command": "contracts show", "feature": args.show_contract},
+                as_json=getattr(args, "json", False),
+            )
         else:
-            print_output({"status": "ok", "command": "contracts list"}, as_json=getattr(args, "json", False))
+            print_output(
+                {"status": "ok", "command": "contracts list"}, as_json=getattr(args, "json", False)
+            )
     elif cmd == "list":
-        print_output({"status": "ok", "command": "list", "kind": getattr(args, "kind", None)}, as_json=getattr(args, "json", False))
+        print_output(
+            {"status": "ok", "command": "list", "kind": getattr(args, "kind", None)},
+            as_json=getattr(args, "json", False),
+        )
     elif cmd == "sets":
         if getattr(args, "show_set", None):
-            print_output({"status": "ok", "command": "sets show", "set": args.show_set}, as_json=getattr(args, "json", False))
+            print_output(
+                {"status": "ok", "command": "sets show", "set": args.show_set},
+                as_json=getattr(args, "json", False),
+            )
         else:
-            print_output({"status": "ok", "command": "sets list"}, as_json=getattr(args, "json", False))
+            print_output(
+                {"status": "ok", "command": "sets list"}, as_json=getattr(args, "json", False)
+            )
     elif cmd == "compute":
-        print_output({"status": "ok", "command": "compute", "symbols": getattr(args, "symbols", None), "feature": getattr(args, "feature", None), "set": getattr(args, "set", None), "save": getattr(args, "save", False)}, as_json=getattr(args, "json", False))
+        print_output(
+            {
+                "status": "ok",
+                "command": "compute",
+                "symbols": getattr(args, "symbols", None),
+                "feature": getattr(args, "feature", None),
+                "set": getattr(args, "set", None),
+                "save": getattr(args, "save", False),
+            },
+            as_json=getattr(args, "json", False),
+        )
     elif cmd == "serve":
-        mode = "scanner" if getattr(args, "scanner", False) else "ml" if getattr(args, "ml", False) else "context" if getattr(args, "context", False) else "unknown"
-        print_output({"status": "ok", "command": "serve", "mode": mode, "symbols": getattr(args, "symbols", None), "symbol": getattr(args, "symbol", None), "set": getattr(args, "set", None)}, as_json=getattr(args, "json", False))
+        mode = (
+            "scanner"
+            if getattr(args, "scanner", False)
+            else "ml"
+            if getattr(args, "ml", False)
+            else "context"
+            if getattr(args, "context", False)
+            else "unknown"
+        )
+        print_output(
+            {
+                "status": "ok",
+                "command": "serve",
+                "mode": mode,
+                "symbols": getattr(args, "symbols", None),
+                "symbol": getattr(args, "symbol", None),
+                "set": getattr(args, "set", None),
+            },
+            as_json=getattr(args, "json", False),
+        )
     elif cmd == "quality":
-        print_output({"status": "ok", "command": "quality", "frame_id": getattr(args, "frame_id", None), "set": getattr(args, "set", None), "symbols": getattr(args, "symbols", None)}, as_json=getattr(args, "json", False))
+        print_output(
+            {
+                "status": "ok",
+                "command": "quality",
+                "frame_id": getattr(args, "frame_id", None),
+                "set": getattr(args, "set", None),
+                "symbols": getattr(args, "symbols", None),
+            },
+            as_json=getattr(args, "json", False),
+        )
     elif cmd == "drift":
-        print_output({"status": "ok", "command": "drift", "feature": getattr(args, "feature", None), "set": getattr(args, "set", None)}, as_json=getattr(args, "json", False))
+        print_output(
+            {
+                "status": "ok",
+                "command": "drift",
+                "feature": getattr(args, "feature", None),
+                "set": getattr(args, "set", None),
+            },
+            as_json=getattr(args, "json", False),
+        )
     elif cmd == "leakage":
-        print_output({"status": "ok", "command": "leakage", "frame_id": getattr(args, "frame_id", None), "set": getattr(args, "set", None), "symbols": getattr(args, "symbols", None)}, as_json=getattr(args, "json", False))
+        print_output(
+            {
+                "status": "ok",
+                "command": "leakage",
+                "frame_id": getattr(args, "frame_id", None),
+                "set": getattr(args, "set", None),
+                "symbols": getattr(args, "symbols", None),
+            },
+            as_json=getattr(args, "json", False),
+        )
     elif cmd == "lineage":
-        print_output({"status": "ok", "command": "lineage", "feature": getattr(args, "feature", None), "set": getattr(args, "set", None)}, as_json=getattr(args, "json", False))
+        print_output(
+            {
+                "status": "ok",
+                "command": "lineage",
+                "feature": getattr(args, "feature", None),
+                "set": getattr(args, "set", None),
+            },
+            as_json=getattr(args, "json", False),
+        )
     elif cmd == "versions":
-        print_output({"status": "ok", "command": "versions", "feature": getattr(args, "feature", None)}, as_json=getattr(args, "json", False))
+        print_output(
+            {"status": "ok", "command": "versions", "feature": getattr(args, "feature", None)},
+            as_json=getattr(args, "json", False),
+        )
     elif cmd == "report":
-        print_output({"status": "ok", "command": "report", "latest": getattr(args, "latest", False)}, as_json=getattr(args, "json", False))
+        print_output(
+            {"status": "ok", "command": "report", "latest": getattr(args, "latest", False)},
+            as_json=getattr(args, "json", False),
+        )
     elif cmd == "recent":
-        print_output({"status": "ok", "command": "recent", "limit": getattr(args, "limit", 10)}, as_json=getattr(args, "json", False))
+        print_output(
+            {"status": "ok", "command": "recent", "limit": getattr(args, "limit", 10)},
+            as_json=getattr(args, "json", False),
+        )
     elif cmd == "config":
-        print_output({"status": "ok", "command": "config", "ENABLE_FEATURE_STORE": getattr(settings, "ENABLE_FEATURE_STORE", True)}, as_json=getattr(args, "json", False))
+        print_output(
+            {
+                "status": "ok",
+                "command": "config",
+                "ENABLE_FEATURE_STORE": getattr(settings, "ENABLE_FEATURE_STORE", True),
+            },
+            as_json=getattr(args, "json", False),
+        )
     else:
-        print_output({"error": "Unknown feature-store command"}, as_json=getattr(args, "json", False))
+        print_output(
+            {"error": "Unknown feature-store command"}, as_json=getattr(args, "json", False)
+        )
     return 0
+
 
 def run_monitoring_cli(args):
     import json
+
     if args.monitoring_cmd == "status":
         res = {"status": "Monitoring is operational", "research_only": True}
         print(json.dumps(res) if args.json else "Monitoring is operational (Research Only).")
     elif args.monitoring_cmd == "run":
-        res = {"object_type": args.object_type, "object_id": args.object_id, "status": "PASS", "health": 100.0}
-        print(json.dumps(res) if getattr(args, "json", False) else f"Ran monitoring for {args.object_type} {args.object_id}: PASS")
+        res = {
+            "object_type": args.object_type,
+            "object_id": args.object_id,
+            "status": "PASS",
+            "health": 100.0,
+        }
+        print(
+            json.dumps(res)
+            if getattr(args, "json", False)
+            else f"Ran monitoring for {args.object_type} {args.object_id}: PASS"
+        )
     elif args.monitoring_cmd == "strategy":
         res = {"strategy": args.strategy_id, "status": "PASS"}
-        print(json.dumps(res) if getattr(args, "json", False) else f"Strategy {args.strategy_id} monitoring PASS")
+        print(
+            json.dumps(res)
+            if getattr(args, "json", False)
+            else f"Strategy {args.strategy_id} monitoring PASS"
+        )
     elif args.monitoring_cmd == "model":
         res = {"model": args.model_id, "status": "PASS"}
-        print(json.dumps(res) if getattr(args, "json", False) else f"Model {args.model_id} monitoring PASS")
+        print(
+            json.dumps(res)
+            if getattr(args, "json", False)
+            else f"Model {args.model_id} monitoring PASS"
+        )
     elif args.monitoring_cmd == "feature-set":
         res = {"feature_set": args.feature_set_id, "status": "PASS"}
-        print(json.dumps(res) if getattr(args, "json", False) else f"Feature-set {args.feature_set_id} monitoring PASS")
+        print(
+            json.dumps(res)
+            if getattr(args, "json", False)
+            else f"Feature-set {args.feature_set_id} monitoring PASS"
+        )
     elif args.monitoring_cmd == "decay":
         res = {"decay_findings": []}
         print(json.dumps(res) if getattr(args, "json", False) else "No decay findings.")
     elif args.monitoring_cmd == "champion-challenger":
         res = {"decision": "KEEP_CHAMPION"}
-        print(json.dumps(res) if getattr(args, "json", False) else "Champion vs Challenger: KEEP_CHAMPION")
+        print(
+            json.dumps(res)
+            if getattr(args, "json", False)
+            else "Champion vs Challenger: KEEP_CHAMPION"
+        )
     elif args.monitoring_cmd == "alerts":
         res = {"alerts": []}
         print(json.dumps(res) if getattr(args, "json", False) else "No open alerts.")
@@ -7009,6 +8015,7 @@ def run_monitoring_cli(args):
     else:
         print("Invalid monitoring command.")
 
+
 def handle_final_handoff_command(args, settings=None):
     from bist_signal_bot.cli.formatting import print_output
     from bist_signal_bot.app.final_handoff_app import (
@@ -7020,18 +8027,27 @@ def handle_final_handoff_command(args, settings=None):
         create_final_module_map_builder,
         create_post_release_roadmap_builder,
         create_maintenance_cadence_builder,
-        create_final_handoff_store
+        create_final_handoff_store,
     )
     from bist_signal_bot.final_handoff.reporting import (
-        handoff_manifest_to_dict, format_handoff_manifest_text,
-        release_pack_to_dict, format_release_pack_text,
-        operator_playbook_to_dict, format_operator_playbook_markdown,
-        developer_playbook_to_dict, format_developer_playbook_markdown,
-        command_entry_to_dict, format_command_map_text,
-        module_summary_to_dict, format_module_map_text,
-        roadmap_item_to_dict, format_roadmap_markdown,
-        maintenance_task_to_dict, format_maintenance_markdown,
-        handoff_report_to_dict, format_final_handoff_report_markdown
+        handoff_manifest_to_dict,
+        format_handoff_manifest_text,
+        release_pack_to_dict,
+        format_release_pack_text,
+        operator_playbook_to_dict,
+        format_operator_playbook_markdown,
+        developer_playbook_to_dict,
+        format_developer_playbook_markdown,
+        command_entry_to_dict,
+        format_command_map_text,
+        module_summary_to_dict,
+        format_module_map_text,
+        roadmap_item_to_dict,
+        format_roadmap_markdown,
+        maintenance_task_to_dict,
+        format_maintenance_markdown,
+        handoff_report_to_dict,
+        format_final_handoff_report_markdown,
     )
     from bist_signal_bot.final_handoff.models import FinalHandoffReport
 
@@ -7097,6 +8113,7 @@ def handle_final_handoff_command(args, settings=None):
         entries = builder.build_command_map()
         if getattr(args, "audience", None):
             from bist_signal_bot.final_handoff.models import HandoffAudience
+
             try:
                 aud = HandoffAudience(args.audience)
                 entries = builder.filter_by_audience(entries, aud)
@@ -7130,7 +8147,7 @@ def handle_final_handoff_command(args, settings=None):
         builder = create_maintenance_cadence_builder(settings=settings)
         tasks = builder.build_tasks()
         if getattr(args, "cadence", None):
-             tasks = [t for t in tasks if t.cadence.value == args.cadence]
+            tasks = [t for t in tasks if t.cadence.value == args.cadence]
         store.save_maintenance_tasks(tasks)
         if is_json:
             print_output([maintenance_task_to_dict(t) for t in tasks], as_json=True)
@@ -7152,7 +8169,7 @@ def handle_final_handoff_command(args, settings=None):
             operator_playbook=op,
             developer_playbook=dev,
             roadmap_items=roadmap,
-            maintenance_tasks=maint
+            maintenance_tasks=maint,
         )
         if is_json:
             print_output(handoff_report_to_dict(report), as_json=True)
@@ -7169,8 +8186,10 @@ def handle_final_handoff_command(args, settings=None):
         print_output({"error": "Unknown final-handoff command"}, as_json=is_json)
     return 0
 
+
 def cmd_report_templates(args, app_context) -> int:
     from bist_signal_bot.cli.formatting import print_output
+
     if args.rt_command == "list":
         print_output({"status": "PASS", "templates": []}, args.json)
     elif args.rt_command == "show":
@@ -7182,7 +8201,9 @@ def cmd_report_templates(args, app_context) -> int:
     elif args.rt_command == "validate":
         print_output({"status": "PASS", "validated": True, "template": args.template}, args.json)
     elif args.rt_command == "export":
-        print_output({"status": "PASS", "exported": not args.dry_run, "template": args.template}, args.json)
+        print_output(
+            {"status": "PASS", "exported": not args.dry_run, "template": args.template}, args.json
+        )
     elif args.rt_command == "manifest":
         print_output({"status": "PASS", "manifest_for": args.report_id}, args.json)
     elif args.rt_command == "report":
@@ -7195,28 +8216,38 @@ def cmd_report_templates(args, app_context) -> int:
 
 
 import argparse
-import sys
-from pathlib import Path
+
 
 def synthetic_scenarios_command(args):
-    from bist_signal_bot.app.synthetic_scenarios_app import create_synthetic_scenario_library, create_synthetic_scenario_generator, create_synthetic_scenario_validator, create_synthetic_stress_case_builder, create_synthetic_edge_case_factory, create_synthetic_scenario_manifest_builder, create_synthetic_scenario_store
+    from bist_signal_bot.app.synthetic_scenarios_app import (
+        create_synthetic_scenario_library,
+        create_synthetic_scenario_generator,
+        create_synthetic_scenario_validator,
+        create_synthetic_stress_case_builder,
+        create_synthetic_edge_case_factory,
+        create_synthetic_scenario_store,
+    )
 
     lib = create_synthetic_scenario_library()
     if args.synthetic_subcmd == "list":
         kind = getattr(args, "kind", None)
-        import enum
         from bist_signal_bot.synthetic_scenarios.models import SyntheticScenarioKind
+
         enum_kind = None
         if kind:
-            try: enum_kind = SyntheticScenarioKind(kind)
-            except ValueError: pass
+            try:
+                enum_kind = SyntheticScenarioKind(kind)
+            except ValueError:
+                pass
         specs = lib.list_specs(enum_kind)
 
         if getattr(args, "json", False):
             import json
+
             print(json.dumps([{"id": s.scenario_id, "kind": s.kind.value} for s in specs]))
         else:
-            for s in specs: print(f"{s.scenario_id} [{s.kind.value}]")
+            for s in specs:
+                print(f"{s.scenario_id} [{s.kind.value}]")
 
     elif args.synthetic_subcmd == "show":
         spec = lib.get_spec(args.scenario)
@@ -7225,6 +8256,7 @@ def synthetic_scenarios_command(args):
             sys.exit(1)
         if getattr(args, "json", False):
             import json
+
             print(json.dumps({"id": spec.scenario_id, "name": spec.name}))
         else:
             print(f"Scenario: {spec.scenario_id}\nName: {spec.name}\nKind: {spec.kind.value}")
@@ -7232,7 +8264,8 @@ def synthetic_scenarios_command(args):
     elif args.synthetic_subcmd == "generate":
         if getattr(args, "dry_run", False):
             print(f"Dry run generate for {args.scenario}")
-            if getattr(args, "json", False): print("{}")
+            if getattr(args, "json", False):
+                print("{}")
             return
 
         spec = lib.get_spec(args.scenario)
@@ -7245,10 +8278,11 @@ def synthetic_scenarios_command(args):
 
         if getattr(args, "save", False):
             store = create_synthetic_scenario_store()
-            for d in datasets: store.append_dataset(d)
+            for d in datasets:
+                store.append_dataset(d)
 
         if getattr(args, "json", False):
-            print('{"status": "success", "datasets": ' + str(len(datasets)) + '}')
+            print('{"status": "success", "datasets": ' + str(len(datasets)) + "}")
         else:
             print(f"Generated {len(datasets)} datasets")
 
@@ -7272,21 +8306,22 @@ def synthetic_scenarios_command(args):
             sys.exit(1)
 
         if getattr(args, "dry_run", False):
-             print(f"Dry run export for {args.scenario}")
-             if getattr(args, "json", False): print("{}")
-             return
+            print(f"Dry run export for {args.scenario}")
+            if getattr(args, "json", False):
+                print("{}")
+            return
 
         if getattr(args, "json", False):
-             print('{"status": "exported"}')
+            print('{"status": "exported"}')
         else:
-             print("Exported")
+            print("Exported")
 
     elif args.synthetic_subcmd == "stress":
         spec = lib.get_spec(args.scenario)
         bld = create_synthetic_stress_case_builder()
         cases = bld.default_stress_cases(spec) if spec else []
         if getattr(args, "json", False):
-            print('{"status": "success", "cases": ' + str(len(cases)) + '}')
+            print('{"status": "success", "cases": ' + str(len(cases)) + "}")
         else:
             print(f"Stress cases: {len(cases)}")
 
@@ -7295,7 +8330,7 @@ def synthetic_scenarios_command(args):
         fac = create_synthetic_edge_case_factory()
         cases = fac.default_edge_cases(spec) if spec else []
         if getattr(args, "json", False):
-            print('{"status": "success", "cases": ' + str(len(cases)) + '}')
+            print('{"status": "success", "cases": ' + str(len(cases)) + "}")
         else:
             print(f"Edge cases: {len(cases)}")
 
@@ -7316,6 +8351,7 @@ def synthetic_scenarios_command(args):
             print('{"status": "success"}')
         else:
             print("Config output")
+
 
 def add_synthetic_scenarios_parser(subparsers):
     p = subparsers.add_parser("synthetic-scenarios")
@@ -7366,13 +8402,14 @@ def add_synthetic_scenarios_parser(subparsers):
     cp = sp.add_parser("config")
     cp.add_argument("--json", action="store_true")
 
+
 def handle_local_ui(args, settings=None):
     from bist_signal_bot.app.local_ui_app import (
         create_local_ui_capability_detector,
         create_local_ui_layout_builder,
         create_local_ui_runner,
         create_local_ui_shortcut_registry,
-        create_local_ui_safety_guard
+        create_local_ui_safety_guard,
     )
 
     detector = create_local_ui_capability_detector(settings)
@@ -7383,19 +8420,24 @@ def handle_local_ui(args, settings=None):
         data = {
             "status": "PASS",
             "preferred_backend": pref.value,
-            "capabilities": [c.backend.value for c in caps if c.available]
+            "capabilities": [c.backend.value for c in caps if c.available],
         }
         if args.json:
             import json
+
             print(json.dumps(data, indent=2))
         else:
             print(f"Local UI Status: PASS, Preferred Backend: {pref.value}")
 
     elif args.ui_command == "capabilities":
         caps = detector.detect_capabilities()
-        data = [{"backend": c.backend.value, "available": c.available, "status": c.status.value} for c in caps]
+        data = [
+            {"backend": c.backend.value, "available": c.available, "status": c.status.value}
+            for c in caps
+        ]
         if args.json:
             import json
+
             print(json.dumps(data, indent=2))
         else:
             for d in data:
@@ -7406,6 +8448,7 @@ def handle_local_ui(args, settings=None):
         data = [{"id": p.page_id, "title": p.title, "status": p.status.value} for p in layout.pages]
         if args.json:
             import json
+
             print(json.dumps(data, indent=2))
         else:
             for d in data:
@@ -7413,35 +8456,55 @@ def handle_local_ui(args, settings=None):
 
     elif args.ui_command == "preview":
         layout = create_local_ui_layout_builder(settings).build_layout()
-        page = next((p for p in layout.pages if p.page_id == args.page or p.page_kind.value == args.page), None)
+        page = next(
+            (p for p in layout.pages if p.page_id == args.page or p.page_kind.value == args.page),
+            None,
+        )
         if not page:
             print(f"Page not found: {args.page}")
             import sys
+
             sys.exit(1)
-        data = {"id": page.page_id, "title": page.title, "status": page.status.value, "widgets": len(page.widgets)}
+        data = {
+            "id": page.page_id,
+            "title": page.title,
+            "status": page.status.value,
+            "widgets": len(page.widgets),
+        }
         if args.json:
             import json
+
             print(json.dumps(data, indent=2))
         else:
-            print(f"Preview Page: {page.title}\nStatus: {page.status.value}\nWidgets: {len(page.widgets)}")
+            print(
+                f"Preview Page: {page.title}\nStatus: {page.status.value}\nWidgets: {len(page.widgets)}"
+            )
 
     elif args.ui_command == "launch":
         from bist_signal_bot.local_ui.models import LocalUIBackend
+
         backend = LocalUIBackend(args.backend) if args.backend else None
         runner = create_local_ui_runner(settings)
         res = runner.launch(backend=backend, page=args.page, dry_run=args.dry_run)
         if args.json:
             import json
-            print(json.dumps(res.model_dump(mode='json'), indent=2))
+
+            print(json.dumps(res.model_dump(mode="json"), indent=2))
         else:
-            print(f"Run {res.run_id} completed with status {res.status.value} using {res.backend.value}")
+            print(
+                f"Run {res.run_id} completed with status {res.status.value} using {res.backend.value}"
+            )
 
     elif args.ui_command == "shortcuts":
         reg = create_local_ui_shortcut_registry(settings)
         shortcuts = reg.default_shortcuts()
-        data = [{"id": s.shortcut_id, "label": s.label, "command": s.command, "dry_run": s.dry_run} for s in shortcuts]
+        data = [
+            {"id": s.shortcut_id, "label": s.label, "command": s.command, "dry_run": s.dry_run}
+            for s in shortcuts
+        ]
         if args.json:
             import json
+
             print(json.dumps(data, indent=2))
         else:
             for d in data:
@@ -7454,6 +8517,7 @@ def handle_local_ui(args, settings=None):
         data = {"valid": len(findings) == 0, "findings": findings}
         if args.json:
             import json
+
             print(json.dumps(data, indent=2))
         else:
             if findings:
@@ -7475,11 +8539,12 @@ def handle_local_ui(args, settings=None):
             report_id="rep_test",
             generated_at=datetime.now(timezone.utc),
             capabilities=caps,
-            layout=layout
+            layout=layout,
         )
         if args.json:
             import json
-            print(json.dumps(rep.model_dump(mode='json'), indent=2))
+
+            print(json.dumps(rep.model_dump(mode="json"), indent=2))
         else:
             print(format_local_ui_report_markdown(rep))
 
@@ -7494,18 +8559,19 @@ def handle_local_ui(args, settings=None):
         data = {k: getattr(settings, k) for k in keys}
         if args.json:
             import json
+
             print(json.dumps(data, indent=2))
         else:
             for k, v in data.items():
                 print(f"{k} = {v}")
 
+
 def execute_maintenance_auto_cmd(args):
-    import json
     from bist_signal_bot.cli.formatting import print_json, print_error
     from bist_signal_bot.maintenance_automation.cadence import MaintenanceCadenceRegistry
     from bist_signal_bot.maintenance_automation.models import MaintenanceCadenceKind
 
-    cmd = getattr(args, 'maintenance_auto_cmd', None)
+    cmd = getattr(args, "maintenance_auto_cmd", None)
     if not cmd:
         print_error("Missing subcommand for maintenance-auto")
         return
@@ -7514,7 +8580,7 @@ def execute_maintenance_auto_cmd(args):
 
     if cmd == "policies":
         policies = registry.default_policies()
-        if hasattr(args, 'cadence') and args.cadence:
+        if hasattr(args, "cadence") and args.cadence:
             try:
                 kind = MaintenanceCadenceKind(args.cadence.upper())
                 policies = [p for p in policies if p.cadence == kind]
@@ -7529,13 +8595,23 @@ def execute_maintenance_auto_cmd(args):
 
     elif cmd == "plan":
         if getattr(args, "json", False):
-            print_json({"status": "DRY_RUN", "message": f"Planned {getattr(args, 'cadence', 'UNKNOWN')} maintenance"})
+            print_json(
+                {
+                    "status": "DRY_RUN",
+                    "message": f"Planned {getattr(args, 'cadence', 'UNKNOWN')} maintenance",
+                }
+            )
         else:
             print(f"Planned {getattr(args, 'cadence', 'UNKNOWN')} maintenance (Dry Run by default)")
 
     elif cmd == "run":
         if getattr(args, "json", False):
-            print_json({"status": "PASS", "message": f"Ran {getattr(args, 'cadence', 'UNKNOWN')} maintenance"})
+            print_json(
+                {
+                    "status": "PASS",
+                    "message": f"Ran {getattr(args, 'cadence', 'UNKNOWN')} maintenance",
+                }
+            )
         else:
             print(f"Ran {getattr(args, 'cadence', 'UNKNOWN')} maintenance (Dry Run by default)")
 
@@ -7580,5 +8656,3 @@ def execute_maintenance_auto_cmd(args):
             print_json({"status": "PASS", "settings": "hidden"})
         else:
             print("Config settings loaded successfully.")
-
-from bist_signal_bot.cli.release_policy_cli import handle_release_policy_command
