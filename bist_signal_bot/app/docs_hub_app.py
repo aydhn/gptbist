@@ -33,4 +33,4 @@ def create_docs_coverage_analyzer(settings: Optional[Settings] = None, base_dir:
     return DocsCoverageAnalyzer(settings, base_dir)
 
 def create_mvp_handoff_builder(settings: Optional[Settings] = None, base_dir: Optional[Path] = None) -> MVPHandoffBuilder:
-    return MVPHandoffBuilder(settings, base_dir)
+    return MVPHandoffBuilder()
