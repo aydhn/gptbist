@@ -166,3 +166,30 @@ def test_markdown_format_with_full_report():
     assert "- Reason 1" in md
     assert "## Issues" in md
     assert "- **ERROR** [DATA] AAPL: Missing data" in md
+
+def test_text_format_with_full_report():
+    req = ScanRequest(strategy_name="text_test", universe_mode=ScanUniverseMode.SYMBOLS, top_n=2)
+
+    sig1 = SignalCandidate(symbol="AAPL", strategy_name="text_test", direction=SignalDirection.LONG, score=90, strength=SignalStrength.UNKNOWN)
+    risk1 = RiskDecision(signal=sig1, status=RiskDecisionStatus.APPROVED, side=RiskSide.LONG, approved=True, filter_result=RiskFilterResult(passed=True, status=RiskDecisionStatus.APPROVED), final_score=82.0)
+    res1 = SymbolScanResult(symbol="AAPL", status=ScanCandidateStatus.PASSED, rank=1, rank_score=90.0, signal=sig1, risk_decision=risk1)
+
+    portfolio_state = PortfolioState(equity=100000, cash=100000)
+    alloc_res = AllocationResult(method=AllocationMethod.EQUAL_WEIGHT, items=[], total_allocated_notional=0.0, total_allocated_pct=0.0, rejected_symbols=[], reduced_symbols=[], issues=[], generated_at=datetime.now(timezone.utc))
+    exp_report = ExposureReport(gross_exposure_pct=0.0, net_exposure_pct=0.0, long_exposure_pct=0.0, short_exposure_pct=0.0, max_symbol_weight_pct=0.0, sector_weights={}, open_position_count=0, cash_pct=1.0, issues=[], metadata={})
+
+    portfolio_dec = PortfolioRiskDecision(
+        portfolio_state=portfolio_state, input_signals=[sig1], trade_risk_decisions=[],
+        allocation_result=alloc_res, exposure_report_before=exp_report, exposure_report_after=exp_report,
+        correlation_result=None, status=PortfolioDecisionStatus.APPROVED, approved_count=1, rejected_count=0,
+        reduced_count=0, reject_reasons=["Reason 1"], warnings=[], generated_at=datetime.now(timezone.utc)
+    )
+
+    report = ScanReport(request=req, results=[res1], portfolio_decision=portfolio_dec, issues=[])
+
+    text = format_scan_report_text(report)
+    assert "Strategy: text_test" in text
+    assert "  1. AAPL - LONG - Score: 90.0 - Status: PASSED" in text
+    assert "Portfolio Risk Summary:" in text
+    assert "  Status: APPROVED" in text
+    assert "  Allocations: 0" in text
