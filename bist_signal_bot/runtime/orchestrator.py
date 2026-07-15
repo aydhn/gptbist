@@ -1,14 +1,20 @@
 import uuid
 import logging
 from datetime import datetime
-from typing import Optional, Any, Dict, List
+from typing import Optional, Any, Dict
 
 from bist_signal_bot.config.settings import Settings
 from bist_signal_bot.core.exceptions import RuntimeValidationError, RuntimeLockError
 from bist_signal_bot.runtime.models import (
-    RuntimePipelineConfig, RuntimePipelineResult, RuntimeTrigger, RuntimePipelineStatus,
-    RuntimeJobType, RuntimeJobConfig, RuntimeState, RuntimeJobResult, RuntimeJobStatus,
-    SessionPolicy
+    RuntimePipelineConfig,
+    RuntimePipelineResult,
+    RuntimeTrigger,
+    RuntimePipelineStatus,
+    RuntimeJobType,
+    RuntimeState,
+    RuntimeJobResult,
+    RuntimeJobStatus,
+    SessionPolicy,
 )
 from bist_signal_bot.runtime.locks import RuntimeLockManager
 from bist_signal_bot.runtime.state import RuntimeStateStore
@@ -16,16 +22,11 @@ from bist_signal_bot.runtime.jobs import RuntimeJobRunner
 from bist_signal_bot.runtime.pipelines import RuntimePipelineBuilder
 from bist_signal_bot.scanner.models import ScanUniverseMode
 
-from bist_signal_bot.reports.generator import ResearchReportGenerator
-from bist_signal_bot.reports.digest import ReportDigestBuilder
-from bist_signal_bot.reports.models import ReportType
-from bist_signal_bot.app.reports_app import create_report_generator, create_digest_builder
 from bist_signal_bot.runtime.storage import RuntimeReportStore
 from bist_signal_bot.security.preflight import SecurityPreflightRunner
 from bist_signal_bot.security.kill_switch import KillSwitchManager
-from bist_signal_bot.security.models import KillSwitchScope
-from bist_signal_bot.core.exceptions import KillSwitchActiveError, SecurityPreflightError
 from bist_signal_bot.storage.paths import get_data_dir
+
 
 # For auditing, we normally import from core.audit, handled inside methods
 class RuntimeOrchestrator:
@@ -44,13 +45,16 @@ class RuntimeOrchestrator:
         report_store: Optional[RuntimeReportStore] = None,
         notifier: Optional[Any] = None,
         settings: Optional[Settings] = None,
-        logger: Optional[logging.Logger] = None
+        logger: Optional[logging.Logger] = None,
     ):
         self.settings = settings or Settings()
 
-        if getattr(self.settings, "SCENARIO_USE_SANDBOX", False) and getattr(self.settings, "BIST_BOT_ENV", "") == "scenario":
-             # We shouldn't allow real telegram actions here
-             pass
+        if (
+            getattr(self.settings, "SCENARIO_USE_SANDBOX", False)
+            and getattr(self.settings, "BIST_BOT_ENV", "") == "scenario"
+        ):
+            # We shouldn't allow real telegram actions here
+            pass
 
         self.logger = logger or logging.getLogger(__name__)
 
@@ -65,16 +69,24 @@ class RuntimeOrchestrator:
         self.state_store = state_store or RuntimeStateStore(self.settings)
         self.job_runner = job_runner or RuntimeJobRunner(self.settings, self.logger)
         self.report_store = report_store or RuntimeReportStore(self.settings)
-        self.kill_switch = kill_switch or KillSwitchManager(self.settings, get_data_dir(self.settings))
-        self.security_preflight = security_preflight or SecurityPreflightRunner(self.settings, kill_switch=self.kill_switch)
+        self.kill_switch = kill_switch or KillSwitchManager(
+            self.settings, get_data_dir(self.settings)
+        )
+        self.security_preflight = security_preflight or SecurityPreflightRunner(
+            self.settings, kill_switch=self.kill_switch
+        )
 
-
-    def run_once(self, config: RuntimePipelineConfig, trigger: RuntimeTrigger = RuntimeTrigger.CLI) -> RuntimePipelineResult:
-        if config.profile_runtime and getattr(self.settings, 'ENABLE_PERFORMANCE_PROFILING', False):
+    def run_once(
+        self, config: RuntimePipelineConfig, trigger: RuntimeTrigger = RuntimeTrigger.CLI
+    ) -> RuntimePipelineResult:
+        if config.profile_runtime and getattr(self.settings, "ENABLE_PERFORMANCE_PROFILING", False):
             from bist_signal_bot.app.performance_app import create_local_profiler
             from bist_signal_bot.performance.models import BenchmarkType
+
             profiler = create_local_profiler(self.settings)
-            with profiler.profile_context("runtime_run_once", BenchmarkType.RUNTIME_RUN_ONCE) as perf_ctx:
+            with profiler.profile_context(
+                "runtime_run_once", BenchmarkType.RUNTIME_RUN_ONCE
+            ) as perf_ctx:
                 result = self._run_once_impl(config, trigger)
                 # Attach performance to result after execution completes, but before yielding context
                 if result:
@@ -84,7 +96,9 @@ class RuntimeOrchestrator:
             if "profile" in perf_ctx and perf_ctx["profile"]:
                 profile = perf_ctx["profile"]
                 result.performance_profile_id = profile.profile_id
-                peak = next((m.value for m in profile.metrics if m.name == "Peak Memory Usage"), None)
+                peak = next(
+                    (m.value for m in profile.metrics if m.name == "Peak Memory Usage"), None
+                )
                 result.memory_peak_mb = peak
                 if profile.spans:
                     slowest = max(profile.spans, key=lambda s: s.elapsed_seconds)
@@ -93,11 +107,16 @@ class RuntimeOrchestrator:
         else:
             return self._run_once_impl(config, trigger)
 
-    def _run_config_gate_integration(self, config: RuntimePipelineConfig, trigger: RuntimeTrigger) -> Optional[RuntimePipelineResult]:
-        if getattr(config, "config_gate_before_run", False) or getattr(self.settings, "RUNTIME_CONFIG_GATE_BEFORE_RUN", False):
+    def _run_config_gate_integration(
+        self, config: RuntimePipelineConfig, trigger: RuntimeTrigger
+    ) -> Optional[RuntimePipelineResult]:
+        if getattr(config, "config_gate_before_run", False) or getattr(
+            self.settings, "RUNTIME_CONFIG_GATE_BEFORE_RUN", False
+        ):
             try:
                 from bist_signal_bot.app.config_registry_app import create_config_gate
                 from bist_signal_bot.config_registry.models import RuntimeProfileType
+
                 gate = create_config_gate(self.settings)
 
                 profile_type = None
@@ -113,7 +132,7 @@ class RuntimeOrchestrator:
                         trigger=trigger,
                         config=config,
                         status=RuntimePipelineStatus.FAILED,
-                        started_at=datetime.utcnow()
+                        started_at=datetime.utcnow(),
                     )
                     result.config_gate_status = gate_res.decision.value
                     result.metadata["config_gate_warnings"] = gate_res.warnings
@@ -127,185 +146,269 @@ class RuntimeOrchestrator:
             try:
                 from bist_signal_bot.data.data_service import MarketDataService
                 from bist_signal_bot.data.mock_provider import MockMarketDataProvider
+
                 ds = MarketDataService(provider=MockMarketDataProvider())
-                fr = ds.freshness_report(config.symbols, config.timeframe, getattr(self.settings, "DATA_FRESHNESS_MAX_AGE_HOURS", 48))
+                fr = ds.freshness_report(
+                    config.symbols,
+                    config.timeframe,
+                    getattr(self.settings, "DATA_FRESHNESS_MAX_AGE_HOURS", 48),
+                )
                 if fr.stale_symbols or fr.missing_symbols:
-                    self.logger.warning(f"Runtime data freshness check failed. Stale: {fr.stale_symbols}, Missing: {fr.missing_symbols}")
+                    self.logger.warning(
+                        f"Runtime data freshness check failed. Stale: {fr.stale_symbols}, Missing: {fr.missing_symbols}"
+                    )
             except Exception as e:
                 self.logger.warning(f"Failed to check data freshness: {e}")
 
     def _apply_adaptive_config(self, config: RuntimePipelineConfig) -> None:
-        if config and getattr(config, 'use_adaptive', False) and hasattr(self, 'adaptive_engine') and getattr(self, 'adaptive_engine', None):
+        if (
+            config
+            and getattr(config, "use_adaptive", False)
+            and hasattr(self, "adaptive_engine")
+            and getattr(self, "adaptive_engine", None)
+        ):
             try:
-                syms = config.symbols if hasattr(config, 'symbols') and config.symbols else []
+                syms = config.symbols if hasattr(config, "symbols") and config.symbols else []
                 strats = [j.strategy_name for j in config.jobs if j.strategy_name]
-                adaptive_config = getattr(self, 'adaptive_engine').build_runtime_strategy_config(syms, strats)
-                if not config.metadata: config.metadata = {}
+                adaptive_config = getattr(self, "adaptive_engine").build_runtime_strategy_config(
+                    syms, strats
+                )
+                if not config.metadata:
+                    config.metadata = {}
                 config.metadata["adaptive_config"] = adaptive_config
             except Exception as e:
                 self.logger.warning(f"Adaptive integration failed: {e}")
 
-    def _execute_pipeline_steps(self, config: RuntimePipelineConfig, result: RuntimePipelineResult) -> None:
+    def _execute_healthcheck(self, result: RuntimePipelineResult) -> None:
+        if self.healthcheck_runner:
+            job_res = self.job_runner.run_job(
+                RuntimeJobType.HEALTHCHECK,
+                lambda: (
+                    self.healthcheck_runner.run()
+                    if hasattr(self.healthcheck_runner, "run")
+                    else {"status": "ok"}
+                ),
+            )
+            result.job_results.append(job_res)
+            result.healthcheck_summary = job_res.summary
+
+    def _execute_data_refresh(
+        self, config: RuntimePipelineConfig, result: RuntimePipelineResult, fetched_data: dict
+    ) -> None:
+        data_service = getattr(self.scanner_engine, "data_service", None)
+        if data_service is not None and hasattr(data_service, "get_many_ohlcv"):
+
+            def _refresh():
+                from bist_signal_bot.data.symbol_universe import DEFAULT_SEED_SYMBOLS
+                from bist_signal_bot.data.models import Timeframe
+
+                raw = (
+                    list(config.symbols)
+                    if getattr(config, "symbols", None)
+                    else list(DEFAULT_SEED_SYMBOLS)
+                )
+                syms = [getattr(s, "symbol", s) for s in raw]  # SymbolInfo -> ticker str
+                timeframe = Timeframe(config.timeframe)
+                requested = list(syms)
+                missing: list[str] = []
+
+                if config.source == "local":
+                    store = getattr(data_service, "store", None)
+                    provider = getattr(data_service, "provider", None)
+                    vendor = getattr(provider, "vendor", None)
+                    if store is None or vendor is None:
+                        raise RuntimeValidationError(
+                            "Local runtime data requires a configured local store."
+                        )
+                    syms = [s for s in requested if store.exists(s, vendor, timeframe)]
+                    missing = [s for s in requested if s not in syms]
+
+                if not syms:
+                    raise RuntimeValidationError(
+                        "No local market data is available for the runtime symbols."
+                    )
+
+                refreshed = data_service.get_many_ohlcv(
+                    syms,
+                    timeframe=timeframe,
+                    refresh=False,
+                    save=False,
+                    allow_provider_fallback=False,
+                )
+                fetched_data.update(refreshed)
+                if not fetched_data:
+                    raise RuntimeValidationError("Market data refresh returned no usable data.")
+                return {
+                    "symbols_refreshed": len(fetched_data),
+                    "symbols_requested": len(requested),
+                    "symbols_missing": len(missing),
+                    "network_used": False,
+                }
+
+            job_res = self.job_runner.run_job(RuntimeJobType.DATA_REFRESH, _refresh)
+            result.job_results.append(job_res)
+
+    def _execute_signal_scan(
+        self, config: RuntimePipelineConfig, result: RuntimePipelineResult, fetched_data: dict
+    ) -> None:
+        if self.scanner_engine:
+            req = RuntimePipelineBuilder.build_scan_request(config)
+            if fetched_data:
+                req.symbols = list(fetched_data)
+                req.universe_mode = ScanUniverseMode.SYMBOLS
+                req.source = "local_file"
+            scan_holder: dict[str, Any] = {}
+
+            def _scan():
+                report = self.scanner_engine.scan(req)
+                scan_holder["report"] = report
+                return report.summary() if hasattr(report, "summary") else {"output": str(report)}
+
+            job_res = self.job_runner.run_job(RuntimeJobType.SIGNAL_SCAN, _scan)
+            report = scan_holder.get("report")
+            report_status = getattr(getattr(report, "status", None), "value", None)
+            if report_status == "FAILED":
+                job_res.status = RuntimeJobStatus.FAILED
+                job_res.issues.append("Signal scan failed for all requested symbols.")
+            elif report_status == "PARTIAL_SUCCESS":
+                job_res.status = RuntimeJobStatus.PARTIAL_SUCCESS
+                job_res.issues.append("Signal scan completed with symbol-level errors.")
+            result.job_results.append(job_res)
+            result.scan_report_summary = job_res.summary
+
+    def _execute_regime_analysis(self, result: RuntimePipelineResult, fetched_data: dict) -> None:
+        if self.regime_engine is not None and fetched_data:
+
+            def _regime():
+                dfs = {}
+                for sym, md in fetched_data.items():
+                    df = getattr(md, "data", md)
+                    if df is not None and not getattr(df, "empty", True):
+                        dfs[sym] = df
+                if not dfs:
+                    raise RuntimeValidationError(
+                        "No usable data frames are available for regime analysis."
+                    )
+                batch = self.regime_engine.classify_many(dfs)
+                return batch.summary()
+
+            job_res = self.job_runner.run_job(RuntimeJobType.REGIME_ANALYSIS, _regime)
+            if job_res.status == RuntimeJobStatus.SUCCESS:
+                requested = int(job_res.summary.get("requested_count", 0))
+                succeeded = int(job_res.summary.get("success_count", 0))
+                failed = int(job_res.summary.get("failed_count", 0))
+                if requested > 0 and succeeded == 0:
+                    job_res.status = RuntimeJobStatus.FAILED
+                    job_res.issues.append("Regime analysis failed for all requested symbols.")
+                elif failed > 0:
+                    job_res.status = RuntimeJobStatus.PARTIAL_SUCCESS
+                    job_res.issues.append("Regime analysis completed with symbol-level errors.")
+            result.job_results.append(job_res)
+            result.regime_summary = job_res.summary
+
+    def _execute_ml_inference(
+        self, config: RuntimePipelineConfig, result: RuntimePipelineResult, fetched_data: dict
+    ) -> None:
+        def _ml_inference():
+            if self.ml_inference_engine is None:
+                raise RuntimeValidationError("ML inference requires a configured registered model.")
+            if not config.ml_model_id:
+                raise RuntimeValidationError("ml_model_id is required for runtime ML inference.")
+
+            from bist_signal_bot.ml.inference.models import MLInferenceInput
+
+            inference_config = self.ml_inference_engine.build_default_config(config.ml_model_id)
+            inference_config.enabled = True
+            inputs = []
+            for symbol, market_data in fetched_data.items():
+                data = getattr(market_data, "data", market_data)
+                if data is not None and not getattr(data, "empty", True):
+                    inputs.append(
+                        MLInferenceInput(
+                            symbol=symbol,
+                            data=data,
+                            config=inference_config,
+                            timeframe=config.timeframe,
+                        )
+                    )
+            if not inputs:
+                raise RuntimeValidationError("No usable data is available for ML inference.")
+            return self.ml_inference_engine.predict_batch(inputs).summary()
+
+        job_res = self.job_runner.run_job(RuntimeJobType.ML_INFERENCE, _ml_inference)
+        if job_res.status == RuntimeJobStatus.SUCCESS:
+            requested = int(job_res.summary.get("requested_count", 0))
+            errors = int(job_res.summary.get("error_count", 0))
+            if requested > 0 and errors == requested:
+                job_res.status = RuntimeJobStatus.FAILED
+                job_res.issues.append("ML inference failed for all requested symbols.")
+            elif errors > 0:
+                job_res.status = RuntimeJobStatus.PARTIAL_SUCCESS
+                job_res.issues.append("ML inference completed with symbol-level errors.")
+        result.job_results.append(job_res)
+        result.ml_summary = job_res.summary
+
+    def _execute_paper_run(
+        self, config: RuntimePipelineConfig, result: RuntimePipelineResult
+    ) -> None:
+        if (
+            self.paper_engine
+            and getattr(config, "use_paper", False)
+            and not getattr(config, "dry_run", False)
+        ):
+            job_res = self.job_runner.run_job(
+                RuntimeJobType.PAPER_RUN,
+                lambda: (
+                    self.paper_engine.run(getattr(config, "strategy_name", ""))
+                    if hasattr(self.paper_engine, "run")
+                    else {"mock_paper": True}
+                ),
+            )
+            result.job_results.append(job_res)
+            result.paper_result_summary = job_res.summary
+
+    def _execute_telegram_summary(
+        self, config: RuntimePipelineConfig, result: RuntimePipelineResult
+    ) -> None:
+        if (
+            self.notifier
+            and getattr(config, "send_telegram", False)
+            and not getattr(config, "dry_run", False)
+        ):
+            job_res = self.send_summary(result)
+            result.job_results.append(job_res)
+
+    def _execute_cleanup(self, result: RuntimePipelineResult) -> None:
+        result.metadata.setdefault("skipped_steps", []).append(
+            {
+                "step": RuntimeJobType.CLEANUP.value,
+                "reason": "No cleanup service is configured.",
+            }
+        )
+
+    def _execute_pipeline_steps(
+        self, config: RuntimePipelineConfig, result: RuntimePipelineResult
+    ) -> None:
         steps = RuntimePipelineBuilder.build_runtime_pipeline_steps(config)
         fetched_data: dict = {}  # shared across steps: DATA_REFRESH -> REGIME_ANALYSIS
 
         for step in steps:
             if step == RuntimeJobType.HEALTHCHECK:
-                if self.healthcheck_runner:
-                    job_res = self.job_runner.run_job(step, lambda: self.healthcheck_runner.run() if hasattr(self.healthcheck_runner, "run") else {"status": "ok"})
-                    result.job_results.append(job_res)
-                    result.healthcheck_summary = job_res.summary
-
+                self._execute_healthcheck(result)
             elif step == RuntimeJobType.DATA_REFRESH:
-                data_service = getattr(self.scanner_engine, "data_service", None)
-                if data_service is not None and hasattr(data_service, "get_many_ohlcv"):
-                    def _refresh():
-                        from bist_signal_bot.data.symbol_universe import DEFAULT_SEED_SYMBOLS
-                        from bist_signal_bot.data.models import Timeframe
-
-                        raw = list(config.symbols) if getattr(config, "symbols", None) else list(DEFAULT_SEED_SYMBOLS)
-                        syms = [getattr(s, "symbol", s) for s in raw]  # SymbolInfo -> ticker str
-                        timeframe = Timeframe(config.timeframe)
-                        requested = list(syms)
-                        missing: list[str] = []
-
-                        if config.source == "local":
-                            store = getattr(data_service, "store", None)
-                            provider = getattr(data_service, "provider", None)
-                            vendor = getattr(provider, "vendor", None)
-                            if store is None or vendor is None:
-                                raise RuntimeValidationError("Local runtime data requires a configured local store.")
-                            syms = [s for s in requested if store.exists(s, vendor, timeframe)]
-                            missing = [s for s in requested if s not in syms]
-
-                        if not syms:
-                            raise RuntimeValidationError("No local market data is available for the runtime symbols.")
-
-                        refreshed = data_service.get_many_ohlcv(
-                            syms,
-                            timeframe=timeframe,
-                            refresh=False,
-                            save=False,
-                            allow_provider_fallback=False,
-                        )
-                        fetched_data.update(refreshed)
-                        if not fetched_data:
-                            raise RuntimeValidationError("Market data refresh returned no usable data.")
-                        return {
-                            "symbols_refreshed": len(fetched_data),
-                            "symbols_requested": len(requested),
-                            "symbols_missing": len(missing),
-                            "network_used": False,
-                        }
-                    job_res = self.job_runner.run_job(step, _refresh)
-                    result.job_results.append(job_res)
-
+                self._execute_data_refresh(config, result, fetched_data)
             elif step == RuntimeJobType.SIGNAL_SCAN:
-                if self.scanner_engine:
-                    req = RuntimePipelineBuilder.build_scan_request(config)
-                    if fetched_data:
-                        req.symbols = list(fetched_data)
-                        req.universe_mode = ScanUniverseMode.SYMBOLS
-                        req.source = "local_file"
-                    scan_holder: dict[str, Any] = {}
-
-                    def _scan():
-                        report = self.scanner_engine.scan(req)
-                        scan_holder["report"] = report
-                        return report.summary() if hasattr(report, "summary") else {"output": str(report)}
-
-                    job_res = self.job_runner.run_job(step, _scan)
-                    report = scan_holder.get("report")
-                    report_status = getattr(getattr(report, "status", None), "value", None)
-                    if report_status == "FAILED":
-                        job_res.status = RuntimeJobStatus.FAILED
-                        job_res.issues.append("Signal scan failed for all requested symbols.")
-                    elif report_status == "PARTIAL_SUCCESS":
-                        job_res.status = RuntimeJobStatus.PARTIAL_SUCCESS
-                        job_res.issues.append("Signal scan completed with symbol-level errors.")
-                    result.job_results.append(job_res)
-                    result.scan_report_summary = job_res.summary
-
+                self._execute_signal_scan(config, result, fetched_data)
             elif step == RuntimeJobType.REGIME_ANALYSIS:
-                if self.regime_engine is not None and fetched_data:
-                    def _regime():
-                        dfs = {}
-                        for sym, md in fetched_data.items():
-                            df = getattr(md, "data", md)
-                            if df is not None and not getattr(df, "empty", True):
-                                dfs[sym] = df
-                        if not dfs:
-                            raise RuntimeValidationError("No usable data frames are available for regime analysis.")
-                        batch = self.regime_engine.classify_many(dfs)
-                        return batch.summary()
-                    job_res = self.job_runner.run_job(step, _regime)
-                    if job_res.status == RuntimeJobStatus.SUCCESS:
-                        requested = int(job_res.summary.get("requested_count", 0))
-                        succeeded = int(job_res.summary.get("success_count", 0))
-                        failed = int(job_res.summary.get("failed_count", 0))
-                        if requested > 0 and succeeded == 0:
-                            job_res.status = RuntimeJobStatus.FAILED
-                            job_res.issues.append("Regime analysis failed for all requested symbols.")
-                        elif failed > 0:
-                            job_res.status = RuntimeJobStatus.PARTIAL_SUCCESS
-                            job_res.issues.append("Regime analysis completed with symbol-level errors.")
-                    result.job_results.append(job_res)
-                    result.regime_summary = job_res.summary
-
+                self._execute_regime_analysis(result, fetched_data)
             elif step == RuntimeJobType.ML_INFERENCE:
-                def _ml_inference():
-                    if self.ml_inference_engine is None:
-                        raise RuntimeValidationError("ML inference requires a configured registered model.")
-                    if not config.ml_model_id:
-                        raise RuntimeValidationError("ml_model_id is required for runtime ML inference.")
-
-                    from bist_signal_bot.ml.inference.models import MLInferenceInput
-
-                    inference_config = self.ml_inference_engine.build_default_config(config.ml_model_id)
-                    inference_config.enabled = True
-                    inputs = []
-                    for symbol, market_data in fetched_data.items():
-                        data = getattr(market_data, "data", market_data)
-                        if data is not None and not getattr(data, "empty", True):
-                            inputs.append(MLInferenceInput(
-                                symbol=symbol,
-                                data=data,
-                                config=inference_config,
-                                timeframe=config.timeframe,
-                            ))
-                    if not inputs:
-                        raise RuntimeValidationError("No usable data is available for ML inference.")
-                    return self.ml_inference_engine.predict_batch(inputs).summary()
-
-                job_res = self.job_runner.run_job(step, _ml_inference)
-                if job_res.status == RuntimeJobStatus.SUCCESS:
-                    requested = int(job_res.summary.get("requested_count", 0))
-                    errors = int(job_res.summary.get("error_count", 0))
-                    if requested > 0 and errors == requested:
-                        job_res.status = RuntimeJobStatus.FAILED
-                        job_res.issues.append("ML inference failed for all requested symbols.")
-                    elif errors > 0:
-                        job_res.status = RuntimeJobStatus.PARTIAL_SUCCESS
-                        job_res.issues.append("ML inference completed with symbol-level errors.")
-                result.job_results.append(job_res)
-                result.ml_summary = job_res.summary
-
+                self._execute_ml_inference(config, result, fetched_data)
             elif step == RuntimeJobType.PAPER_RUN:
-                if self.paper_engine and getattr(config, 'use_paper', False) and not getattr(config, 'dry_run', False):
-                    job_res = self.job_runner.run_job(step, lambda: self.paper_engine.run(getattr(config, 'strategy_name', '')) if hasattr(self.paper_engine, "run") else {"mock_paper": True})
-                    result.job_results.append(job_res)
-                    result.paper_result_summary = job_res.summary
-
+                self._execute_paper_run(config, result)
             elif step == RuntimeJobType.TELEGRAM_SUMMARY:
-                if self.notifier and getattr(config, 'send_telegram', False) and not getattr(config, 'dry_run', False):
-                    job_res = self.send_summary(result)
-                    result.job_results.append(job_res)
-
+                self._execute_telegram_summary(config, result)
             elif step == RuntimeJobType.CLEANUP:
-                result.metadata.setdefault("skipped_steps", []).append({
-                    "step": RuntimeJobType.CLEANUP.value,
-                    "reason": "No cleanup service is configured.",
-                })
+                self._execute_cleanup(result)
 
         failed_jobs = [j for j in result.job_results if j.status == RuntimeJobStatus.FAILED]
         if failed_jobs:
@@ -315,26 +418,38 @@ class RuntimeOrchestrator:
         else:
             result.status = RuntimePipelineStatus.SUCCESS
 
-    def _integrate_portfolio_research(self, config: RuntimePipelineConfig, result: RuntimePipelineResult) -> None:
-        if getattr(config, "build_research_portfolio", False) or getattr(self.settings, "RUNTIME_BUILD_RESEARCH_PORTFOLIO", False):
+    def _integrate_portfolio_research(
+        self, config: RuntimePipelineConfig, result: RuntimePipelineResult
+    ) -> None:
+        if getattr(config, "build_research_portfolio", False) or getattr(
+            self.settings, "RUNTIME_BUILD_RESEARCH_PORTFOLIO", False
+        ):
             try:
-                from bist_signal_bot.app.portfolio_research_app import create_portfolio_research_engine
-                from bist_signal_bot.portfolio_research.models import PortfolioResearchRequest, AllocationMethod
+                from bist_signal_bot.app.portfolio_research_app import (
+                    create_portfolio_research_engine,
+                )
+                from bist_signal_bot.portfolio_research.models import (
+                    PortfolioResearchRequest,
+                    AllocationMethod,
+                )
 
                 engine = create_portfolio_research_engine(self.settings)
 
-                method_str = getattr(config, "portfolio_allocation_method", None) or getattr(self.settings, "RUNTIME_PORTFOLIO_ALLOCATION_METHOD", "HYBRID")
+                method_str = getattr(config, "portfolio_allocation_method", None) or getattr(
+                    self.settings, "RUNTIME_PORTFOLIO_ALLOCATION_METHOD", "HYBRID"
+                )
                 try:
                     method = AllocationMethod(method_str)
                 except ValueError:
                     method = AllocationMethod.HYBRID
 
                 req = PortfolioResearchRequest(
-                    symbols=getattr(config, 'symbols', []),
+                    symbols=getattr(config, "symbols", []),
                     allocation_method=method,
-                    max_items=getattr(config, "portfolio_max_items", None) or getattr(self.settings, "RUNTIME_PORTFOLIO_MAX_ITEMS", 10),
+                    max_items=getattr(config, "portfolio_max_items", None)
+                    or getattr(self.settings, "RUNTIME_PORTFOLIO_MAX_ITEMS", 10),
                     save_snapshot=True,
-                    source=getattr(config, "data_source", "local")
+                    source=getattr(config, "data_source", "local"),
                 )
 
                 snapshot = engine.build_snapshot(req)
@@ -347,7 +462,9 @@ class RuntimeOrchestrator:
                 self.logger.error(f"Failed to build research portfolio: {e}")
                 result.metadata["portfolio_error"] = str(e)
 
-    def _run_once_impl(self, config: RuntimePipelineConfig, trigger: RuntimeTrigger = RuntimeTrigger.CLI) -> RuntimePipelineResult:
+    def _run_once_impl(
+        self, config: RuntimePipelineConfig, trigger: RuntimeTrigger = RuntimeTrigger.CLI
+    ) -> RuntimePipelineResult:
         gate_result = self._run_config_gate_integration(config, trigger)
         if gate_result:
             return gate_result
@@ -366,7 +483,7 @@ class RuntimeOrchestrator:
             trigger=trigger,
             config=config,
             status=RuntimePipelineStatus.RUNNING,
-            started_at=started_at
+            started_at=started_at,
         )
 
         try:
@@ -380,7 +497,9 @@ class RuntimeOrchestrator:
         self.state_store.mark_running(run_id, lock_id)
 
         try:
-            in_session, session_msg = self.job_runner.should_run_in_session(config.session_policy, started_at)
+            in_session, session_msg = self.job_runner.should_run_in_session(
+                config.session_policy, started_at
+            )
             if not in_session:
                 result.status = RuntimePipelineStatus.SKIPPED
                 self.logger.info(session_msg)
@@ -388,8 +507,8 @@ class RuntimeOrchestrator:
 
             self._execute_pipeline_steps(config, result)
 
-            if getattr(config, 'save_reports', False):
-                formats = getattr(self.settings, 'RUNTIME_REPORT_FORMATS', '').split(",")
+            if getattr(config, "save_reports", False):
+                formats = getattr(self.settings, "RUNTIME_REPORT_FORMATS", "").split(",")
                 paths = self.report_store.save_result(result, formats=formats)
                 result.output_files = {k: str(v) for k, v in paths.items()}
 
@@ -410,8 +529,6 @@ class RuntimeOrchestrator:
         return result
 
     def dry_run(self, config: RuntimePipelineConfig) -> RuntimePipelineResult:
-        security_preflight: Optional[SecurityPreflightRunner] = None,
-        kill_switch: Optional[KillSwitchManager] = None,
         config.dry_run = True
         return self.run_once(config, RuntimeTrigger.TEST)
 
@@ -419,17 +536,15 @@ class RuntimeOrchestrator:
         return self.state_store.load().summary()
 
     def reset_state(self, confirm: bool = False) -> RuntimeState:
-        security_preflight: Optional[SecurityPreflightRunner] = None,
-        kill_switch: Optional[KillSwitchManager] = None,
         if not confirm:
             raise RuntimeValidationError("You must confirm reset_state by passing confirm=True")
         return self.state_store.reset_state()
 
     def send_summary(self, result: RuntimePipelineResult) -> RuntimeJobResult:
-        security_preflight: Optional[SecurityPreflightRunner] = None,
-        kill_switch: Optional[KillSwitchManager] = None,
+
         def send_func():
             from bist_signal_bot.notifications.formatter import format_runtime_pipeline_result
+
             msg = format_runtime_pipeline_result(result)
             if self.notifier and hasattr(self.notifier, "send_message"):
                 self.notifier.send_message(msg)
@@ -449,7 +564,7 @@ class RuntimeOrchestrator:
             use_regime_filter=self.settings.RUNTIME_USE_REGIME_FILTER,
             use_paper=self.settings.RUNTIME_USE_PAPER,
             send_telegram=self.settings.RUNTIME_SEND_TELEGRAM,
-            session_policy=SessionPolicy(self.settings.RUNTIME_SESSION_POLICY)
+            session_policy=SessionPolicy(self.settings.RUNTIME_SESSION_POLICY),
         )
 
     def run_quality_preflight(self) -> bool:
@@ -458,7 +573,10 @@ class RuntimeOrchestrator:
             return True
 
         try:
-            from bist_signal_bot.app.quality_app import create_quality_gate_runner, create_quality_config_from_settings
+            from bist_signal_bot.app.quality_app import (
+                create_quality_gate_runner,
+                create_quality_config_from_settings,
+            )
             from bist_signal_bot.quality.models import QualitySuite
 
             self.logger.info("Running optional runtime quality preflight...")
@@ -474,7 +592,9 @@ class RuntimeOrchestrator:
             result = runner.run(config)
 
             if not result.passed():
-                self.logger.error(f"Quality preflight failed with status {result.status.value}. Runtime will not start.")
+                self.logger.error(
+                    f"Quality preflight failed with status {result.status.value}. Runtime will not start."
+                )
                 return False
 
             self.logger.info("Quality preflight passed.")
@@ -483,41 +603,49 @@ class RuntimeOrchestrator:
             self.logger.error(f"Error during quality preflight: {e}")
             return False
 
+
 # Add drift check
 def run_drift_check_if_enabled(engine, settings):
     if settings.RUNTIME_RUN_DRIFT_CHECK:
         import logging
+
         logger = logging.getLogger(__name__)
         logger.info("Running optional drift check at the end of runtime pipeline...")
         from bist_signal_bot.drift.models import DriftAnalysisRequest
+
         try:
-             res = engine.analyze(DriftAnalysisRequest(save_output=True))
-             logger.info(f"Drift Check completed. Status: {res.status.value}")
+            res = engine.analyze(DriftAnalysisRequest(save_output=True))
+            logger.info(f"Drift Check completed. Status: {res.status.value}")
         except Exception as e:
-             logger.error(f"Failed to run drift check during runtime: {e}")
+            logger.error(f"Failed to run drift check during runtime: {e}")
+
 
 def maintenance_hook_before_heavy_research():
     from bist_signal_bot.config.settings import get_settings
+
     settings = get_settings()
 
-    if getattr(settings, 'MAINTENANCE_DOCTOR_BEFORE_RUN', False):
-         from bist_signal_bot.app.maintenance_app import create_maintenance_doctor
-         doc = create_maintenance_doctor()
-         doc.run_doctor() # Not halting, just logging / checking
+    if getattr(settings, "MAINTENANCE_DOCTOR_BEFORE_RUN", False):
+        from bist_signal_bot.app.maintenance_app import create_maintenance_doctor
 
-    if getattr(settings, 'BACKUP_BEFORE_HEAVY_RESEARCH', False):
-         # Typically just recommending or checking age, but could trigger backup
-         pass
+        doc = create_maintenance_doctor()
+        doc.run_doctor()  # Not halting, just logging / checking
+
+    if getattr(settings, "BACKUP_BEFORE_HEAVY_RESEARCH", False):
+        # Typically just recommending or checking age, but could trigger backup
+        pass
 
     def update_knowledge_index(self, settings: Any = None):
         try:
             from bist_signal_bot.app.knowledge_app import create_knowledge_indexer
             from bist_signal_bot.knowledge.models import KnowledgeIndexBuildRequest
+
             indexer = create_knowledge_indexer(settings)
             req = KnowledgeIndexBuildRequest(incremental=True, use_embeddings=False)
             indexer.build_index(req)
         except Exception:
             pass
+
     def run_whatif_analysis(self) -> dict[str, Any]:
         if not getattr(self.settings, "ENABLE_WHATIF_LAB", True):
             return {"status": "SKIPPED", "reason": "WhatIf disabled"}
@@ -526,6 +654,7 @@ def maintenance_hook_before_heavy_research():
 
         try:
             from bist_signal_bot.app.whatif_app import create_whatif_engine
+
             engine = create_whatif_engine(self.settings)
             res = engine.run_default(source_type="runtime_orchestrator")
             return {"status": "SUCCESS", "run_id": res.run_id}
