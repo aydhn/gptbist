@@ -7,9 +7,6 @@ from bist_signal_bot.docs_hub.models import (
 )
 
 class ArchitectureMapBuilder:
-    def __init__(self, settings=None, base_dir=None):
-        pass
-
     def build_map(self) -> ArchitectureMap:
         nodes = self.module_nodes() + self.cli_command_nodes() + self.store_nodes()
         edges = self.integration_edges(nodes)

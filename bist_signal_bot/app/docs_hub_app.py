@@ -21,7 +21,7 @@ def create_docs_search_engine(settings: Optional[Settings] = None, base_dir: Opt
     return DocsSearchEngine(settings, base_dir)
 
 def create_architecture_map_builder(settings: Optional[Settings] = None, base_dir: Optional[Path] = None) -> ArchitectureMapBuilder:
-    return ArchitectureMapBuilder(settings, base_dir)
+    return ArchitectureMapBuilder()
 
 def create_command_cookbook_builder(settings: Optional[Settings] = None, base_dir: Optional[Path] = None) -> CommandCookbookBuilder:
     return CommandCookbookBuilder(settings, base_dir)
