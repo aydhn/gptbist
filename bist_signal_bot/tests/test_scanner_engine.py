@@ -184,3 +184,46 @@ def test_scan_resolve_symbols_validation_error():
     assert len(report.issues) == 1
     assert report.issues[0].stage == "RESOLVE"
     assert "Test validation error" in report.issues[0].message
+
+def test_build_default_request():
+    engine = SignalScannerEngine(deps=SignalScannerDependencies(data_service=MockDataService(), strategy_engine=MockStrategyEngine()))
+    req = engine.build_default_request(strategy_name="test_strat")
+    assert isinstance(req, ScanRequest)
+    assert req.strategy_name == "test_strat"
+    assert req.source == engine.settings.SCANNER_DEFAULT_SOURCE
+    assert req.timeframe == engine.settings.SCANNER_DEFAULT_TIMEFRAME
+    assert req.top_n == engine.settings.SCANNER_DEFAULT_TOP_N
+    assert req.use_trade_risk == engine.settings.SCANNER_USE_TRADE_RISK
+    assert req.use_portfolio_risk == engine.settings.SCANNER_USE_PORTFOLIO_RISK
+    assert req.continue_on_error == engine.settings.SCANNER_CONTINUE_ON_ERROR
+    assert req.save_report == engine.settings.SCANNER_SAVE_REPORT
+    assert req.send_telegram == engine.settings.SCANNER_SEND_TELEGRAM
+    assert req.min_signal_score == engine.settings.SCANNER_MIN_SIGNAL_SCORE
+    assert req.min_confidence == engine.settings.SCANNER_MIN_CONFIDENCE
+    assert req.min_final_score == engine.settings.SCANNER_MIN_FINAL_SCORE
+    assert req.universe_mode == ScanUniverseMode.SYMBOLS
+    assert req.symbols == []
+    assert req.watchlist_name is None
+    assert req.group_name is None
+
+def test_build_default_request_with_kwargs():
+    engine = SignalScannerEngine(deps=SignalScannerDependencies(data_service=MockDataService(), strategy_engine=MockStrategyEngine()))
+    req = engine.build_default_request(
+        strategy_name="test_strat_2",
+        source="custom_source",
+        timeframe="1h",
+        symbols=["AAPL", "MSFT"],
+        watchlist_name="my_watch",
+        group_name="my_group",
+        all=True,
+        params={"p1": "v1"}
+    )
+
+    assert req.strategy_name == "test_strat_2"
+    assert req.source == "custom_source"
+    assert req.timeframe == "1h"
+    assert req.symbols == ["AAPL", "MSFT"]
+    assert req.watchlist_name == "my_watch"
+    assert req.group_name == "my_group"
+    assert req.universe_mode == ScanUniverseMode.ALL
+    assert req.params == {"p1": "v1"}
