@@ -1,6 +1,7 @@
 import uuid
 from datetime import datetime
 from typing import Optional
+from bist_signal_bot.config.settings import Settings
 
 from bist_signal_bot.docs_hub.models import (
     TroubleshootingKnowledgeBase, TroubleshootingEntry, TroubleshootingSeverity
@@ -8,7 +9,7 @@ from bist_signal_bot.docs_hub.models import (
 
 class TroubleshootingKBBuilder:
     def __init__(self, settings=None):
-        pass
+        self.settings = settings if settings is not None else Settings()
 
     def build_kb(self) -> TroubleshootingKnowledgeBase:
         return TroubleshootingKnowledgeBase(
