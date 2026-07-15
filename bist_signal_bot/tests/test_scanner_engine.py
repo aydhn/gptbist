@@ -2,7 +2,7 @@ import pytest
 import pandas as pd
 from types import SimpleNamespace
 from bist_signal_bot.scanner.engine import SignalScannerEngine, SignalScannerDependencies
-from bist_signal_bot.scanner.models import ScanRequest, ScanUniverseMode, ScanCandidateStatus, ScanStatus, ScanSortKey
+from bist_signal_bot.scanner.models import ScanRequest, ScanUniverseMode, ScanStatus, ScanSortKey, ScanCandidateStatus
 from bist_signal_bot.config.settings import Settings
 from bist_signal_bot.strategies.models import StrategyExecutionResult, StrategyExecutionIssue
 from bist_signal_bot.signals.models import SignalCandidate, SignalDirection, SignalStrength
@@ -159,3 +159,87 @@ def test_scan_symbol_exception():
     assert len(res.issues) == 1
     assert res.issues[0].stage == "EXECUTION"
     assert "Simulated execution exception" in res.issues[0].message
+
+def test_scan_watchlist():
+    engine = SignalScannerEngine(deps=SignalScannerDependencies(
+        data_service=MockDataService(),
+        strategy_engine=MockStrategyEngine(),
+        risk_engine=MockRiskEngine(),
+        portfolio_risk_engine=MockPortfolioRiskEngine(),
+    ))
+
+    # We need to mock get_watchlist_symbols in the engine since resolve_symbols calls it
+    original_resolve = engine.resolve_symbols
+    def mock_resolve(req):
+        if req.universe_mode == ScanUniverseMode.WATCHLIST and req.watchlist_name == "MY_WATCHLIST":
+            return ["A", "B"]
+        return original_resolve(req)
+
+    engine.resolve_symbols = mock_resolve
+
+    report = engine.scan_watchlist("MY_WATCHLIST", "t")
+
+    assert report.status == ScanStatus.SUCCESS
+    assert report.passed_count == 2
+    assert report.request.universe_mode == ScanUniverseMode.WATCHLIST
+    assert report.request.watchlist_name == "MY_WATCHLIST"
+
+def test_scan_group():
+    engine = SignalScannerEngine(deps=SignalScannerDependencies(
+        data_service=MockDataService(),
+        strategy_engine=MockStrategyEngine(),
+        risk_engine=MockRiskEngine(),
+        portfolio_risk_engine=MockPortfolioRiskEngine(),
+    ))
+
+    original_resolve = engine.resolve_symbols
+    def mock_resolve(req):
+        if req.universe_mode == ScanUniverseMode.GROUP and req.group_name == "MY_GROUP":
+            return ["A"]
+        return original_resolve(req)
+
+    engine.resolve_symbols = mock_resolve
+
+    report = engine.scan_group("MY_GROUP", "t")
+
+    assert report.status == ScanStatus.SUCCESS
+    assert report.passed_count == 1
+    assert report.request.universe_mode == ScanUniverseMode.GROUP
+    assert report.request.group_name == "MY_GROUP"
+
+def test_scan_all():
+    engine = SignalScannerEngine(deps=SignalScannerDependencies(
+        data_service=MockDataService(),
+        strategy_engine=MockStrategyEngine(),
+        risk_engine=MockRiskEngine(),
+        portfolio_risk_engine=MockPortfolioRiskEngine(),
+    ))
+
+    original_resolve = engine.resolve_symbols
+    def mock_resolve(req):
+        if req.universe_mode == ScanUniverseMode.ALL:
+            return ["A", "B", "C"]
+        return original_resolve(req)
+
+    engine.resolve_symbols = mock_resolve
+
+    report = engine.scan_all("t")
+
+    assert report.status == ScanStatus.SUCCESS
+    assert report.passed_count == 3
+    assert report.request.universe_mode == ScanUniverseMode.ALL
+
+def test_scan_symbols_method():
+    engine = SignalScannerEngine(deps=SignalScannerDependencies(
+        data_service=MockDataService(),
+        strategy_engine=MockStrategyEngine(),
+        risk_engine=MockRiskEngine(),
+        portfolio_risk_engine=MockPortfolioRiskEngine(),
+    ))
+
+    report = engine.scan_symbols(["A", "B"], "t")
+
+    assert report.status == ScanStatus.SUCCESS
+    assert report.passed_count == 2
+    assert report.request.universe_mode == ScanUniverseMode.SYMBOLS
+    assert report.request.symbols == ["A", "B"]

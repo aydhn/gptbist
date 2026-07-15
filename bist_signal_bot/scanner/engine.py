@@ -22,7 +22,7 @@ from bist_signal_bot.portfolio.risk_engine import PortfolioRiskEngine
 from bist_signal_bot.paper.engine import PaperTradingEngine
 from bist_signal_bot.scanner.models import (
     ScanRequest, ScanReport, SymbolScanResult, SymbolScanIssue, ScanUniverseMode,
-    ScanStatus, ScanCandidateStatus, ScanRankingItem
+    ScanStatus, ScanCandidateStatus, ScanRankingItem, ScanSortKey
 )
 from bist_signal_bot.scanner.ranking import ScanRanker
 from bist_signal_bot.scanner.filters import ScanFilterEngine
