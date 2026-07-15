@@ -66,3 +66,124 @@ def test_calculate_returns_matrix_custom_price_col():
     assert len(res) == 2
     np.testing.assert_almost_equal(res.loc[1, 'SYM1'], 110/100 - 1)
     np.testing.assert_almost_equal(res.loc[2, 'SYM1'], 121/110 - 1)
+
+from datetime import datetime, timezone
+from bist_signal_bot.portfolio.models import CorrelationMatrixResult
+
+def test_average_portfolio_correlation_happy_path():
+    analyzer = CorrelationAnalyzer()
+
+    matrix = pd.DataFrame(
+        [
+            [1.0, 0.5, 0.2],
+            [0.5, 1.0, 0.8],
+            [0.2, 0.8, 1.0]
+        ],
+        index=['A', 'B', 'C'],
+        columns=['A', 'B', 'C']
+    )
+
+    corr = CorrelationMatrixResult(
+        symbols=['A', 'B', 'C'],
+        matrix=matrix,
+        lookback_rows=60,
+        method='pearson',
+        generated_at=datetime.now(timezone.utc),
+        issues=[],
+        metadata={}
+    )
+
+    avg_corr = analyzer.average_portfolio_correlation(['A', 'B', 'C'], corr)
+    assert avg_corr is not None
+    np.testing.assert_almost_equal(avg_corr, 0.5)
+
+def test_average_portfolio_correlation_subset():
+    analyzer = CorrelationAnalyzer()
+
+    matrix = pd.DataFrame(
+        [
+            [1.0, 0.5, 0.2, 0.1],
+            [0.5, 1.0, 0.8, 0.3],
+            [0.2, 0.8, 1.0, 0.6],
+            [0.1, 0.3, 0.6, 1.0]
+        ],
+        index=['A', 'B', 'C', 'D'],
+        columns=['A', 'B', 'C', 'D']
+    )
+
+    corr = CorrelationMatrixResult(
+        symbols=['A', 'B', 'C', 'D'],
+        matrix=matrix,
+        lookback_rows=60,
+        method='pearson',
+        generated_at=datetime.now(timezone.utc),
+        issues=[],
+        metadata={}
+    )
+
+    avg_corr = analyzer.average_portfolio_correlation(['A', 'B', 'D', 'INVALID'], corr)
+    assert avg_corr is not None
+    np.testing.assert_almost_equal(avg_corr, 0.3)
+
+def test_average_portfolio_correlation_empty_matrix():
+    analyzer = CorrelationAnalyzer()
+
+    corr = CorrelationMatrixResult(
+        symbols=[],
+        matrix=pd.DataFrame(),
+        lookback_rows=60,
+        method='pearson',
+        generated_at=datetime.now(timezone.utc),
+        issues=[],
+        metadata={}
+    )
+
+    avg_corr = analyzer.average_portfolio_correlation(['A', 'B'], corr)
+    assert avg_corr is None
+
+def test_average_portfolio_correlation_insufficient_symbols():
+    analyzer = CorrelationAnalyzer()
+
+    matrix = pd.DataFrame(
+        [[1.0, 0.5], [0.5, 1.0]],
+        index=['A', 'B'],
+        columns=['A', 'B']
+    )
+
+    corr = CorrelationMatrixResult(
+        symbols=['A', 'B'],
+        matrix=matrix,
+        lookback_rows=60,
+        method='pearson',
+        generated_at=datetime.now(timezone.utc),
+        issues=[],
+        metadata={}
+    )
+
+    avg_corr = analyzer.average_portfolio_correlation(['A', 'INVALID'], corr)
+    assert avg_corr is None
+
+    avg_corr2 = analyzer.average_portfolio_correlation(['X', 'Y'], corr)
+    assert avg_corr2 is None
+
+def test_average_portfolio_correlation_no_valid_values():
+    analyzer = CorrelationAnalyzer()
+
+    matrix = pd.DataFrame(
+        [[1.0, np.nan], [np.nan, 1.0]],
+        index=['A', 'B'],
+        columns=['A', 'B']
+    )
+
+    corr = CorrelationMatrixResult(
+        symbols=['A', 'B'],
+        matrix=matrix,
+        lookback_rows=60,
+        method='pearson',
+        generated_at=datetime.now(timezone.utc),
+        issues=[],
+        metadata={}
+    )
+
+    avg_corr = analyzer.average_portfolio_correlation(['A', 'B'], corr)
+    assert avg_corr is None
