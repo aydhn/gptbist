@@ -1,6 +1,5 @@
 import pandas as pd
-from bist_signal_bot.ml.models import MLDatasetSchema, DatasetSplitMode
-from bist_signal_bot.ml.models import MLDatasetSchema, DatasetSplitMode
+from bist_signal_bot.ml.models import MLDatasetSchema
 from bist_signal_bot.core.exceptions import MLLeakageError
 
 class MLLeakageGuard:
@@ -33,8 +32,13 @@ class MLLeakageGuard:
             if not data[timestamp_col].is_monotonic_increasing:
                 raise MLLeakageError("Time order is violated. Timestamps must be monotonic increasing.")
 
-    def validate_no_random_split(self, split_mode: DatasetSplitMode) -> None:
-        pass # In our context random splits are not even supported in the Enum, so just a stub or sanity check
+    def validate_no_random_split(self, train_indices: list[int], test_indices: list[int]) -> bool:
+        """Ensure no chronological overlap between train and test sets."""
+        if not train_indices or not test_indices:
+            return True
+        if max(train_indices) >= min(test_indices):
+            raise MLLeakageError("Chronological overlap detected between train and test sets.")
+        return True
 
     def run_all_checks(self, data: pd.DataFrame, schema: MLDatasetSchema) -> list[str]:
         issues = []
