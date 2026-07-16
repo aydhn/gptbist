@@ -41,3 +41,16 @@ def test_symbol_scan_result_summary():
     assert summ["status"] == "PASSED"
     assert summ["signal_score"] == 85.0
     assert summ["rank"] == 1
+
+def test_scan_report_safe_public_dict():
+    req = ScanRequest(strategy_name="test_safe_dict", universe_mode=ScanUniverseMode.ALL)
+    report = ScanReport(request=req, status=ScanStatus.SUCCESS, total_symbols=15, passed_count=5)
+
+    summary = report.summary()
+    safe_dict = report.safe_public_dict()
+
+    assert safe_dict == summary
+    assert safe_dict["status"] == "SUCCESS"
+    assert safe_dict["strategy"] == "test_safe_dict"
+    assert safe_dict["total_symbols"] == 15
+    assert safe_dict["passed"] == 5
