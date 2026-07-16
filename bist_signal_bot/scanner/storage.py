@@ -102,11 +102,20 @@ class ScanReportStore:
 
         saved_paths = {}
         if "json" in formats:
-            saved_paths["json"] = self.save_json(report, output_dir)
+            try:
+                saved_paths["json"] = self.save_json(report, output_dir)
+            except Exception as e:
+                self.logger.error(f"Error saving JSON: {e}")
         if "csv" in formats:
-            saved_paths.update(self.save_csv(report, output_dir))
+            try:
+                saved_paths.update(self.save_csv(report, output_dir))
+            except Exception as e:
+                self.logger.error(f"Error saving CSV: {e}")
         if "markdown" in formats:
-            saved_paths["markdown"] = self.save_markdown(report, output_dir)
+            try:
+                saved_paths["markdown"] = self.save_markdown(report, output_dir)
+            except Exception as e:
+                self.logger.error(f"Error saving Markdown: {e}")
 
         return saved_paths
 
