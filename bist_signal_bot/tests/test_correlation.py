@@ -1,4 +1,3 @@
-import pytest
 import pandas as pd
 import numpy as np
 
@@ -187,3 +186,54 @@ def test_average_portfolio_correlation_no_valid_values():
 
     avg_corr = analyzer.average_portfolio_correlation(['A', 'B'], corr)
     assert avg_corr is None
+
+def test_calculate_correlation_matrix_happy_path():
+    analyzer = CorrelationAnalyzer()
+    df1 = pd.DataFrame({'close': [100, 101, 102, 103, 104]})
+    df2 = pd.DataFrame({'close': [50, 52, 51, 53, 55]})
+    data = {'SYM1': df1, 'SYM2': df2}
+
+    res = analyzer.calculate_correlation_matrix(data, lookback_rows=2)
+
+    assert res.symbols == ['SYM1', 'SYM2']
+    assert res.lookback_rows == 2
+    assert res.method == "pearson"
+    assert not res.matrix.empty
+    assert res.matrix.shape == (2, 2)
+    assert not res.issues
+
+def test_calculate_correlation_matrix_empty_input():
+    analyzer = CorrelationAnalyzer()
+    res = analyzer.calculate_correlation_matrix({})
+
+    assert res.symbols == []
+    assert res.matrix.empty
+    assert "No price data provided" in res.issues
+
+def test_calculate_correlation_matrix_empty_returns():
+    analyzer = CorrelationAnalyzer()
+    # Providing empty dataframes will result in an empty returns matrix
+    df1 = pd.DataFrame()
+    data = {'SYM1': df1}
+
+    res = analyzer.calculate_correlation_matrix(data)
+
+    assert res.symbols == ['SYM1']
+    assert res.matrix.empty
+    assert "Could not compute valid returns matrix" in res.issues
+
+def test_calculate_correlation_matrix_missing_symbols():
+    analyzer = CorrelationAnalyzer()
+    df1 = pd.DataFrame({'close': [100, 101, 102, 103, 104]})
+    df2 = pd.DataFrame({'open': [50, 52, 51, 53, 55]}) # Missing 'close' col
+    data = {'SYM1': df1, 'SYM2': df2}
+
+    res = analyzer.calculate_correlation_matrix(data, lookback_rows=2)
+
+    assert res.symbols == ['SYM1']
+    assert not res.matrix.empty
+    assert res.matrix.shape == (1, 1)
+
+    missing_issue_found = any("Missing valid returns for symbols" in issue for issue in res.issues)
+    assert missing_issue_found
+    assert res.metadata.get("missing_symbols") == ['SYM2']
