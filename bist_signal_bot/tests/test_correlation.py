@@ -187,3 +187,120 @@ def test_average_portfolio_correlation_no_valid_values():
 
     avg_corr = analyzer.average_portfolio_correlation(['A', 'B'], corr)
     assert avg_corr is None
+
+def test_max_pairwise_correlation_happy_path():
+    analyzer = CorrelationAnalyzer()
+
+    matrix = pd.DataFrame(
+        [
+            [1.0, 0.5, 0.2, 0.1],
+            [0.5, 1.0, 0.8, 0.3],
+            [0.2, 0.8, 1.0, 0.6],
+            [0.1, 0.3, 0.6, 1.0]
+        ],
+        index=['A', 'B', 'C', 'D'],
+        columns=['A', 'B', 'C', 'D']
+    )
+
+    corr = CorrelationMatrixResult(
+        symbols=['A', 'B', 'C', 'D'],
+        matrix=matrix,
+        lookback_rows=60,
+        method='pearson',
+        generated_at=datetime.now(timezone.utc),
+        issues=[],
+        metadata={}
+    )
+
+    max_corr = analyzer.max_pairwise_correlation('A', ['B', 'C', 'D'], corr)
+    assert max_corr is not None
+    np.testing.assert_almost_equal(max_corr, 0.5)
+
+    max_corr = analyzer.max_pairwise_correlation('B', ['A', 'C'], corr)
+    assert max_corr is not None
+    np.testing.assert_almost_equal(max_corr, 0.8)
+
+def test_max_pairwise_correlation_empty_matrix():
+    analyzer = CorrelationAnalyzer()
+
+    corr = CorrelationMatrixResult(
+        symbols=[],
+        matrix=pd.DataFrame(),
+        lookback_rows=60,
+        method='pearson',
+        generated_at=datetime.now(timezone.utc),
+        issues=[],
+        metadata={}
+    )
+
+    max_corr = analyzer.max_pairwise_correlation('A', ['B', 'C'], corr)
+    assert max_corr is None
+
+def test_max_pairwise_correlation_symbol_not_in_matrix():
+    analyzer = CorrelationAnalyzer()
+
+    matrix = pd.DataFrame(
+        [[1.0, 0.5], [0.5, 1.0]],
+        index=['A', 'B'],
+        columns=['A', 'B']
+    )
+
+    corr = CorrelationMatrixResult(
+        symbols=['A', 'B'],
+        matrix=matrix,
+        lookback_rows=60,
+        method='pearson',
+        generated_at=datetime.now(timezone.utc),
+        issues=[],
+        metadata={}
+    )
+
+    max_corr = analyzer.max_pairwise_correlation('C', ['A', 'B'], corr)
+    assert max_corr is None
+
+def test_max_pairwise_correlation_no_valid_existing_symbols():
+    analyzer = CorrelationAnalyzer()
+
+    matrix = pd.DataFrame(
+        [[1.0, 0.5], [0.5, 1.0]],
+        index=['A', 'B'],
+        columns=['A', 'B']
+    )
+
+    corr = CorrelationMatrixResult(
+        symbols=['A', 'B'],
+        matrix=matrix,
+        lookback_rows=60,
+        method='pearson',
+        generated_at=datetime.now(timezone.utc),
+        issues=[],
+        metadata={}
+    )
+
+    max_corr = analyzer.max_pairwise_correlation('A', ['C', 'D'], corr)
+    assert max_corr is None
+
+    max_corr = analyzer.max_pairwise_correlation('A', ['A'], corr)
+    assert max_corr is None
+
+def test_max_pairwise_correlation_nan_result():
+    analyzer = CorrelationAnalyzer()
+
+    matrix = pd.DataFrame(
+        [[1.0, np.nan], [np.nan, 1.0]],
+        index=['A', 'B'],
+        columns=['A', 'B']
+    )
+
+    corr = CorrelationMatrixResult(
+        symbols=['A', 'B'],
+        matrix=matrix,
+        lookback_rows=60,
+        method='pearson',
+        generated_at=datetime.now(timezone.utc),
+        issues=[],
+        metadata={}
+    )
+
+    max_corr = analyzer.max_pairwise_correlation('A', ['B'], corr)
+    assert max_corr is None
