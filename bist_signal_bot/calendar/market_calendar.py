@@ -12,7 +12,7 @@ class BistMarketCalendar:
         timezone_name: str = "Europe/Istanbul",
         regular_open: str = "10:00",
         regular_close: str = "18:00",
-        manual_holidays: set[date] | None = None
+        manual_holidays: set[date] | None = None,
     ):
         self.timezone_name = timezone_name
         self.regular_open = regular_open
@@ -65,12 +65,15 @@ class BistMarketCalendar:
         if start > end:
             raise MarketCalendarError("Start date cannot be after end date.")
 
+        num_days = (end - start).days + 1
         days = []
-        current_day = start
-        while current_day <= end:
-            if self.is_trading_day(current_day):
-                days.append(current_day)
-            current_day += timedelta(days=1)
+        current = start
+        one_day = timedelta(days=1)
+
+        for _ in range(num_days):
+            if self.is_trading_day(current):
+                days.append(current)
+            current += one_day
         return days
 
     @classmethod
@@ -80,5 +83,5 @@ class BistMarketCalendar:
             timezone_name=settings.MARKET_TIMEZONE,
             regular_open=settings.BIST_REGULAR_OPEN,
             regular_close=settings.BIST_REGULAR_CLOSE,
-            manual_holidays=holidays
+            manual_holidays=holidays,
         )
