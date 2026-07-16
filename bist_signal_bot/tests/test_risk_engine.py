@@ -7,6 +7,7 @@ from bist_signal_bot.risk.models import RiskDecisionStatus, PositionSizingMethod
 
 def test_risk_engine_evaluate_signal_approved():
     settings = Settings()
+    settings.RISK_POSITION_SIZING_METHOD = "RISK_PERCENT"
     engine = RiskEngine.from_settings(settings)
 
     signal = SignalCandidate(
@@ -53,6 +54,7 @@ def test_risk_engine_evaluate_signal_rejected_by_score():
 
 def test_risk_engine_evaluate_batch():
     settings = Settings()
+    settings.RISK_POSITION_SIZING_METHOD = "RISK_PERCENT"
     engine = RiskEngine.from_settings(settings)
 
     signals = [
