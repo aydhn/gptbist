@@ -116,7 +116,7 @@ class LocalImportAdapterRegistry:
                     return []
                 table_name = tables[0][0]
                 # Strictly validate that the table name only contains safe characters
-                if not re.match(r'^[a-zA-Z0-9_]+$', table_name):
+                if not re.fullmatch(r'^[a-zA-Z0-9_]+$', table_name):
                     raise DataImportAdapterError(f"Invalid table name detected: {table_name}")
 
                 safe_table_name = f'"{table_name}"'
@@ -156,7 +156,7 @@ class LocalImportAdapterRegistry:
                  return pd.DataFrame()
              table_name = tables[0][0]
              # Strictly validate that the table name only contains safe characters
-             if not re.match(r'^[a-zA-Z0-9_]+$', table_name):
+             if not re.fullmatch(r'^[a-zA-Z0-9_]+$', table_name):
                  raise DataImportAdapterError(f"Invalid table name detected: {table_name}")
 
              safe_table_name = f'"{table_name}"'
