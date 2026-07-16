@@ -7,8 +7,6 @@ from bist_signal_bot.docs_hub.models import (
 )
 
 class MVPHandoffBuilder:
-    def __init__(self, settings=None, base_dir=None):
-        pass
 
     def build_handoff(self, index: Optional[DocsIndex] = None,
                       architecture: Optional[ArchitectureMap] = None,
