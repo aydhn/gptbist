@@ -46,7 +46,7 @@ class FundamentalEngine:
     def _old_build_scorecard(self, symbol: str, as_of_date: Optional[datetime] = None):
         return FundamentalScorecard(symbol=symbol, as_of_date=as_of_date or datetime.now(), available_at=as_of_date or datetime.now(), composite_score=50.0, data_status=FundamentalDataStatus.VALID)
     def build_scorecards(self, symbols: List[str], as_of_date: Optional[datetime] = None) -> List[FundamentalScorecard]: return [self.build_scorecard(s, as_of_date) for s in symbols]
-    def filter_signal(self, signal: SignalCandidate, as_of_date: Optional[datetime] = None, mode: Optional[str] = None): pass
-    def freshness_report(self, symbols: List[str]) -> FundamentalFreshnessReport: pass
+    def filter_signal(self, signal: SignalCandidate, as_of_date: Optional[datetime] = None, mode: Optional[str] = None): raise NotImplementedError()
+    def freshness_report(self, symbols: List[str]) -> FundamentalFreshnessReport: raise NotImplementedError()
     def events_calendar(self, start: datetime, end: datetime, symbols: Optional[List[str]] = None) -> dict: pass
     def add_fundamental_features(self, data, symbol, as_of_date_col="date"): return data
