@@ -1,0 +1,7 @@
+🎯 **What:** The `max_pairwise_correlation` method in `bist_signal_bot/portfolio/correlation.py` lacked test coverage, creating a risk that changes could break correlation-based portfolio logic.
+📊 **Coverage:** The new tests cover:
+- Happy paths with valid matrices and expected high correlations.
+- Edge cases where the matrix is empty or the target symbol is missing.
+- Error conditions where no valid existing symbols are available for calculation.
+- Edge cases where calculated max off-diagonal values result in NaNs.
+✨ **Result:** The codebase is now safer to refactor with full branch coverage of `max_pairwise_correlation`.
