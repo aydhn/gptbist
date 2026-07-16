@@ -51,12 +51,14 @@ def test_scan_ranker_none_at_bottom():
     assert rankings[0].symbol == "B"
     assert rankings[1].symbol == "A"
 
-def test_ranking_to_dataframe():
-    ranker = ScanRanker()
-
+def test_ranking_to_dataframe_empty():
     # Empty test
     empty_df = ranking_to_dataframe([])
     assert empty_df.empty
+    assert len(empty_df) == 0
+
+def test_ranking_to_dataframe_normal():
+    ranker = ScanRanker()
 
     # Normal test
     rankings = ranker.rank([_make_result("A", 60), _make_result("B", 80)])
@@ -67,6 +69,13 @@ def test_ranking_to_dataframe():
     assert "rank_score" in df.columns
     assert df.iloc[0]["symbol"] == "B"
     assert df.iloc[1]["symbol"] == "A"
+    assert df.iloc[0]["rank_score"] == 80.0
+    assert df.iloc[1]["rank_score"] == 60.0
+    assert list(df["rank"]) == [1, 2]
+
+    # Check that model fields are present
+    assert "final_score" in df.columns
+    assert "confidence" in df.columns
 
 
 def _make_result_with_metadata(symbol, score, metadata, final_score=None):
