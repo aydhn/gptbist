@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 import uuid
-from typing import Any
+from typing import Any, Callable
 from collections import defaultdict
 
 from bist_signal_bot.portfolio_ledger.models import (
@@ -80,75 +80,56 @@ class PortfolioAttributionEngine:
             items.append(item)
         return items
 
-    def sector_attribution(self, snapshot: PortfolioValuationSnapshot) -> list[PortfolioAttributionItem]:
-        sector_gross = defaultdict(float)
-        sector_net = defaultdict(float)
-        sector_weight = defaultdict(float)
-        sector_cost = defaultdict(float)
+    def _group_attribution(self, snapshot: PortfolioValuationSnapshot, group_key_func: Callable[[Any], str], attribution_type: AttributionType, message_template: str) -> list[PortfolioAttributionItem]:
+        group_gross = defaultdict(float)
+        group_net = defaultdict(float)
+        group_weight = defaultdict(float)
+        group_cost = defaultdict(float)
 
         for pos in snapshot.positions:
-            sec = pos.sector or "UNKNOWN"
-            sector_weight[sec] += pos.current_weight
+            key = group_key_func(pos)
+            group_weight[key] += pos.current_weight
 
             if pos.contribution_to_return_pct is not None:
-                sector_gross[sec] += pos.contribution_to_return_pct
+                group_gross[key] += pos.contribution_to_return_pct
 
                 cost_bps = pos.estimated_cost_bps or 0.0
                 slip_bps = pos.estimated_slippage_bps or 0.0
                 drag = (cost_bps + slip_bps) / 10000.0 * pos.current_weight * 100.0
 
-                sector_cost[sec] += drag
-                sector_net[sec] += (pos.contribution_to_return_pct - drag)
+                group_cost[key] += drag
+                group_net[key] += (pos.contribution_to_return_pct - drag)
 
         items = []
-        for sec in sector_weight.keys():
+        for key in group_weight.keys():
             items.append(PortfolioAttributionItem(
                 attribution_id=f"item_{uuid.uuid4().hex[:8]}",
                 portfolio_id=snapshot.portfolio_id,
-                attribution_type=AttributionType.SECTOR,
-                key=sec,
-                gross_contribution_pct=sector_gross.get(sec),
-                net_contribution_pct=sector_net.get(sec),
-                cost_contribution_pct=sector_cost.get(sec),
-                weight=sector_weight.get(sec),
-                message=f"Contribution for sector {sec}"
+                attribution_type=attribution_type,
+                key=key,
+                gross_contribution_pct=group_gross.get(key),
+                net_contribution_pct=group_net.get(key),
+                cost_contribution_pct=group_cost.get(key),
+                weight=group_weight.get(key),
+                message=message_template.format(key=key)
             ))
         return items
+
+    def sector_attribution(self, snapshot: PortfolioValuationSnapshot) -> list[PortfolioAttributionItem]:
+        return self._group_attribution(
+            snapshot,
+            lambda pos: pos.sector or "UNKNOWN",
+            AttributionType.SECTOR,
+            "Contribution for sector {key}"
+        )
 
     def strategy_attribution(self, snapshot: PortfolioValuationSnapshot) -> list[PortfolioAttributionItem]:
-        strat_gross = defaultdict(float)
-        strat_net = defaultdict(float)
-        strat_weight = defaultdict(float)
-        strat_cost = defaultdict(float)
-
-        for pos in snapshot.positions:
-            strat = pos.strategy_name or "UNKNOWN"
-            strat_weight[strat] += pos.current_weight
-
-            if pos.contribution_to_return_pct is not None:
-                strat_gross[strat] += pos.contribution_to_return_pct
-
-                cost_bps = pos.estimated_cost_bps or 0.0
-                slip_bps = pos.estimated_slippage_bps or 0.0
-                drag = (cost_bps + slip_bps) / 10000.0 * pos.current_weight * 100.0
-
-                strat_cost[strat] += drag
-                strat_net[strat] += (pos.contribution_to_return_pct - drag)
-
-        items = []
-        for strat in strat_weight.keys():
-            items.append(PortfolioAttributionItem(
-                attribution_id=f"item_{uuid.uuid4().hex[:8]}",
-                portfolio_id=snapshot.portfolio_id,
-                attribution_type=AttributionType.STRATEGY,
-                key=strat,
-                gross_contribution_pct=strat_gross.get(strat),
-                net_contribution_pct=strat_net.get(strat),
-                cost_contribution_pct=strat_cost.get(strat),
-                weight=strat_weight.get(strat),
-                message=f"Contribution for strategy {strat}"
-            ))
-        return items
+        return self._group_attribution(
+            snapshot,
+            lambda pos: pos.strategy_name or "UNKNOWN",
+            AttributionType.STRATEGY,
+            "Contribution for strategy {key}"
+        )
 
     def cost_attribution(self, snapshot: PortfolioValuationSnapshot) -> list[PortfolioAttributionItem]:
         # Cost drag is a negative contribution to the portfolio.
