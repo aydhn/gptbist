@@ -55,7 +55,7 @@ class AdaptivePolicyManager:
 
     def save_policy(self, policy: AdaptivePolicy, path: Path) -> Path:
         try:
-            self.validate_policy(policy)
+            AdaptivePolicy.model_validate(policy.model_dump(mode="json"))
             path.parent.mkdir(parents=True, exist_ok=True)
 
             from bist_signal_bot.security.path_guard import PathGuard
@@ -67,9 +67,6 @@ class AdaptivePolicyManager:
             return path
         except Exception as e:
             raise AdaptivePolicyError(f"Failed to save policy: {e}")
-
-    def validate_policy(self, policy: AdaptivePolicy) -> None:
-        pass
 
     def policy_summary(self, policy: AdaptivePolicy) -> dict[str, Any]:
         return {
