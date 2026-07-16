@@ -54,7 +54,7 @@ class DocsGenerator:
         return "# Installation\n\nBu proje araştırma, backtest, sinyal adayı üretimi ve paper simulation amaçlıdır. Yatırım tavsiyesi değildir. Gerçek emir göndermez.\n"
 
     def generate_configuration(self) -> str:
-        return "# Configuration\n\nTELEGRAM_BOT_TOKEN=your_telegram_bot_token_here\n\nBu proje araştırma, backtest, sinyal adayı üretimi ve paper simulation amaçlıdır. Yatırım tavsiyesi değildir. Gerçek emir göndermez.\n"
+        return "# Configuration\n\nTELEGRAM_BOT_TOKEN=<your_telegram_bot_token_here>\n\nBu proje araştırma, backtest, sinyal adayı üretimi ve paper simulation amaçlıdır. Yatırım tavsiyesi değildir. Gerçek emir göndermez.\n"
 
     def generate_module_doc(self, module_name: str) -> str:
         return f"# {module_name}\n\nBu proje araştırma, backtest, sinyal adayı üretimi ve paper simulation amaçlıdır. Yatırım tavsiyesi değildir. Gerçek emir göndermez.\n"
