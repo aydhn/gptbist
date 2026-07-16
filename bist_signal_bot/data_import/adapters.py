@@ -12,6 +12,7 @@ from bist_signal_bot.data_import.models import (
     ImportSourceFormat,
 )
 
+
 class LocalImportAdapterRegistry:
     def __init__(self, settings: Any = None, base_dir: Path | None = None):
         self.settings = settings
@@ -53,6 +54,7 @@ class LocalImportAdapterRegistry:
         # Check Parquet support
         try:
             import pyarrow  # noqa: F401
+
             formats.append(ImportSourceFormat.PARQUET)
         except ImportError:
             pass
@@ -60,6 +62,7 @@ class LocalImportAdapterRegistry:
         # Check Excel support
         try:
             import openpyxl  # noqa: F401
+
             formats.append(ImportSourceFormat.EXCEL)
         except ImportError:
             pass
@@ -116,7 +119,7 @@ class LocalImportAdapterRegistry:
                     return []
                 table_name = tables[0][0]
                 # Strictly validate that the table name only contains safe characters
-                if not re.match(r'^[a-zA-Z0-9_]+$', table_name):
+                if not re.fullmatch(r"^[a-zA-Z0-9_]+$", table_name):
                     raise DataImportAdapterError(f"Invalid table name detected: {table_name}")
 
                 safe_table_name = f'"{table_name}"'
@@ -127,8 +130,8 @@ class LocalImportAdapterRegistry:
             except Exception as e:
                 raise DataImportAdapterError(f"SQLite read error: {e}")
         elif fmt == ImportSourceFormat.EXCEL:
-             df = pd.read_excel(path, nrows=max_rows)
-             return df.to_dict(orient="records")
+            df = pd.read_excel(path, nrows=max_rows)
+            return df.to_dict(orient="records")
         raise DataImportAdapterError(f"Preview not supported for {fmt}")
 
     def read_dataframe(self, path: Path, max_rows: int | None = None) -> pd.DataFrame:
@@ -140,7 +143,7 @@ class LocalImportAdapterRegistry:
         elif fmt == ImportSourceFormat.JSON:
             df = pd.read_json(path)
             if max_rows:
-                 return df.head(max_rows)
+                return df.head(max_rows)
             return df
         elif fmt == ImportSourceFormat.PARQUET:
             df = pd.read_parquet(path)
@@ -148,28 +151,28 @@ class LocalImportAdapterRegistry:
                 return df.head(max_rows)
             return df
         elif fmt == ImportSourceFormat.SQLITE:
-             conn = sqlite3.connect(f"file:{path}?mode=ro", uri=True)
-             cursor = conn.cursor()
-             cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
-             tables = cursor.fetchall()
-             if not tables:
-                 return pd.DataFrame()
-             table_name = tables[0][0]
-             # Strictly validate that the table name only contains safe characters
-             if not re.match(r'^[a-zA-Z0-9_]+$', table_name):
-                 raise DataImportAdapterError(f"Invalid table name detected: {table_name}")
+            conn = sqlite3.connect(f"file:{path}?mode=ro", uri=True)
+            cursor = conn.cursor()
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
+            tables = cursor.fetchall()
+            if not tables:
+                return pd.DataFrame()
+            table_name = tables[0][0]
+            # Strictly validate that the table name only contains safe characters
+            if not re.fullmatch(r"^[a-zA-Z0-9_]+$", table_name):
+                raise DataImportAdapterError(f"Invalid table name detected: {table_name}")
 
-             safe_table_name = f'"{table_name}"'
-             query = f"SELECT * FROM {safe_table_name}"
-             params = ()
-             if max_rows:
-                  query += " LIMIT ?"
-                  params = (max_rows,)
-             df = pd.read_sql_query(query, conn, params=params)
-             conn.close()
-             return df
+            safe_table_name = f'"{table_name}"'
+            query = f"SELECT * FROM {safe_table_name}"
+            params = ()
+            if max_rows:
+                query += " LIMIT ?"
+                params = (max_rows,)
+            df = pd.read_sql_query(query, conn, params=params)
+            conn.close()
+            return df
         elif fmt == ImportSourceFormat.EXCEL:
-             return pd.read_excel(path, nrows=max_rows)
+            return pd.read_excel(path, nrows=max_rows)
         raise DataImportAdapterError(f"Read dataframe not supported for {fmt}")
 
     def read_chunks(self, path: Path, chunk_size: int) -> Iterable[pd.DataFrame]:
@@ -182,6 +185,7 @@ class LocalImportAdapterRegistry:
             # Parquet doesn't easily chunk in pandas without pyarrow.dataset,
             # so we might load all and yield chunks or use fastparquet/pyarrow
             import pyarrow.parquet as pq
+
             parquet_file = pq.ParquetFile(path)
             for batch in parquet_file.iter_batches(batch_size=chunk_size):
                 yield batch.to_pandas()
