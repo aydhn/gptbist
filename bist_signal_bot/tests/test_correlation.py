@@ -3,6 +3,8 @@ import pandas as pd
 import numpy as np
 
 from bist_signal_bot.portfolio.correlation import CorrelationAnalyzer
+from datetime import datetime, timezone
+from bist_signal_bot.portfolio.models import CorrelationMatrixResult
 
 def test_calculate_returns_matrix_happy_path():
     analyzer = CorrelationAnalyzer()
@@ -67,8 +69,6 @@ def test_calculate_returns_matrix_custom_price_col():
     np.testing.assert_almost_equal(res.loc[1, 'SYM1'], 110/100 - 1)
     np.testing.assert_almost_equal(res.loc[2, 'SYM1'], 121/110 - 1)
 
-from datetime import datetime, timezone
-from bist_signal_bot.portfolio.models import CorrelationMatrixResult
 
 def test_average_portfolio_correlation_happy_path():
     analyzer = CorrelationAnalyzer()
@@ -187,3 +187,86 @@ def test_average_portfolio_correlation_no_valid_values():
 
     avg_corr = analyzer.average_portfolio_correlation(['A', 'B'], corr)
     assert avg_corr is None
+
+def test_correlation_warnings_empty_matrix():
+    analyzer = CorrelationAnalyzer()
+    corr = CorrelationMatrixResult(
+        symbols=[],
+        matrix=pd.DataFrame(),
+        lookback_rows=60,
+        method='pearson',
+        generated_at=datetime.now(timezone.utc),
+        issues=[],
+        metadata={}
+    )
+    warnings = analyzer.correlation_warnings(["AAPL"], ["MSFT"], corr, 0.8)
+    assert warnings == ["Correlation matrix is empty, correlation checks bypassed"]
+
+def test_correlation_warnings_missing_candidate():
+    analyzer = CorrelationAnalyzer()
+    matrix = pd.DataFrame(
+        [[1.0]], index=['MSFT'], columns=['MSFT']
+    )
+    corr = CorrelationMatrixResult(
+        symbols=['MSFT'],
+        matrix=matrix,
+        lookback_rows=60,
+        method='pearson',
+        generated_at=datetime.now(timezone.utc),
+        issues=[],
+        metadata={}
+    )
+    warnings = analyzer.correlation_warnings(["AAPL"], ["MSFT"], corr, 0.8)
+    assert warnings == ["No correlation data for candidate AAPL"]
+
+def test_correlation_warnings_high_correlation():
+    analyzer = CorrelationAnalyzer()
+    matrix = pd.DataFrame(
+        [[1.0, 0.9], [0.9, 1.0]], index=['AAPL', 'MSFT'], columns=['AAPL', 'MSFT']
+    )
+    corr = CorrelationMatrixResult(
+        symbols=['AAPL', 'MSFT'],
+        matrix=matrix,
+        lookback_rows=60,
+        method='pearson',
+        generated_at=datetime.now(timezone.utc),
+        issues=[],
+        metadata={}
+    )
+    warnings = analyzer.correlation_warnings(["AAPL"], ["MSFT"], corr, 0.8)
+    assert len(warnings) == 1
+    assert "Candidate AAPL has high correlation (0.90) with existing portfolio > 0.8" in warnings[0]
+
+def test_correlation_warnings_low_correlation():
+    analyzer = CorrelationAnalyzer()
+    matrix = pd.DataFrame(
+        [[1.0, 0.5], [0.5, 1.0]], index=['AAPL', 'MSFT'], columns=['AAPL', 'MSFT']
+    )
+    corr = CorrelationMatrixResult(
+        symbols=['AAPL', 'MSFT'],
+        matrix=matrix,
+        lookback_rows=60,
+        method='pearson',
+        generated_at=datetime.now(timezone.utc),
+        issues=[],
+        metadata={}
+    )
+    warnings = analyzer.correlation_warnings(["AAPL"], ["MSFT"], corr, 0.8)
+    assert warnings == []
+
+def test_correlation_warnings_max_c_none():
+    analyzer = CorrelationAnalyzer()
+    matrix = pd.DataFrame(
+        [[1.0]], index=['AAPL'], columns=['AAPL']
+    )
+    corr = CorrelationMatrixResult(
+        symbols=['AAPL'],
+        matrix=matrix,
+        lookback_rows=60,
+        method='pearson',
+        generated_at=datetime.now(timezone.utc),
+        issues=[],
+        metadata={}
+    )
+    warnings = analyzer.correlation_warnings(["AAPL"], ["MSFT"], corr, 0.8)
+    assert warnings == []
