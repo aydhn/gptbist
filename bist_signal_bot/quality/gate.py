@@ -24,9 +24,12 @@ try:
 except ImportError:
     class AuditTrailManager:
         def __init__(self, settings=None):
-            pass
-        def log_event(self, *args, **kwargs):
-            pass
+            self.logger = logging.getLogger(__name__)
+
+        def log_event(self, event_type: str, details: dict = None, **kwargs):
+            """Record a quality gate event for audit purposes."""
+            merged_details = {**(details or {}), **kwargs}
+            self.logger.info(f"Audit event: {event_type} | Details: {merged_details}")
 
 from dataclasses import dataclass
 
