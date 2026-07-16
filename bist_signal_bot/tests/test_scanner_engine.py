@@ -227,3 +227,60 @@ def test_build_default_request_with_kwargs():
     assert req.group_name == "my_group"
     assert req.universe_mode == ScanUniverseMode.ALL
     assert req.params == {"p1": "v1"}
+
+def test_scan_all_symbols_continue_on_error_false_raises_exception():
+    class TestEngine(SignalScannerEngine):
+        def scan_symbol(self, sym, req, pre_fetched_data=None):
+            from bist_signal_bot.scanner.models import SymbolScanResult, ScanCandidateStatus, SymbolScanIssue
+            return SymbolScanResult(
+                symbol=sym,
+                data_provider="UNKNOWN",
+                data_lineage_source_id="UNKNOWN",
+                data_freshness_age_hours=0.0,
+                data_quality_warnings=[],
+                status=ScanCandidateStatus.ERROR,
+                issues=[SymbolScanIssue(stage="TEST", message="Test execution exception")],
+                elapsed_seconds=0.0
+            )
+
+    from bist_signal_bot.core.exceptions import ScannerExecutionError
+
+    engine = TestEngine(deps=SignalScannerDependencies(
+        data_service=MockDataService(),
+        strategy_engine=MockStrategyEngine(),
+        risk_engine=MockRiskEngine(),
+        portfolio_risk_engine=MockPortfolioRiskEngine(),
+    ))
+
+    req = ScanRequest(
+        strategy_name="t",
+        universe_mode=ScanUniverseMode.SYMBOLS,
+        symbols=["A"],
+        continue_on_error=False
+    )
+
+    import pytest
+    with pytest.raises(ScannerExecutionError, match="Test execution exception"):
+        engine._scan_all_symbols(["A"], req)
+
+def test_scan_symbol_data_fetch_exception():
+    class ExceptionDataService(MockDataService):
+        def get_ohlcv(self, *args, **kwargs):
+            raise Exception("Simulated data fetch exception")
+
+    engine = SignalScannerEngine(deps=SignalScannerDependencies(
+        data_service=ExceptionDataService(),
+        strategy_engine=MockStrategyEngine(),
+        risk_engine=MockRiskEngine(),
+        portfolio_risk_engine=MockPortfolioRiskEngine(),
+    ))
+    req = ScanRequest(
+        strategy_name="t",
+        universe_mode=ScanUniverseMode.SYMBOLS,
+        symbols=["A"]
+    )
+    res = engine.scan_symbol("A", req)
+    assert res.status == ScanCandidateStatus.ERROR
+    assert len(res.issues) == 1
+    assert res.issues[0].stage == "EXECUTION"
+    assert "Simulated data fetch exception" in res.issues[0].message
