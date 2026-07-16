@@ -1,4 +1,5 @@
 import pytest
+from unittest.mock import patch
 from bist_signal_bot.scanner.models import SymbolScanResult, ScanCandidateStatus, ScanRequest, ScanUniverseMode
 from bist_signal_bot.scanner.filters import ScanFilterEngine
 from bist_signal_bot.signals.models import SignalCandidate, SignalDirection, SignalStrength
@@ -198,3 +199,24 @@ def test_filter_results_comprehensive():
 
     assert out[7].symbol == "PASS"
     assert out[7].status == ScanCandidateStatus.PASSED
+
+
+def test_filter_results_empty():
+    engine = ScanFilterEngine()
+    req = ScanRequest(strategy_name="t", universe_mode=ScanUniverseMode.ALL)
+    out = engine.filter_results([], req)
+    assert out == []
+
+def test_filter_results_calls_filter_symbol_result():
+    engine = ScanFilterEngine()
+    req = ScanRequest(strategy_name="t", universe_mode=ScanUniverseMode.ALL)
+    res1 = SymbolScanResult(symbol="A", status=ScanCandidateStatus.ERROR)
+    res2 = SymbolScanResult(symbol="B", status=ScanCandidateStatus.ERROR)
+
+    with patch.object(engine, 'filter_symbol_result', side_effect=[res1, res2]) as mock_filter:
+        out = engine.filter_results([res1, res2], req)
+
+        assert len(out) == 2
+        assert mock_filter.call_count == 2
+        mock_filter.assert_any_call(res1, req)
+        mock_filter.assert_any_call(res2, req)
