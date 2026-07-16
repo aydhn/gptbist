@@ -13,7 +13,7 @@ def ctx():
     return bootstrap_app()
 
 def test_cli_trend_features_basic(ctx, capsys):
-    args = parse_args(["trend-features", "ASELS", "--source", "mock", "--level", "basic", "--json"])
+    args = parse_args(["--json", "trend-features", "ASELS", "--source", "mock", "--level", "basic"])
     ret = cmd_trend_features(args, ctx)
     pass # assert ret == 0
     captured = capsys.readouterr().out
@@ -22,7 +22,7 @@ def test_cli_trend_features_basic(ctx, capsys):
     assert "basic" in captured
 
 def test_cli_trend_features_advanced(ctx, capsys):
-    args = parse_args(["trend-features", "THYAO", "--source", "mock", "--level", "advanced", "--json"])
+    args = parse_args(["--json", "trend-features", "THYAO", "--source", "mock", "--level", "advanced"])
     ret = cmd_trend_features(args, ctx)
     pass # assert ret == 0
     captured = capsys.readouterr().out
@@ -30,7 +30,7 @@ def test_cli_trend_features_advanced(ctx, capsys):
     assert "advanced" in captured
 
 def test_cli_trend_features_full(ctx, capsys):
-    args = parse_args(["trend-features", "GARAN", "--source", "mock", "--level", "full", "--json"])
+    args = parse_args(["--json", "trend-features", "GARAN", "--source", "mock", "--level", "full"])
     ret = cmd_trend_features(args, ctx)
     pass # assert ret == 0
     captured = capsys.readouterr().out
