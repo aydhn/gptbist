@@ -71,6 +71,10 @@ class ScanRequest(BaseModel):
 class SymbolScanIssue(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
     symbol: Optional[str] = None
+    data_provider: Optional[str] = None
+    data_lineage_source_id: Optional[str] = None
+    data_freshness_age_hours: Optional[float] = None
+    data_quality_warnings: List[str] = Field(default_factory=list)
     stage: str
     message: str
     severity: str = "ERROR"

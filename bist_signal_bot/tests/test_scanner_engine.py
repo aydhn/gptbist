@@ -154,10 +154,25 @@ def test_scan_symbol_exception():
         symbols=["A"]
     )
     res = engine.scan_symbol("A", req)
+
     assert res.status == ScanCandidateStatus.ERROR
     assert len(res.issues) == 1
-    assert res.issues[0].stage == "EXECUTION"
-    assert "Simulated execution exception" in res.issues[0].message
+
+    issue = res.issues[0]
+    assert issue.stage == "EXECUTION"
+    assert issue.symbol == "A"
+    assert "Simulated execution exception" in issue.message
+
+    assert issue.data_provider == engine.settings.DEFAULT_DATA_PROVIDER
+    assert issue.data_lineage_source_id == "UNKNOWN"
+    assert issue.data_freshness_age_hours == 0.0
+    assert issue.data_quality_warnings == []
+
+    assert res.data_provider == engine.settings.DEFAULT_DATA_PROVIDER
+    assert res.data_lineage_source_id == "UNKNOWN"
+    assert res.data_freshness_age_hours == 0.0
+    assert res.data_quality_warnings == []
+    assert res.elapsed_seconds >= 0.0
 
 def test_scan_resolve_symbols_validation_error():
     from bist_signal_bot.core.exceptions import ScannerValidationError
