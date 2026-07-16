@@ -193,3 +193,35 @@ def test_text_format_with_full_report():
     assert "Portfolio Risk Summary:" in text
     assert "  Status: APPROVED" in text
     assert "  Allocations: 0" in text
+
+def test_format_md_issues():
+    from bist_signal_bot.scanner.reporting import _format_md_issues
+    req = ScanRequest(strategy_name="md_test", universe_mode=ScanUniverseMode.SYMBOLS)
+
+    # Test empty issues
+    report_empty = ScanReport(request=req, issues=[])
+    assert _format_md_issues(report_empty) == []
+
+    # Test populated issues
+    issue_with_symbol = SymbolScanIssue(symbol="AAPL", stage="DATA", message="Missing data", severity="ERROR")
+    issue_without_symbol = SymbolScanIssue(symbol=None, stage="ENGINE", message="Engine failed", severity="FATAL")
+    report_with_issues = ScanReport(request=req, issues=[issue_with_symbol, issue_without_symbol])
+
+    lines = _format_md_issues(report_with_issues)
+    assert lines[0] == "## Issues"
+    assert lines[1] == "- **ERROR** [DATA] AAPL: Missing data"
+    assert lines[2] == "- **FATAL** [ENGINE] System: Engine failed"
+    assert lines[3] == ""
+
+def test_format_scan_markdown_structural_elements():
+    req = ScanRequest(strategy_name="structural_test", universe_mode=ScanUniverseMode.SYMBOLS)
+    issue = SymbolScanIssue(symbol="AAPL", stage="DATA", message="Missing data", severity="ERROR")
+    report = ScanReport(request=req, issues=[issue])
+
+    md = format_scan_markdown(report)
+
+    assert "# BIST Bot Signal Scan Report" in md
+    assert "## Summary" in md
+    assert "## Top Candidates" in md
+    assert "## Issues" in md
+    assert "---" in md
