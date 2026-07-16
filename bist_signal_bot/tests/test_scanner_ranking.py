@@ -163,3 +163,44 @@ def test_calculate_rank_score_fallback_zero():
     assert ranker.calculate_rank_score(res, ScanSortKey.CONFIDENCE) == 0.0
     assert ranker.calculate_rank_score(res, ScanSortKey.RISK_REWARD) == 0.0
     assert ranker.calculate_rank_score(res, ScanSortKey.ML_SCORE) == 0.0
+
+def test_extract_feature_score():
+    ranker = ScanRanker()
+
+    # Happy path: feature exists
+    res = _make_result("A", 60)
+    res.signal.metadata = {"features": {"f1": 10.5, "f2": 20.0}}
+    assert ranker.extract_feature_score(res, ["f1"]) == 10.5
+    assert ranker.extract_feature_score(res, ["f2"]) == 20.0
+
+    # Multiple keys: returns the first one found
+    assert ranker.extract_feature_score(res, ["f3", "f2", "f1"]) == 20.0
+
+    # Feature is None
+    res_none = _make_result("A", 60)
+    res_none.signal.metadata = {"features": {"f1": None, "f2": 30.0}}
+    assert ranker.extract_feature_score(res_none, ["f1", "f2"]) == 30.0
+    assert ranker.extract_feature_score(res_none, ["f1"]) is None
+
+    # Feature doesn't exist
+    assert ranker.extract_feature_score(res, ["f3"]) is None
+
+    # No 'features' in metadata
+    res_no_features = _make_result("A", 60)
+    res_no_features.signal.metadata = {"other": 1}
+    assert ranker.extract_feature_score(res_no_features, ["f1"]) is None
+
+    # No metadata in signal
+    res_no_metadata = _make_result("A", 60)
+    res_no_metadata.signal.metadata = None
+    assert ranker.extract_feature_score(res_no_metadata, ["f1"]) is None
+
+    # No signal in result
+    res_no_signal = _make_result("A", 60)
+    res_no_signal.signal = None
+    assert ranker.extract_feature_score(res_no_signal, ["f1"]) is None
+
+    # Values that are strings convertible to float
+    res_str = _make_result("A", 60)
+    res_str.signal.metadata = {"features": {"f1": "15.5"}}
+    assert ranker.extract_feature_score(res_str, ["f1"]) == 15.5
