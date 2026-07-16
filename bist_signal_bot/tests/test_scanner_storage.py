@@ -145,15 +145,6 @@ def test_missing_coverage(tmp_path):
     req = ScanRequest(strategy_name="test_strat", universe_mode=ScanUniverseMode.SYMBOLS, symbols=["A"])
     report = ScanReport(request=req)
 
-    # test save_markdown
-    path1 = store.save_markdown(report)
-    assert path1.exists()
-
-    custom_dir = tmp_path / "custom_dir_md"
-    custom_dir.mkdir()
-    path2 = store.save_markdown(report, output_dir=custom_dir)
-    assert path2.exists()
-
     # test list_recent_scans
     scans = store.list_recent_scans()
     assert len(scans) == 0
@@ -162,6 +153,42 @@ def test_missing_coverage(tmp_path):
     store.save_json(report)
     scans2 = store.list_recent_scans()
     assert len(scans2) == 1
+
+
+def test_save_markdown(tmp_path):
+    from unittest.mock import patch
+    with patch("bist_signal_bot.scanner.storage.format_scan_markdown") as mock_format:
+        mock_format.return_value = "# Mocked Markdown Content"
+
+        settings = Settings()
+        store = ScanReportStore(settings, base_dir=tmp_path)
+        req = ScanRequest(strategy_name="test_strat", universe_mode=ScanUniverseMode.SYMBOLS, symbols=["A"])
+        report = ScanReport(request=req)
+
+        # Test save_markdown with default output_dir
+        file_path = store.save_markdown(report)
+
+        assert file_path.exists()
+        assert file_path.name == "scan_report.md"
+        assert file_path.parent.parent.parent == tmp_path
+
+        with open(file_path, "r", encoding="utf-8") as f:
+            file_content = f.read()
+            assert file_content == "# Mocked Markdown Content"
+
+        # Test save_markdown with explicit output_dir
+        custom_dir = tmp_path / "custom_dir"
+        custom_dir.mkdir()
+
+        file_path2 = store.save_markdown(report, output_dir=custom_dir)
+        assert file_path2.exists()
+        assert file_path2.parent == custom_dir
+        assert file_path2.name == "scan_report.md"
+
+        with open(file_path2, "r", encoding="utf-8") as f:
+            file_content = f.read()
+            assert file_content == "# Mocked Markdown Content"
+
 
 def test_list_recent_scans_invalid_json(tmp_path):
     settings = Settings()
