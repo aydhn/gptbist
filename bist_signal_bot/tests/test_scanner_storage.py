@@ -259,3 +259,24 @@ def test_list_recent_scans_exception(tmp_path):
         scans = store.list_recent_scans()
 
     assert len(scans) == 0
+
+def test_save_report_exceptions(tmp_path):
+    settings = Settings()
+    store = ScanReportStore(settings, base_dir=tmp_path)
+    req = ScanRequest(strategy_name="test_strat", universe_mode=ScanUniverseMode.SYMBOLS, symbols=["A"])
+    report = ScanReport(request=req)
+
+    # Test save_json exception is handled
+    with patch.object(store, "save_json", side_effect=Exception("JSON error")):
+        paths = store.save_report(report, formats=["json"])
+        assert "json" not in paths
+
+    # Test save_csv exception is handled
+    with patch.object(store, "save_csv", side_effect=Exception("CSV error")):
+        paths = store.save_report(report, formats=["csv"])
+        assert "csv" not in paths
+
+    # Test save_markdown exception is handled
+    with patch.object(store, "save_markdown", side_effect=Exception("Markdown error")):
+        paths = store.save_report(report, formats=["markdown"])
+        assert "markdown" not in paths
