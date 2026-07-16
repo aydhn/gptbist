@@ -42,5 +42,3 @@ class AdjustedPriceService:
     def save_adjusted_cache(self, symbol: str, df: pd.DataFrame) -> Path:
         return self.storage_dir / f"{symbol}_adj.parquet"
 
-    def invalidate_adjusted_cache(self, symbol: str, reason: str, confirm: bool = False) -> None:
-        pass
