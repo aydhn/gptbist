@@ -117,29 +117,58 @@ class CalibrationMetricsCalculator:
         return max(gaps)
 
     def hit_rate(self, records: list[OutcomeRecord]) -> float | None:
-        valid = [r for r in records if r.outcome_label in [OutcomeLabel.SUCCESS, OutcomeLabel.FAILURE]]
-        if not valid:
+        valid_count = 0
+        success_count = 0
+        for r in records:
+            label = r.outcome_label
+            if label == OutcomeLabel.SUCCESS:
+                valid_count += 1
+                success_count += 1
+            elif label == OutcomeLabel.FAILURE:
+                valid_count += 1
+
+        if not valid_count:
             return None
-        success = sum(1 for r in valid if r.outcome_label == OutcomeLabel.SUCCESS)
-        return success / len(valid)
+        return success_count / valid_count
 
     def false_positive_rate(self, records: list[OutcomeRecord], score_type: CalibrationScoreType, threshold: float) -> float | None:
-        valid = [r for r in records if r.outcome_label in [OutcomeLabel.SUCCESS, OutcomeLabel.FAILURE]]
-        negatives = [r for r in valid if r.outcome_label == OutcomeLabel.FAILURE]
-        if not negatives:
+        negatives_count = 0
+        false_positives = 0
+
+        for r in records:
+            if r.outcome_label == OutcomeLabel.FAILURE:
+                negatives_count += 1
+                if (self._get_score(r, score_type) or 0) >= threshold:
+                    false_positives += 1
+
+        if not negatives_count:
             return None
 
-        false_positives = sum(1 for r in negatives if (self._get_score(r, score_type) or 0) >= threshold)
-        return false_positives / len(negatives)
+        return false_positives / negatives_count
 
     def precision_recall_f1(self, records: list[OutcomeRecord], score_type: CalibrationScoreType, threshold: float) -> dict[str, float | None]:
-        valid = [r for r in records if r.outcome_label in [OutcomeLabel.SUCCESS, OutcomeLabel.FAILURE]]
-        if not valid:
-            return {"precision": None, "recall": None, "f1": None}
+        tp = fp = fn = 0
+        valid_count = 0
 
-        tp = sum(1 for r in valid if r.outcome_label == OutcomeLabel.SUCCESS and (self._get_score(r, score_type) or 0) >= threshold)
-        fp = sum(1 for r in valid if r.outcome_label == OutcomeLabel.FAILURE and (self._get_score(r, score_type) or 0) >= threshold)
-        fn = sum(1 for r in valid if r.outcome_label == OutcomeLabel.SUCCESS and (self._get_score(r, score_type) or 0) < threshold)
+        for r in records:
+            label = r.outcome_label
+            if label not in (OutcomeLabel.SUCCESS, OutcomeLabel.FAILURE):
+                continue
+
+            valid_count += 1
+            score = self._get_score(r, score_type) or 0
+
+            if label == OutcomeLabel.SUCCESS:
+                if score >= threshold:
+                    tp += 1
+                else:
+                    fn += 1
+            elif label == OutcomeLabel.FAILURE:
+                if score >= threshold:
+                    fp += 1
+
+        if not valid_count:
+            return {"precision": None, "recall": None, "f1": None}
 
         precision = tp / (tp + fp) if (tp + fp) > 0 else 0.0
         recall = tp / (tp + fn) if (tp + fn) > 0 else 0.0
@@ -148,9 +177,14 @@ class CalibrationMetricsCalculator:
         return {"precision": precision, "recall": recall, "f1": f1}
 
     def auc_lite(self, records: list[OutcomeRecord], score_type: CalibrationScoreType) -> float | None:
-        valid = [r for r in records if r.outcome_label in [OutcomeLabel.SUCCESS, OutcomeLabel.FAILURE]]
-        successes = [r for r in valid if r.outcome_label == OutcomeLabel.SUCCESS]
-        failures = [r for r in valid if r.outcome_label == OutcomeLabel.FAILURE]
+        successes = []
+        failures = []
+        for r in records:
+            label = r.outcome_label
+            if label == OutcomeLabel.SUCCESS:
+                successes.append(self._get_score(r, score_type) or 0)
+            elif label == OutcomeLabel.FAILURE:
+                failures.append(self._get_score(r, score_type) or 0)
 
         if not successes or not failures:
             return None
@@ -159,10 +193,8 @@ class CalibrationMetricsCalculator:
         discordant = 0
         ties = 0
 
-        for s in successes:
-            s_score = self._get_score(s, score_type) or 0
-            for f in failures:
-                f_score = self._get_score(f, score_type) or 0
+        for s_score in successes:
+            for f_score in failures:
                 if s_score > f_score:
                     concordant += 1
                 elif s_score < f_score:
