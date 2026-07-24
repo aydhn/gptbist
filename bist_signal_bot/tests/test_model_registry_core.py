@@ -1,3 +1,5 @@
+from unittest.mock import patch
+import logging
 import pytest
 from datetime import datetime, timezone
 from bist_signal_bot.config.settings import Settings
@@ -148,3 +150,15 @@ def test_governance_engine():
     assessment = gov.assess_model("m1")
     assert assessment.artifact_status == ModelGovernanceStatus.FAIL # missing
     assert assessment.status == ModelGovernanceStatus.FAIL
+
+def test_drift_score_error(caplog):
+    settings = Settings()
+    object.__setattr__(settings, "MODEL_DRIFT_MIN_SAMPLE", 2)
+    det = ModelDriftDetector(settings)
+
+    with caplog.at_level(logging.WARNING):
+        with patch("statistics.mean", side_effect=Exception("Mocked statistics error")):
+            score = det.drift_score([1.0, 2.0], [3.0, 4.0])
+
+    assert score is None
+    assert "Error calculating drift score: Mocked statistics error" in caplog.text
