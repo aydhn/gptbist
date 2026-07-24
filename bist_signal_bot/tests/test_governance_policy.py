@@ -5,7 +5,7 @@ from bist_signal_bot.governance.policy import GovernancePolicyManager
 from bist_signal_bot.core.exceptions import GovernancePolicyError
 
 def test_default_policy():
-    mgr = GovernancePolicyManager(Settings())
+    mgr = GovernancePolicyManager(Settings(GOVERNANCE_REQUIRE_CONFIRM_FOR_POLICY_UPDATE=True))
     policy = mgr.default_policy()
     assert policy is not None
     assert len(policy.rules) > 0
@@ -15,14 +15,14 @@ def test_default_policy():
     assert "no_real_order_sent disclaimer required" in rule_names
 
 def test_save_policy_requires_confirm(tmp_path):
-    mgr = GovernancePolicyManager(Settings())
+    mgr = GovernancePolicyManager(Settings(GOVERNANCE_REQUIRE_CONFIRM_FOR_POLICY_UPDATE=True))
     policy = mgr.default_policy()
 
     with pytest.raises(GovernancePolicyError, match="requires explicit confirmation"):
         mgr.save_policy(policy, path=tmp_path / "policy.json", confirm=False)
 
 def test_save_and_load_policy(tmp_path):
-    mgr = GovernancePolicyManager(Settings())
+    mgr = GovernancePolicyManager(Settings(GOVERNANCE_REQUIRE_CONFIRM_FOR_POLICY_UPDATE=True))
     policy = mgr.default_policy()
 
     path = tmp_path / "policy.json"
@@ -34,7 +34,7 @@ def test_save_and_load_policy(tmp_path):
     assert loaded.policy_id == policy.policy_id
 
 def test_policy_no_secrets_in_rules():
-    mgr = GovernancePolicyManager(Settings())
+    mgr = GovernancePolicyManager(Settings(GOVERNANCE_REQUIRE_CONFIRM_FOR_POLICY_UPDATE=True))
     policy = mgr.default_policy()
 
     # Inject a secret rule
