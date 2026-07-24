@@ -114,17 +114,27 @@ class PortfolioResearchEngine:
         volatility_by_symbol = {}
         if self.data_service:
             syms = [c.symbol for c in unique_candidates]
-            for sym in syms:
-                try:
-                    df = self.data_service.fetch_data(sym, request.timeframe, source=request.source)
-                    if df is not None and not df.empty:
-                        data_by_symbol[sym] = df
-                        # simple vol proxy
-                        ret = df['close'].pct_change().dropna()
-                        volatility_by_symbol[sym] = float(ret.std() * (252**0.5) * 100) if len(ret) > 10 else 0.0
-                except Exception as e:
-                    self.logger.warning(f"Failed to fetch data for {sym}: {e}")
-
+            if syms:
+                if hasattr(self.data_service, 'get_many_ohlcv'):
+                    try:
+                        results = self.data_service.get_many_ohlcv(syms, timeframe=request.timeframe, source=request.source)
+                        for sym, df in results.items():
+                            if df is not None and not df.empty:
+                                data_by_symbol[sym] = df
+                                ret = df['close'].pct_change().dropna()
+                                volatility_by_symbol[sym] = float(ret.std() * (252**0.5) * 100) if len(ret) > 10 else 0.0
+                    except Exception as e:
+                        self.logger.warning(f"Failed to fetch batch data: {e}")
+                else:
+                    for sym in syms:
+                        try:
+                            df = self.data_service.fetch_data(sym, request.timeframe, source=request.source)
+                            if df is not None and not df.empty:
+                                data_by_symbol[sym] = df
+                                ret = df['close'].pct_change().dropna()
+                                volatility_by_symbol[sym] = float(ret.std() * (252**0.5) * 100) if len(ret) > 10 else 0.0
+                        except Exception as e:
+                            self.logger.warning(f"Failed to fetch data for {sym}: {e}")
         # Apply constraints phase 1
         constraints = self.constraint_engine.validate_items(unique_candidates, request)
 
@@ -214,15 +224,24 @@ class PortfolioResearchEngine:
 
         data_by_symbol = {}
         if self.data_service:
-            for item in snapshot.items:
-                if item.final_weight > 0:
-                    try:
-                        df = self.data_service.fetch_data(item.symbol, "1D", source="local") # force local for sim
-                        if df is not None and not df.empty:
-                            data_by_symbol[item.symbol] = df
-                    except Exception as e:
-                        self.logger.warning(f"Simulation missing data for {item.symbol}: {e}")
-
+            syms_to_fetch = [item.symbol for item in snapshot.items if item.final_weight > 0]
+            if syms_to_fetch:
+                try:
+                    if hasattr(self.data_service, 'get_many_ohlcv'):
+                        results = self.data_service.get_many_ohlcv(syms_to_fetch, timeframe="1D", source="local")
+                        for sym, df in results.items():
+                            if df is not None and not df.empty:
+                                data_by_symbol[sym] = df
+                    else:
+                        for sym in syms_to_fetch:
+                            try:
+                                df = self.data_service.fetch_data(sym, "1D", source="local") # force local for sim
+                                if df is not None and not df.empty:
+                                    data_by_symbol[sym] = df
+                            except Exception as e:
+                                self.logger.warning(f"Simulation missing data for {sym}: {e}")
+                except Exception as e:
+                    self.logger.warning(f"Simulation missing batch data: {e}")
         result = self.basket_simulator.simulate(snapshot, data_by_symbol, start_date, end_date, initial_value)
         self.store.save_simulation(result)
 
