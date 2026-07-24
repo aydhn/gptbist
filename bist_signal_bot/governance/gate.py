@@ -20,6 +20,9 @@ logger = logging.getLogger(__name__)
 class GovernanceGate:
     def __init__(self, settings: Settings | None = None, base_dir: Path | None = None):
         self.settings = settings or get_settings()
+        self.base_dir = base_dir
+        self.policy_manager = GovernancePolicyManager(self.settings)
+        self.rule_evaluator = GovernanceRuleEvaluator(self.settings)
 
     def check_deployment_profile(self, profile) -> bool:
         if getattr(profile, "real_order_enabled", False):
@@ -27,10 +30,6 @@ class GovernanceGate:
         if getattr(profile, "broker_enabled", False):
             return False
         return True
-
-        self.base_dir = base_dir
-        self.policy_manager = GovernancePolicyManager(self.settings)
-        self.rule_evaluator = GovernanceRuleEvaluator(self.settings)
 
     def run_gate(self, request: GovernanceGateRequest) -> GovernanceGateResult:
         start_time = datetime.utcnow()
@@ -57,7 +56,7 @@ class GovernanceGate:
                 if gate_fn:
                     cg_res = gate_fn()
                     if cg_res.blocked:
-                        from bist_signal_bot.governance.models import GovernanceFinding, GovernanceDecision
+                        from bist_signal_bot.governance.models import GovernanceFinding
                         if findings is None:
                             findings = []
                         findings.append(GovernanceFinding(
