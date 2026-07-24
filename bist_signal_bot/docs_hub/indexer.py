@@ -3,6 +3,7 @@ from pathlib import Path
 from datetime import datetime
 import uuid
 from typing import Optional
+from concurrent.futures import ThreadPoolExecutor
 
 from bist_signal_bot.docs_hub.models import (
     DocsIndex, DocPage, DocKind, DocAudience, DocsStatus
@@ -18,22 +19,24 @@ class DocsIndexer:
         root_dir = root or self.base_dir
         pages = []
         missing_expected_docs = self.expected_docs()
+        missing_expected_set = set(missing_expected_docs)
         warnings = []
 
         if root_dir.exists():
-            for p in root_dir.glob("**/*.md"):
-                if p.is_file():
-                    page = self.parse_doc_page(p)
-                    pages.append(page)
-                    if p.name in missing_expected_docs:
-                        missing_expected_docs.remove(p.name)
+            files = [p for p in root_dir.glob("**/*.md") if p.is_file()]
+            with ThreadPoolExecutor() as executor:
+                pages = list(executor.map(self.parse_doc_page, files))
+
+            for p in files:
+                if p.name in missing_expected_set:
+                    missing_expected_set.remove(p.name)
 
         return DocsIndex(
             index_id=str(uuid.uuid4()),
             created_at=datetime.utcnow(),
             pages=pages,
             total_pages=len(pages),
-            missing_expected_docs=missing_expected_docs,
+            missing_expected_docs=list(missing_expected_set),
             stale_docs=[],
             warnings=warnings
         )
