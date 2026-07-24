@@ -1,6 +1,5 @@
 import pytest
 import sqlite3
-from pathlib import Path
 from bist_signal_bot.data_import.adapters import LocalImportAdapterRegistry
 from bist_signal_bot.data_import.models import ImportSourceFormat
 
@@ -46,7 +45,6 @@ def test_sqlite_injection_preview(tmp_path):
     conn.close()
 
     registry = LocalImportAdapterRegistry()
-    import pytest
     from bist_signal_bot.core.exceptions import DataImportAdapterError
     with pytest.raises(DataImportAdapterError, match="Invalid table name detected"):
         registry.read_preview(db_path, max_rows=1)
@@ -66,7 +64,41 @@ def test_sqlite_injection_dataframe(tmp_path):
     conn.close()
 
     registry = LocalImportAdapterRegistry()
-    import pytest
     from bist_signal_bot.core.exceptions import DataImportAdapterError
     with pytest.raises(DataImportAdapterError, match="Invalid table name detected"):
         registry.read_dataframe(db_path, max_rows=1)
+
+def test_sqlite_read_chunks(tmp_path):
+    db_path = tmp_path / "test_chunks.db"
+    conn = sqlite3.connect(db_path)
+    c = conn.cursor()
+    c.execute('CREATE TABLE "test_table" (id INTEGER, name TEXT)')
+    for i in range(15):
+        c.execute('INSERT INTO "test_table" VALUES (?, ?)', (i, f"test_{i}"))
+    conn.commit()
+    conn.close()
+
+    registry = LocalImportAdapterRegistry()
+    chunks = list(registry.read_chunks(db_path, chunk_size=5))
+
+    assert len(chunks) == 3
+    assert len(chunks[0]) == 5
+    assert len(chunks[1]) == 5
+    assert len(chunks[2]) == 5
+
+def test_sqlite_injection_chunks(tmp_path):
+    db_path = tmp_path / "test_inject_chunks.db"
+    conn = sqlite3.connect(db_path)
+    c = conn.cursor()
+
+    malicious_table_name = 'users"; DROP TABLE users; --'
+    safe_creation_name = malicious_table_name.replace('"', '""')
+    c.execute(f'CREATE TABLE "{safe_creation_name}" (id INTEGER, name TEXT)')
+    c.execute(f'INSERT INTO "{safe_creation_name}" VALUES (1, "test")')
+    conn.commit()
+    conn.close()
+
+    registry = LocalImportAdapterRegistry()
+    from bist_signal_bot.core.exceptions import DataImportAdapterError
+    with pytest.raises(DataImportAdapterError, match="Invalid table name detected"):
+        list(registry.read_chunks(db_path, chunk_size=5))
