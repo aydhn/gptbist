@@ -1,5 +1,6 @@
+import pandas as pd
 from datetime import datetime, timezone
-from bist_signal_bot.portfolio_construction.reporting import format_portfolio_construction_text
+from bist_signal_bot.portfolio_construction.reporting import format_portfolio_construction_text, positions_to_dataframe
 from bist_signal_bot.portfolio_construction.models import (
     PortfolioConstructionResult,
     PortfolioConstructionRequest,
@@ -103,3 +104,31 @@ def test_format_portfolio_construction_text_none_values():
     assert "Portfolio Score: N/A" in text
     assert "Estimated Turnover: 0.0%" in text
     assert "Constraint Violations: 1" in text
+
+def test_positions_to_dataframe_empty():
+    df = positions_to_dataframe([])
+    assert isinstance(df, pd.DataFrame)
+    assert df.empty
+
+def test_positions_to_dataframe_populated():
+    positions = [
+        PortfolioPositionResearch(
+            position_id="p1",
+            symbol="AAPL",
+            current_weight=0.0,
+            target_weight=0.5,
+            weight_delta=0.5
+        ),
+        PortfolioPositionResearch(
+            position_id="p2",
+            symbol="MSFT",
+            current_weight=0.2,
+            target_weight=0.5,
+            weight_delta=0.3
+        )
+    ]
+    df = positions_to_dataframe(positions)
+    assert isinstance(df, pd.DataFrame)
+    assert len(df) == 2
+    assert list(df["symbol"]) == ["AAPL", "MSFT"]
+    assert list(df["target_weight"]) == [0.5, 0.5]
