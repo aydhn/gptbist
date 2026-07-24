@@ -3,7 +3,6 @@ from typing import Any
 import json
 from pathlib import Path
 from datetime import datetime
-from typing import Any
 
 from bist_signal_bot.config.settings import Settings
 from bist_signal_bot.storage.paths import get_data_dir
@@ -37,17 +36,23 @@ class StoreIntegrityChecker:
 
     def check_jsonl_file(self, path: Path) -> list[dict[str, Any]]:
         invalid_lines = []
-        if not path.exists(): return invalid_lines
+        if not path.exists():
+            return invalid_lines
         max_lines = getattr(self.settings, "OPS_JSONL_CHECK_MAX_LINES", 100000) if self.settings else 100000
         try:
             with open(path, "r", encoding="utf-8") as f:
                 for idx, line in enumerate(f):
-                    if idx >= max_lines: break
+                    if idx >= max_lines:
+                        break
                     line = line.strip()
-                    if not line: continue
-                    try: json.loads(line)
-                    except json.JSONDecodeError as e: invalid_lines.append({"path": str(path), "line_num": idx + 1, "error": str(e)})
-        except Exception as e: invalid_lines.append({"path": str(path), "line_num": -1, "error": f"File read error: {e}"})
+                    if not line:
+                        continue
+                    try:
+                        json.loads(line)
+                    except json.JSONDecodeError as e:
+                        invalid_lines.append({"path": str(path), "line_num": idx + 1, "error": str(e)})
+        except Exception as e:
+            invalid_lines.append({"path": str(path), "line_num": -1, "error": f"File read error: {e}"})
         return invalid_lines
 
     def find_orphan_files(self, root: Path) -> list[str]: return []
@@ -55,13 +60,31 @@ class StoreIntegrityChecker:
     def find_missing_expected_files(self, root: Path) -> list[str]:
         missing = []
         if getattr(self.settings, "OPS_STORE_CHECK_EXPECTED_FILES", True):
-            for expected in self.expected_store_files():
-                if not expected.exists(): missing.append(str(expected))
+            import os
+            expected_files = self.expected_store_files()
+            parents = {}
+            for expected in expected_files:
+                parent = expected.parent
+                if parent not in parents:
+                    parents[parent] = []
+                parents[parent].append(expected)
+
+            for parent, files in parents.items():
+                try:
+                    existing_names = set(os.listdir(parent))
+                    for f in files:
+                        if f.name not in existing_names:
+                            missing.append(str(f))
+                except OSError:
+                    for f in files:
+                        missing.append(str(f))
         return missing
 
     def classify_integrity(self, result: StoreIntegrityResult) -> OpsStatus:
-        if result.invalid_files or result.invalid_lines: return OpsStatus.FAIL
-        if result.missing_expected_files: return OpsStatus.WATCH
+        if result.invalid_files or result.invalid_lines:
+            return OpsStatus.FAIL
+        if result.missing_expected_files:
+            return OpsStatus.WATCH
         return OpsStatus.PASS
 
     def check_store_integrity(self, root: Path | None = None) -> StoreIntegrityResult:
