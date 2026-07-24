@@ -51,19 +51,86 @@ class StrategyDecayAnalyzer:
         return report
 
     def extract_strategy_metrics(self, runs: list[Any]) -> dict[str, Any]:
-        def get_val(run, keys, default=None):
-             for k in keys:
-                 if isinstance(run, dict) and k in run:
-                     return run[k]
-                 elif hasattr(run, k):
-                     return getattr(run, k)
-             return default
+        avg_return_raw = []
+        win_rate_raw = []
+        profit_factor_raw = []
+        sharpe_raw = []
+        drawdown_raw = []
 
-        avg_return = DriftStatistics.safe_numeric_series([get_val(r, ['return_pct', 'total_return', 'avg_return']) for r in runs])
-        win_rate = DriftStatistics.safe_numeric_series([get_val(r, ['win_rate', 'win_pct']) for r in runs])
-        profit_factor = DriftStatistics.safe_numeric_series([get_val(r, ['profit_factor']) for r in runs])
-        sharpe = DriftStatistics.safe_numeric_series([get_val(r, ['sharpe', 'sharpe_ratio']) for r in runs])
-        drawdown = DriftStatistics.safe_numeric_series([get_val(r, ['max_drawdown', 'drawdown']) for r in runs])
+        # Localize keys for faster access
+        keys_return = ('return_pct', 'total_return', 'avg_return')
+        keys_win = ('win_rate', 'win_pct')
+        keys_profit = ('profit_factor',)
+        keys_sharpe = ('sharpe', 'sharpe_ratio')
+        keys_drawdown = ('max_drawdown', 'drawdown')
+
+        for r in runs:
+            if isinstance(r, dict):
+                # return
+                v = None
+                for k in keys_return:
+                    if k in r: v = r[k]; break
+                avg_return_raw.append(v)
+
+                # win
+                v = None
+                for k in keys_win:
+                    if k in r: v = r[k]; break
+                win_rate_raw.append(v)
+
+                # profit
+                v = None
+                for k in keys_profit:
+                    if k in r: v = r[k]; break
+                profit_factor_raw.append(v)
+
+                # sharpe
+                v = None
+                for k in keys_sharpe:
+                    if k in r: v = r[k]; break
+                sharpe_raw.append(v)
+
+                # drawdown
+                v = None
+                for k in keys_drawdown:
+                    if k in r: v = r[k]; break
+                drawdown_raw.append(v)
+            else:
+                # return
+                v = None
+                for k in keys_return:
+                    if hasattr(r, k): v = getattr(r, k); break
+                avg_return_raw.append(v)
+
+                # win
+                v = None
+                for k in keys_win:
+                    if hasattr(r, k): v = getattr(r, k); break
+                win_rate_raw.append(v)
+
+                # profit
+                v = None
+                for k in keys_profit:
+                    if hasattr(r, k): v = getattr(r, k); break
+                profit_factor_raw.append(v)
+
+                # sharpe
+                v = None
+                for k in keys_sharpe:
+                    if hasattr(r, k): v = getattr(r, k); break
+                sharpe_raw.append(v)
+
+                # drawdown
+                v = None
+                for k in keys_drawdown:
+                    if hasattr(r, k): v = getattr(r, k); break
+                drawdown_raw.append(v)
+
+        avg_return = DriftStatistics.safe_numeric_series(avg_return_raw)
+        win_rate = DriftStatistics.safe_numeric_series(win_rate_raw)
+        profit_factor = DriftStatistics.safe_numeric_series(profit_factor_raw)
+        sharpe = DriftStatistics.safe_numeric_series(sharpe_raw)
+        drawdown = DriftStatistics.safe_numeric_series(drawdown_raw)
 
         return {
              "average_return": sum(avg_return)/len(avg_return) if avg_return else None,
