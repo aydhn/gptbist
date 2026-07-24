@@ -71,7 +71,7 @@ class LocalImportAdapterRegistry:
             ImportAdapterCapability.PREVIEW,
             ImportAdapterCapability.TYPE_INFER,
         ]
-        if fmt in (ImportSourceFormat.CSV, ImportSourceFormat.JSONL, ImportSourceFormat.PARQUET):
+        if fmt in (ImportSourceFormat.CSV, ImportSourceFormat.JSONL, ImportSourceFormat.PARQUET, ImportSourceFormat.SQLITE):
             base_caps.append(ImportAdapterCapability.CHUNK_READ)
         return base_caps
 
@@ -178,6 +178,25 @@ class LocalImportAdapterRegistry:
             yield from pd.read_csv(path, chunksize=chunk_size)
         elif fmt == ImportSourceFormat.JSONL:
             yield from pd.read_json(path, lines=True, chunksize=chunk_size)
+        elif fmt == ImportSourceFormat.SQLITE:
+            try:
+                conn = sqlite3.connect(f"file:{path}?mode=ro", uri=True)
+                cursor = conn.cursor()
+                cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
+                tables = cursor.fetchall()
+                if not tables:
+                    return
+                table_name = tables[0][0]
+                if not re.fullmatch(r'^[a-zA-Z0-9_]+$', table_name):
+                    raise DataImportAdapterError(f"Invalid table name detected: {table_name}")
+                safe_table_name = f'"{table_name}"'
+                query = f"SELECT * FROM {safe_table_name}"
+                yield from pd.read_sql_query(query, conn, chunksize=chunk_size)
+            except Exception as e:
+                raise DataImportAdapterError(f"SQLite read error: {e}")
+            finally:
+                if 'conn' in locals():
+                    conn.close()
         elif fmt == ImportSourceFormat.PARQUET:
             # Parquet doesn't easily chunk in pandas without pyarrow.dataset,
             # so we might load all and yield chunks or use fastparquet/pyarrow
