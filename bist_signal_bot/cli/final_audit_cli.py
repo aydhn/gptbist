@@ -35,6 +35,176 @@ from bist_signal_bot.final_audit.reporting import (
 from bist_signal_bot.final_audit.models import FinalAuditReport
 from datetime import datetime, timezone
 
+def _handle_run(parsed):
+    runner = create_final_audit_check_runner()
+    results = runner.run_all_checks()
+    if getattr(parsed, "save", False):
+        store = create_final_audit_store()
+        store.append_checks(results)
+    if parsed.json:
+        print(json.dumps([check_result_to_dict(r) for r in results], indent=2))
+    else:
+        for r in results:
+            print(f"[{r.status.value}] {r.name} - {r.message}")
+
+def _handle_acceptance(parsed):
+    runner = create_final_acceptance_suite_runner()
+    suite = runner.run_acceptance_suite()
+    store = create_final_audit_store()
+    store.append_acceptance_suite(suite)
+    if parsed.json:
+        print(json.dumps(acceptance_suite_to_dict(suite), indent=2))
+    else:
+        print(format_acceptance_suite_text(suite))
+
+def _handle_contracts(parsed):
+    auditor = create_final_contract_auditor()
+    results = auditor.audit_contracts()
+    if parsed.json:
+        print(json.dumps([check_result_to_dict(r) for r in results], indent=2))
+    else:
+        for r in results:
+            print(f"[{r.status.value}] {r.name}")
+
+def _handle_integration(parsed):
+    builder = create_final_integration_matrix_builder()
+    matrix = builder.build_matrix()
+    store = create_final_audit_store()
+    store.append_integration_matrix(matrix)
+    if parsed.json:
+        print(json.dumps(integration_matrix_to_dict(matrix), indent=2))
+    else:
+        print(format_integration_matrix_text(matrix))
+
+def _handle_security(parsed):
+    auditor = create_final_security_auditor()
+    res = auditor.run_security_audit()
+    store = create_final_audit_store()
+    store.append_security_audit(res)
+    if parsed.json:
+        print(json.dumps(security_audit_to_dict(res), indent=2))
+    else:
+        print(format_security_audit_text(res))
+
+def _handle_candidate(parsed):
+    if getattr(parsed, "cand_cmd", None) == "build":
+        builder = create_release_candidate_builder()
+        cand = builder.build_candidate()
+        if getattr(parsed, "save", False):
+            store = create_final_audit_store()
+            store.append_release_candidate(cand)
+        if parsed.json:
+            print(json.dumps(release_candidate_to_dict(cand), indent=2))
+        else:
+            print(format_release_candidate_text(cand))
+    elif getattr(parsed, "cand_cmd", None) == "show":
+        store = create_final_audit_store()
+        cand = store.load_latest_release_candidate()
+        if not cand:
+            print("No candidate found.")
+            return 1
+        if parsed.json:
+            print(json.dumps(release_candidate_to_dict(cand), indent=2))
+        else:
+            print(format_release_candidate_text(cand))
+
+def _handle_freeze(parsed):
+    store = create_final_audit_store()
+    cand = store.load_latest_release_candidate()
+    if not cand or cand.candidate_id != parsed.candidate_id:
+        print(f"Candidate {parsed.candidate_id} not found or not latest.")
+        return 1
+
+    manager = create_hardening_freeze_manager()
+    confirm = getattr(parsed, "confirm", False)
+    freeze = manager.create_freeze(cand, confirm=confirm)
+
+    if confirm:
+        store.append_freeze_manifest(freeze)
+
+    if parsed.json:
+        print(json.dumps(freeze_manifest_to_dict(freeze), indent=2))
+    else:
+        print(format_freeze_manifest_text(freeze))
+
+def _handle_go_no_go(parsed):
+    store = create_final_audit_store()
+    cand = store.load_latest_release_candidate()
+    if not cand:
+        print("No candidate found.")
+        return 1
+
+    acc = store.load_latest_acceptance_suite()
+    sec = store.load_latest_security_audit()
+    matrix = store.load_latest_integration_matrix()
+
+    evaluator = create_go_no_go_evaluator()
+    decision = evaluator.evaluate(cand, acc, sec, matrix)
+    store.append_go_no_go(decision)
+
+    if parsed.json:
+        print(json.dumps(go_no_go_to_dict(decision), indent=2))
+    else:
+        print(format_go_no_go_text(decision))
+
+def _handle_risks(parsed):
+    store = create_final_audit_store()
+    cand = store.load_latest_release_candidate()
+    builder = create_final_risk_register_builder()
+    items = builder.build_risk_register(cand)
+    store.append_risk_register(items)
+
+    if parsed.json:
+        print(json.dumps([risk_item_to_dict(i) for i in items], indent=2))
+    else:
+        print(format_risk_register_text(items))
+
+def _handle_report(parsed):
+    store = create_final_audit_store()
+    cand = store.load_latest_release_candidate()
+    acc = store.load_latest_acceptance_suite()
+    sec = store.load_latest_security_audit()
+    matrix = store.load_latest_integration_matrix()
+    gng = store.load_latest_go_no_go()
+    freeze = store.load_latest_freeze_manifest()
+    items = create_final_risk_register_builder().build_risk_register(cand)
+
+    report = FinalAuditReport(
+        report_id=f"rpt_{datetime.now(timezone.utc).strftime('%Y%m%d%H%M')}",
+        generated_at=datetime.now(timezone.utc),
+        acceptance_suite=acc,
+        integration_matrix=matrix,
+        security_audit=sec,
+        release_candidate=cand,
+        freeze_manifest=freeze,
+        go_no_go=gng,
+        risk_register=items
+    )
+
+    md_text = format_final_audit_report_markdown(report)
+    store.save_report(report, md_text)
+
+    if parsed.json:
+        print(json.dumps(final_audit_report_to_dict(report), indent=2))
+    else:
+        print("Report saved successfully.")
+        print(md_text)
+
+def _handle_recent(parsed):
+    # Just mock it for MVP parity
+    if parsed.json:
+        print(json.dumps([], indent=2))
+    else:
+        print("No recent final audit decisions found.")
+
+def _handle_config(parsed):
+    cfg = {"enabled": True, "research_only": True}
+    if parsed.json:
+        print(json.dumps(cfg, indent=2))
+    else:
+        print("Final Audit Config:", cfg)
+
+
 def main(args):
     parser = argparse.ArgumentParser(prog="python -m bist_signal_bot final-audit")
     subparsers = parser.add_subparsers(dest="command", help="Final Audit commands")
@@ -106,176 +276,26 @@ def main(args):
         parser.print_help()
         return 1
 
+    handlers = {
+        "run": _handle_run,
+        "acceptance": _handle_acceptance,
+        "contracts": _handle_contracts,
+        "integration": _handle_integration,
+        "security": _handle_security,
+        "candidate": _handle_candidate,
+        "freeze": _handle_freeze,
+        "go-no-go": _handle_go_no_go,
+        "risks": _handle_risks,
+        "report": _handle_report,
+        "recent": _handle_recent,
+        "config": _handle_config,
+    }
+
     try:
-        if parsed.command == "run":
-            runner = create_final_audit_check_runner()
-            results = runner.run_all_checks()
-            if parsed.save:
-                store = create_final_audit_store()
-                store.append_checks(results)
-            if parsed.json:
-                print(json.dumps([check_result_to_dict(r) for r in results], indent=2))
-            else:
-                for r in results:
-                    print(f"[{r.status.value}] {r.name} - {r.message}")
-
-        elif parsed.command == "acceptance":
-            runner = create_final_acceptance_suite_runner()
-            suite = runner.run_acceptance_suite()
-            store = create_final_audit_store()
-            store.append_acceptance_suite(suite)
-            if parsed.json:
-                print(json.dumps(acceptance_suite_to_dict(suite), indent=2))
-            else:
-                print(format_acceptance_suite_text(suite))
-
-        elif parsed.command == "contracts":
-            auditor = create_final_contract_auditor()
-            results = auditor.audit_contracts()
-            if parsed.json:
-                print(json.dumps([check_result_to_dict(r) for r in results], indent=2))
-            else:
-                for r in results:
-                    print(f"[{r.status.value}] {r.name}")
-
-        elif parsed.command == "integration":
-            builder = create_final_integration_matrix_builder()
-            matrix = builder.build_matrix()
-            store = create_final_audit_store()
-            store.append_integration_matrix(matrix)
-            if parsed.json:
-                print(json.dumps(integration_matrix_to_dict(matrix), indent=2))
-            else:
-                print(format_integration_matrix_text(matrix))
-
-        elif parsed.command == "security":
-            auditor = create_final_security_auditor()
-            res = auditor.run_security_audit()
-            store = create_final_audit_store()
-            store.append_security_audit(res)
-            if parsed.json:
-                print(json.dumps(security_audit_to_dict(res), indent=2))
-            else:
-                print(format_security_audit_text(res))
-
-        elif parsed.command == "candidate":
-            if parsed.cand_cmd == "build":
-                builder = create_release_candidate_builder()
-                cand = builder.build_candidate()
-                if getattr(parsed, "save", False):
-                    store = create_final_audit_store()
-                    store.append_release_candidate(cand)
-                if parsed.json:
-                    print(json.dumps(release_candidate_to_dict(cand), indent=2))
-                else:
-                    print(format_release_candidate_text(cand))
-            elif parsed.cand_cmd == "show":
-                store = create_final_audit_store()
-                cand = store.load_latest_release_candidate()
-                if not cand:
-                    print("No candidate found.")
-                    return 1
-                if parsed.json:
-                    print(json.dumps(release_candidate_to_dict(cand), indent=2))
-                else:
-                    print(format_release_candidate_text(cand))
-
-        elif parsed.command == "freeze":
-            store = create_final_audit_store()
-            cand = store.load_latest_release_candidate()
-            if not cand or cand.candidate_id != parsed.candidate_id:
-                print(f"Candidate {parsed.candidate_id} not found or not latest.")
-                return 1
-
-            manager = create_hardening_freeze_manager()
-            confirm = getattr(parsed, "confirm", False)
-            freeze = manager.create_freeze(cand, confirm=confirm)
-
-            if confirm:
-                store.append_freeze_manifest(freeze)
-
-            if parsed.json:
-                print(json.dumps(freeze_manifest_to_dict(freeze), indent=2))
-            else:
-                print(format_freeze_manifest_text(freeze))
-
-        elif parsed.command == "go-no-go":
-            store = create_final_audit_store()
-            cand = store.load_latest_release_candidate()
-            if not cand:
-                print("No candidate found.")
-                return 1
-
-            acc = store.load_latest_acceptance_suite()
-            sec = store.load_latest_security_audit()
-            matrix = store.load_latest_integration_matrix()
-
-            evaluator = create_go_no_go_evaluator()
-            decision = evaluator.evaluate(cand, acc, sec, matrix)
-            store.append_go_no_go(decision)
-
-            if parsed.json:
-                print(json.dumps(go_no_go_to_dict(decision), indent=2))
-            else:
-                print(format_go_no_go_text(decision))
-
-        elif parsed.command == "risks":
-            store = create_final_audit_store()
-            cand = store.load_latest_release_candidate()
-            builder = create_final_risk_register_builder()
-            items = builder.build_risk_register(cand)
-            store.append_risk_register(items)
-
-            if parsed.json:
-                print(json.dumps([risk_item_to_dict(i) for i in items], indent=2))
-            else:
-                print(format_risk_register_text(items))
-
-        elif parsed.command == "report":
-            store = create_final_audit_store()
-            cand = store.load_latest_release_candidate()
-            acc = store.load_latest_acceptance_suite()
-            sec = store.load_latest_security_audit()
-            matrix = store.load_latest_integration_matrix()
-            gng = store.load_latest_go_no_go()
-            freeze = store.load_latest_freeze_manifest()
-            items = create_final_risk_register_builder().build_risk_register(cand)
-
-            report = FinalAuditReport(
-                report_id=f"rpt_{datetime.now(timezone.utc).strftime('%Y%m%d%H%M')}",
-                generated_at=datetime.now(timezone.utc),
-                acceptance_suite=acc,
-                integration_matrix=matrix,
-                security_audit=sec,
-                release_candidate=cand,
-                freeze_manifest=freeze,
-                go_no_go=gng,
-                risk_register=items
-            )
-
-            md_text = format_final_audit_report_markdown(report)
-            store.save_report(report, md_text)
-
-            if parsed.json:
-                print(json.dumps(final_audit_report_to_dict(report), indent=2))
-            else:
-                print("Report saved successfully.")
-                print(md_text)
-
-        elif parsed.command == "recent":
-            # Just mock it for MVP parity
-            if parsed.json:
-                print(json.dumps([], indent=2))
-            else:
-                print("No recent final audit decisions found.")
-
-        elif parsed.command == "config":
-            cfg = {"enabled": True, "research_only": True}
-            if parsed.json:
-                print(json.dumps(cfg, indent=2))
-            else:
-                print("Final Audit Config:", cfg)
-
+        if parsed.command in handlers:
+            result = handlers[parsed.command](parsed)
+            if result is not None:
+                return result
     except Exception as e:
         print(f"Error: {e}")
         return 1
