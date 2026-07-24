@@ -114,16 +114,39 @@ class PortfolioResearchEngine:
         volatility_by_symbol = {}
         if self.data_service:
             syms = [c.symbol for c in unique_candidates]
-            for sym in syms:
+            batch_success = False
+
+            # Use get_many_ohlcv for batch fetching to prevent N+1 queries
+            if hasattr(self.data_service, "get_many_ohlcv"):
                 try:
-                    df = self.data_service.fetch_data(sym, request.timeframe, source=request.source)
-                    if df is not None and not df.empty:
-                        data_by_symbol[sym] = df
-                        # simple vol proxy
-                        ret = df['close'].pct_change().dropna()
-                        volatility_by_symbol[sym] = float(ret.std() * (252**0.5) * 100) if len(ret) > 10 else 0.0
+                    # get_many_ohlcv in data_service doesn't accept source,
+                    # but if it did, we'd pass it. For now, it accepts standard params.
+                    batch_results = self.data_service.get_many_ohlcv(syms, timeframe=request.timeframe)
+                    for sym, df in batch_results.items():
+                        if df is not None and not df.empty:
+                            data_by_symbol[sym] = df
+                            # simple vol proxy
+                            ret = df['close'].pct_change().dropna()
+                            volatility_by_symbol[sym] = float(ret.std() * (252**0.5) * 100) if len(ret) > 10 else 0.0
+                    batch_success = True
                 except Exception as e:
-                    self.logger.warning(f"Failed to fetch data for {sym}: {e}")
+                    self.logger.warning(f"Failed to batch fetch data, falling back to per-symbol fetch: {e}")
+
+            if not batch_success:
+                # Fallback to fetch_data or get_ohlcv if get_many_ohlcv is not available or failed
+                for sym in syms:
+                    try:
+                        if hasattr(self.data_service, "fetch_data"):
+                            df = self.data_service.fetch_data(sym, request.timeframe, source=request.source)
+                        else:
+                            df = self.data_service.get_ohlcv(sym, timeframe=request.timeframe)
+                        if df is not None and not df.empty:
+                            data_by_symbol[sym] = df
+                            # simple vol proxy
+                            ret = df['close'].pct_change().dropna()
+                            volatility_by_symbol[sym] = float(ret.std() * (252**0.5) * 100) if len(ret) > 10 else 0.0
+                    except Exception as e:
+                        self.logger.warning(f"Failed to fetch data for {sym}: {e}")
 
         # Apply constraints phase 1
         constraints = self.constraint_engine.validate_items(unique_candidates, request)
