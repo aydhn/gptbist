@@ -44,11 +44,6 @@ def run_release_gate(include_data_catalog=False, include_feature_store=False, in
         }
     return res
 
-    def check_research_orchestrator(self) -> dict:
-        """
-        Mock QA check for Research Orchestrator.
-        """
-        return {"status": "PASS", "message": "Research Orchestrator checks passed."}
 
 def check_final_handoff(report: dict, settings: Any = None) -> None:
     if settings and not getattr(settings, "QA_INCLUDE_FINAL_HANDOFF", True):
