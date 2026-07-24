@@ -4,12 +4,11 @@ import time
 import subprocess
 import logging
 from datetime import datetime
-from typing import List, Optional, Tuple, Dict, Any
+from typing import List, Optional, Tuple, Dict
 from bist_signal_bot.research_lab.models import (
     ResearchJob, ResearchJobResult, ResearchJobStatus, ResearchBatchPlan,
     ResearchBatchRun, ResearchLabPolicy, ResearchJobRiskLevel
 )
-from bist_signal_bot.core.exceptions import ResearchJobExecutionError
 from bist_signal_bot.core.audit import AuditLogger, AuditEventType
 from bist_signal_bot.research_lab.storage import ResearchLabStore
 from bist_signal_bot.research_lab.queue import ResearchJobQueue
@@ -88,10 +87,10 @@ class ResearchJobExecutor:
 
         # Security validation: strictly allow only bist_signal_bot module execution
         if not command or len(command) < 3:
-            return 1, "", f"Security Error: Command too short or empty."
+            return 1, "", "Security Error: Command too short or empty."
 
         if command[0] not in ("python", sys.executable) or command[1] != "-m" or command[2] != "bist_signal_bot":
-            return 1, "", f"Security Error: Unauthorized command execution blocked. Only 'python -m bist_signal_bot' is allowed."
+            return 1, "", "Security Error: Unauthorized command execution blocked. Only 'python -m bist_signal_bot' is allowed."
 
         command[0] = sys.executable
 
@@ -99,7 +98,7 @@ class ResearchJobExecutor:
         # Allows alphanumeric, dash, underscore, and equals. Disallows shell metacharacters and arbitrary scripts.
         allowed_pattern = re.compile(r'^[a-zA-Z0-9_=-]+$')
         for arg in command[3:]:
-            if not allowed_pattern.match(arg):
+            if not allowed_pattern.fullmatch(arg):
                 return 1, "", f"Security Error: Argument '{arg}' contains unauthorized characters."
 
         merged_env = os.environ.copy()
