@@ -11,7 +11,6 @@ from bist_signal_bot.scanner.models import (
 if TYPE_CHECKING:
     import pandas as pd
 
-
 class ScanRanker:
     def __init__(self, settings: Optional[Settings] = None):
         self.settings = settings or Settings()
@@ -54,12 +53,6 @@ class ScanRanker:
             r.rank_score = None
             r.rank = None
             final_rankings.append(self._build_ranking_item(r, 9999, 0.0))
-
-        if top_n is not None and top_n > 0:
-            # Only slice the valid rankings, but if top_n is applied we might just return the top N valid
-            # for simplicity, just slice the valid ones and maybe add the bottom ones if we want to return all?
-            # Usually top_n applies to the returned list of ranked items. Let's just slice the whole thing.
-            pass
 
         return final_rankings
 
@@ -157,7 +150,6 @@ class ScanRanker:
                 if k in feats and feats[k] is not None:
                     return float(feats[k])
         return None
-
 
 def ranking_to_dataframe(rankings: List[ScanRankingItem]) -> 'pd.DataFrame':
     import pandas as pd
