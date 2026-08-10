@@ -75,60 +75,77 @@ class LocalImportAdapterRegistry:
             base_caps.append(ImportAdapterCapability.CHUNK_READ)
         return base_caps
 
+    def _read_preview_csv(self, path: Path, max_rows: int) -> list[dict[str, Any]]:
+        df = pd.read_csv(path, nrows=max_rows)
+        return df.to_dict(orient="records")
+
+    def _read_preview_jsonl(self, path: Path, max_rows: int) -> list[dict[str, Any]]:
+        rows = []
+        with open(path, "r", encoding="utf-8") as f:
+            for _ in range(max_rows):
+                line = f.readline()
+                if not line:
+                    break
+                try:
+                    rows.append(json.loads(line))
+                except json.JSONDecodeError:
+                    continue
+        return rows
+
+    def _read_preview_json(self, path: Path, max_rows: int) -> list[dict[str, Any]]:
+        with open(path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+            if isinstance(data, list):
+                return data[:max_rows]
+            elif isinstance(data, dict) and len(data) > 0:
+                # attempt to find the first list
+                for k, v in data.items():
+                    if isinstance(v, list):
+                        return v[:max_rows]
+        return []
+
+    def _read_preview_parquet(self, path: Path, max_rows: int) -> list[dict[str, Any]]:
+        df = pd.read_parquet(path)
+        return df.head(max_rows).to_dict(orient="records")
+
+    def _read_preview_sqlite(self, path: Path, max_rows: int) -> list[dict[str, Any]]:
+        try:
+            conn = sqlite3.connect(f"file:{path}?mode=ro", uri=True)
+            cursor = conn.cursor()
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
+            tables = cursor.fetchall()
+            if not tables:
+                return []
+            table_name = tables[0][0]
+            # Strictly validate that the table name only contains safe characters
+            if not re.fullmatch(r'^[a-zA-Z0-9_]+$', table_name):
+                raise DataImportAdapterError(f"Invalid table name detected: {table_name}")
+
+            safe_table_name = f'"{table_name}"'
+            query = f"SELECT * FROM {safe_table_name} LIMIT ?"
+            df = pd.read_sql_query(query, conn, params=(max_rows,))  # nosec B608
+            conn.close()
+            return df.to_dict(orient="records")
+        except Exception as e:
+            raise DataImportAdapterError(f"SQLite read error: {e}")
+
+    def _read_preview_excel(self, path: Path, max_rows: int) -> list[dict[str, Any]]:
+        df = pd.read_excel(path, nrows=max_rows)
+        return df.to_dict(orient="records")
+
     def read_preview(self, path: Path, max_rows: int = 20) -> list[dict[str, Any]]:
         fmt = self.infer_format(path)
-        if fmt == ImportSourceFormat.CSV:
-            df = pd.read_csv(path, nrows=max_rows)
-            return df.to_dict(orient="records")
-        elif fmt == ImportSourceFormat.JSONL:
-            rows = []
-            with open(path, "r", encoding="utf-8") as f:
-                for _ in range(max_rows):
-                    line = f.readline()
-                    if not line:
-                        break
-                    try:
-                        rows.append(json.loads(line))
-                    except json.JSONDecodeError:
-                        continue
-            return rows
-        elif fmt == ImportSourceFormat.JSON:
-            with open(path, "r", encoding="utf-8") as f:
-                data = json.load(f)
-                if isinstance(data, list):
-                    return data[:max_rows]
-                elif isinstance(data, dict) and len(data) > 0:
-                    # attempt to find the first list
-                    for k, v in data.items():
-                        if isinstance(v, list):
-                            return v[:max_rows]
-            return []
-        elif fmt == ImportSourceFormat.PARQUET:
-            df = pd.read_parquet(path)
-            return df.head(max_rows).to_dict(orient="records")
-        elif fmt == ImportSourceFormat.SQLITE:
-            try:
-                conn = sqlite3.connect(f"file:{path}?mode=ro", uri=True)
-                cursor = conn.cursor()
-                cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
-                tables = cursor.fetchall()
-                if not tables:
-                    return []
-                table_name = tables[0][0]
-                # Strictly validate that the table name only contains safe characters
-                if not re.fullmatch(r'^[a-zA-Z0-9_]+$', table_name):
-                    raise DataImportAdapterError(f"Invalid table name detected: {table_name}")
-
-                safe_table_name = f'"{table_name}"'
-                query = f"SELECT * FROM {safe_table_name} LIMIT ?"
-                df = pd.read_sql_query(query, conn, params=(max_rows,))  # nosec B608
-                conn.close()
-                return df.to_dict(orient="records")
-            except Exception as e:
-                raise DataImportAdapterError(f"SQLite read error: {e}")
-        elif fmt == ImportSourceFormat.EXCEL:
-             df = pd.read_excel(path, nrows=max_rows)
-             return df.to_dict(orient="records")
+        dispatch = {
+            ImportSourceFormat.CSV: self._read_preview_csv,
+            ImportSourceFormat.JSONL: self._read_preview_jsonl,
+            ImportSourceFormat.JSON: self._read_preview_json,
+            ImportSourceFormat.PARQUET: self._read_preview_parquet,
+            ImportSourceFormat.SQLITE: self._read_preview_sqlite,
+            ImportSourceFormat.EXCEL: self._read_preview_excel,
+        }
+        handler = dispatch.get(fmt)
+        if handler:
+            return handler(path, max_rows)
         raise DataImportAdapterError(f"Preview not supported for {fmt}")
 
     def read_dataframe(self, path: Path, max_rows: int | None = None) -> pd.DataFrame:
