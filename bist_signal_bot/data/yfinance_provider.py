@@ -104,20 +104,138 @@ class YFinanceMarketDataProvider(BaseMarketDataProvider):
             metadata={'from_cache': False, 'requested_period': period}
         )
 
+
+    def _fetch_batch_from_yfinance(self, symbols_yf: list[str], timeframe: Timeframe, start: datetime | None, end: datetime | None, period: str | None, adjusted: bool) -> pd.DataFrame:
+        try:
+            import yfinance as yf
+        except ImportError:
+            raise DataProviderError("yfinance library is not installed.")
+
+        kwargs = {}
+        if start and end:
+            kwargs["start"] = start.strftime("%Y-%m-%d")
+            kwargs["end"] = end.strftime("%Y-%m-%d")
+        elif period:
+            kwargs["period"] = period
+        else:
+            kwargs["period"] = "2y" # default fallback
+
+        try:
+            # group_by="ticker" makes column multi-index (Ticker, Price)
+            df = yf.download(
+                " ".join(symbols_yf),
+                interval=timeframe.value,
+                group_by="ticker",
+                auto_adjust=adjusted,
+                **kwargs
+            )
+            return df
+        except Exception as e:
+            raise DataProviderError(f"Failed to fetch batch data from YFinance: {e}")
+
     def fetch_ohlcv(self, request: DataFetchRequest) -> dict[str, MarketDataFrame]:
         results = {}
-        for symbol in request.symbols:
+        if not request.symbols:
+            return results
+
+        symbols_yf = [self.normalize_provider_symbol(s) for s in request.symbols]
+
+        try:
+            batch_df = self._fetch_batch_from_yfinance(
+                symbols_yf=symbols_yf,
+                timeframe=request.timeframe,
+                start=request.start,
+                end=request.end,
+                period=request.period,
+                adjusted=request.adjusted
+            )
+        except Exception as e:
+            # Fallback to sequential if batch fails entirely
+            print(f"Warning: Batch fetch failed: {e}. Falling back to sequential.")
+            for symbol in request.symbols:
+                try:
+                    results[symbol] = self.fetch_one(
+                        symbol=symbol,
+                        timeframe=request.timeframe,
+                        start=request.start,
+                        end=request.end,
+                        period=request.period,
+                        adjusted=request.adjusted
+                    )
+                except Exception as inner_e:
+                    print(f"Warning: Failed to fetch {symbol} sequentially: {inner_e}")
+            return results
+
+        # Process batch results
+        for symbol, symbol_yf in zip(request.symbols, symbols_yf):
             try:
-                results[symbol] = self.fetch_one(
+                # If only one symbol was requested, yfinance might not use multi-index depending on version
+                if len(symbols_yf) == 1:
+                    if isinstance(batch_df.columns, pd.MultiIndex):
+                        if symbol_yf in batch_df:
+                            df = batch_df[symbol_yf].copy()
+                        else:
+                            df = batch_df.copy()
+                            # Strip ticker level if it exists
+                            if len(df.columns.levels) > 1 and df.columns.names[1] == 'Ticker':
+                                df.columns = df.columns.droplevel(1)
+                    else:
+                        df = batch_df.copy()
+                else:
+                    if symbol_yf in batch_df:
+                        df = batch_df[symbol_yf].copy()
+                    else:
+                        df = pd.DataFrame()
+
+                # Check if data is completely empty
+                if df.empty or df.isna().all().all():
+                    results[symbol] = MarketDataFrame(
+                        symbol=symbol,
+                        timeframe=request.timeframe,
+                        source=self.vendor,
+                        data=pd.DataFrame(),
+                        fetched_at=utc_now(),
+                        adjusted=request.adjusted
+                    )
+                    continue
+
+                # Normalize columns
+                df.columns = [str(c).lower() for c in df.columns]
+
+                # Keep only required columns if they exist
+                required_cols = {"open", "high", "low", "close", "volume"}
+
+                if not required_cols.issubset(set(df.columns)):
+                    print(f"Warning: Missing required columns from YFinance batch for {symbol}. Got: {list(df.columns)}")
+                    continue
+
+                # Drop rows where all required columns are NaN
+                df = df.dropna(subset=list(required_cols), how='all')
+
+                if df.empty:
+                    results[symbol] = MarketDataFrame(
+                        symbol=symbol,
+                        timeframe=request.timeframe,
+                        source=self.vendor,
+                        data=pd.DataFrame(),
+                        fetched_at=utc_now(),
+                        adjusted=request.adjusted
+                    )
+                    continue
+
+                df = df[list(required_cols)].copy()
+
+                results[symbol] = MarketDataFrame(
                     symbol=symbol,
                     timeframe=request.timeframe,
-                    start=request.start,
-                    end=request.end,
-                    period=request.period,
-                    adjusted=request.adjusted
+                    source=self.vendor,
+                    data=df,
+                    fetched_at=utc_now(),
+                    adjusted=request.adjusted,
+                    metadata={'from_cache': False, 'requested_period': request.period}
                 )
+
             except Exception as e:
-                # Log error, but continue fetching others
-                print(f"Warning: Failed to fetch {symbol}: {e}")
-                # We could choose to insert an empty MarketDataFrame or leave it out. Let's leave it out.
+                print(f"Warning: Failed to process batch data for {symbol}: {e}")
+
         return results
