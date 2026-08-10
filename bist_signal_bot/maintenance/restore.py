@@ -42,13 +42,53 @@ class RestoreManager:
 
         return errors
 
+    def _load_and_validate_manifest(self, backup_path: Path, request: RestoreRequest, warnings: list) -> None:
+        manifest_path = backup_path.with_name(f"{backup_path.stem.replace('backup_', '')}_manifest.json")
+        if not manifest_path.exists():
+            manifest_path = backup_path.with_name(f"{backup_path.name.split('.')[0].replace('backup_', '')}_manifest.json")
+
+        if manifest_path.exists():
+            manifest = BackupManifestBuilder.load_manifest(manifest_path)
+
+            if request.verify_before_restore:
+                 verify_errors = BackupManifestBuilder.verify_manifest(manifest, archive_path=backup_path)
+                 if verify_errors:
+                     raise RestoreValidationError(f"Backup verification failed: {verify_errors}")
+
+            plan_errors = self.validate_restore_plan(manifest, request)
+            if plan_errors:
+                 raise RestoreValidationError(f"Restore plan validation failed: {plan_errors}")
+        else:
+             warnings.append("No manifest found. Scope filtering and full validation skipped.")
+
+    def _create_pre_restore_backup(self) -> str:
+        pre_req = BackupRequest(scopes=[BackupScope.ALL_SAFE], dry_run=False, verify_after_create=False)
+        pre_res = self.backup_manager.create_backup(pre_req)
+        if pre_res.status == MaintenanceStatus.SUCCESS:
+             return pre_res.backup_id
+        raise RestoreError(f"Pre-restore backup failed: {pre_res.errors}")
+
+    def _extract_backup(self, backup_path: Path, target_dir: Path, request: RestoreRequest):
+        if str(backup_path).endswith('.zip'):
+            return self.restore_zip(backup_path, target_dir, request)
+        if str(backup_path).endswith('.tar.gz'):
+            return self.restore_tar_gz(backup_path, target_dir, request)
+        return self.restore_directory_copy(backup_path, target_dir, request)
+
+    def _determine_status(self, errors: list, warnings: list, restored: int, blocked: int, dry_run: bool) -> MaintenanceStatus:
+        if dry_run:
+            return MaintenanceStatus.SUCCESS
+        if errors:
+            return MaintenanceStatus.FAILED if not restored else MaintenanceStatus.PARTIAL_SUCCESS
+        if warnings or blocked > 0:
+            return MaintenanceStatus.PARTIAL_SUCCESS
+        return MaintenanceStatus.SUCCESS
+
     def restore(self, request: RestoreRequest, confirm: bool = False) -> RestoreResult:
         start_time = time.time()
         warnings = []
         errors = []
-        restored = 0
-        skipped = 0
-        blocked = 0
+        restored = skipped = blocked = 0
         pre_restore_backup_id = None
 
         try:
@@ -58,57 +98,19 @@ class RestoreManager:
 
             target_dir = Path(request.target_dir) if request.target_dir else self.base_dir
 
-            # Since we only have the archive file usually, we expect the manifest to be next to it
-            # or extract it from the archive if we stored it there. Let's assume there is a manifest JSON
-            # with the same base name, or we can't do a full scope-based dry run easily.
-            # MVP: Just extract directly if no manifest
-            manifest_path = backup_path.with_name(f"{backup_path.stem.replace('backup_', '')}_manifest.json")
-            if not manifest_path.exists():
-                manifest_path = backup_path.with_name(f"{backup_path.name.split('.')[0].replace('backup_', '')}_manifest.json")
-
-            if manifest_path.exists():
-                manifest = BackupManifestBuilder.load_manifest(manifest_path)
-
-                if request.verify_before_restore:
-                     verify_errors = BackupManifestBuilder.verify_manifest(manifest, archive_path=backup_path)
-                     if verify_errors:
-                         raise RestoreValidationError(f"Backup verification failed: {verify_errors}")
-
-                plan_errors = self.validate_restore_plan(manifest, request)
-                if plan_errors:
-                     raise RestoreValidationError(f"Restore plan validation failed: {plan_errors}")
-            else:
-                 warnings.append("No manifest found. Scope filtering and full validation skipped.")
+            self._load_and_validate_manifest(backup_path, request, warnings)
 
             if not request.dry_run and not confirm:
                 raise RestoreValidationError("Restore is destructive. 'confirm' must be True to proceed.")
 
             if not request.dry_run and request.create_pre_restore_backup:
-                pre_req = BackupRequest(scopes=[BackupScope.ALL_SAFE], dry_run=False, verify_after_create=False)
-                pre_res = self.backup_manager.create_backup(pre_req)
-                if pre_res.status == MaintenanceStatus.SUCCESS:
-                     pre_restore_backup_id = pre_res.backup_id
-                else:
-                     raise RestoreError(f"Pre-restore backup failed: {pre_res.errors}")
+                pre_restore_backup_id = self._create_pre_restore_backup()
 
             if not request.dry_run:
-                if str(backup_path).endswith('.zip'):
-                    restored, skipped, blocked, extract_errors = self.restore_zip(backup_path, target_dir, request)
-                elif str(backup_path).endswith('.tar.gz'):
-                    restored, skipped, blocked, extract_errors = self.restore_tar_gz(backup_path, target_dir, request)
-                else: # Assuming directory copy
-                    restored, skipped, blocked, extract_errors = self.restore_directory_copy(backup_path, target_dir, request)
-
+                restored, skipped, blocked, extract_errors = self._extract_backup(backup_path, target_dir, request)
                 errors.extend(extract_errors)
 
-            status = MaintenanceStatus.SUCCESS
-            if errors:
-                status = MaintenanceStatus.FAILED if not restored else MaintenanceStatus.PARTIAL_SUCCESS
-            elif warnings or blocked > 0:
-                status = MaintenanceStatus.PARTIAL_SUCCESS
-
-            if request.dry_run:
-                status = MaintenanceStatus.SUCCESS
+            status = self._determine_status(errors, warnings, restored, blocked, request.dry_run)
 
             return RestoreResult(
                 restore_id=f"rst_{int(time.time())}",
