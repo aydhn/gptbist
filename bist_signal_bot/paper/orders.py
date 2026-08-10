@@ -17,6 +17,10 @@ from bist_signal_bot.risk.models import RiskDecision
 from bist_signal_bot.portfolio.models import PortfolioRiskDecision
 
 
+_ACCEPTABLE_STATUSES = frozenset({PaperOrderStatus.CREATED, PaperOrderStatus.REJECTED})
+_REJECTABLE_STATUSES = frozenset({PaperOrderStatus.FILLED, PaperOrderStatus.CANCELLED, PaperOrderStatus.EXPIRED})
+_TERMINAL_STATUSES = frozenset({PaperOrderStatus.FILLED, PaperOrderStatus.CANCELLED, PaperOrderStatus.EXPIRED, PaperOrderStatus.REJECTED})
+
 class PaperOrderManager:
 
     def create_market_order(
@@ -58,7 +62,7 @@ class PaperOrderManager:
         return order
 
     def accept_order(self, order: PaperOrder) -> PaperOrder:
-        if order.status not in [PaperOrderStatus.CREATED, PaperOrderStatus.REJECTED]:
+        if order.status not in _ACCEPTABLE_STATUSES:
              raise PaperOrderError(f"Cannot accept order in status {order.status}")
 
         order.status = PaperOrderStatus.ACCEPTED
@@ -66,7 +70,7 @@ class PaperOrderManager:
         return order
 
     def reject_order(self, order: PaperOrder, reason: str) -> PaperOrder:
-        if order.status in [PaperOrderStatus.FILLED, PaperOrderStatus.CANCELLED, PaperOrderStatus.EXPIRED]:
+        if order.status in _REJECTABLE_STATUSES:
              raise PaperOrderError(f"Cannot reject order in status {order.status}")
 
         order.status = PaperOrderStatus.REJECTED
@@ -75,7 +79,7 @@ class PaperOrderManager:
         return order
 
     def cancel_order(self, order: PaperOrder, reason: Optional[str] = None) -> PaperOrder:
-        if order.status in [PaperOrderStatus.FILLED, PaperOrderStatus.CANCELLED, PaperOrderStatus.EXPIRED, PaperOrderStatus.REJECTED]:
+        if order.status in _TERMINAL_STATUSES:
              raise PaperOrderError(f"Cannot cancel order in status {order.status}")
 
         order.status = PaperOrderStatus.CANCELLED
@@ -85,7 +89,7 @@ class PaperOrderManager:
         return order
 
     def expire_order(self, order: PaperOrder) -> PaperOrder:
-        if order.status in [PaperOrderStatus.FILLED, PaperOrderStatus.CANCELLED, PaperOrderStatus.EXPIRED, PaperOrderStatus.REJECTED]:
+        if order.status in _TERMINAL_STATUSES:
              raise PaperOrderError(f"Cannot expire order in status {order.status}")
 
         order.status = PaperOrderStatus.EXPIRED
