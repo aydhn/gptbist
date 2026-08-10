@@ -33,7 +33,7 @@ class DatasetContractRegistry:
             contract_id=f"contract_{kind.value.lower()}_{self.settings.DATA_CATALOG_CONTRACT_VERSION}",
             dataset_kind=kind,
             name=f"Default {kind.value} Contract",
-            version=self.settings.DATA_CATALOG_CONTRACT_VERSION,
+            version=str(self.settings.DATA_CATALOG_CONTRACT_VERSION),
             required_columns=required,
             optional_columns=optional,
             date_columns=date_cols,
@@ -166,40 +166,32 @@ class DatasetContractRegistry:
             errors.append(f"Invalid dataset kind: {contract.dataset_kind}")
         return errors
 
+    _PATH_MAPPING = (
+        (["adjusted_ohlcv"], DatasetKind.ADJUSTED_OHLCV),
+        (["instrument", "symbols"], DatasetKind.INSTRUMENTS),
+        (["corporate", "actions"], DatasetKind.CORPORATE_ACTIONS),
+        (["event"], DatasetKind.EVENTS),
+        (["disclosure", "kap"], DatasetKind.DISCLOSURES),
+        (["financial", "balance_sheet", "income_statement"], DatasetKind.FINANCIALS),
+        (["macro"], DatasetKind.MACRO),
+        (["valuation"], DatasetKind.VALUATION),
+        (["factor"], DatasetKind.FACTORS),
+        (["breadth"], DatasetKind.BREADTH),
+        (["context"], DatasetKind.CONTEXT),
+        (["review"], DatasetKind.REVIEW_WORKFLOW),
+        (["qa"], DatasetKind.QA),
+        (["ops"], DatasetKind.OPS),
+        (["report"], DatasetKind.REPORTS),
+    )
+
     def contract_for_path(self, path: Path) -> DatasetContract | None:
         name = path.name.lower()
         if "ohlcv" in name and "adjusted" not in name:
             return self.get_contract(DatasetKind.OHLCV)
-        if "adjusted_ohlcv" in name:
-            return self.get_contract(DatasetKind.ADJUSTED_OHLCV)
-        if "instrument" in name or "symbols" in name:
-            return self.get_contract(DatasetKind.INSTRUMENTS)
-        if "corporate" in name or "actions" in name:
-            return self.get_contract(DatasetKind.CORPORATE_ACTIONS)
-        if "event" in name:
-            return self.get_contract(DatasetKind.EVENTS)
-        if "disclosure" in name or "kap" in name:
-             return self.get_contract(DatasetKind.DISCLOSURES)
-        if "financial" in name or "balance_sheet" in name or "income_statement" in name:
-             return self.get_contract(DatasetKind.FINANCIALS)
-        if "macro" in name:
-             return self.get_contract(DatasetKind.MACRO)
-        if "valuation" in name:
-             return self.get_contract(DatasetKind.VALUATION)
-        if "factor" in name:
-             return self.get_contract(DatasetKind.FACTORS)
-        if "breadth" in name:
-             return self.get_contract(DatasetKind.BREADTH)
-        if "context" in name:
-             return self.get_contract(DatasetKind.CONTEXT)
-        if "review" in name:
-             return self.get_contract(DatasetKind.REVIEW_WORKFLOW)
-        if "qa" in name:
-             return self.get_contract(DatasetKind.QA)
-        if "ops" in name:
-             return self.get_contract(DatasetKind.OPS)
-        if "report" in name:
-             return self.get_contract(DatasetKind.REPORTS)
+
+        for keywords, kind in self._PATH_MAPPING:
+            if any(k in name for k in keywords):
+                return self.get_contract(kind)
 
         return None
 
