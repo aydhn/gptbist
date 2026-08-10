@@ -10,6 +10,63 @@ from bist_signal_bot.data_import.models import (
     ImportStatus,
 )
 
+
+_BASE_MAPPINGS = {
+    "symbol": ("symbol", ColumnSemanticType.SYMBOL),
+    "ticker": ("symbol", ColumnSemanticType.SYMBOL),
+    "sembol": ("symbol", ColumnSemanticType.SYMBOL),
+    "date": ("date", ColumnSemanticType.DATE),
+    "tarih": ("date", ColumnSemanticType.DATE),
+    "timestamp": ("date", ColumnSemanticType.DATE),
+    "time": ("date", ColumnSemanticType.DATE),
+    "open": ("open", ColumnSemanticType.OPEN),
+    "açılış": ("open", ColumnSemanticType.OPEN),
+    "acilis": ("open", ColumnSemanticType.OPEN),
+    "high": ("high", ColumnSemanticType.HIGH),
+    "yüksek": ("high", ColumnSemanticType.HIGH),
+    "yuksek": ("high", ColumnSemanticType.HIGH),
+    "low": ("low", ColumnSemanticType.LOW),
+    "düşük": ("low", ColumnSemanticType.LOW),
+    "dusuk": ("low", ColumnSemanticType.LOW),
+    "close": ("close", ColumnSemanticType.CLOSE),
+    "kapanış": ("close", ColumnSemanticType.CLOSE),
+    "kapanis": ("close", ColumnSemanticType.CLOSE),
+    "volume": ("volume", ColumnSemanticType.VOLUME),
+    "hacim": ("volume", ColumnSemanticType.VOLUME),
+}
+
+_DATASET_MAPPINGS = {
+    ImportDatasetType.FINANCIALS: {
+        "period": ("period", ColumnSemanticType.DATE),
+        "dönem": ("period", ColumnSemanticType.DATE),
+        "donem": ("period", ColumnSemanticType.DATE),
+        "revenue": ("revenue", ColumnSemanticType.NUMERIC),
+        "gelir": ("revenue", ColumnSemanticType.NUMERIC),
+        "satislar": ("revenue", ColumnSemanticType.NUMERIC),
+        "net_income": ("net_income", ColumnSemanticType.NUMERIC),
+        "net kar": ("net_income", ColumnSemanticType.NUMERIC),
+        "net_kar": ("net_income", ColumnSemanticType.NUMERIC),
+        "equity": ("equity", ColumnSemanticType.NUMERIC),
+        "ozkaynaklar": ("equity", ColumnSemanticType.NUMERIC),
+        "özkaynaklar": ("equity", ColumnSemanticType.NUMERIC),
+        "assets": ("assets", ColumnSemanticType.NUMERIC),
+        "varliklar": ("assets", ColumnSemanticType.NUMERIC),
+        "varlıklar": ("assets", ColumnSemanticType.NUMERIC),
+        "toplam_varliklar": ("assets", ColumnSemanticType.NUMERIC),
+        "liabilities": ("liabilities", ColumnSemanticType.NUMERIC),
+        "yukumlulukler": ("liabilities", ColumnSemanticType.NUMERIC),
+        "yükümlülükler": ("liabilities", ColumnSemanticType.NUMERIC),
+    },
+    ImportDatasetType.MACRO: {
+        "indicator": ("indicator", ColumnSemanticType.CATEGORY),
+        "gosterge": ("indicator", ColumnSemanticType.CATEGORY),
+        "gösterge": ("indicator", ColumnSemanticType.CATEGORY),
+        "value": ("value", ColumnSemanticType.NUMERIC),
+        "deger": ("value", ColumnSemanticType.NUMERIC),
+        "değer": ("value", ColumnSemanticType.NUMERIC),
+    }
+}
+
 class SchemaMappingEngine:
     def __init__(self, settings: Any = None):
         self.settings = settings
@@ -26,43 +83,12 @@ class SchemaMappingEngine:
     def suggest_target(self, source_column: str, dataset_type: ImportDatasetType) -> tuple[str | None, ColumnSemanticType]:
         col_lower = source_column.lower()
 
-        # Base mapping
-        if col_lower in ("symbol", "ticker", "sembol"):
-            return "symbol", ColumnSemanticType.SYMBOL
-        elif col_lower in ("date", "tarih", "timestamp", "time"):
-            return "date", ColumnSemanticType.DATE
-        elif col_lower in ("open", "açılış", "acilis"):
-            return "open", ColumnSemanticType.OPEN
-        elif col_lower in ("high", "yüksek", "yuksek"):
-            return "high", ColumnSemanticType.HIGH
-        elif col_lower in ("low", "düşük", "dusuk"):
-            return "low", ColumnSemanticType.LOW
-        elif col_lower in ("close", "kapanış", "kapanis"):
-            return "close", ColumnSemanticType.CLOSE
-        elif col_lower in ("volume", "hacim"):
-            return "volume", ColumnSemanticType.VOLUME
+        if col_lower in _BASE_MAPPINGS:
+            return _BASE_MAPPINGS[col_lower]
 
-        # Financials
-        if dataset_type == ImportDatasetType.FINANCIALS:
-            if col_lower in ("period", "dönem", "donem"):
-                 return "period", ColumnSemanticType.DATE
-            elif col_lower in ("revenue", "gelir", "satislar"):
-                 return "revenue", ColumnSemanticType.NUMERIC
-            elif col_lower in ("net_income", "net kar", "net_kar"):
-                 return "net_income", ColumnSemanticType.NUMERIC
-            elif col_lower in ("equity", "ozkaynaklar", "özkaynaklar"):
-                 return "equity", ColumnSemanticType.NUMERIC
-            elif col_lower in ("assets", "varliklar", "varlıklar", "toplam_varliklar"):
-                 return "assets", ColumnSemanticType.NUMERIC
-            elif col_lower in ("liabilities", "yukumlulukler", "yükümlülükler"):
-                 return "liabilities", ColumnSemanticType.NUMERIC
-
-        # Macro
-        if dataset_type == ImportDatasetType.MACRO:
-            if col_lower in ("indicator", "gosterge", "gösterge"):
-                 return "indicator", ColumnSemanticType.CATEGORY
-            elif col_lower in ("value", "deger", "değer"):
-                 return "value", ColumnSemanticType.NUMERIC
+        dataset_mapping = _DATASET_MAPPINGS.get(dataset_type, {})
+        if col_lower in dataset_mapping:
+            return dataset_mapping[col_lower]
 
         return None, ColumnSemanticType.UNKNOWN
 
