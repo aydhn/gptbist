@@ -1,7 +1,3 @@
-🎯 **What:** The `max_pairwise_correlation` method in `bist_signal_bot/portfolio/correlation.py` lacked test coverage, creating a risk that changes could break correlation-based portfolio logic.
-📊 **Coverage:** The new tests cover:
-- Happy paths with valid matrices and expected high correlations.
-- Edge cases where the matrix is empty or the target symbol is missing.
-- Error conditions where no valid existing symbols are available for calculation.
-- Edge cases where calculated max off-diagonal values result in NaNs.
-✨ **Result:** The codebase is now safer to refactor with full branch coverage of `max_pairwise_correlation`.
+🎯 **What:** The `get_default_env_file` function in `bist_signal_bot/config/env_loader.py` was previously untested.
+📊 **Coverage:** Added a test case `test_get_default_env_file` that verifies the function returns a `Path` object pointing to the `.env` file at the root of the project structure. It accounts for execution across different typical CI or local folder environments (e.g. `bist-signal-bot`, `workspace`).
+✨ **Result:** Improved test coverage and ensured reliability of the environment file loading mechanism.
