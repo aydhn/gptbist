@@ -38,3 +38,9 @@ class PathGuard:
         if ".." in str(p):
             raise ValueError("Path traversal attempt")
         return p.resolve()
+
+
+    def validate_model_path(self, path: Path, allow_external: bool = False) -> None:
+        p_str = str(path)
+        if ".." in p_str:
+            raise ValueError("Path traversal attempt")
