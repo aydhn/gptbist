@@ -49,6 +49,29 @@ class DriftEngine:
         self.portfolio_analyzer = deps.portfolio_analyzer or PortfolioDriftAnalyzer(self.settings)
         self.reference_manager = deps.reference_manager or DriftReferenceManager(self.settings)
 
+    def _ensure_domains(self, request: DriftAnalysisRequest) -> None:
+        if not request.domains:
+            if self.settings.DRIFT_DEFAULT_DOMAINS:
+                request.domains = [DriftDomain(d.strip()) for d in self.settings.DRIFT_DEFAULT_DOMAINS.split(",")]
+            else:
+                request.domains = [DriftDomain.FEATURE, DriftDomain.MODEL_SCORE]
+
+    def _append_report(self, report_list: list, res: Any, all_actions: set[DriftAction], severities: list[DriftSeverity]) -> None:
+        report_list.append(res)
+        all_actions.update(res.recommended_actions)
+        severities.append(res.severity)
+
+    def _process_domain(self, domain: DriftDomain, request: DriftAnalysisRequest, result: DriftAnalysisResult, all_actions: set[DriftAction], severities: list[DriftSeverity]) -> None:
+        if domain == DriftDomain.MODEL_SCORE:
+            self._append_report(result.model_results, self.analyze_model(request.model_id), all_actions, severities)
+        elif domain == DriftDomain.SIGNAL_OUTCOME and self.settings.DRIFT_SIGNAL_DECAY_ENABLED:
+            self._append_report(result.signal_decay_reports, self.analyze_signals(), all_actions, severities)
+        elif domain == DriftDomain.STRATEGY_PERFORMANCE and self.settings.DRIFT_STRATEGY_DECAY_ENABLED:
+            for strat in request.strategies:
+                self._append_report(result.strategy_decay_reports, self.analyze_strategy(strat), all_actions, severities)
+        elif domain == DriftDomain.PORTFOLIO_RESEARCH and self.settings.DRIFT_PORTFOLIO_DRIFT_ENABLED:
+            self._append_report(result.portfolio_drift_reports, self.analyze_portfolio(), all_actions, severities)
+
     def analyze(self, request: DriftAnalysisRequest) -> DriftAnalysisResult:
         start_time = time.time()
 
@@ -57,43 +80,14 @@ class DriftEngine:
             request=request
         )
 
-        if not request.domains:
-            if self.settings.DRIFT_DEFAULT_DOMAINS:
-                request.domains = [DriftDomain(d.strip()) for d in self.settings.DRIFT_DEFAULT_DOMAINS.split(",")]
-            else:
-                request.domains = [DriftDomain.FEATURE, DriftDomain.MODEL_SCORE]
+        self._ensure_domains(request)
 
-        all_actions = set()
-        severities = []
+        all_actions: set[DriftAction] = set()
+        severities: list[DriftSeverity] = []
 
         try:
             for domain in request.domains:
-                if domain == DriftDomain.FEATURE:
-                    pass
-                elif domain == DriftDomain.MODEL_SCORE:
-                    res = self.analyze_model(request.model_id)
-                    result.model_results.append(res)
-                    all_actions.update(res.recommended_actions)
-                    severities.append(res.severity)
-                elif domain == DriftDomain.SIGNAL_OUTCOME:
-                    if self.settings.DRIFT_SIGNAL_DECAY_ENABLED:
-                         res = self.analyze_signals()
-                         result.signal_decay_reports.append(res)
-                         all_actions.update(res.recommended_actions)
-                         severities.append(res.severity)
-                elif domain == DriftDomain.STRATEGY_PERFORMANCE:
-                    if self.settings.DRIFT_STRATEGY_DECAY_ENABLED:
-                         for strat in request.strategies:
-                              res = self.analyze_strategy(strat)
-                              result.strategy_decay_reports.append(res)
-                              all_actions.update(res.recommended_actions)
-                              severities.append(res.severity)
-                elif domain == DriftDomain.PORTFOLIO_RESEARCH:
-                    if self.settings.DRIFT_PORTFOLIO_DRIFT_ENABLED:
-                         res = self.analyze_portfolio()
-                         result.portfolio_drift_reports.append(res)
-                         all_actions.update(res.recommended_actions)
-                         severities.append(res.severity)
+                self._process_domain(domain, request, result, all_actions, severities)
 
             result.overall_drift_score = self.calculate_overall_score(result)
             status, severity = self.derive_overall_status(result.overall_drift_score, severities)
