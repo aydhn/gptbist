@@ -142,8 +142,8 @@ def handle_backtest_command(args, ctx) -> int:
                         symbols_data[sym] = mdf
             else:
                 service = MarketDataService(settings=ctx.settings)
-                for sym in symbols:
-                    mdf = service.get_ohlcv(sym, "1d")
+                batch_results = service.get_many_ohlcv(symbols, "1d")
+                for sym, mdf in batch_results.items():
                     if mdf and not mdf.data.empty:
                         symbols_data[sym] = mdf
 
