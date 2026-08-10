@@ -11,48 +11,52 @@ class ForbiddenActionGuard:
     # Patterns indicating forbidden programmatic behavior in source
     FORBIDDEN_PATTERNS = {
         ForbiddenActionType.REAL_ORDER_SEND: [
-            r'send_order', r'place_order', r'create_order', r'execute_trade', r'buy_market', r'sell_market', r'live_order'
+            re.compile(p, re.IGNORECASE) for p in [
+                r'send_order', r'place_order', r'create_order', r'execute_trade', r'buy_market', r'sell_market', r'live_order'
+            ]
         ],
         ForbiddenActionType.BROKER_API_CALL: [
-            r'broker', r'api\.binance', r'api\.alpaca', r'ccxt\.'
+            re.compile(p, re.IGNORECASE) for p in [
+                r'broker', r'api\.binance', r'api\.alpaca', r'ccxt\.'
+            ]
         ],
         ForbiddenActionType.HTML_SCRAPING: [
-            r'bs4', r'selenium', r'webdriver', r'scrapy', r'playwright', r'requests\.get\(.*html.*'
+            re.compile(p, re.IGNORECASE) for p in [
+                r'bs4', r'selenium', r'webdriver', r'scrapy', r'playwright', r'requests\.get\(.*html.*'
+            ]
         ],
         ForbiddenActionType.PAID_API_CALL: [
-            r'openai\.api_key', r'bloomberg'
+            re.compile(p, re.IGNORECASE) for p in [
+                r'openai\.api_key', r'bloomberg'
+            ]
         ]
     }
 
     @classmethod
     def assert_no_real_order_action(cls, action_name: str, metadata: dict[str, Any] | None = None) -> None:
         """Called at runtime before pseudo-order creation to ensure we're not sending a real order."""
-        action_name_lower = action_name.lower()
         for p in cls.FORBIDDEN_PATTERNS[ForbiddenActionType.REAL_ORDER_SEND]:
-            if re.search(p, action_name_lower):
+            if p.search(action_name):
                 raise ForbiddenActionError(f"Forbidden action detected: Real order intent blocked for '{action_name}'.")
 
     @classmethod
     def assert_no_broker_api_usage(cls, url_or_module: str, metadata: dict[str, Any] | None = None) -> None:
         """Called before network operations to prevent broker interactions."""
-        val = url_or_module.lower()
         for p in cls.FORBIDDEN_PATTERNS[ForbiddenActionType.BROKER_API_CALL]:
-            if re.search(p, val):
+            if p.search(url_or_module):
                 raise ForbiddenActionError(f"Forbidden action detected: Broker API usage blocked for '{url_or_module}'.")
 
     @classmethod
     def assert_no_html_scraping(cls, action_name: str, metadata: dict[str, Any] | None = None) -> None:
         """Called to prevent web scraping."""
-        val = action_name.lower()
         for p in cls.FORBIDDEN_PATTERNS[ForbiddenActionType.HTML_SCRAPING]:
-            if re.search(p, val):
+            if p.search(action_name):
                 raise ForbiddenActionError(f"Forbidden action detected: HTML Scraping blocked for '{action_name}'.")
 
     @classmethod
     def assert_no_paid_api(cls, action_name: str, metadata: dict[str, Any] | None = None) -> None:
-        val = action_name.lower()
         for p in cls.FORBIDDEN_PATTERNS[ForbiddenActionType.PAID_API_CALL]:
-            if re.search(p, val):
+            if p.search(action_name):
                 raise ForbiddenActionError(f"Forbidden action detected: Paid API usage blocked for '{action_name}'.")
 
     @classmethod
@@ -61,7 +65,7 @@ class ForbiddenActionGuard:
         findings = []
         for action_type, patterns in cls.FORBIDDEN_PATTERNS.items():
             for p in patterns:
-                for match in re.finditer(p, source_text, re.IGNORECASE):
+                for match in p.finditer(source_text):
                     findings.append(ForbiddenActionFinding(
                         action_type=action_type,
                         location=location,
