@@ -869,39 +869,21 @@ def cmd_clean_data(args: argparse.Namespace, ctx: ApplicationContext) -> int:
     # Optional policies
     cleaner_kwargs = {"settings": ctx.settings, "strict": args.strict}
 
-    if args.policy_missing:
-        try:
-            cleaner_kwargs["missing_value_policy"] = MissingValuePolicy(args.policy_missing)
-        except Exception:
-            print_output(format_error(f"Invalid missing policy: {args.policy_missing}"), args.json)
-            return 1
+    policy_mappings = [
+        ("policy_missing", "missing_value_policy", MissingValuePolicy, "missing"),
+        ("policy_invalid_ohlc", "invalid_ohlc_policy", InvalidOhlcPolicy, "invalid ohlc"),
+        ("policy_outlier", "outlier_policy", OutlierPolicy, "outlier"),
+        ("policy_duplicate", "duplicate_timestamp_policy", DuplicateTimestampPolicy, "duplicate"),
+    ]
 
-    if args.policy_invalid_ohlc:
-        try:
-            cleaner_kwargs["invalid_ohlc_policy"] = InvalidOhlcPolicy(args.policy_invalid_ohlc)
-        except Exception:
-            print_output(
-                format_error(f"Invalid invalid ohlc policy: {args.policy_invalid_ohlc}"), args.json
-            )
-            return 1
-
-    if args.policy_outlier:
-        try:
-            cleaner_kwargs["outlier_policy"] = OutlierPolicy(args.policy_outlier)
-        except Exception:
-            print_output(format_error(f"Invalid outlier policy: {args.policy_outlier}"), args.json)
-            return 1
-
-    if args.policy_duplicate:
-        try:
-            cleaner_kwargs["duplicate_timestamp_policy"] = DuplicateTimestampPolicy(
-                args.policy_duplicate
-            )
-        except Exception:
-            print_output(
-                format_error(f"Invalid duplicate policy: {args.policy_duplicate}"), args.json
-            )
-            return 1
+    for arg_attr, kwarg_key, policy_cls, err_name in policy_mappings:
+        arg_val = getattr(args, arg_attr, None)
+        if arg_val:
+            try:
+                cleaner_kwargs[kwarg_key] = policy_cls(arg_val)
+            except Exception:
+                print_output(format_error(f"Invalid {err_name} policy: {arg_val}"), args.json)
+                return 1
 
     cleaner = MarketDataCleaner(**cleaner_kwargs)
 
