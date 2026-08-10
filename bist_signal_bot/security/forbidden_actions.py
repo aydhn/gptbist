@@ -24,6 +24,11 @@ class ForbiddenActionGuard:
         ]
     }
 
+    COMPILED_PATTERNS = {
+        action_type: [re.compile(p, re.IGNORECASE) for p in patterns]
+        for action_type, patterns in FORBIDDEN_PATTERNS.items()
+    }
+
     @classmethod
     def assert_no_real_order_action(cls, action_name: str, metadata: dict[str, Any] | None = None) -> None:
         """Called at runtime before pseudo-order creation to ensure we're not sending a real order."""
@@ -59,9 +64,9 @@ class ForbiddenActionGuard:
     def scan_source_text(cls, source_text: str, location: str = "unknown") -> list[ForbiddenActionFinding]:
         """Statically scans source code text for suspicious patterns."""
         findings = []
-        for action_type, patterns in cls.FORBIDDEN_PATTERNS.items():
+        for action_type, patterns in cls.COMPILED_PATTERNS.items():
             for p in patterns:
-                for match in re.finditer(p, source_text, re.IGNORECASE):
+                for match in p.finditer(source_text):
                     findings.append(ForbiddenActionFinding(
                         action_type=action_type,
                         location=location,
