@@ -28,3 +28,8 @@ def test_regime_defaults_are_typed_and_complete():
     assert "No real order sent." in settings.STRATEGY_CANDIDATE_DISCLAIMER
     assert settings.RISK_DEFAULT_EQUITY == 100_000.0
     assert settings.RISK_POSITION_SIZING_METHOD == "EQUITY_PERCENT"
+
+def test_get_settings_returns_singleton():
+    """Test that get_settings returns the global _settings singleton."""
+    from bist_signal_bot.config.settings import get_settings, _settings
+    assert get_settings() is _settings
