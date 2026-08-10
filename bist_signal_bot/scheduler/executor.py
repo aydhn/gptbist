@@ -119,6 +119,52 @@ class ScheduledJobExecutor:
 
         return run
 
+    def _dispatch_healthcheck(self) -> dict[str, Any]:
+        return {"status": "ok", "message": "Healthcheck completed"}
+
+    def _dispatch_runtime_run_once(self) -> dict[str, Any]:
+        if not self.deps.runtime_orchestrator:
+            raise ValueError("runtime_orchestrator not provided")
+        return {"action": "runtime_run_once_dispatched"}
+
+    def _dispatch_daily_report(self) -> dict[str, Any]:
+        if not self.deps.report_generator:
+            raise ValueError("report_generator not provided")
+        return {"action": "daily_report_generated"}
+
+    def _dispatch_telegram_digest(self) -> dict[str, Any]:
+        if not self.deps.telegram_digest:
+            raise ValueError("telegram_digest not provided")
+        if getattr(self.settings, 'RUNTIME_SCHEDULER_FORCE_DRY_RUN_TELEGRAM', True):
+            self.logger.info("Telegram digest force dry-run by settings")
+            return {"action": "telegram_digest_skipped_force_dry_run"}
+        return {"action": "telegram_digest_sent"}
+
+    def _dispatch_research_lab_plan(self) -> dict[str, Any]:
+        if not self.deps.research_lab_planner:
+            raise ValueError("research_lab_planner not provided")
+        return {"action": "research_lab_plan_generated"}
+
+    def _dispatch_maintenance_doctor(self) -> dict[str, Any]:
+        if not self.deps.maintenance_doctor:
+            raise ValueError("maintenance_doctor not provided")
+        return {"action": "maintenance_doctor_run"}
+
+    def _dispatch_backup_dry_run(self) -> dict[str, Any]:
+        if not self.deps.backup_manager:
+            raise ValueError("backup_manager not provided")
+        return {"action": "backup_dry_run_completed"}
+
+    def _dispatch_signal_expire(self) -> dict[str, Any]:
+        if not self.deps.signal_lifecycle:
+            raise ValueError("signal_lifecycle not provided")
+        return {"action": "stale_signals_expired"}
+
+    def _dispatch_review_followup_check(self) -> dict[str, Any]:
+        if not self.deps.review_followup:
+            raise ValueError("review_followup not provided")
+        return {"action": "review_followups_checked"}
+
     def dispatch(self, job: ScheduledJob, dry_run: bool = False) -> dict[str, Any]:
         """Dispatches the job to the appropriate engine. Returns metadata dict."""
 
@@ -126,54 +172,21 @@ class ScheduledJobExecutor:
             self.logger.info(f"[DRY-RUN] Would execute {job.job_type.value} for {job.name}")
             return {"simulated": True, "action": f"Would dispatch {job.job_type.value}"}
 
-        # Actual dispatch
-        if job.job_type == ScheduledJobType.HEALTHCHECK:
-            return {"status": "ok", "message": "Healthcheck completed"}
+        dispatch_map = {
+            ScheduledJobType.HEALTHCHECK: self._dispatch_healthcheck,
+            ScheduledJobType.RUNTIME_RUN_ONCE: self._dispatch_runtime_run_once,
+            ScheduledJobType.DAILY_REPORT: self._dispatch_daily_report,
+            ScheduledJobType.TELEGRAM_DIGEST: self._dispatch_telegram_digest,
+            ScheduledJobType.RESEARCH_LAB_PLAN: self._dispatch_research_lab_plan,
+            ScheduledJobType.MAINTENANCE_DOCTOR: self._dispatch_maintenance_doctor,
+            ScheduledJobType.BACKUP_DRY_RUN: self._dispatch_backup_dry_run,
+            ScheduledJobType.SIGNAL_EXPIRE: self._dispatch_signal_expire,
+            ScheduledJobType.REVIEW_FOLLOWUP_CHECK: self._dispatch_review_followup_check,
+        }
 
-        elif job.job_type == ScheduledJobType.RUNTIME_RUN_ONCE:
-            if not self.deps.runtime_orchestrator:
-                raise ValueError("runtime_orchestrator not provided")
-            # We would build a config and run here
-            return {"action": "runtime_run_once_dispatched"}
-
-        elif job.job_type == ScheduledJobType.DAILY_REPORT:
-            if not self.deps.report_generator:
-                raise ValueError("report_generator not provided")
-            return {"action": "daily_report_generated"}
-
-        elif job.job_type == ScheduledJobType.TELEGRAM_DIGEST:
-            if not self.deps.telegram_digest:
-                raise ValueError("telegram_digest not provided")
-            # Check settings if we force dry run for telegram
-            if getattr(self.settings, 'RUNTIME_SCHEDULER_FORCE_DRY_RUN_TELEGRAM', True):
-                self.logger.info("Telegram digest force dry-run by settings")
-                return {"action": "telegram_digest_skipped_force_dry_run"}
-            return {"action": "telegram_digest_sent"}
-
-        elif job.job_type == ScheduledJobType.RESEARCH_LAB_PLAN:
-            if not self.deps.research_lab_planner:
-                raise ValueError("research_lab_planner not provided")
-            return {"action": "research_lab_plan_generated"}
-
-        elif job.job_type == ScheduledJobType.MAINTENANCE_DOCTOR:
-            if not self.deps.maintenance_doctor:
-                raise ValueError("maintenance_doctor not provided")
-            return {"action": "maintenance_doctor_run"}
-
-        elif job.job_type == ScheduledJobType.BACKUP_DRY_RUN:
-            if not self.deps.backup_manager:
-                raise ValueError("backup_manager not provided")
-            return {"action": "backup_dry_run_completed"}
-
-        elif job.job_type == ScheduledJobType.SIGNAL_EXPIRE:
-            if not self.deps.signal_lifecycle:
-                raise ValueError("signal_lifecycle not provided")
-            return {"action": "stale_signals_expired"}
-
-        elif job.job_type == ScheduledJobType.REVIEW_FOLLOWUP_CHECK:
-            if not self.deps.review_followup:
-                raise ValueError("review_followup not provided")
-            return {"action": "review_followups_checked"}
+        handler = dispatch_map.get(job.job_type)
+        if handler:
+            return handler()
 
         # Fallback for others
         self.logger.info(f"Executing {job.job_type.value} logic for {job.name} (mocked)")

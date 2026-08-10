@@ -1,10 +1,11 @@
-💡 **What:** Replaced the loop executing multiple individual `INSERT` queries via `c.execute()` with a bulk insert approach using a list comprehension and a single `c.executemany()` operation.
+🎯 **What:**
+Reduced cyclomatic complexity of `ScheduledJobExecutor.dispatch()` by replacing a deep `if-elif` chain with a dictionary-based dispatch mapping. Extracted specific dispatch logic into corresponding helper methods.
 
-🎯 **Why:** The N+1 insert loop in `test_sqlite_read_chunks` is inefficient due to multiple unnecessary cursor calls and repetitive statement parsing within the loop.
+💡 **Why:**
+The original implementation had an increasing cyclomatic complexity as more `ScheduledJobType`s were added to the system. Converting this to a dictionary map and splitting handlers into individual helper functions vastly improves maintainability and readability by keeping the core `dispatch()` method concise, making it trivial to add new job handlers without growing the `if-elif` block.
 
-📊 **Measured Improvement:**
-A quick benchmark using `timeit` measuring identical setups showed:
-- **For 15 rows:** Execution time decreased from ~0.8953s to ~0.6149s (a 31% improvement).
-- **For 10,000 rows:** Execution time decreased from ~0.3285s to ~0.2691s (a 18% improvement).
+✅ **Verification:**
+Verified correctness by running `test_scheduler_executor.py` logic which validates that execution matches previous behavior. Checked all `ScheduledJobType` endpoints properly route by mocking their implementations in a standalone test.
 
-*(Note: Times are 100 loops of 15 rows and 10 loops of 10000 rows. Executing `executemany` shifts the iteration burden to the underlying C implementation, yielding significantly faster data insertion.)*
+✨ **Result:**
+`dispatch` is simpler, more readable, and scalable to support further job types without scaling structural complexity.
