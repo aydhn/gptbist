@@ -4167,7 +4167,7 @@ def cmd_monitor(args, settings):
             active_alerts=[
                 a
                 for a in store.load_recent_alerts(50)
-                if a.status.value in ["NEW", "SENT", "THROTTLED"]
+                if a.status.value in {"NEW", "SENT", "THROTTLED"}
             ],
             diagnostics=checks,
             runtime_state_summary={},
@@ -4222,7 +4222,7 @@ def cmd_monitor(args, settings):
 
     elif args.monitor_command == "alerts":
         alerts = store.load_recent_alerts(getattr(args, "limit", 20))
-        active = [a for a in alerts if a.status.value in ["NEW", "SENT", "THROTTLED"]]
+        active = [a for a in alerts if a.status.value in {"NEW", "SENT", "THROTTLED"}]
 
         if getattr(args, "json", False):
             print(json.dumps([a.model_dump(mode="json") for a in active], indent=2))
