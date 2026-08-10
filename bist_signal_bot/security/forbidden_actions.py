@@ -32,10 +32,7 @@ class ForbiddenActionGuard:
         ]
     }
 
-    COMPILED_PATTERNS = {
-        action_type: [re.compile(p, re.IGNORECASE) for p in patterns]
-        for action_type, patterns in FORBIDDEN_PATTERNS.items()
-    }
+    COMPILED_PATTERNS = FORBIDDEN_PATTERNS
 
     @classmethod
     def assert_no_real_order_action(cls, action_name: str, metadata: dict[str, Any] | None = None) -> None:

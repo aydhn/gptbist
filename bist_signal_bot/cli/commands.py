@@ -2682,110 +2682,67 @@ def handle_costs_command(args, settings):
                 print(f"{k}: {v}")
 
 
-def cmd_backtest_run(args, ctx) -> int:
-    import json
+def _generate_backtest_report(args, ctx, res, engine, symbol, data_df) -> int:
     from pathlib import Path
-    from bist_signal_bot.data.models import DataVendor
-    from bist_signal_bot.backtesting.engine import BacktestEngine
     from bist_signal_bot.backtesting.reporting import BacktestReportWriter
     from bist_signal_bot.cli.formatting import format_backtest_report_text
+    from bist_signal_bot.cli.formatting import print_output
 
-    settings = ctx.settings
-    symbol = args.symbol.upper()
-    provider_name = (args.source or settings.DEFAULT_DATA_PROVIDER).upper()
-    strategy_name = getattr(args, "strategy", settings.DEFAULT_STRATEGY)
+    writer = BacktestReportWriter(ctx.settings, logger=ctx.logger)
 
-    try:
-        vendor = DataVendor(provider_name)
-    except ValueError:
-        print(f"Error: Unknown provider '{provider_name}'")
-        return 1
+    # Determine risk-free rate and periods per year
+    rf_rate = getattr(args, "risk_free_rate", None)
+    if rf_rate is not None:
+        ctx.settings.BACKTEST_RISK_FREE_RATE = rf_rate
+    ppy = getattr(args, "periods_per_year", None)
+    if ppy is not None:
+        ctx.settings.BACKTEST_PERIODS_PER_YEAR = ppy
 
-    try:
-        data_df = ctx.data_service.get_historical_data(symbol, vendor, "1d", "5y")
-        if data_df is None or data_df.empty:
-            print(f"Error: No data for {symbol} from {provider_name}")
-            return 1
-    except Exception as e:
-        print(f"Error loading data: {e}")
-        return 1
+    benchmark_comparisons = []
+    benchmarks_to_run = []
+    if getattr(args, "compare_benchmark", None):
+        benchmarks_to_run.append(args.compare_benchmark)
+    if getattr(args, "compare_default_benchmarks", False):
+        default_benchmarks = [
+            b.strip() for b in ctx.settings.DEFAULT_BENCHMARKS.split(",") if b.strip()
+        ]
+        benchmarks_to_run.extend(default_benchmarks)
 
-    engine = BacktestEngine(ctx.strategy_engine, ctx.cost_engine, settings, ctx.logger)
+    if benchmarks_to_run:
+        from bist_signal_bot.benchmarks.engine import BenchmarkEngine
+        from bist_signal_bot.backtesting.comparison import BenchmarkComparator
 
-    try:
-        res = engine.run_single_symbol(strategy_name, symbol, data_df)
-    except Exception as e:
-        print(f"Error running backtest: {e}")
-        return 1
+        bench_engine = BenchmarkEngine(settings=ctx.settings)
+        comparator = BenchmarkComparator(bench_engine, settings=ctx.settings)
+        for bm in set(benchmarks_to_run):
+            try:
+                bm_res = engine.run_single_symbol(bm, symbol, data_df)
+                comp = comparator.compare_backtest_to_benchmark(res, bm_res, bm)
+                benchmark_comparisons.append(comp)
+            except Exception as e:
+                ctx.logger.warning(f"Failed to compare against benchmark {bm}: {e}")
 
-    if getattr(args, "report", False):
-        writer = BacktestReportWriter(settings, logger=ctx.logger)
+    bundle = writer.build_report_bundle(res, benchmark_comparisons)
 
-        # Determine risk-free rate and periods per year
-        rf_rate = getattr(args, "risk_free_rate", None)
-        if rf_rate is not None:
-            settings.BACKTEST_RISK_FREE_RATE = rf_rate
-        ppy = getattr(args, "periods_per_year", None)
-        if ppy is not None:
-            settings.BACKTEST_PERIODS_PER_YEAR = ppy
+    out_dir = Path(args.output_dir) if getattr(args, "output_dir", None) else None
+    formats_arg = getattr(args, "report_format", "json")
+    formats = [f.strip().lower() for f in formats_arg.split(",")]
 
-        benchmark_comparisons = []
-        benchmarks_to_run = []
-        if getattr(args, "compare_benchmark", None):
-            benchmarks_to_run.append(args.compare_benchmark)
-        if getattr(args, "compare_default_benchmarks", False):
-            default_benchmarks = [
-                b.strip() for b in settings.DEFAULT_BENCHMARKS.split(",") if b.strip()
-            ]
-            benchmarks_to_run.extend(default_benchmarks)
-
-        if benchmarks_to_run:
-            from bist_signal_bot.benchmarks.engine import BenchmarkEngine
-            from bist_signal_bot.backtesting.comparison import BenchmarkComparator
-
-            bench_engine = BenchmarkEngine(settings=settings)
-            comparator = BenchmarkComparator(bench_engine, settings=settings)
-            for bm in set(benchmarks_to_run):
-                try:
-                    bm_res = engine.run_single_symbol(bm, symbol, data_df)
-                    comp = comparator.compare_backtest_to_benchmark(res, bm_res, bm)
-                    benchmark_comparisons.append(comp)
-                except Exception as e:
-                    ctx.logger.warning(f"Failed to compare against benchmark {bm}: {e}")
-
-        bundle = writer.build_report_bundle(res, benchmark_comparisons)
-
-        out_dir = Path(args.output_dir) if getattr(args, "output_dir", None) else None
-        formats_arg = getattr(args, "report_format", "json")
-        formats = [f.strip().lower() for f in formats_arg.split(",")]
-
-        if getattr(args, "json", False):
-            print(json.dumps(bundle.summary(), indent=2))
-        else:
-            print(format_backtest_report_text(bundle))
-
-        try:
-            writer.save_bundle(bundle, formats, out_dir)
-            print("\nReports saved successfully.")
-            for fmt, path in bundle.output_files.items():
-                print(f"  - {fmt}: {path}")
-        except Exception as e:
-            print(f"\nFailed to save reports: {e}")
-            return 1
-
-    elif getattr(args, "json", False):
-        print(json.dumps(res.summary(), indent=2))
+    if getattr(args, "json", False):
+        print_output(bundle.summary(), as_json=True)
     else:
-        print(json.dumps(res.summary(), indent=2))
+        print(format_backtest_report_text(bundle))
+
+    try:
+        writer.save_bundle(bundle, formats, out_dir)
+        print("\nReports saved successfully.")
+        for fmt, path in bundle.output_files.items():
+            print(f"  - {fmt}: {path}")
+    except Exception as e:
+        print(f"\nFailed to save reports: {e}")
+        return 1
 
     return 0
-
-
-def cmd_backtest_report(args, ctx) -> int:
-    args.report = True
-    args.report_format = getattr(args, "format", "json")
-    return cmd_backtest_run(args, ctx)
-
 
 def cmd_backtest_run(args, ctx) -> int:
     from pathlib import Path
@@ -2831,59 +2788,7 @@ def cmd_backtest_run(args, ctx) -> int:
         return 1
 
     if getattr(args, "report", False):
-        writer = BacktestReportWriter(settings, logger=ctx.logger)
-
-        # Determine risk-free rate and periods per year
-        rf_rate = getattr(args, "risk_free_rate", None)
-        if rf_rate is not None:
-            settings.BACKTEST_RISK_FREE_RATE = rf_rate
-        ppy = getattr(args, "periods_per_year", None)
-        if ppy is not None:
-            settings.BACKTEST_PERIODS_PER_YEAR = ppy
-
-        benchmark_comparisons = []
-        benchmarks_to_run = []
-        if getattr(args, "compare_benchmark", None):
-            benchmarks_to_run.append(args.compare_benchmark)
-        if getattr(args, "compare_default_benchmarks", False):
-            default_benchmarks = [
-                b.strip() for b in settings.DEFAULT_BENCHMARKS.split(",") if b.strip()
-            ]
-            benchmarks_to_run.extend(default_benchmarks)
-
-        if benchmarks_to_run:
-            from bist_signal_bot.benchmarks.engine import BenchmarkEngine
-            from bist_signal_bot.backtesting.comparison import BenchmarkComparator
-
-            bench_engine = BenchmarkEngine(settings=settings)
-            comparator = BenchmarkComparator(bench_engine, settings=settings)
-            for bm in set(benchmarks_to_run):
-                try:
-                    bm_res = engine.run_single_symbol(bm, symbol, data_df)
-                    comp = comparator.compare_backtest_to_benchmark(res, bm_res, bm)
-                    benchmark_comparisons.append(comp)
-                except Exception as e:
-                    ctx.logger.warning(f"Failed to compare against benchmark {bm}: {e}")
-
-        bundle = writer.build_report_bundle(res, benchmark_comparisons)
-
-        out_dir = Path(args.output_dir) if getattr(args, "output_dir", None) else None
-        formats_arg = getattr(args, "report_format", "json")
-        formats = [f.strip().lower() for f in formats_arg.split(",")]
-
-        if getattr(args, "json", False):
-            print_output(bundle.summary(), as_json=True)
-        else:
-            print(format_backtest_report_text(bundle))
-
-        try:
-            writer.save_bundle(bundle, formats, out_dir)
-            print("\nReports saved successfully.")
-            for fmt, path in bundle.output_files.items():
-                print(f"  - {fmt}: {path}")
-        except Exception as e:
-            print(f"\nFailed to save reports: {e}")
-            return 1
+        return _generate_backtest_report(args, ctx, res, engine, symbol, data_df)
 
     elif getattr(args, "json", False):
         print_output(res.summary(), as_json=True)
