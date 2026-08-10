@@ -1346,21 +1346,11 @@ def cmd_momentum_features(args, ctx) -> int:
         summary = {}
         if not df.empty:
             last_row = df.iloc[-1].to_dict()
-            summary = {"close": last_row.get("close")}
-            if "rsi_14" in last_row:
-                summary["rsi_14"] = last_row.get("rsi_14")
-            if "roc_pct_10" in last_row:
-                summary["roc_pct_10"] = last_row.get("roc_pct_10")
-            if "stoch_k_14" in last_row:
-                summary["stoch_k_14"] = last_row.get("stoch_k_14")
-            if "stoch_d_14_3" in last_row:
-                summary["stoch_d_14_3"] = last_row.get("stoch_d_14_3")
-            if "mfi_14" in last_row:
-                summary["mfi_14"] = last_row.get("mfi_14")
-            if "momentum_strength_score" in last_row:
-                summary["momentum_strength_score"] = last_row.get("momentum_strength_score")
-            if "momentum_direction_score" in last_row:
-                summary["momentum_direction_score"] = last_row.get("momentum_direction_score")
+            keys = [
+                "close", "rsi_14", "roc_pct_10", "stoch_k_14", "stoch_d_14_3", "mfi_14",
+                "momentum_strength_score", "momentum_direction_score"
+            ]
+            summary = {k: last_row.get(k) for k in keys if k in last_row}
 
         out = {
             "symbol": symbol,
