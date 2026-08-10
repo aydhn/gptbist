@@ -38,85 +38,103 @@ def setup_ensemble_parser(subparsers):
     cfg_p = sub.add_parser("config", help="Show ensemble config")
     cfg_p.add_argument("--json", action="store_true", help="Output JSON")
 
+
+def _handle_run(args: argparse.Namespace, settings: Settings):
+    engine = create_ensemble_engine(settings)
+    req = engine.build_request_from_settings(args.symbols)
+    req.source = args.source
+    if args.strategies:
+        req.strategy_names = args.strategies
+    req.mode = EnsembleMode(args.mode)
+    req.save_output = args.save_output
+
+    res = engine.run(req)
+
+    if args.json:
+        print(json.dumps(res.summary(), indent=2))
+    else:
+        from bist_signal_bot.ensemble.reporting import format_ensemble_result_text
+        print(format_ensemble_result_text(res))
+
+
+def _handle_explain(args: argparse.Namespace, settings: Settings):
+    engine = create_ensemble_engine(settings)
+    req = engine.build_request_from_settings([args.symbol])
+    req.source = args.source
+    if args.strategies:
+        req.strategy_names = args.strategies
+
+    expl = engine.explain(args.symbol, req)
+
+    if args.json:
+        print(json.dumps(expl.model_dump(), indent=2))
+    else:
+        from bist_signal_bot.ensemble.reporting import format_explanation_text
+        print(format_explanation_text(expl))
+
+
+def _handle_weights(args: argparse.Namespace, settings: Settings):
+    wm = create_weight_manager(settings)
+
+    if args.save:
+        if not args.confirm:
+            print("Error: --confirm is required to save weights")
+            return
+        w = wm.default_weights()
+        wm.save_weights(w, confirm=True)
+        print("Weights saved successfully")
+    else:
+        w = wm.load_weights() or wm.default_weights()
+        if args.json:
+            print(json.dumps(w.model_dump(), indent=2))
+        else:
+            for k, v in w.model_dump().items():
+                print(f"{k}: {v}")
+
+
+def _handle_recent(args: argparse.Namespace, settings: Settings):
+    store = create_ensemble_store(settings)
+    recs = store.list_recent_results(args.limit)
+
+    if args.json:
+        print(json.dumps(recs, indent=2))
+    else:
+        print(f"=== Recent Ensemble Runs (last {args.limit}) ===")
+        for r in recs:
+            print(f"[{r['date']}] {r['id']} - Mode: {r['mode']} - Symbols: {r['symbols']} - Consensus: {r['consensus_count']}")
+
+
+def _handle_config(args: argparse.Namespace, settings: Settings):
+    data = {
+        "enabled": settings.ENABLE_ENSEMBLE_ENGINE,
+        "mode": getattr(settings, "ENSEMBLE_DEFAULT_MODE", "METADATA_ONLY"),
+        "strategies": getattr(settings, "ENSEMBLE_DEFAULT_STRATEGIES", ""),
+        "thresholds": {
+            "min_score": getattr(settings, "ENSEMBLE_MIN_APPROVED_SCORE", 70.0),
+            "min_conf": getattr(settings, "ENSEMBLE_MIN_APPROVED_CONFIDENCE", 55.0),
+            "min_agr": getattr(settings, "ENSEMBLE_MIN_AGREEMENT_RATIO", 0.6),
+            "max_conf_score": getattr(settings, "ENSEMBLE_MAX_CONFLICT_SCORE", 35.0),
+            "high_conf_score": getattr(settings, "ENSEMBLE_HIGH_CONFLICT_SCORE", 60.0)
+        }
+    }
+    if args.json:
+        print(json.dumps(data, indent=2))
+    else:
+        for k, v in data.items():
+            print(f"{k}: {v}")
+
+
 def handle_ensemble_command(args: argparse.Namespace):
     settings = Settings()
-
-    if args.ensemble_command == "run":
-        engine = create_ensemble_engine(settings)
-        req = engine.build_request_from_settings(args.symbols)
-        req.source = args.source
-        if args.strategies:
-            req.strategy_names = args.strategies
-        req.mode = EnsembleMode(args.mode)
-        req.save_output = args.save_output
-
-        res = engine.run(req)
-
-        if args.json:
-            print(json.dumps(res.summary(), indent=2))
-        else:
-            from bist_signal_bot.ensemble.reporting import format_ensemble_result_text
-            print(format_ensemble_result_text(res))
-
-    elif args.ensemble_command == "explain":
-        engine = create_ensemble_engine(settings)
-        req = engine.build_request_from_settings([args.symbol])
-        req.source = args.source
-        if args.strategies:
-            req.strategy_names = args.strategies
-
-        expl = engine.explain(args.symbol, req)
-
-        if args.json:
-            print(json.dumps(expl.model_dump(), indent=2))
-        else:
-            from bist_signal_bot.ensemble.reporting import format_explanation_text
-            print(format_explanation_text(expl))
-
-    elif args.ensemble_command == "weights":
-        wm = create_weight_manager(settings)
-
-        if args.save:
-            if not args.confirm:
-                print("Error: --confirm is required to save weights")
-                return
-            w = wm.default_weights()
-            wm.save_weights(w, confirm=True)
-            print("Weights saved successfully")
-        else:
-            w = wm.load_weights() or wm.default_weights()
-            if args.json:
-                print(json.dumps(w.model_dump(), indent=2))
-            else:
-                for k, v in w.model_dump().items():
-                    print(f"{k}: {v}")
-
-    elif args.ensemble_command == "recent":
-        store = create_ensemble_store(settings)
-        recs = store.list_recent_results(args.limit)
-
-        if args.json:
-            print(json.dumps(recs, indent=2))
-        else:
-            print(f"=== Recent Ensemble Runs (last {args.limit}) ===")
-            for r in recs:
-                print(f"[{r['date']}] {r['id']} - Mode: {r['mode']} - Symbols: {r['symbols']} - Consensus: {r['consensus_count']}")
-
-    elif args.ensemble_command == "config":
-        data = {
-            "enabled": settings.ENABLE_ENSEMBLE_ENGINE,
-            "mode": getattr(settings, "ENSEMBLE_DEFAULT_MODE", "METADATA_ONLY"),
-            "strategies": getattr(settings, "ENSEMBLE_DEFAULT_STRATEGIES", ""),
-            "thresholds": {
-                "min_score": getattr(settings, "ENSEMBLE_MIN_APPROVED_SCORE", 70.0),
-                "min_conf": getattr(settings, "ENSEMBLE_MIN_APPROVED_CONFIDENCE", 55.0),
-                "min_agr": getattr(settings, "ENSEMBLE_MIN_AGREEMENT_RATIO", 0.6),
-                "max_conf_score": getattr(settings, "ENSEMBLE_MAX_CONFLICT_SCORE", 35.0),
-                "high_conf_score": getattr(settings, "ENSEMBLE_HIGH_CONFLICT_SCORE", 60.0)
-            }
-        }
-        if args.json:
-            print(json.dumps(data, indent=2))
-        else:
-            for k, v in data.items():
-                print(f"{k}: {v}")
+    handlers = {
+        "run": _handle_run,
+        "explain": _handle_explain,
+        "weights": _handle_weights,
+        "recent": _handle_recent,
+        "config": _handle_config
+    }
+    handler = handlers.get(args.ensemble_command)
+    if handler:
+        handler(args, settings)
+    else:
+        print(f"Unknown ensemble command: {args.ensemble_command}")
