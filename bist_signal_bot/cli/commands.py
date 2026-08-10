@@ -2744,9 +2744,34 @@ def _generate_backtest_report(args, ctx, res, engine, symbol, data_df) -> int:
 
     return 0
 
+def _get_backtest_data(ctx, symbol: str, provider_name: str, is_json: bool):
+    from bist_signal_bot.data.models import DataVendor
+    from bist_signal_bot.cli.formatting import print_output
+
+    try:
+        vendor = DataVendor(provider_name)
+    except ValueError:
+        print_output(
+            {"error": f"Unknown provider '{provider_name}'"}, as_json=is_json
+        )
+        return None
+
+    try:
+        data_df = ctx.data_service.get_historical_data(symbol, vendor, "1d", "5y")
+        if data_df is None or data_df.data.empty:
+            print_output(
+                {"error": f"No data for {symbol} from {provider_name}"},
+                as_json=is_json,
+            )
+            return None
+        return data_df
+    except Exception as e:
+        print_output({"error": f"Error loading data: {e}"}, as_json=is_json)
+        return None
+
+
 def cmd_backtest_run(args, ctx) -> int:
     from pathlib import Path
-    from bist_signal_bot.data.models import DataVendor
     from bist_signal_bot.backtesting.engine import BacktestEngine
     from bist_signal_bot.backtesting.reporting import BacktestReportWriter
     from bist_signal_bot.cli.formatting import format_backtest_report_text
@@ -2757,24 +2782,8 @@ def cmd_backtest_run(args, ctx) -> int:
     provider_name = (args.source or settings.DEFAULT_DATA_PROVIDER).upper()
     strategy_name = getattr(args, "strategy", settings.DEFAULT_STRATEGY)
 
-    try:
-        vendor = DataVendor(provider_name)
-    except ValueError:
-        print_output(
-            {"error": f"Unknown provider '{provider_name}'"}, as_json=getattr(args, "json", False)
-        )
-        return 1
-
-    try:
-        data_df = ctx.data_service.get_historical_data(symbol, vendor, "1d", "5y")
-        if data_df is None or data_df.data.empty:
-            print_output(
-                {"error": f"No data for {symbol} from {provider_name}"},
-                as_json=getattr(args, "json", False),
-            )
-            return 1
-    except Exception as e:
-        print_output({"error": f"Error loading data: {e}"}, as_json=getattr(args, "json", False))
+    data_df = _get_backtest_data(ctx, symbol, provider_name, getattr(args, "json", False))
+    if data_df is None:
         return 1
 
     engine = BacktestEngine(ctx.strategy_engine, ctx.cost_engine, settings, ctx.logger)
