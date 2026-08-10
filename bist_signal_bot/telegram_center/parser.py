@@ -5,6 +5,25 @@ from typing import Any
 from bist_signal_bot.telegram_center.models import TelegramCommand, TelegramCommandType, TelegramCommandStatus, TelegramCommandDecision
 from bist_signal_bot.telegram_center.config import TelegramCenterConfigValidator
 
+
+COMMAND_MAP = {
+    '/help': TelegramCommandType.HELP,
+    '/status': TelegramCommandType.STATUS,
+    '/health': TelegramCommandType.HEALTH,
+    '/signals': TelegramCommandType.SIGNALS,
+    '/review': TelegramCommandType.REVIEW,
+    '/portfolio': TelegramCommandType.PORTFOLIO,
+    '/stress': TelegramCommandType.STRESS,
+    '/drift': TelegramCommandType.DRIFT,
+    '/kb': TelegramCommandType.KB_SEARCH,
+    '/report': TelegramCommandType.REPORT,
+    '/lab': TelegramCommandType.LAB,
+    '/maintenance': TelegramCommandType.MAINTENANCE,
+    '/governance': TelegramCommandType.GOVERNANCE,
+    '/digest': TelegramCommandType.DIGEST,
+    '/settings': TelegramCommandType.SETTINGS,
+}
+
 class TelegramCommandParser:
     def __init__(self):
         self.config_validator = TelegramCenterConfigValidator()
@@ -17,38 +36,8 @@ class TelegramCommandParser:
         command_type = TelegramCommandType.UNKNOWN
 
         parts = normalized_text.split()
-        if not parts:
-            pass
-        elif parts[0] == '/help':
-            command_type = TelegramCommandType.HELP
-        elif parts[0] == '/status':
-            command_type = TelegramCommandType.STATUS
-        elif parts[0] == '/health':
-            command_type = TelegramCommandType.HEALTH
-        elif parts[0] == '/signals':
-            command_type = TelegramCommandType.SIGNALS
-        elif parts[0] == '/review':
-            command_type = TelegramCommandType.REVIEW
-        elif parts[0] == '/portfolio':
-            command_type = TelegramCommandType.PORTFOLIO
-        elif parts[0] == '/stress':
-            command_type = TelegramCommandType.STRESS
-        elif parts[0] == '/drift':
-            command_type = TelegramCommandType.DRIFT
-        elif parts[0] == '/kb':
-            command_type = TelegramCommandType.KB_SEARCH
-        elif parts[0] == '/report':
-            command_type = TelegramCommandType.REPORT
-        elif parts[0] == '/lab':
-            command_type = TelegramCommandType.LAB
-        elif parts[0] == '/maintenance':
-            command_type = TelegramCommandType.MAINTENANCE
-        elif parts[0] == '/governance':
-            command_type = TelegramCommandType.GOVERNANCE
-        elif parts[0] == '/digest':
-            command_type = TelegramCommandType.DIGEST
-        elif parts[0] == '/settings':
-            command_type = TelegramCommandType.SETTINGS
+        if parts:
+            command_type = COMMAND_MAP.get(parts[0], TelegramCommandType.UNKNOWN)
 
         args = self.parse_args(command_type, normalized_text)
 
@@ -73,17 +62,13 @@ class TelegramCommandParser:
 
         args = {}
         if args_text:
-            if command_type in [TelegramCommandType.SIGNALS, TelegramCommandType.REVIEW]:
+            if command_type in (TelegramCommandType.SIGNALS, TelegramCommandType.REVIEW):
                 args['symbol'] = args_text.strip().upper()
             elif command_type == TelegramCommandType.KB_SEARCH:
                 args['query'] = args_text.strip()
-            elif command_type in [TelegramCommandType.REPORT, TelegramCommandType.DIGEST]:
+            elif command_type in (TelegramCommandType.REPORT, TelegramCommandType.DIGEST):
                 args['type'] = args_text.strip().lower()
-            elif command_type == TelegramCommandType.LAB:
-                args['subcommand'] = args_text.strip().lower()
-            elif command_type == TelegramCommandType.MAINTENANCE:
-                args['subcommand'] = args_text.strip().lower()
-            elif command_type == TelegramCommandType.GOVERNANCE:
+            elif command_type in (TelegramCommandType.LAB, TelegramCommandType.MAINTENANCE, TelegramCommandType.GOVERNANCE):
                 args['subcommand'] = args_text.strip().lower()
             else:
                 args['text'] = args_text
