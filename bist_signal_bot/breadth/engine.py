@@ -40,10 +40,7 @@ class BreadthEngine:
         self.store = config.store or BreadthStore(settings=config.settings)
         self.settings = config.settings
 
-    def analyze(self, request: BreadthAnalysisRequest) -> BreadthAnalysisResult:
-        start_time = time.time()
-
-        # 1. Load data
+    def _load_symbol_data(self, request: BreadthAnalysisRequest) -> dict:
         data_by_symbol = {}
         for sym in request.symbols:
             try:
@@ -52,14 +49,17 @@ class BreadthEngine:
                     data_by_symbol[sym] = df
             except Exception:
                 pass
+        return data_by_symbol
 
-        benchmark_data = None
+    def _load_benchmark_data(self, request: BreadthAnalysisRequest) -> Any:
         if request.benchmark_symbol:
             try:
-                benchmark_data = self.data_service.get_historical_data(request.benchmark_symbol, request.timeframe, source=request.source)
+                return self.data_service.get_historical_data(request.benchmark_symbol, request.timeframe, source=request.source)
             except Exception:
                 pass
+        return None
 
+    def _load_sectors(self, request: BreadthAnalysisRequest) -> dict:
         sectors = {}
         if self.sector_classifier:
             try:
@@ -68,7 +68,9 @@ class BreadthEngine:
                     sectors[sym] = "UNKNOWN"
             except Exception:
                 pass
+        return sectors
 
+    def _load_fundamentals(self, request: BreadthAnalysisRequest) -> dict:
         fundamentals = {}
         if self.fundamental_engine and request.include_fundamentals:
             try:
@@ -76,6 +78,16 @@ class BreadthEngine:
                 pass
             except Exception:
                 pass
+        return fundamentals
+
+    def analyze(self, request: BreadthAnalysisRequest) -> BreadthAnalysisResult:
+        start_time = time.time()
+
+        # 1. Load data
+        data_by_symbol = self._load_symbol_data(request)
+        benchmark_data = self._load_benchmark_data(request)
+        sectors = self._load_sectors(request)
+        fundamentals = self._load_fundamentals(request)
 
         # 2. Calculate Snapshot
         snapshot = self.calculator.calculate_snapshot(data_by_symbol, request)
