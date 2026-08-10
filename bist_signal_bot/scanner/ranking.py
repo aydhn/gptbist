@@ -79,68 +79,357 @@ class ScanRanker:
             metadata={},
         )
 
+
+    def _score_ml(self, result: SymbolScanResult) -> float:
+        if not result.signal: return 0.0
+        return float(result.signal.metadata.get("ml_prediction_score", 0.0))
+
+    def _score_ml_prob(self, result: SymbolScanResult) -> float:
+        if not result.signal: return 0.0
+        val = result.signal.metadata.get("ml_probability_positive")
+        return float(val) if val is not None else 0.0
+
+    def _score_final(self, result: SymbolScanResult) -> float:
+        if result.risk_decision and getattr(result.risk_decision, "final_score", None) is not None:
+            return result.risk_decision.final_score
+        if result.signal and getattr(result.signal, "score", None) is not None:
+            return result.signal.score
+        return 0.0
+
+    def _score_signal(self, result: SymbolScanResult) -> float:
+        if result.signal and getattr(result.signal, "score", None) is not None:
+            return result.signal.score
+        return 0.0
+
+    def _score_confidence(self, result: SymbolScanResult) -> float:
+        if result.signal and getattr(result.signal, "confidence", None) is not None:
+            return result.signal.confidence
+        return 0.0
+
+    def _score_risk_reward(self, result: SymbolScanResult) -> float:
+        if result.risk_decision and getattr(result.risk_decision, "stop_target", None):
+            if getattr(result.risk_decision.stop_target, "risk_reward", None) is not None:
+                return result.risk_decision.stop_target.risk_reward
+        if result.signal and getattr(result.signal, "risk_reward", None) is not None:
+            return result.signal.risk_reward
+        return 0.0
+
+    def _score_liquidity(self, result: SymbolScanResult) -> float:
+        return self.extract_feature_score(result, ["liquidity_score", "volume_activity_score"]) or 0.0
+
+    def _score_volume_activity(self, result: SymbolScanResult) -> float:
+        return self.extract_feature_score(result, ["volume_activity_score"]) or 0.0
+
+    def _score_momentum(self, result: SymbolScanResult) -> float:
+        return self.extract_feature_score(result, ["momentum_strength_score", "momentum_direction_score"]) or 0.0
+
+    def _score_trend(self, result: SymbolScanResult) -> float:
+        return self.extract_feature_score(result, ["trend_strength_score"]) or 0.0
+
+    def _score_low_cost(self, result: SymbolScanResult) -> float:
+        return max(0.0, 100.0 - result.metadata.get("cost_bps", 100.0))
+
+    def _score_low_volatility(self, result: SymbolScanResult) -> float:
+        return max(0.0, 100.0 - (self.extract_feature_score(result, ["volatility_risk_score"]) or 100.0))
+
+    _SCORE_HANDLERS = {
+        "ML_SCORE": _score_ml,
+        "ML_PROBABILITY": _score_ml_prob,
+        "FINAL_SCORE": _score_final,
+        "SIGNAL_SCORE": _score_signal,
+        "CONFIDENCE": _score_confidence,
+        "RISK_REWARD": _score_risk_reward,
+        "LIQUIDITY": _score_liquidity,
+        "VOLUME_ACTIVITY": _score_volume_activity,
+        "MOMENTUM": _score_momentum,
+        "TREND": _score_trend,
+        "LOW_COST": _score_low_cost,
+        "LOW_VOLATILITY": _score_low_volatility,
+    }
+
+
+    def _score_ml(self, result: SymbolScanResult) -> float:
+        if not result.signal: return 0.0
+        return float(result.signal.metadata.get("ml_prediction_score", 0.0))
+
+    def _score_ml_prob(self, result: SymbolScanResult) -> float:
+        if not result.signal: return 0.0
+        val = result.signal.metadata.get("ml_probability_positive")
+        return float(val) if val is not None else 0.0
+
+    def _score_final(self, result: SymbolScanResult) -> float:
+        if result.risk_decision and getattr(result.risk_decision, "final_score", None) is not None:
+            return result.risk_decision.final_score
+        if result.signal and getattr(result.signal, "score", None) is not None:
+            return result.signal.score
+        return 0.0
+
+    def _score_signal(self, result: SymbolScanResult) -> float:
+        if result.signal and getattr(result.signal, "score", None) is not None:
+            return result.signal.score
+        return 0.0
+
+    def _score_confidence(self, result: SymbolScanResult) -> float:
+        if result.signal and getattr(result.signal, "confidence", None) is not None:
+            return result.signal.confidence
+        return 0.0
+
+    def _score_risk_reward(self, result: SymbolScanResult) -> float:
+        if result.risk_decision and getattr(result.risk_decision, "stop_target", None):
+            if getattr(result.risk_decision.stop_target, "risk_reward", None) is not None:
+                return result.risk_decision.stop_target.risk_reward
+        if result.signal and getattr(result.signal, "risk_reward", None) is not None:
+            return result.signal.risk_reward
+        return 0.0
+
+    def _score_liquidity(self, result: SymbolScanResult) -> float:
+        return self.extract_feature_score(result, ["liquidity_score", "volume_activity_score"]) or 0.0
+
+    def _score_volume_activity(self, result: SymbolScanResult) -> float:
+        return self.extract_feature_score(result, ["volume_activity_score"]) or 0.0
+
+    def _score_momentum(self, result: SymbolScanResult) -> float:
+        return self.extract_feature_score(result, ["momentum_strength_score", "momentum_direction_score"]) or 0.0
+
+    def _score_trend(self, result: SymbolScanResult) -> float:
+        return self.extract_feature_score(result, ["trend_strength_score"]) or 0.0
+
+    def _score_low_cost(self, result: SymbolScanResult) -> float:
+        return max(0.0, 100.0 - result.metadata.get("cost_bps", 100.0))
+
+    def _score_low_volatility(self, result: SymbolScanResult) -> float:
+        return max(0.0, 100.0 - (self.extract_feature_score(result, ["volatility_risk_score"]) or 100.0))
+
+    _SCORE_HANDLERS = {
+        "ML_SCORE": _score_ml,
+        "ML_PROBABILITY": _score_ml_prob,
+        "FINAL_SCORE": _score_final,
+        "SIGNAL_SCORE": _score_signal,
+        "CONFIDENCE": _score_confidence,
+        "RISK_REWARD": _score_risk_reward,
+        "LIQUIDITY": _score_liquidity,
+        "VOLUME_ACTIVITY": _score_volume_activity,
+        "MOMENTUM": _score_momentum,
+        "TREND": _score_trend,
+        "LOW_COST": _score_low_cost,
+        "LOW_VOLATILITY": _score_low_volatility,
+    }
+
+
+    def _score_ml(self, result: SymbolScanResult) -> float:
+        if not result.signal: return 0.0
+        return float(result.signal.metadata.get("ml_prediction_score", 0.0))
+
+    def _score_ml_prob(self, result: SymbolScanResult) -> float:
+        if not result.signal: return 0.0
+        val = result.signal.metadata.get("ml_probability_positive")
+        return float(val) if val is not None else 0.0
+
+    def _score_final(self, result: SymbolScanResult) -> float:
+        if result.risk_decision and getattr(result.risk_decision, "final_score", None) is not None:
+            return result.risk_decision.final_score
+        if result.signal and getattr(result.signal, "score", None) is not None:
+            return result.signal.score
+        return 0.0
+
+    def _score_signal(self, result: SymbolScanResult) -> float:
+        if result.signal and getattr(result.signal, "score", None) is not None:
+            return result.signal.score
+        return 0.0
+
+    def _score_confidence(self, result: SymbolScanResult) -> float:
+        if result.signal and getattr(result.signal, "confidence", None) is not None:
+            return result.signal.confidence
+        return 0.0
+
+    def _score_risk_reward(self, result: SymbolScanResult) -> float:
+        if result.risk_decision and getattr(result.risk_decision, "stop_target", None):
+            if getattr(result.risk_decision.stop_target, "risk_reward", None) is not None:
+                return result.risk_decision.stop_target.risk_reward
+        if result.signal and getattr(result.signal, "risk_reward", None) is not None:
+            return result.signal.risk_reward
+        return 0.0
+
+    def _score_liquidity(self, result: SymbolScanResult) -> float:
+        return self.extract_feature_score(result, ["liquidity_score", "volume_activity_score"]) or 0.0
+
+    def _score_volume_activity(self, result: SymbolScanResult) -> float:
+        return self.extract_feature_score(result, ["volume_activity_score"]) or 0.0
+
+    def _score_momentum(self, result: SymbolScanResult) -> float:
+        return self.extract_feature_score(result, ["momentum_strength_score", "momentum_direction_score"]) or 0.0
+
+    def _score_trend(self, result: SymbolScanResult) -> float:
+        return self.extract_feature_score(result, ["trend_strength_score"]) or 0.0
+
+    def _score_low_cost(self, result: SymbolScanResult) -> float:
+        return max(0.0, 100.0 - result.metadata.get("cost_bps", 100.0))
+
+    def _score_low_volatility(self, result: SymbolScanResult) -> float:
+        return max(0.0, 100.0 - (self.extract_feature_score(result, ["volatility_risk_score"]) or 100.0))
+
+    _SCORE_HANDLERS = {
+        "ML_SCORE": _score_ml,
+        "ML_PROBABILITY": _score_ml_prob,
+        "FINAL_SCORE": _score_final,
+        "SIGNAL_SCORE": _score_signal,
+        "CONFIDENCE": _score_confidence,
+        "RISK_REWARD": _score_risk_reward,
+        "LIQUIDITY": _score_liquidity,
+        "VOLUME_ACTIVITY": _score_volume_activity,
+        "MOMENTUM": _score_momentum,
+        "TREND": _score_trend,
+        "LOW_COST": _score_low_cost,
+        "LOW_VOLATILITY": _score_low_volatility,
+    }
+
+
+    def _score_ml(self, result: SymbolScanResult) -> float:
+        if not result.signal: return 0.0
+        return float(result.signal.metadata.get("ml_prediction_score", 0.0))
+
+    def _score_ml_prob(self, result: SymbolScanResult) -> float:
+        if not result.signal: return 0.0
+        val = result.signal.metadata.get("ml_probability_positive")
+        return float(val) if val is not None else 0.0
+
+    def _score_final(self, result: SymbolScanResult) -> float:
+        if result.risk_decision and getattr(result.risk_decision, "final_score", None) is not None:
+            return result.risk_decision.final_score
+        if result.signal and getattr(result.signal, "score", None) is not None:
+            return result.signal.score
+        return 0.0
+
+    def _score_signal(self, result: SymbolScanResult) -> float:
+        if result.signal and getattr(result.signal, "score", None) is not None:
+            return result.signal.score
+        return 0.0
+
+    def _score_confidence(self, result: SymbolScanResult) -> float:
+        if result.signal and getattr(result.signal, "confidence", None) is not None:
+            return result.signal.confidence
+        return 0.0
+
+    def _score_risk_reward(self, result: SymbolScanResult) -> float:
+        if result.risk_decision and getattr(result.risk_decision, "stop_target", None):
+            if getattr(result.risk_decision.stop_target, "risk_reward", None) is not None:
+                return result.risk_decision.stop_target.risk_reward
+        if result.signal and getattr(result.signal, "risk_reward", None) is not None:
+            return result.signal.risk_reward
+        return 0.0
+
+    def _score_liquidity(self, result: SymbolScanResult) -> float:
+        return self.extract_feature_score(result, ["liquidity_score", "volume_activity_score"]) or 0.0
+
+    def _score_volume_activity(self, result: SymbolScanResult) -> float:
+        return self.extract_feature_score(result, ["volume_activity_score"]) or 0.0
+
+    def _score_momentum(self, result: SymbolScanResult) -> float:
+        return self.extract_feature_score(result, ["momentum_strength_score", "momentum_direction_score"]) or 0.0
+
+    def _score_trend(self, result: SymbolScanResult) -> float:
+        return self.extract_feature_score(result, ["trend_strength_score"]) or 0.0
+
+    def _score_low_cost(self, result: SymbolScanResult) -> float:
+        return max(0.0, 100.0 - result.metadata.get("cost_bps", 100.0))
+
+    def _score_low_volatility(self, result: SymbolScanResult) -> float:
+        return max(0.0, 100.0 - (self.extract_feature_score(result, ["volatility_risk_score"]) or 100.0))
+
+    _SCORE_HANDLERS = {
+        "ML_SCORE": _score_ml,
+        "ML_PROBABILITY": _score_ml_prob,
+        "FINAL_SCORE": _score_final,
+        "SIGNAL_SCORE": _score_signal,
+        "CONFIDENCE": _score_confidence,
+        "RISK_REWARD": _score_risk_reward,
+        "LIQUIDITY": _score_liquidity,
+        "VOLUME_ACTIVITY": _score_volume_activity,
+        "MOMENTUM": _score_momentum,
+        "TREND": _score_trend,
+        "LOW_COST": _score_low_cost,
+        "LOW_VOLATILITY": _score_low_volatility,
+    }
+
+
+    def _score_ml(self, result: SymbolScanResult) -> float:
+        if not result.signal: return 0.0
+        return float(result.signal.metadata.get("ml_prediction_score", 0.0))
+
+    def _score_ml_prob(self, result: SymbolScanResult) -> float:
+        if not result.signal: return 0.0
+        val = result.signal.metadata.get("ml_probability_positive")
+        return float(val) if val is not None else 0.0
+
+    def _score_final(self, result: SymbolScanResult) -> float:
+        if result.risk_decision and getattr(result.risk_decision, "final_score", None) is not None:
+            return result.risk_decision.final_score
+        if result.signal and getattr(result.signal, "score", None) is not None:
+            return result.signal.score
+        return 0.0
+
+    def _score_signal(self, result: SymbolScanResult) -> float:
+        if result.signal and getattr(result.signal, "score", None) is not None:
+            return result.signal.score
+        return 0.0
+
+    def _score_confidence(self, result: SymbolScanResult) -> float:
+        if result.signal and getattr(result.signal, "confidence", None) is not None:
+            return result.signal.confidence
+        return 0.0
+
+    def _score_risk_reward(self, result: SymbolScanResult) -> float:
+        if result.risk_decision and getattr(result.risk_decision, "stop_target", None):
+            if getattr(result.risk_decision.stop_target, "risk_reward", None) is not None:
+                return result.risk_decision.stop_target.risk_reward
+        if result.signal and getattr(result.signal, "risk_reward", None) is not None:
+            return result.signal.risk_reward
+        return 0.0
+
+    def _score_liquidity(self, result: SymbolScanResult) -> float:
+        return self.extract_feature_score(result, ["liquidity_score", "volume_activity_score"]) or 0.0
+
+    def _score_volume_activity(self, result: SymbolScanResult) -> float:
+        return self.extract_feature_score(result, ["volume_activity_score"]) or 0.0
+
+    def _score_momentum(self, result: SymbolScanResult) -> float:
+        return self.extract_feature_score(result, ["momentum_strength_score", "momentum_direction_score"]) or 0.0
+
+    def _score_trend(self, result: SymbolScanResult) -> float:
+        return self.extract_feature_score(result, ["trend_strength_score"]) or 0.0
+
+    def _score_low_cost(self, result: SymbolScanResult) -> float:
+        return max(0.0, 100.0 - result.metadata.get("cost_bps", 100.0))
+
+    def _score_low_volatility(self, result: SymbolScanResult) -> float:
+        return max(0.0, 100.0 - (self.extract_feature_score(result, ["volatility_risk_score"]) or 100.0))
+
+    _SCORE_HANDLERS = {
+        ScanSortKey.ML_SCORE: _score_ml,
+        ScanSortKey.ML_PROBABILITY: _score_ml_prob,
+        ScanSortKey.FINAL_SCORE: _score_final,
+        ScanSortKey.SIGNAL_SCORE: _score_signal,
+        ScanSortKey.CONFIDENCE: _score_confidence,
+        ScanSortKey.RISK_REWARD: _score_risk_reward,
+        ScanSortKey.LIQUIDITY: _score_liquidity,
+        ScanSortKey.VOLUME_ACTIVITY: _score_volume_activity,
+        ScanSortKey.MOMENTUM: _score_momentum,
+        ScanSortKey.TREND: _score_trend,
+        ScanSortKey.LOW_COST: _score_low_cost,
+        ScanSortKey.LOW_VOLATILITY: _score_low_volatility,
+    }
+
     def calculate_rank_score(self, result: SymbolScanResult, sort_key: ScanSortKey) -> float:
-        sig = result.signal
-        risk = result.risk_decision
+        # Resolve string enum value to actual Enum if passed as string directly (from API for example)
+        if isinstance(sort_key, str):
+            for k in ScanSortKey:
+                if k.value == sort_key:
+                    sort_key = k
+                    break
 
-        if sort_key.value == "ML_SCORE":
-            if sig and "ml_prediction_score" in sig.metadata:
-                return float(sig.metadata["ml_prediction_score"])
-            return 0.0
-
-        if sort_key.value == "ML_PROBABILITY":
-            if sig and "ml_probability_positive" in sig.metadata:
-                val = sig.metadata["ml_probability_positive"]
-                return float(val) if val is not None else 0.0
-            return 0.0
-
-        if sort_key == ScanSortKey.FINAL_SCORE:
-            if risk and risk.final_score is not None:
-                return risk.final_score
-            if sig and sig.score is not None:
-                return sig.score
-            return 0.0
-
-        if sort_key == ScanSortKey.SIGNAL_SCORE:
-            return sig.score if sig and sig.score is not None else 0.0
-
-        if sort_key == ScanSortKey.CONFIDENCE:
-            return sig.confidence if sig and sig.confidence is not None else 0.0
-
-        if sort_key == ScanSortKey.RISK_REWARD:
-            if risk and risk.stop_target and risk.stop_target.risk_reward is not None:
-                return risk.stop_target.risk_reward
-            return sig.risk_reward if sig and sig.risk_reward is not None else 0.0
-
-        if sort_key == ScanSortKey.LIQUIDITY:
-            return (
-                self.extract_feature_score(result, ["liquidity_score", "volume_activity_score"])
-                or 0.0
-            )
-
-        if sort_key == ScanSortKey.VOLUME_ACTIVITY:
-            return self.extract_feature_score(result, ["volume_activity_score"]) or 0.0
-
-        if sort_key == ScanSortKey.MOMENTUM:
-            return (
-                self.extract_feature_score(
-                    result, ["momentum_strength_score", "momentum_direction_score"]
-                )
-                or 0.0
-            )
-
-        if sort_key == ScanSortKey.TREND:
-            return self.extract_feature_score(result, ["trend_strength_score"]) or 0.0
-
-        if sort_key == ScanSortKey.LOW_COST:
-            # lower cost -> higher score. Inverse mapping.
-            cost = result.metadata.get("cost_bps", 100.0)
-            return max(0.0, 100.0 - cost)
-
-        if sort_key == ScanSortKey.LOW_VOLATILITY:
-            vol = self.extract_feature_score(result, ["volatility_risk_score"]) or 100.0
-            return max(0.0, 100.0 - vol)
-
+        handler = self._SCORE_HANDLERS.get(sort_key)
+        if handler:
+            return handler(self, result)
         return 0.0
 
     def extract_feature_score(self, result: SymbolScanResult, keys: List[str]) -> Optional[float]:
