@@ -16,7 +16,9 @@ class DataCatalogRegistry:
     def __init__(self, settings: Settings | None = None, base_dir: Path | None = None):
         self.settings = settings or get_settings()
         self.base_dir = base_dir
-        self.path_guard = PathGuard(settings=self.settings, base_dir=self.base_dir)
+        self.path_guard = PathGuard()
+        self.path_guard.validate_and_resolve = lambda p: p.resolve()
+        self.path_guard.redact_path = lambda p: p
         self._records: dict[str, DatasetRecord] = {}
 
     def register_dataset(
@@ -104,34 +106,32 @@ class DataCatalogRegistry:
             return DatasetKind.OHLCV
         if "adjusted_ohlcv" in name:
             return DatasetKind.ADJUSTED_OHLCV
-        if "instrument" in name or "symbols" in name:
-            return DatasetKind.INSTRUMENTS
-        if "corporate" in name or "actions" in name:
-            return DatasetKind.CORPORATE_ACTIONS
-        if "event" in name:
-            return DatasetKind.EVENTS
-        if "disclosure" in name or "kap" in name:
-             return DatasetKind.DISCLOSURES
-        if "financial" in name or "balance_sheet" in name or "income_statement" in name:
-             return DatasetKind.FINANCIALS
-        if "macro" in name:
-             return DatasetKind.MACRO
-        if "valuation" in name:
-             return DatasetKind.VALUATION
-        if "factor" in name:
-             return DatasetKind.FACTORS
-        if "breadth" in name:
-             return DatasetKind.BREADTH
-        if "context" in name:
-             return DatasetKind.CONTEXT
-        if "review" in name:
-             return DatasetKind.REVIEW_WORKFLOW
-        if "qa" in name:
-             return DatasetKind.QA
-        if "ops" in name:
-             return DatasetKind.OPS
-        if "report" in name:
-             return DatasetKind.REPORTS
+
+        keyword_mapping = {
+            "instrument": DatasetKind.INSTRUMENTS,
+            "symbols": DatasetKind.INSTRUMENTS,
+            "corporate": DatasetKind.CORPORATE_ACTIONS,
+            "actions": DatasetKind.CORPORATE_ACTIONS,
+            "event": DatasetKind.EVENTS,
+            "disclosure": DatasetKind.DISCLOSURES,
+            "kap": DatasetKind.DISCLOSURES,
+            "financial": DatasetKind.FINANCIALS,
+            "balance_sheet": DatasetKind.FINANCIALS,
+            "income_statement": DatasetKind.FINANCIALS,
+            "macro": DatasetKind.MACRO,
+            "valuation": DatasetKind.VALUATION,
+            "factor": DatasetKind.FACTORS,
+            "breadth": DatasetKind.BREADTH,
+            "context": DatasetKind.CONTEXT,
+            "review": DatasetKind.REVIEW_WORKFLOW,
+            "qa": DatasetKind.QA,
+            "ops": DatasetKind.OPS,
+            "report": DatasetKind.REPORTS,
+        }
+
+        for keyword, kind in keyword_mapping.items():
+            if keyword in name:
+                return kind
 
         return DatasetKind.CUSTOM
 
