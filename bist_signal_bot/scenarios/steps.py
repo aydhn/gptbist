@@ -130,6 +130,7 @@ class ScenarioStepExecutor:
             started_at=datetime.utcnow()
         )
 
+
     def execute_assertions(self, step: ScenarioStepConfig, result_payload: ScenarioStepResult) -> Tuple[int, int, List[str]]:
         passed = 0
         failed = 0
@@ -140,63 +141,85 @@ class ScenarioStepExecutor:
         combined_out = stdout + stderr
 
         for assertion in step.assertions:
-            if assertion.startswith("file_exists:"):
-                # Not doing actual file checks inside the executor unless we have the dir
-                passed += 1 # mock
-            elif assertion.startswith("json_field_exists:"):
-                passed += 1 # mock
-            elif assertion.startswith("status_is:"):
-                expected = assertion.split(":", 1)[1]
-                if result_payload.status.value == expected:
-                    passed += 1
-                else:
-                    failed += 1
-                    issues.append(f"Assertion failed: expected status {expected}, got {result_payload.status.value}")
-            elif assertion.startswith("contains_text:"):
-                text = assertion.split(":", 1)[1]
-                if text in combined_out:
-                    passed += 1
-                else:
-                    failed += 1
-                    issues.append(f"Assertion failed: output does not contain '{text}'")
-            elif assertion.startswith("not_contains_text:"):
-                text = assertion.split(":", 1)[1]
-                if text not in combined_out:
-                    passed += 1
-                else:
-                    failed += 1
-                    issues.append(f"Assertion failed: output contains forbidden text '{text}'")
-            elif assertion == "no_secret":
-                if "SECRET" not in combined_out.upper(): # simple mock check
-                    passed += 1
-                else:
-                    failed += 1
-                    issues.append("Assertion failed: potential secret found in output")
-            elif assertion == "no_unsafe_claim":
-                unsafe_words = ["guaranteed", "risk-free", "sure profit", "100% win"]
-                if not any(word in combined_out.lower() for word in unsafe_words):
-                    passed += 1
-                else:
-                    failed += 1
-                    issues.append("Assertion failed: unsafe financial claim found")
-            elif assertion == "no_real_order_sent":
-                if "real order sent" not in combined_out.lower() and "live trade" not in combined_out.lower():
-                    passed += 1
-                else:
-                    failed += 1
-                    issues.append("Assertion failed: apparent real order sent")
-            elif assertion.startswith("exit_code_is:"):
-                expected = int(assertion.split(":", 1)[1])
-                if result_payload.exit_code == expected:
-                    passed += 1
-                else:
-                    failed += 1
-                    issues.append(f"Assertion failed: expected exit code {expected}, got {result_payload.exit_code}")
+            success, error_msg = self._evaluate_assertion(assertion, result_payload, combined_out)
+            if success:
+                passed += 1
             else:
-                issues.append(f"Unknown assertion: {assertion}")
                 failed += 1
+                if error_msg:
+                     issues.append(error_msg)
 
         return passed, failed, issues
+
+    def _evaluate_assertion(self, assertion: str, result_payload: ScenarioStepResult, combined_out: str) -> Tuple[bool, Optional[str]]:
+        parts = assertion.split(":", 1)
+        name = parts[0]
+        arg = parts[1] if len(parts) > 1 else None
+
+        handler_name = f"_assert_{name}"
+        handler = getattr(self, handler_name, None)
+
+        if handler:
+            try:
+                return handler(arg, result_payload, combined_out)
+            except Exception as e:
+                return False, f"Assertion '{assertion}' failed due to error: {e}"
+
+        return False, f"Unknown assertion: {assertion}"
+
+    def _assert_file_exists(self, arg: Optional[str], result_payload: ScenarioStepResult, combined_out: str) -> Tuple[bool, Optional[str]]:
+        return True, None
+
+    def _assert_json_field_exists(self, arg: Optional[str], result_payload: ScenarioStepResult, combined_out: str) -> Tuple[bool, Optional[str]]:
+        return True, None
+
+    def _assert_status_is(self, arg: Optional[str], result_payload: ScenarioStepResult, combined_out: str) -> Tuple[bool, Optional[str]]:
+        if result_payload.status.value == arg:
+            return True, None
+        return False, f"Assertion failed: expected status {arg}, got {result_payload.status.value}"
+
+    def _assert_contains_text(self, arg: Optional[str], result_payload: ScenarioStepResult, combined_out: str) -> Tuple[bool, Optional[str]]:
+        if arg is None:
+            return False, "Assertion failed: missing required argument"
+        if arg in combined_out:
+            return True, None
+        return False, f"Assertion failed: output does not contain '{arg}'"
+
+    def _assert_not_contains_text(self, arg: Optional[str], result_payload: ScenarioStepResult, combined_out: str) -> Tuple[bool, Optional[str]]:
+        if arg is None:
+            return False, "Assertion failed: missing required argument"
+        if arg not in combined_out:
+            return True, None
+        return False, f"Assertion failed: output contains forbidden text '{arg}'"
+
+    def _assert_no_secret(self, arg: Optional[str], result_payload: ScenarioStepResult, combined_out: str) -> Tuple[bool, Optional[str]]:
+        if "SECRET" not in combined_out.upper():
+            return True, None
+        return False, "Assertion failed: potential secret found in output"
+
+    def _assert_no_unsafe_claim(self, arg: Optional[str], result_payload: ScenarioStepResult, combined_out: str) -> Tuple[bool, Optional[str]]:
+        unsafe_words = ["guaranteed", "risk-free", "sure profit", "100% win"]
+        if not any(word in combined_out.lower() for word in unsafe_words):
+            return True, None
+        return False, "Assertion failed: unsafe financial claim found"
+
+    def _assert_no_real_order_sent(self, arg: Optional[str], result_payload: ScenarioStepResult, combined_out: str) -> Tuple[bool, Optional[str]]:
+        if "real order sent" not in combined_out.lower() and "live trade" not in combined_out.lower():
+            return True, None
+        return False, "Assertion failed: apparent real order sent"
+
+    def _assert_exit_code_is(self, arg: Optional[str], result_payload: ScenarioStepResult, combined_out: str) -> Tuple[bool, Optional[str]]:
+        if arg is None:
+            return False, "Assertion failed: missing required argument"
+        try:
+            expected = int(arg)
+        except ValueError:
+            return False, f"Assertion failed: expected integer argument, got '{arg}'"
+
+        if result_payload.exit_code == expected:
+            return True, None
+        return False, f"Assertion failed: expected exit code {expected}, got {result_payload.exit_code}"
+
 
     def sanitize_step_result(self, result: ScenarioStepResult) -> ScenarioStepResult:
         # We can implement regex redaction for secrets here if needed.
