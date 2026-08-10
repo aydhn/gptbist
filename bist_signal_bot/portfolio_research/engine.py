@@ -1,15 +1,13 @@
 import uuid
 from datetime import datetime
 from typing import Any
-import pandas as pd
 from bist_signal_bot.config.settings import Settings
 from bist_signal_bot.portfolio_research.models import (
     ResearchPortfolioSnapshot,
     ResearchPortfolioItem,
     PortfolioResearchRequest,
     RebalancePlan,
-    BasketSimulationResult,
-    PortfolioResearchMode
+    BasketSimulationResult
 )
 from bist_signal_bot.portfolio_research.constraints import PortfolioConstraintEngine
 from bist_signal_bot.portfolio_research.allocation import ResearchAllocationEngine
@@ -134,19 +132,29 @@ class PortfolioResearchEngine:
 
             if not batch_success:
                 # Fallback to fetch_data or get_ohlcv if get_many_ohlcv is not available or failed
-                for sym in syms:
+                import concurrent.futures
+
+                def _fetch_sym(sym):
                     try:
                         if hasattr(self.data_service, "fetch_data"):
                             df = self.data_service.fetch_data(sym, request.timeframe, source=request.source)
                         else:
                             df = self.data_service.get_ohlcv(sym, timeframe=request.timeframe)
                         if df is not None and not df.empty:
-                            data_by_symbol[sym] = df
-                            # simple vol proxy
                             ret = df['close'].pct_change().dropna()
-                            volatility_by_symbol[sym] = float(ret.std() * (252**0.5) * 100) if len(ret) > 10 else 0.0
+                            vol = float(ret.std() * (252**0.5) * 100) if len(ret) > 10 else 0.0
+                            return sym, df, vol
                     except Exception as e:
                         self.logger.warning(f"Failed to fetch data for {sym}: {e}")
+                    return sym, None, None
+
+                with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+                    futures = {executor.submit(_fetch_sym, sym): sym for sym in syms}
+                    for future in concurrent.futures.as_completed(futures):
+                        sym, df, vol = future.result()
+                        if df is not None:
+                            data_by_symbol[sym] = df
+                            volatility_by_symbol[sym] = vol
 
         # Apply constraints phase 1
         constraints = self.constraint_engine.validate_items(unique_candidates, request)
