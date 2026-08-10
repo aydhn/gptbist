@@ -73,8 +73,8 @@ def test_sqlite_read_chunks(tmp_path):
     conn = sqlite3.connect(db_path)
     c = conn.cursor()
     c.execute('CREATE TABLE "test_table" (id INTEGER, name TEXT)')
-    for i in range(15):
-        c.execute('INSERT INTO "test_table" VALUES (?, ?)', (i, f"test_{i}"))
+    data = [(i, f"test_{i}") for i in range(15)]
+    c.executemany('INSERT INTO "test_table" VALUES (?, ?)', data)
     conn.commit()
     conn.close()
 
