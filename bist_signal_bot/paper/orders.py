@@ -8,14 +8,15 @@ from bist_signal_bot.paper.models import (
     PaperAccount,
     PaperAccountStatus,
     PaperOrder,
-    PaperOrderSide,
     PaperOrderStatus,
     PaperOrderType
 )
-from bist_signal_bot.strategies.models import SignalCandidate
-from bist_signal_bot.risk.models import RiskDecision
-from bist_signal_bot.portfolio.models import PortfolioRiskDecision
 
+
+
+ACCEPTABLE_STATES = frozenset([PaperOrderStatus.CREATED, PaperOrderStatus.REJECTED])
+NON_REJECTABLE_STATES = frozenset([PaperOrderStatus.FILLED, PaperOrderStatus.CANCELLED, PaperOrderStatus.EXPIRED])
+FINAL_STATES = frozenset([PaperOrderStatus.FILLED, PaperOrderStatus.CANCELLED, PaperOrderStatus.EXPIRED, PaperOrderStatus.REJECTED])
 
 class PaperOrderManager:
 
@@ -58,7 +59,7 @@ class PaperOrderManager:
         return order
 
     def accept_order(self, order: PaperOrder) -> PaperOrder:
-        if order.status not in [PaperOrderStatus.CREATED, PaperOrderStatus.REJECTED]:
+        if order.status not in ACCEPTABLE_STATES:
              raise PaperOrderError(f"Cannot accept order in status {order.status}")
 
         order.status = PaperOrderStatus.ACCEPTED
@@ -66,7 +67,7 @@ class PaperOrderManager:
         return order
 
     def reject_order(self, order: PaperOrder, reason: str) -> PaperOrder:
-        if order.status in [PaperOrderStatus.FILLED, PaperOrderStatus.CANCELLED, PaperOrderStatus.EXPIRED]:
+        if order.status in NON_REJECTABLE_STATES:
              raise PaperOrderError(f"Cannot reject order in status {order.status}")
 
         order.status = PaperOrderStatus.REJECTED
@@ -75,7 +76,7 @@ class PaperOrderManager:
         return order
 
     def cancel_order(self, order: PaperOrder, reason: Optional[str] = None) -> PaperOrder:
-        if order.status in [PaperOrderStatus.FILLED, PaperOrderStatus.CANCELLED, PaperOrderStatus.EXPIRED, PaperOrderStatus.REJECTED]:
+        if order.status in FINAL_STATES:
              raise PaperOrderError(f"Cannot cancel order in status {order.status}")
 
         order.status = PaperOrderStatus.CANCELLED
@@ -85,7 +86,7 @@ class PaperOrderManager:
         return order
 
     def expire_order(self, order: PaperOrder) -> PaperOrder:
-        if order.status in [PaperOrderStatus.FILLED, PaperOrderStatus.CANCELLED, PaperOrderStatus.EXPIRED, PaperOrderStatus.REJECTED]:
+        if order.status in FINAL_STATES:
              raise PaperOrderError(f"Cannot expire order in status {order.status}")
 
         order.status = PaperOrderStatus.EXPIRED
