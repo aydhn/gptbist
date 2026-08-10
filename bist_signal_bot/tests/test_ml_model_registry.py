@@ -7,7 +7,7 @@ from bist_signal_bot.ml.training.models import MLModelArtifact, MLModelType, MLT
 from sklearn.dummy import DummyClassifier
 
 def test_registry_save_load(tmp_path):
-    settings = Settings()
+    settings = Settings(MODEL_SIGNING_SECRET='test_secret')
     registry = MLModelRegistry(settings, base_dir=tmp_path)
 
     estimator = DummyClassifier()
@@ -33,7 +33,7 @@ def test_registry_save_load(tmp_path):
     assert loaded_art.target_col == "lbl"
 
 def test_registry_list_delete(tmp_path):
-    settings = Settings()
+    settings = Settings(MODEL_SIGNING_SECRET='test_secret')
     registry = MLModelRegistry(settings, base_dir=tmp_path)
 
     artifact = MLModelArtifact(

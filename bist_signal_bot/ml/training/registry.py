@@ -4,6 +4,8 @@ from pathlib import Path
 from datetime import datetime
 from typing import Any
 import joblib
+import hmac
+import hashlib
 
 from bist_signal_bot.config.settings import Settings
 from bist_signal_bot.storage.paths import get_ml_models_dir
@@ -20,6 +22,17 @@ class MLModelRegistry:
         self.base_dir = base_dir or get_ml_models_dir(settings)
         self.base_dir.mkdir(parents=True, exist_ok=True)
         self.path_guard = PathGuard()
+
+
+    def _generate_signature(self, file_path: Path) -> str:
+        secret = getattr(self.settings, "MODEL_SIGNING_SECRET", None)
+        if not secret:
+            raise MLModelRegistryError("MODEL_SIGNING_SECRET is not configured in settings. Cannot securely sign or verify models.")
+        hasher = hmac.new(secret.encode('utf-8'), digestmod=hashlib.sha256)
+        with open(file_path, "rb") as f:
+            for chunk in iter(lambda: f.read(4096), b""):
+                hasher.update(chunk)
+        return hasher.hexdigest()
 
     def get_models_dir(self) -> Path:
         return self.base_dir
@@ -40,10 +53,21 @@ class MLModelRegistry:
 
         try:
             joblib.dump(estimator, model_path)
-            joblib.dump(preprocessor, prep_path)
+            if preprocessor is not None:
+                joblib.dump(preprocessor, prep_path)
 
             artifact.model_path = str(model_path)
             artifact.metadata_path = str(metadata_path)
+
+            if artifact.metadata is None:
+                artifact.metadata = {}
+            model_sig = self._generate_signature(model_path)
+            artifact.metadata["model_signature"] = model_sig
+
+
+            if preprocessor is not None:
+                prep_sig = self._generate_signature(prep_path)
+                artifact.metadata["preprocessor_signature"] = prep_sig
 
             if train_result and train_result.feature_importance:
                 self.save_feature_importance(train_result.feature_importance, model_dir)
@@ -72,11 +96,23 @@ class MLModelRegistry:
             with open(metadata_path, "r", encoding="utf-8") as f:
                 metadata_dict = json.load(f)
             artifact = MLModelArtifact(**metadata_dict)
-            # WARNING: joblib.load is unsafe and vulnerable to insecure deserialization.
-            # Untrusted models should not be loaded using this function as it can lead to
-            # Arbitrary Code Execution (ACE). In the future, migrate to a safe format
-            # like ONNX or implement cryptographic model signing and verification.
-            logger.warning("Loading model with joblib.load. Ensure the model source is trusted to prevent insecure deserialization.")
+            if not getattr(self.settings, "SECURITY_ALLOW_UNTRUSTED_MODELS", False):
+                stored_model_sig = artifact.metadata.get("model_signature")
+                if not stored_model_sig:
+                    raise MLModelRegistryError("Missing cryptographic signature for model file. Ensure model source is trusted.")
+                actual_model_sig = self._generate_signature(model_path)
+                if not hmac.compare_digest(stored_model_sig, actual_model_sig):
+                    raise MLModelRegistryError("Cryptographic signature mismatch for model file. Model may have been tampered with.")
+
+                if prep_path.exists():
+                    stored_prep_sig = artifact.metadata.get("preprocessor_signature")
+                    if not stored_prep_sig:
+                        raise MLModelRegistryError("Missing cryptographic signature for preprocessor file.")
+                    actual_prep_sig = self._generate_signature(prep_path)
+                    if not hmac.compare_digest(stored_prep_sig, actual_prep_sig):
+                        raise MLModelRegistryError("Cryptographic signature mismatch for preprocessor file.")
+
+            logger.info("Cryptographic signatures verified successfully.")
             estimator = joblib.load(model_path)
             preprocessor = joblib.load(prep_path) if prep_path.exists() else None
 
@@ -102,11 +138,23 @@ class MLModelRegistry:
         try:
             with open(md_path, "r", encoding="utf-8") as f:
                 metadata_dict = json.load(f)
-            # WARNING: joblib.load is unsafe and vulnerable to insecure deserialization.
-            # Untrusted models should not be loaded using this function as it can lead to
-            # Arbitrary Code Execution (ACE). In the future, migrate to a safe format
-            # like ONNX or implement cryptographic model signing and verification.
-            logger.warning("Loading model with joblib.load. Ensure the model source is trusted to prevent insecure deserialization.")
+            if not getattr(self.settings, "SECURITY_ALLOW_UNTRUSTED_MODELS", False):
+                stored_model_sig = metadata_dict.get("metadata", {}).get("model_signature")
+                if not stored_model_sig:
+                    raise MLModelRegistryError("Missing cryptographic signature for model file. Ensure model source is trusted.")
+                actual_model_sig = self._generate_signature(m_path)
+                if not hmac.compare_digest(stored_model_sig, actual_model_sig):
+                    raise MLModelRegistryError("Cryptographic signature mismatch for model file. Model may have been tampered with.")
+
+                if p_path.exists():
+                    stored_prep_sig = metadata_dict.get("metadata", {}).get("preprocessor_signature")
+                    if not stored_prep_sig:
+                        raise MLModelRegistryError("Missing cryptographic signature for preprocessor file.")
+                    actual_prep_sig = self._generate_signature(p_path)
+                    if not hmac.compare_digest(stored_prep_sig, actual_prep_sig):
+                        raise MLModelRegistryError("Cryptographic signature mismatch for preprocessor file.")
+
+            logger.info("Cryptographic signatures verified successfully.")
             estimator = joblib.load(m_path)
             preprocessor = joblib.load(p_path) if p_path.exists() else None
 
