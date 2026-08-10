@@ -1,70 +1,74 @@
-import argparse
 import json
 import logging
 from bist_signal_bot.config.settings import Settings
 from bist_signal_bot.app.stress_app import create_stress_test_engine
+
+def _handle_run(args, engine, logger):
+    if args.latest_portfolio:
+        res = engine.run_for_latest_portfolio(save_output=not args.no_save)
+    elif getattr(args, 'snapshot', None):
+        res = engine.run_for_snapshot(args.snapshot, save_output=not args.no_save)
+    elif getattr(args, 'symbols', None):
+        logger.info("Mocking custom returns for symbols...")
+        custom_returns = [0.01, -0.02, 0.03, -0.01, 0.005] * 10
+        res = engine.run_for_custom_returns(custom_returns, save_output=not args.no_save)
+    else:
+        print("You must specify --latest-portfolio, --snapshot, or --symbols")
+        return
+
+    if args.json:
+        print(json.dumps(res.safe_public_dict(), indent=2))
+    else:
+        from bist_signal_bot.stress.reporting import format_stress_result_text
+        print(format_stress_result_text(res))
+
+def _handle_latest(args, engine):
+    res = engine.store.load_latest_result()
+    if not res:
+        print("No latest stress result found.")
+        return
+
+    if args.json:
+        print(json.dumps(res.safe_public_dict(), indent=2))
+    else:
+        from bist_signal_bot.stress.reporting import format_stress_report_markdown
+        print(format_stress_report_markdown(res))
+
+def _handle_recent(args, engine):
+    results = engine.store.list_recent_results(limit=getattr(args, 'limit', 10))
+    if args.json:
+        print(json.dumps(results, indent=2))
+    else:
+        for r in results:
+            print(f"ID: {r['stress_id']} | Rating: {r['rating']} | Status: {r['status']}")
+
+def _handle_config(args, settings):
+    print("Stress Testing Config:")
+    print(f"Enabled: {settings.ENABLE_STRESS_TESTING}")
+    print(f"Monte Carlo Simulations: {settings.STRESS_MONTE_CARLO_SIMULATIONS}")
+    print(f"Shock Scenarios Enabled: {settings.STRESS_SHOCK_SCENARIOS_ENABLED}")
+    print(f"Ruin Threshold: {settings.STRESS_RUIN_THRESHOLD_PCT}%")
 
 def handle_stress_command(args, settings: Settings):
     logger = logging.getLogger("bist_signal_bot.cli.stress")
     engine = create_stress_test_engine(settings)
 
     if args.stress_cmd == "run":
-        if args.latest_portfolio:
-            res = engine.run_for_latest_portfolio(save_output=not args.no_save)
-        elif getattr(args, 'snapshot', None):
-            res = engine.run_for_snapshot(args.snapshot, save_output=not args.no_save)
-        elif getattr(args, 'symbols', None):
-            logger.info("Mocking custom returns for symbols...")
-            custom_returns = [0.01, -0.02, 0.03, -0.01, 0.005] * 10
-            res = engine.run_for_custom_returns(custom_returns, save_output=not args.no_save)
-        else:
-            print("You must specify --latest-portfolio, --snapshot, or --symbols")
-            return
-
-        if args.json:
-            print(json.dumps(res.safe_public_dict(), indent=2))
-        else:
-            from bist_signal_bot.stress.reporting import format_stress_result_text
-            print(format_stress_result_text(res))
-
+        _handle_run(args, engine, logger)
     elif args.stress_cmd == "latest":
-        res = engine.store.load_latest_result()
-        if not res:
-            print("No latest stress result found.")
-            return
-
-        if args.json:
-            print(json.dumps(res.safe_public_dict(), indent=2))
-        else:
-            from bist_signal_bot.stress.reporting import format_stress_report_markdown
-            print(format_stress_report_markdown(res))
-
+        _handle_latest(args, engine)
     elif args.stress_cmd == "recent":
-        results = engine.store.list_recent_results(limit=getattr(args, 'limit', 10))
-        if args.json:
-            print(json.dumps(results, indent=2))
-        else:
-            for r in results:
-                print(f"ID: {r['stress_id']} | Rating: {r['rating']} | Status: {r['status']}")
-
+        _handle_recent(args, engine)
     elif args.stress_cmd == "monte-carlo":
         print("Monte Carlo simulation executed via standard run for now.")
-
     elif args.stress_cmd == "shock":
         print("Shock scenarios executed via standard run for now.")
-
     elif args.stress_cmd == "drawdown":
         print("Drawdown simulation executed via standard run for now.")
-
     elif args.stress_cmd == "risk-of-ruin":
         print("Risk-of-Ruin executed via standard run for now.")
-
     elif args.stress_cmd == "config":
-        print("Stress Testing Config:")
-        print(f"Enabled: {settings.ENABLE_STRESS_TESTING}")
-        print(f"Monte Carlo Simulations: {settings.STRESS_MONTE_CARLO_SIMULATIONS}")
-        print(f"Shock Scenarios Enabled: {settings.STRESS_SHOCK_SCENARIOS_ENABLED}")
-        print(f"Ruin Threshold: {settings.STRESS_RUIN_THRESHOLD_PCT}%")
+        _handle_config(args, settings)
 
 def add_stress_parsers(subparsers):
     parser_stress = subparsers.add_parser("stress", help="Stress Test & Monte Carlo Simulation")
