@@ -1,4 +1,5 @@
-from bist_signal_bot.config.env_loader import env_file_status, load_env_file
+from pathlib import Path
+from bist_signal_bot.config.env_loader import env_file_status, load_env_file, get_default_env_file
 
 
 def test_load_env_file_not_found(tmp_path):
@@ -13,3 +14,10 @@ def test_env_file_status_not_found(tmp_path):
     status = env_file_status(tmp_path / ".env.nonexistent")
     assert status["exists"] is False
     assert status["loaded_possible"] is False
+
+
+def test_get_default_env_file():
+    path = get_default_env_file()
+    assert isinstance(path, Path)
+    assert path.name == ".env"
+    assert path.parent.name in ("bist-signal-bot", "workspace", "bist_signal_bot", "app") or path.parent.exists()
