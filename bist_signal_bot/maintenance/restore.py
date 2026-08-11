@@ -1,4 +1,3 @@
-import json
 import zipfile
 import tarfile
 import shutil
@@ -9,7 +8,6 @@ from bist_signal_bot.maintenance.models import (
     RestoreResult,
     MaintenanceStatus,
     BackupManifest,
-    BackupFormat,
     BackupRequest,
     BackupScope
 )
@@ -140,6 +138,7 @@ class RestoreManager:
         blocked = 0
         errors = []
 
+        valid_members = []
         with zipfile.ZipFile(backup_path, 'r') as zf:
              for name in zf.namelist():
                   path = Path(name)
@@ -158,10 +157,12 @@ class RestoreManager:
                        skipped += 1
                        continue
 
-                  target_path.parent.mkdir(parents=True, exist_ok=True)
-                  with zf.open(name) as source, open(target_path, "wb") as target:
-                       shutil.copyfileobj(source, target)
+                  valid_members.append(name)
                   restored += 1
+
+             if valid_members:
+                  zf.extractall(path=target_dir, members=valid_members)
+
         return restored, skipped, blocked, errors
 
     def restore_tar_gz(self, backup_path: Path, target_dir: Path, request: RestoreRequest):
@@ -170,6 +171,7 @@ class RestoreManager:
         blocked = 0
         errors = []
 
+        valid_members = []
         with tarfile.open(backup_path, 'r:gz') as tar:
              for member in tar.getmembers():
                   if not member.isfile():
@@ -191,12 +193,15 @@ class RestoreManager:
                        skipped += 1
                        continue
 
-                  target_path.parent.mkdir(parents=True, exist_ok=True)
-                  f = tar.extractfile(member)
-                  if f:
-                      with open(target_path, "wb") as target:
-                           shutil.copyfileobj(f, target)
-                      restored += 1
+                  valid_members.append(member)
+                  restored += 1
+
+             if valid_members:
+                  if hasattr(tarfile, 'data_filter'):
+                       tar.extractall(path=target_dir, members=valid_members, filter='data')
+                  else:
+                       tar.extractall(path=target_dir, members=valid_members)
+
         return restored, skipped, blocked, errors
 
     def restore_directory_copy(self, backup_path: Path, target_dir: Path, request: RestoreRequest):
