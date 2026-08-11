@@ -2,7 +2,7 @@ import json
 import logging
 from pathlib import Path
 from typing import Any
-from datetime import datetime, timezone
+from datetime import datetime
 
 from bist_signal_bot.config.settings import Settings
 from bist_signal_bot.adaptive.models import AdaptiveRecommendation, AdaptivePolicy
