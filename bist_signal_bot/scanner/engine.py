@@ -1,5 +1,4 @@
 
-from bist_signal_bot.app.context_fusion_app import create_context_fusion_engine
 import logging
 import time
 from datetime import datetime
@@ -479,7 +478,8 @@ class SignalScannerEngine:
             min_confidence=kwargs.get("min_confidence", self.settings.SCANNER_MIN_CONFIDENCE),
             min_final_score=kwargs.get("min_final_score", self.settings.SCANNER_MIN_FINAL_SCORE)
         )
-        if "symbols" in kwargs: req.symbols = kwargs["symbols"]
+        if "symbols" in kwargs:
+            req.symbols = kwargs["symbols"]
         if "watchlist_name" in kwargs:
             req.watchlist_name = kwargs["watchlist_name"]
             req.universe_mode = ScanUniverseMode.WATCHLIST
@@ -488,7 +488,8 @@ class SignalScannerEngine:
             req.universe_mode = ScanUniverseMode.GROUP
         if "all" in kwargs and kwargs["all"]:
             req.universe_mode = ScanUniverseMode.ALL
-        if "params" in kwargs: req.params = kwargs["params"]
+        if "params" in kwargs:
+            req.params = kwargs["params"]
         return req
 
     def scan_symbols(self, symbols: List[str], strategy_name: str, **kwargs) -> ScanReport:
