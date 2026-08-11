@@ -62,12 +62,16 @@ class PortfolioLedgerStore:
             for line in f:
                 if not line.strip(): continue
                 data = json.loads(line)
-                port = ResearchPortfolio(**data)
-                latest_states[port.portfolio_id] = port
+                latest_states[data["portfolio_id"]] = data
 
-        results = list(latest_states.values())
-        if status:
-            results = [r for r in results if r.status == status]
+        results = []
+        for data in latest_states.values():
+            if status is None:
+                results.append(ResearchPortfolio(**data))
+            else:
+                target_status = status.value if hasattr(status, "value") else status
+                if data.get("status") == target_status:
+                    results.append(ResearchPortfolio(**data))
 
         # sort by updated descending
         results.sort(key=lambda x: x.updated_at, reverse=True)
