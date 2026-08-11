@@ -5,7 +5,7 @@ from typing import Any
 
 from bist_signal_bot.config.settings import Settings
 from bist_signal_bot.regime.models import (
-    RegimeConfig, UniverseRegimeReport, RegimeClassification, MarketRegime, TrendRegime, VolatilityRegime
+    RegimeConfig, UniverseRegimeReport, RegimeClassification, MarketRegime, VolatilityRegime
 )
 from bist_signal_bot.regime.engine import RegimeEngine
 
