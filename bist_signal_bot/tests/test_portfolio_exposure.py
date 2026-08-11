@@ -1,7 +1,7 @@
 from unittest.mock import MagicMock
 import pytest
 from bist_signal_bot.portfolio.exposure import ExposureAnalyzer
-from bist_signal_bot.portfolio.models import PortfolioState, PortfolioHolding, PortfolioPositionSide
+from bist_signal_bot.portfolio.models import PortfolioState, PortfolioHolding, PortfolioPositionSide, AllocationResult, AllocationResultItem
 from bist_signal_bot.config.settings import Settings
 
 def test_exposure_analyzer_calculate():
@@ -35,3 +35,72 @@ def test_exposure_analyzer_limits():
     ok, reasons, issues = analyzer.check_exposure_limits(report, settings)
     assert not ok
     assert len(reasons) > 0
+
+
+def test_simulate_post_allocation_exposure():
+    from datetime import datetime
+    h1 = PortfolioHolding(symbol="EXISTING", side=PortfolioPositionSide.LONG, quantity=10, avg_price=10.0, market_value=100.0, weight_pct=0.1, sector="Tech")
+    state = PortfolioState(equity=1000.0, cash=900.0, holdings=[h1])
+
+    alloc_item_new = AllocationResultItem(
+        symbol="NEW",
+        approved=True,
+        original_notional=100.0,
+        allocated_notional=100.0,
+        allocated_weight_pct=0.1,
+        quantity=5.0,
+        reduction_pct=0.0,
+        reasons=[],
+        metadata={}
+    )
+    alloc_item_existing = AllocationResultItem(
+        symbol="EXISTING",
+        approved=True,
+        original_notional=50.0,
+        allocated_notional=50.0,
+        allocated_weight_pct=0.05,
+        quantity=5.0,
+        reduction_pct=0.0,
+        reasons=[],
+        metadata={}
+    )
+    alloc_item_skip = AllocationResultItem(
+        symbol="SKIP",
+        approved=False,
+        original_notional=100.0,
+        allocated_notional=100.0,
+        allocated_weight_pct=0.1,
+        quantity=5.0,
+        reduction_pct=0.0,
+        reasons=[],
+        metadata={}
+    )
+    alloc_item_zero = AllocationResultItem(
+        symbol="ZERO",
+        approved=True,
+        original_notional=0.0,
+        allocated_notional=0.0,
+        allocated_weight_pct=0.0,
+        quantity=0.0,
+        reduction_pct=0.0,
+        reasons=[],
+        metadata={}
+    )
+
+    allocation = AllocationResult(
+        method="EQUAL_WEIGHT",
+        items=[alloc_item_new, alloc_item_existing, alloc_item_skip, alloc_item_zero],
+        total_allocated_notional=150.0,
+        total_allocated_pct=0.15,
+        rejected_symbols=["SKIP"],
+        reduced_symbols=[],
+        issues=[],
+        generated_at=datetime.utcnow()
+    )
+
+    analyzer = ExposureAnalyzer()
+    report = analyzer.simulate_post_allocation_exposure(state, allocation)
+
+    assert report.open_position_count == 2
+    assert report.gross_exposure_pct == 250.0 / 1000.0
+    assert report.cash_pct == (900.0 - 150.0) / 1000.0
