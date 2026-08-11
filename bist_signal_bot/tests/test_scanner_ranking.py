@@ -50,6 +50,8 @@ def test_scan_ranker_none_at_bottom():
 
     assert rankings[0].symbol == "B"
     assert rankings[1].symbol == "A"
+    assert rankings[1].rank_score == 0.0
+    assert rankings[1].rank == 2
 
 def test_ranking_to_dataframe_empty():
     # Empty test
@@ -204,3 +206,38 @@ def test_extract_feature_score():
     res_str = _make_result("A", 60)
     res_str.signal.metadata = {"features": {"f1": "15.5"}}
     assert ranker.extract_feature_score(res_str, ["f1"]) == 15.5
+
+def test_scan_ranker_bottom_results():
+    sig1 = SignalCandidate(
+        strategy_name="test", symbol="A", direction=SignalDirection.LONG,
+        score=10.0, confidence=50.0, strength=SignalStrength.STRONG
+    )
+    sig2 = SignalCandidate(
+        strategy_name="test", symbol="B", direction=SignalDirection.LONG,
+        score=20.0, confidence=50.0, strength=SignalStrength.STRONG
+    )
+    sig3 = SignalCandidate(
+        strategy_name="test", symbol="C", direction=SignalDirection.LONG,
+        score=30.0, confidence=50.0, strength=SignalStrength.STRONG
+    )
+
+    r1 = SymbolScanResult(symbol="A", status=ScanCandidateStatus.REJECTED, signal=sig1)
+    r2 = SymbolScanResult(symbol="B", status=ScanCandidateStatus.PASSED, signal=sig2)
+    r3 = SymbolScanResult(symbol="C", status=ScanCandidateStatus.ERROR, signal=sig3)
+
+    ranker = ScanRanker()
+    rankings = ranker.rank([r1, r2, r3], sort_key=ScanSortKey.SIGNAL_SCORE)
+
+    # Valid results should be on top
+    assert rankings[0].symbol == "B"
+    assert rankings[0].rank_score == 20.0
+    assert rankings[0].rank == 1
+
+    # Rejected results should be at the bottom with score None and rank None (which translates to 0.0 and 9999 in ranking_item)
+    assert rankings[1].symbol == "A"
+    assert rankings[1].rank_score == 0.0
+    assert rankings[1].rank == 9999
+
+    assert rankings[2].symbol == "C"
+    assert rankings[2].rank_score == 0.0
+    assert rankings[2].rank == 9999
