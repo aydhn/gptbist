@@ -204,3 +204,15 @@ def test_extract_feature_score():
     res_str = _make_result("A", 60)
     res_str.signal.metadata = {"features": {"f1": "15.5"}}
     assert ranker.extract_feature_score(res_str, ["f1"]) == 15.5
+
+def test_calculate_rank_score_string_key():
+    res = _make_result_with_metadata("A", 60, {}, final_score=75.0)
+    ranker = ScanRanker()
+    # Test resolving string enum value to actual Enum
+    assert ranker.calculate_rank_score(res, "FINAL_SCORE") == 75.0
+
+def test_calculate_rank_score_invalid_key():
+    res = _make_result_with_metadata("A", 60, {})
+    ranker = ScanRanker()
+    # Test fallback handler returning 0.0
+    assert ranker.calculate_rank_score(res, "INVALID_KEY") == 0.0
