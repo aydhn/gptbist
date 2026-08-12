@@ -1,4 +1,4 @@
-from bist_signal_bot.portfolio.holdings import build_portfolio_state, update_holding_prices
+from bist_signal_bot.portfolio.holdings import build_portfolio_state, update_holding_prices, holding_from_dict
 from bist_signal_bot.portfolio.models import PortfolioHolding, PortfolioPositionSide
 
 def test_build_portfolio_state():
@@ -16,3 +16,27 @@ def test_update_holding_prices():
     assert new_state.holdings[0].market_value == 120.0
     assert new_state.holdings[0].unrealized_pnl == 20.0
     assert new_state.equity == 120.0
+
+def test_holding_from_dict():
+    data = {
+        "symbol": "ASELS",
+        "side": PortfolioPositionSide.LONG,
+        "quantity": 10.0,
+        "avg_price": 10.0,
+        "market_value": 100.0,
+        "weight_pct": 0.1,
+        "sector": "Defense",
+        "metadata": {"test": True}
+    }
+
+    holding = holding_from_dict(data)
+
+    assert isinstance(holding, PortfolioHolding)
+    assert holding.symbol == "ASELS"
+    assert holding.side == PortfolioPositionSide.LONG
+    assert holding.quantity == 10.0
+    assert holding.avg_price == 10.0
+    assert holding.market_value == 100.0
+    assert holding.weight_pct == 0.1
+    assert holding.sector == "Defense"
+    assert holding.metadata == {"test": True}
