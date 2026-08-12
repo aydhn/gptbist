@@ -307,3 +307,18 @@ def test_save_report_exceptions(tmp_path):
     with patch.object(store, "save_markdown", side_effect=Exception("Markdown error")):
         paths = store.save_report(report, formats=["markdown"])
         assert "markdown" not in paths
+
+
+def test_get_scans_dir_fallback():
+    from unittest.mock import patch
+    from pathlib import Path
+    settings = Settings()
+
+    with patch("bist_signal_bot.scanner.storage.get_scans_dir") as mock_get_scans_dir:
+        mock_get_scans_dir.return_value = Path("/tmp/mock_scans_dir")
+        store = ScanReportStore(settings, base_dir=None)
+
+        scans_dir = store.get_scans_dir()
+
+        assert scans_dir == Path("/tmp/mock_scans_dir")
+        mock_get_scans_dir.assert_called_once_with(settings)
