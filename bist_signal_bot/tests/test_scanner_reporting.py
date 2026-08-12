@@ -70,6 +70,7 @@ def test_scan_results_to_dataframe():
         elapsed_seconds=0.5
     )
 
+    # Test valid results
     df = scan_results_to_dataframe([res_full, res_empty])
     assert isinstance(df, pd.DataFrame)
     assert len(df) == 2
@@ -97,6 +98,11 @@ def test_scan_results_to_dataframe():
     assert row_empty["reasons"] == ""
     assert row_empty["elapsed_s"] == 0.5
     assert pd.isna(row_empty["portfolio_status"]) or row_empty["portfolio_status"] is None
+
+    # Test empty list
+    df_empty = scan_results_to_dataframe([])
+    assert isinstance(df_empty, pd.DataFrame)
+    assert len(df_empty) == 0
 
 def test_scan_rankings_to_dataframe():
     item1 = ScanRankingItem(symbol="AAPL", rank_score=85.5, rank=1, status="PASSED")
