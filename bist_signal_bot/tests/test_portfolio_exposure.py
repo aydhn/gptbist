@@ -1,8 +1,6 @@
 from unittest.mock import MagicMock
-import pytest
 from bist_signal_bot.portfolio.exposure import ExposureAnalyzer
 from bist_signal_bot.portfolio.models import PortfolioState, PortfolioHolding, PortfolioPositionSide, AllocationResult, AllocationResultItem
-from bist_signal_bot.config.settings import Settings
 
 def test_exposure_analyzer_calculate():
     h1 = PortfolioHolding(symbol="A", side=PortfolioPositionSide.LONG, quantity=10, avg_price=10.0, market_value=100.0, weight_pct=0.1, sector="Tech")
@@ -104,3 +102,19 @@ def test_simulate_post_allocation_exposure():
     assert report.open_position_count == 2
     assert report.gross_exposure_pct == 250.0 / 1000.0
     assert report.cash_pct == (900.0 - 150.0) / 1000.0
+
+
+def test_exposure_analyzer_calculate_zero_equity():
+    import datetime
+    state = PortfolioState.model_construct(
+        equity=0.0,
+        cash=0.0,
+        holdings=[],
+        timestamp=datetime.datetime.now(datetime.UTC),
+        daily_signal_count=0
+    )
+    analyzer = ExposureAnalyzer()
+    report = analyzer.calculate_exposure(state)
+    assert report.gross_exposure_pct == 0.0
+    assert report.cash_pct == 1.0
+    assert "Portfolio equity is zero or negative" in report.issues
