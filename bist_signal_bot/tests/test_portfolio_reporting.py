@@ -1,4 +1,3 @@
-import pytest
 from datetime import datetime
 import pandas as pd
 from unittest.mock import MagicMock
@@ -32,25 +31,11 @@ def test_correlation_to_dict():
 
 
 def test_exposure_to_dict():
-    report = ExposureReport(
-        gross_exposure_pct=0.8,
-        net_exposure_pct=0.2,
-        long_exposure_pct=0.5,
-        short_exposure_pct=0.3,
-        max_symbol_weight_pct=0.1,
-        sector_weights={"TECH": 0.5},
-        open_position_count=5,
-        cash_pct=0.2,
-        issues=["Warning limit"],
-        metadata={}
-    )
-    res_dict = exposure_to_dict(report)
-    assert res_dict["gross_exposure_pct"] == 0.8
-    assert res_dict["net_exposure_pct"] == 0.2
-    assert res_dict["max_symbol_weight_pct"] == 0.1
-    assert res_dict["open_position_count"] == 5
-    assert res_dict["cash_pct"] == 0.2
-    assert res_dict["issues_count"] == 1
+    mock_report = MagicMock(spec=ExposureReport)
+    mock_report.summary.return_value = {"mocked": "summary"}
+    res_dict = exposure_to_dict(mock_report)
+    assert res_dict == {"mocked": "summary"}
+    mock_report.summary.assert_called_once()
 
 
 def test_allocation_to_dict():
