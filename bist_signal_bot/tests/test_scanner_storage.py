@@ -352,3 +352,23 @@ def test_create_scan_output_dir_existing_dir(tmp_path):
     assert output_dir == expected_path
     assert os.path.exists(output_dir)
     assert os.path.isdir(output_dir)
+
+def test_create_scan_output_dir_empty_strategy(tmp_path):
+    settings = Settings()
+    store = ScanReportStore(settings, base_dir=tmp_path)
+    req = ScanRequest(
+        strategy_name="",
+        universe_mode=ScanUniverseMode.SYMBOLS,
+        symbols=["A"]
+    )
+    report = ScanReport(request=req)
+
+    dt_str = report.started_at.strftime("%Y%m%d")
+    expected_scan_id = report.started_at.strftime("%H%M%S_")
+
+    output_dir = store.create_scan_output_dir(report)
+
+    expected_path = tmp_path / dt_str / expected_scan_id
+    assert output_dir == expected_path
+    assert os.path.exists(output_dir)
+    assert os.path.isdir(output_dir)
