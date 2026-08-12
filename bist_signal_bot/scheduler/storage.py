@@ -2,7 +2,6 @@ import json
 from pathlib import Path
 from datetime import datetime
 import logging
-from typing import Optional
 
 from bist_signal_bot.scheduler.models import (
     ScheduledJob,
@@ -15,7 +14,6 @@ from bist_signal_bot.scheduler.models import (
     ScheduleTriggerType,
     MarketSessionType,
 )
-from bist_signal_bot.storage.paths import get_scheduler_dir
 
 logger = logging.getLogger(__name__)
 
@@ -170,11 +168,19 @@ class SchedulerStore:
             return []
 
         runs = []
-        # Load all, filter, sort (descending), limit - inefficient for huge files but ok for local MVP
+        # Load all, filter, sort (descending), limit - optimized to avoid excessive JSON parsing
+        search_str = f'"job_id": "{job_id}"' if job_id else None
+
         with open(self.runs_file, "r", encoding="utf-8") as f:
-            lines = [line for line in f if line.strip()]
+            lines = f.readlines()
 
         for line in reversed(lines):  # Read backwards
+            if not line.strip():
+                continue
+
+            if search_str and search_str not in line:
+                continue
+
             try:
                 d = json.loads(line)
                 if job_id and d.get("job_id") != job_id:
