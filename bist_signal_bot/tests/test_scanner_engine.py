@@ -381,3 +381,43 @@ def test_scan_symbol_strategy_error():
     assert len(res.issues) == 1
     assert res.issues[0].stage == "STRATEGY"
     assert "error" in res.issues[0].message
+
+
+def test_scan_symbol_with_trade_risk():
+    class MockRiskEngineWithDecision:
+        def build_default_context(self):
+            return "mock_context"
+
+        def evaluate_signal(self, signal, context, data):
+            from bist_signal_bot.risk.models import RiskDecision, RiskDecisionStatus, RiskFilterResult
+            from bist_signal_bot.signals.models import SignalDirection
+            return RiskDecision(
+                signal=signal,
+                status=RiskDecisionStatus.REJECTED,
+                side=SignalDirection.LONG,
+                approved=False,
+                filter_result=RiskFilterResult(passed=False, status=RiskDecisionStatus.REJECTED, warnings=["Mocked risk rejection"])
+            )
+
+    risk_engine = MockRiskEngineWithDecision()
+    engine = SignalScannerEngine(deps=SignalScannerDependencies(
+        data_service=MockDataService(),
+        strategy_engine=MockStrategyEngine(),
+        risk_engine=risk_engine,
+        portfolio_risk_engine=MockPortfolioRiskEngine()
+    ))
+
+    req = ScanRequest(
+        strategy_name="t",
+        universe_mode=ScanUniverseMode.SYMBOLS,
+        symbols=["A"],
+        use_trade_risk=True
+    )
+
+    res = engine.scan_symbol("A", req)
+
+    # Assertions
+    assert res.status == ScanCandidateStatus.PASSED
+    assert res.risk_decision is not None
+    assert res.risk_decision.status == RiskDecisionStatus.REJECTED
+    assert "Mocked risk rejection" in res.risk_decision.filter_result.warnings
