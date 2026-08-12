@@ -1,4 +1,3 @@
-import json
 from bist_signal_bot.plugins.models import (
     PluginManifest, PluginValidationResult, PluginTestResult, PluginLoadResult,
     PluginGovernanceAssessment, PluginRegistryReport

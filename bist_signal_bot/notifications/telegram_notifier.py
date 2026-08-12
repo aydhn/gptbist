@@ -1,20 +1,20 @@
 from datetime import UTC, datetime
-from typing import Any
 
+from bist_signal_bot.notifications.base import BaseNotifier
 from bist_signal_bot.config.settings import Settings
 from bist_signal_bot.core.logging_setup import get_logger
 from bist_signal_bot.notifications.formatter import NotificationFormatter
 from bist_signal_bot.notifications.models import (
     NotificationLevel,
     NotificationMessage,
-    NotificationType,
     TelegramSendResult,
 )
 from bist_signal_bot.notifications.rate_limiter import NotificationRateLimiter
 
 logger = get_logger("bist_signal_bot.telegram_notifier")
 
-class TelegramNotifier:
+
+class TelegramNotifier(BaseNotifier):
     def __init__(
         self,
         settings: Settings,
@@ -127,42 +127,6 @@ class TelegramNotifier:
             dry_run=self.dry_run
         )
 
-    def send_text(
-        self,
-        title: str,
-        body: str,
-        level: NotificationLevel = NotificationLevel.INFO,
-        notification_type: NotificationType = NotificationType.SYSTEM
-    ) -> TelegramSendResult:
-        msg = NotificationMessage(
-            title=title,
-            body=body,
-            level=level,
-            notification_type=notification_type
-        )
-        return self.send(msg)
-
-    def send_healthcheck(self, summary: dict[str, Any]) -> TelegramSendResult:
-        body = self.formatter.format_healthcheck(summary)
-        msg = NotificationMessage(
-            title="Healthcheck Raporu",
-            body=body,
-            level=NotificationLevel.INFO,
-            notification_type=NotificationType.HEALTHCHECK
-        )
-        return self.send(msg)
-
-    def send_error(self, error: Exception, context: dict[str, Any] | None = None) -> TelegramSendResult:
-        body = self.formatter.format_error(error, context)
-        dedup_key = type(error).__name__
-        msg = NotificationMessage(
-            title="Sistem Hatası",
-            body=body,
-            level=NotificationLevel.ERROR,
-            notification_type=NotificationType.ERROR,
-            dedup_key=dedup_key
-        )
-        return self.send(msg)
 
     @classmethod
     def from_settings(cls, settings: Settings) -> "TelegramNotifier":
