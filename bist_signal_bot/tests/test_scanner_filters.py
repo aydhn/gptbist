@@ -1,4 +1,3 @@
-import pytest
 from unittest.mock import patch
 from bist_signal_bot.scanner.models import SymbolScanResult, ScanCandidateStatus, ScanRequest, ScanUniverseMode
 from bist_signal_bot.scanner.filters import ScanFilterEngine
@@ -220,3 +219,14 @@ def test_filter_results_calls_filter_symbol_result():
         assert mock_filter.call_count == 2
         mock_filter.assert_any_call(res1, req)
         mock_filter.assert_any_call(res2, req)
+
+def test_filter_results_basic_mock():
+    # Simple test for filter_results using mock
+    engine = ScanFilterEngine()
+    req = ScanRequest(strategy_name="t", universe_mode=ScanUniverseMode.ALL)
+    res = SymbolScanResult(symbol="A", status=ScanCandidateStatus.PASSED)
+    with patch.object(engine, 'filter_symbol_result', return_value=res) as mock_filter:
+        results = engine.filter_results([res], req)
+        assert len(results) == 1
+        assert results[0] == res
+        mock_filter.assert_called_once_with(res, req)
