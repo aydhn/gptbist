@@ -49,6 +49,69 @@ class MockPortfolioRiskEngine:
         from bist_signal_bot.portfolio.models import PortfolioRiskDecision, PortfolioDecisionStatus
         return PortfolioRiskDecision(portfolio_state=state, input_signals=signals, trade_risk_decisions=[], approved_count=1, rejected_count=0, reduced_count=0, reject_reasons=[], warnings=[], status=PortfolioDecisionStatus.APPROVED, allocations=[])
 
+def test_resolve_symbols_modes():
+    from collections import namedtuple
+    Watchlist = namedtuple('Watchlist', ['name', 'symbols'])
+    engine = SignalScannerEngine(deps=SignalScannerDependencies(data_service=MockDataService(), strategy_engine=MockStrategyEngine()))
+
+    # Custom mode
+    req = ScanRequest(strategy_name="t", universe_mode=ScanUniverseMode.CUSTOM, symbols=["X", "Y"])
+    assert engine.resolve_symbols(req) == ["X", "Y"]
+
+    # Watchlist mode (success)
+    req = ScanRequest(strategy_name="t", universe_mode=ScanUniverseMode.WATCHLIST, watchlist_name="my_watch")
+
+    # engine.universe is a SymbolUniverse instance. We can monkeypatch its get_watchlist method
+    engine.universe.get_watchlist = lambda x: Watchlist(name=x, symbols=["W1", "W2"]) if x == "my_watch" else None
+    assert engine.resolve_symbols(req) == ["W1", "W2"]
+
+    # Watchlist mode (missing name)
+    req = ScanRequest(strategy_name="t", universe_mode=ScanUniverseMode.WATCHLIST)
+    from bist_signal_bot.core.exceptions import ScannerValidationError
+    import pytest
+    with pytest.raises(ScannerValidationError, match="Watchlist name is required"):
+        engine.resolve_symbols(req)
+
+    # Watchlist mode (not found)
+    req = ScanRequest(strategy_name="t", universe_mode=ScanUniverseMode.WATCHLIST, watchlist_name="invalid")
+    with pytest.raises(ScannerValidationError, match="Watchlist not found"):
+        engine.resolve_symbols(req)
+
+    # Group mode (success)
+    req = ScanRequest(strategy_name="t", universe_mode=ScanUniverseMode.GROUP, group_name="my_group")
+
+    class FakeSymbol:
+        def __init__(self, sym, grp):
+            self.symbol = sym
+            self.group = grp
+
+    engine.universe.list_symbols = lambda active_only: [
+        FakeSymbol("G1", "my_group"),
+        FakeSymbol("G2", "other_group"),
+        FakeSymbol("G3", "my_group"),
+    ]
+    assert engine.resolve_symbols(req) == ["G1", "G3"]
+
+    # Group mode (missing name)
+    req = ScanRequest(strategy_name="t", universe_mode=ScanUniverseMode.GROUP)
+    with pytest.raises(ScannerValidationError, match="Group name is required"):
+        engine.resolve_symbols(req)
+
+    # All mode
+    req = ScanRequest(strategy_name="t", universe_mode=ScanUniverseMode.ALL)
+    assert engine.resolve_symbols(req) == ["G1", "G2", "G3"]
+
+    # Empty result
+    req = ScanRequest(strategy_name="t", universe_mode=ScanUniverseMode.SYMBOLS, symbols=[])
+    with pytest.raises(ScannerValidationError, match="Resolved symbol list is empty"):
+        engine.resolve_symbols(req)
+
+    # Max symbols limit
+    engine.settings.SCANNER_MAX_SYMBOLS_PER_RUN = 2
+    req = ScanRequest(strategy_name="t", universe_mode=ScanUniverseMode.SYMBOLS, symbols=["A", "B", "C"])
+    symbols = engine.resolve_symbols(req)
+    assert symbols == ["A", "B"]
+
 def test_resolve_symbols():
     engine = SignalScannerEngine(deps=SignalScannerDependencies(data_service=MockDataService(), strategy_engine=MockStrategyEngine()))
     req = ScanRequest(strategy_name="t", universe_mode=ScanUniverseMode.SYMBOLS, symbols=["A", "B", "A"])
