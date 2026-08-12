@@ -299,3 +299,22 @@ def test_scan_symbol_data_fetch_exception():
     assert len(res.issues) == 1
     assert res.issues[0].stage == "EXECUTION"
     assert "Simulated data fetch exception" in res.issues[0].message
+
+def test_scan_symbol_strategy_error():
+    engine = SignalScannerEngine(deps=SignalScannerDependencies(
+        data_service=MockDataService(),
+        strategy_engine=MockStrategyEngine(),
+        risk_engine=MockRiskEngine(),
+        portfolio_risk_engine=MockPortfolioRiskEngine(),
+    ))
+    req = ScanRequest(
+        strategy_name="t",
+        universe_mode=ScanUniverseMode.SYMBOLS,
+        symbols=["ERRORSTRAT"]
+    )
+    res = engine.scan_symbol("ERRORSTRAT", req)
+
+    assert res.status == ScanCandidateStatus.ERROR
+    assert len(res.issues) == 1
+    assert res.issues[0].stage == "STRATEGY"
+    assert "error" in res.issues[0].message
