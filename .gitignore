@@ -29,3 +29,8 @@ htmlcov/
 /reports/
 logs/
 *.log
+
+test_locks_bench/
+test_locks_bench2/
+test_locks_bench3/
+test_locks_bench4/
