@@ -230,3 +230,19 @@ def test_filter_results_basic_mock():
         assert len(results) == 1
         assert results[0] == res
         mock_filter.assert_called_once_with(res, req)
+
+
+def test_filter_results_preserves_order():
+    engine = ScanFilterEngine()
+    req = ScanRequest(strategy_name="t", universe_mode=ScanUniverseMode.ALL)
+    res1 = SymbolScanResult(symbol="A", status=ScanCandidateStatus.ERROR)
+    res2 = SymbolScanResult(symbol="B", status=ScanCandidateStatus.ERROR)
+    res3 = SymbolScanResult(symbol="C", status=ScanCandidateStatus.ERROR)
+
+    with patch.object(engine, 'filter_symbol_result', side_effect=lambda r, req: r):
+        out = engine.filter_results([res1, res2, res3], req)
+
+        assert len(out) == 3
+        assert out[0].symbol == "A"
+        assert out[1].symbol == "B"
+        assert out[2].symbol == "C"
