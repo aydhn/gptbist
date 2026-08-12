@@ -1,10 +1,10 @@
 import pytest
-from datetime import datetime, date, timedelta, timezone
+from datetime import datetime, date, timezone
 from unittest.mock import Mock, patch
 
 from bist_signal_bot.calendar.session import BistMarketSessionService
 from bist_signal_bot.calendar.market_calendar import BistMarketCalendar
-from bist_signal_bot.calendar.models import MarketDayType, MarketSessionType, MarketSessionStatus
+from bist_signal_bot.calendar.models import MarketDayType, MarketSessionType
 
 @pytest.fixture
 def mock_calendar():
@@ -397,3 +397,24 @@ def test_from_settings_defaults(mock_calendar_class):
     assert service.signal_after_close_minutes == 15
     assert service.intraday_signal_enabled is False
     assert service.daily_signal_enabled is True
+
+@patch("bist_signal_bot.calendar.session.ensure_istanbul_timezone")
+def test_is_market_open_weekend_or_holiday(mock_ensure_tz, session_service, mock_calendar):
+    now = datetime(2023, 10, 1, 14, 0, tzinfo=timezone.utc)
+    mock_ensure_tz.return_value = now
+
+    mock_calendar.is_trading_day.return_value = False
+    mock_calendar.market_open_datetime.return_value = None
+    mock_calendar.market_close_datetime.return_value = None
+
+    assert session_service.is_market_open(now) is False
+
+@patch("bist_signal_bot.calendar.session.ensure_istanbul_timezone")
+def test_is_market_open_post_market(mock_ensure_tz, session_service, mock_calendar):
+    now = datetime(2023, 10, 2, 19, 0, tzinfo=timezone.utc)
+    mock_ensure_tz.return_value = now
+
+    mock_calendar.market_open_datetime.return_value = datetime(2023, 10, 2, 10, 0, tzinfo=timezone.utc)
+    mock_calendar.market_close_datetime.return_value = datetime(2023, 10, 2, 18, 0, tzinfo=timezone.utc)
+
+    assert session_service.is_market_open(now) is False
