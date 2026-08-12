@@ -1,5 +1,0 @@
-🎯 **What:** Added tests for `create_scan_output_dir` edge cases in `bist_signal_bot/scanner/storage.py`.
-
-📊 **Coverage:** Specifically tests scenarios with a short strategy name (where truncation shouldn't fail) and scenarios where the directory already exists (verifying `exist_ok=True` works seamlessly).
-
-✨ **Result:** Enhanced the reliability and coverage of `create_scan_output_dir` in `ScanReportStore`.

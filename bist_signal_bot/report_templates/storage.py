@@ -57,18 +57,33 @@ class ReportTemplateStore:
     def load_composed_reports(self, limit: int = 1000) -> List[ComposedReport]:
         if not self.composed_file.exists():
             return []
-        reports = []
+
         with open(self.composed_file, "r") as f:
-            for line in f:
-                if line.strip():
-                    reports.append(ComposedReport(**json.loads(line)))
-        return reports[-limit:]
+            lines = f.readlines()
+
+        reports = []
+        for line in reversed(lines):
+            if line.strip():
+                reports.append(ComposedReport(**json.loads(line)))
+                if len(reports) >= limit:
+                    break
+
+        return list(reversed(reports))
 
     def load_latest_composed_report(self, kind: Optional[ReportTemplateKind] = None) -> Optional[ComposedReport]:
-        reports = self.load_composed_reports()
-        if kind:
-            reports = [r for r in reports if r.kind == kind]
-        return reports[-1] if reports else None
+        if not self.composed_file.exists():
+            return None
+
+        with open(self.composed_file, "r") as f:
+            lines = f.readlines()
+
+        for line in reversed(lines):
+            if line.strip():
+                data = json.loads(line)
+                if not kind or data.get("kind") == kind.value:
+                    return ComposedReport(**data)
+
+        return None
 
     def append_export_pack(self, pack: ReportExportPack) -> Path:
         with open(self.exports_file, "a") as f:
