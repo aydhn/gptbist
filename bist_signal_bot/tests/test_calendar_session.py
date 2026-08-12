@@ -418,3 +418,46 @@ def test_is_market_open_post_market(mock_ensure_tz, session_service, mock_calend
     mock_calendar.market_close_datetime.return_value = datetime(2023, 10, 2, 18, 0, tzinfo=timezone.utc)
 
     assert session_service.is_market_open(now) is False
+
+def test_is_market_open_explicit(session_service):
+    """Test that is_market_open delegates to get_status and returns its is_market_open property."""
+    from bist_signal_bot.calendar.models import MarketSessionStatus, MarketSessionType, MarketDayType
+    now = datetime(2023, 10, 2, 14, 0, tzinfo=timezone.utc)
+
+    mock_status_open = MarketSessionStatus(
+        now=now,
+        timezone="Europe/Istanbul",
+        is_trading_day=True,
+        is_market_open=True,
+        day_type=MarketDayType.TRADING_DAY,
+        session_type=MarketSessionType.REGULAR,
+        market_open=datetime(2023, 10, 2, 10, 0, tzinfo=timezone.utc),
+        market_close=datetime(2023, 10, 2, 18, 0, tzinfo=timezone.utc),
+        next_trading_day=date(2023, 10, 3),
+        previous_trading_day=date(2023, 9, 29),
+        message="Market is open."
+    )
+
+    with patch.object(session_service, 'get_status', return_value=mock_status_open) as mock_get_status:
+        result = session_service.is_market_open(now)
+        mock_get_status.assert_called_once_with(now)
+        assert result is True
+
+    mock_status_closed = MarketSessionStatus(
+        now=now,
+        timezone="Europe/Istanbul",
+        is_trading_day=True,
+        is_market_open=False,
+        day_type=MarketDayType.TRADING_DAY,
+        session_type=MarketSessionType.CLOSED,
+        market_open=datetime(2023, 10, 2, 10, 0, tzinfo=timezone.utc),
+        market_close=datetime(2023, 10, 2, 18, 0, tzinfo=timezone.utc),
+        next_trading_day=date(2023, 10, 3),
+        previous_trading_day=date(2023, 9, 29),
+        message="Market is closed."
+    )
+
+    with patch.object(session_service, 'get_status', return_value=mock_status_closed) as mock_get_status_closed:
+        result = session_service.is_market_open(now)
+        mock_get_status_closed.assert_called_once_with(now)
+        assert result is False
