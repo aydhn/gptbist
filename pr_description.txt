@@ -1,4 +1,3 @@
-🎯 **What:** Simplified the summary dictionary construction logic in `cmd_momentum_features` within `bist_signal_bot/cli/commands.py`.
-💡 **Why:** Reduced cyclomatic complexity from D (26) by replacing deep sequential `if` checks with dictionary comprehension and a static keys list. This significantly enhances maintainability and code readability while preserving the same logic.
-✅ **Verification:** Verified by checking `git diff` and executing `poetry run pytest bist_signal_bot/tests/test_cli_momentum_indicators.py` to ensure feature calculation logic tests pass with the new refactored loop format.
-✨ **Result:** A more readable, maintainable control flow avoiding deep branching.
+🎯 **What:** Added missing explicit, concise test for `filter_results` in `bist_signal_bot/tests/test_scanner_filters.py`.
+📊 **Coverage:** The new test `test_filter_results_basic_mock` uses patching to mock `filter_symbol_result` and strictly verifies both the state changes and output lists, confirming basic delegation logic inside `filter_results`.
+✨ **Result:** Enhanced clarity and explicitness of coverage for `filter_results`, fulfilling the goal of having a focused mock-based test in under 20 lines.
