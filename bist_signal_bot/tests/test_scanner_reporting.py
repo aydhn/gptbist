@@ -1,4 +1,3 @@
-import pytest
 import pandas as pd
 from datetime import datetime, timezone
 from bist_signal_bot.scanner.models import (
@@ -22,7 +21,34 @@ def test_markdown_format():
 
 def test_scan_report_to_dict():
     req = ScanRequest(strategy_name="dict_test", universe_mode=ScanUniverseMode.SYMBOLS)
-    report = ScanReport(request=req, total_symbols=5)
+    sig = SignalCandidate(
+        strategy_name="dict_test",
+        symbol="ASELS",
+        direction=SignalDirection.LONG,
+        score=85.0,
+        confidence=80.0,
+        strength=SignalStrength.UNKNOWN
+    )
+    risk = RiskDecision(
+        signal=sig,
+        status=RiskDecisionStatus.APPROVED,
+        side=RiskSide.LONG,
+        approved=True,
+        filter_result=RiskFilterResult(passed=True, status=RiskDecisionStatus.APPROVED),
+        final_score=82.0
+    )
+    res = SymbolScanResult(
+        symbol="ASELS",
+        status=ScanCandidateStatus.PASSED,
+        signal=sig,
+        risk_decision=risk,
+        rank=1,
+        rank_score=85.0,
+        reasons=["Reason 1"],
+        portfolio_status="OK",
+        elapsed_seconds=1.5
+    )
+    report = ScanReport(request=req, total_symbols=5, results=[res])
     data = scan_report_to_dict(report)
     assert isinstance(data, dict)
     assert "request" in data
@@ -30,6 +56,10 @@ def test_scan_report_to_dict():
     assert data["total_symbols"] == 5
     assert "results" in data
     assert isinstance(data["results"], list)
+    assert len(data["results"]) == 1
+    assert data["results"][0]["symbol"] == "ASELS"
+    assert data["results"][0]["status"] == "PASSED"
+
 
 def test_scan_results_to_dataframe():
     sig = SignalCandidate(
