@@ -1,10 +1,10 @@
 import pytest
-from datetime import datetime, date, timedelta, timezone
+from datetime import datetime, date, timezone
 from unittest.mock import Mock, patch
 
 from bist_signal_bot.calendar.session import BistMarketSessionService
 from bist_signal_bot.calendar.market_calendar import BistMarketCalendar
-from bist_signal_bot.calendar.models import MarketDayType, MarketSessionType, MarketSessionStatus
+from bist_signal_bot.calendar.models import MarketDayType, MarketSessionType
 
 @pytest.fixture
 def mock_calendar():
@@ -397,3 +397,35 @@ def test_from_settings_defaults(mock_calendar_class):
     assert service.signal_after_close_minutes == 15
     assert service.intraday_signal_enabled is False
     assert service.daily_signal_enabled is True
+
+@patch("bist_signal_bot.calendar.session.ensure_istanbul_timezone")
+def test_get_status(mock_ensure_tz, session_service, mock_calendar):
+    now = datetime(2023, 10, 2, 14, 0, tzinfo=timezone.utc)
+    mock_ensure_tz.return_value = now
+
+    mock_calendar.get_day_type.return_value = MarketDayType.TRADING_DAY
+    mock_calendar.is_trading_day.return_value = True
+
+    market_open = datetime(2023, 10, 2, 10, 0, tzinfo=timezone.utc)
+    market_close = datetime(2023, 10, 2, 18, 0, tzinfo=timezone.utc)
+    mock_calendar.market_open_datetime.return_value = market_open
+    mock_calendar.market_close_datetime.return_value = market_close
+
+    next_day = datetime(2023, 10, 3, tzinfo=timezone.utc).date()
+    prev_day = datetime(2023, 9, 29, tzinfo=timezone.utc).date()
+    mock_calendar.next_trading_day.return_value = next_day
+    mock_calendar.previous_trading_day.return_value = prev_day
+
+    status = session_service.get_status(now)
+
+    assert status.now == now
+    assert status.timezone == mock_calendar.timezone_name
+    assert status.is_trading_day is True
+    assert status.is_market_open is True
+    assert status.day_type == MarketDayType.TRADING_DAY
+    assert status.session_type == MarketSessionType.REGULAR
+    assert status.market_open == market_open
+    assert status.market_close == market_close
+    assert status.next_trading_day == next_day
+    assert status.previous_trading_day == prev_day
+    assert status.message == "Market is open."
