@@ -79,3 +79,29 @@ def test_scan_report_top_candidates():
     assert len(limited) == 2
     assert limited[0].symbol == "SYM3"
     assert limited[1].symbol == "SYM1"
+
+def test_scan_report_summary_extended():
+    req = ScanRequest(strategy_name="extended_test", universe_mode=ScanUniverseMode.ALL)
+    report = ScanReport(
+        request=req,
+        status=ScanStatus.SUCCESS,
+        total_symbols=100,
+        processed_symbols=90,
+        passed_count=50,
+        filtered_count=20,
+        rejected_count=15,
+        error_count=5,
+        elapsed_seconds=12.5,
+        output_files={"report": "path/to/report.html"}
+    )
+    summ = report.summary()
+    assert summ["status"] == "SUCCESS"
+    assert summ["strategy"] == "extended_test"
+    assert summ["total_symbols"] == 100
+    assert summ["processed"] == 90
+    assert summ["passed"] == 50
+    assert summ["filtered"] == 20
+    assert summ["rejected"] == 15
+    assert summ["error"] == 5
+    assert summ["elapsed_seconds"] == 12.5
+    assert summ["output_files"] == {"report": "path/to/report.html"}
