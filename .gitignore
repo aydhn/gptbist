@@ -29,3 +29,4 @@ htmlcov/
 /reports/
 logs/
 *.log
+benchmark_data/
