@@ -307,3 +307,48 @@ def test_save_report_exceptions(tmp_path):
     with patch.object(store, "save_markdown", side_effect=Exception("Markdown error")):
         paths = store.save_report(report, formats=["markdown"])
         assert "markdown" not in paths
+
+def test_create_scan_output_dir_short_name(tmp_path):
+    settings = Settings()
+    store = ScanReportStore(settings, base_dir=tmp_path)
+    req = ScanRequest(
+        strategy_name="short",
+        universe_mode=ScanUniverseMode.SYMBOLS,
+        symbols=["A"]
+    )
+    report = ScanReport(request=req)
+
+    dt_str = report.started_at.strftime("%Y%m%d")
+    expected_scan_id = report.started_at.strftime("%H%M%S_") + "short"
+
+    output_dir = store.create_scan_output_dir(report)
+
+    expected_path = tmp_path / dt_str / expected_scan_id
+    assert output_dir == expected_path
+    assert os.path.exists(output_dir)
+    assert os.path.isdir(output_dir)
+
+def test_create_scan_output_dir_existing_dir(tmp_path):
+    settings = Settings()
+    store = ScanReportStore(settings, base_dir=tmp_path)
+    req = ScanRequest(
+        strategy_name="existing",
+        universe_mode=ScanUniverseMode.SYMBOLS,
+        symbols=["A"]
+    )
+    report = ScanReport(request=req)
+
+    dt_str = report.started_at.strftime("%Y%m%d")
+    expected_scan_id = report.started_at.strftime("%H%M%S_") + "existing"
+    expected_path = tmp_path / dt_str / expected_scan_id
+
+    # Create the directory beforehand
+    expected_path.mkdir(parents=True, exist_ok=True)
+
+    # Call the method being tested
+    output_dir = store.create_scan_output_dir(report)
+
+    # Verify the path and that no error was raised (exist_ok=True)
+    assert output_dir == expected_path
+    assert os.path.exists(output_dir)
+    assert os.path.isdir(output_dir)
