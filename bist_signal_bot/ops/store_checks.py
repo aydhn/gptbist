@@ -38,19 +38,26 @@ class StoreIntegrityChecker:
         invalid_lines = []
         if not path.exists():
             return invalid_lines
+
         max_lines = getattr(self.settings, "OPS_JSONL_CHECK_MAX_LINES", 100000) if self.settings else 100000
+        loads = json.loads
+        JSONDecodeError = json.JSONDecodeError
+
         try:
             with open(path, "r", encoding="utf-8") as f:
-                for idx, line in enumerate(f):
-                    if idx >= max_lines:
-                        break
-                    line = line.strip()
-                    if not line:
-                        continue
+                from itertools import islice
+
+                for idx, line in enumerate(islice(f, max_lines)):
                     try:
-                        json.loads(line)
-                    except json.JSONDecodeError as e:
-                        invalid_lines.append({"path": str(path), "line_num": idx + 1, "error": str(e)})
+                        loads(line)
+                    except JSONDecodeError:
+                        line = line.strip()
+                        if not line:
+                            continue
+                        try:
+                            loads(line)
+                        except JSONDecodeError as e:
+                            invalid_lines.append({"path": str(path), "line_num": idx + 1, "error": str(e)})
         except Exception as e:
             invalid_lines.append({"path": str(path), "line_num": -1, "error": f"File read error: {e}"})
         return invalid_lines
