@@ -114,6 +114,9 @@ class ScenarioStore:
                     except Exception:
                         pass
 
+            if len(runs) >= limit:
+                break
+
         runs.sort(key=lambda x: x["started_at"] or "", reverse=True)
         return runs[:limit]
 
