@@ -1,7 +1,5 @@
-from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional
-import json
+from typing import Dict, List
 import uuid
 
 import pandas as pd
@@ -85,7 +83,11 @@ class ScenarioFixtureBuilder:
         for fix in fixtures:
             file_name = f"{fix.fixture_type.value.lower()}_{fix.fixture_id}.json"
             file_path = sandbox_dir / file_name
-            with open(file_path, "w") as f:
-                json.dump(fix.model_dump(mode='json'), f, indent=2)
             paths[fix.fixture_id] = file_path
+
+            if file_path.exists():
+                continue
+
+            with open(file_path, "w") as f:
+                f.write(fix.model_dump_json(indent=2))
         return paths
