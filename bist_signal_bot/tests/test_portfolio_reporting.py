@@ -1,4 +1,3 @@
-import pytest
 from datetime import datetime
 import pandas as pd
 from unittest.mock import MagicMock
@@ -192,3 +191,10 @@ def test_format_portfolio_risk_text_no_warnings_no_reject_reasons():
     assert "Gross Exposure After: 70.00%" in text
     assert "Warnings:" not in text
     assert "Disclaimer: Portfolio risk research output only. Not investment advice. No order was sent." in text
+
+def test_correlation_to_dict_mock():
+    mock_result = MagicMock(spec=CorrelationMatrixResult)
+    mock_result.summary.return_value = {"mocked": "correlation_summary"}
+    res_dict = correlation_to_dict(mock_result)
+    assert res_dict == {"mocked": "correlation_summary"}
+    mock_result.summary.assert_called_once()
