@@ -4,7 +4,6 @@ from datetime import datetime
 from pydantic import BaseModel, Field
 
 from bist_signal_bot.signals.models import SignalCandidate
-from bist_signal_bot.core.exceptions import RegimeValidationError
 
 class TrendRegime(Enum):
     STRONG_UPTREND = "STRONG_UPTREND"
