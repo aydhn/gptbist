@@ -21,6 +21,7 @@ class ScanReportStore:
         self.settings = settings
         self.base_dir = base_dir or get_scans_dir(settings)
         self.logger = logging.getLogger(__name__)
+        self._file_cache = {}
 
     def get_scans_dir(self) -> Path:
         return self.base_dir
@@ -127,13 +128,19 @@ class ScanReportStore:
 
         for json_file in self.base_dir.rglob("scan_report.json"):
             try:
-                with open(json_file, "r", encoding="utf-8") as f:
-                    data = json.load(f)
+                mtime = json_file.stat().st_mtime
+                file_path_str = str(json_file)
+                cached = self._file_cache.get(file_path_str)
 
-                # Extract summary info
-                req = data.get("request", {})
-                scans.append(
-                    {
+                if cached and cached["mtime"] == mtime:
+                    scans.append(cached["data"].copy())
+                else:
+                    with open(json_file, "r", encoding="utf-8") as f:
+                        data = json.load(f)
+
+                    # Extract summary info
+                    req = data.get("request", {})
+                    scan_data = {
                         "date": data.get("started_at"),
                         "strategy": req.get("strategy_name"),
                         "mode": req.get("universe_mode"),
@@ -142,7 +149,11 @@ class ScanReportStore:
                         "passed": data.get("passed_count"),
                         "path": str(json_file.parent),
                     }
-                )
+                    scans.append(scan_data.copy())
+                    self._file_cache[file_path_str] = {
+                        "mtime": mtime,
+                        "data": scan_data
+                    }
             except Exception:
                 continue
 
