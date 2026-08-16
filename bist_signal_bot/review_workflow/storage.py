@@ -3,6 +3,7 @@ import logging
 from pathlib import Path
 from typing import Any, List, Optional, Dict
 from datetime import datetime
+import copy
 from bist_signal_bot.review_workflow.models import (
     ReviewCase, ReviewPlaybook, ReviewChecklistItem, DecisionJournalEntry,
     ReviewSignoffRequest, ReviewDataAction, ReviewPattern, ReviewWorkflowReport,
@@ -40,6 +41,32 @@ class ReviewWorkflowStore:
         with open(path, "a") as f:
             f.write(json.dumps(data, default=self._serialize_datetime) + "\n")
 
+    def _load_cached_jsonl(self, path: Path, cache_attr: str, mtime_attr: str, parse_func) -> List[Any]:
+        if not path.exists():
+            return []
+
+        mtime = path.stat().st_mtime
+        cached_data = getattr(self, cache_attr, None)
+        cached_mtime = getattr(self, mtime_attr, 0.0)
+
+        if cached_data is not None and cached_mtime == mtime:
+            return cached_data
+
+        results = []
+        with open(path, "r") as f:
+            for line in f:
+                try:
+                    data = json.loads(line)
+                    res = parse_func(data)
+                    if res is not None:
+                        results.append(res)
+                except Exception as e:
+                    logger.warning(f"Error parsing line: {e}")
+
+        setattr(self, cache_attr, results)
+        setattr(self, mtime_attr, mtime)
+        return results
+
     def append_case(self, case: ReviewCase) -> Path:
         path = self.cases_dir / "review_cases.jsonl"
         self._append_jsonl(path, case.__dict__)
@@ -47,42 +74,36 @@ class ReviewWorkflowStore:
 
     def load_cases(self, status: Optional[ReviewCaseStatus] = None, symbol: Optional[str] = None, limit: int = 1000) -> List[ReviewCase]:
         path = self.cases_dir / "review_cases.jsonl"
-        if not path.exists():
-            return []
 
-        # We need to construct actual objects
-        cases = []
-        with open(path, "r") as f:
-            for line in f:
-                try:
-                    data = json.loads(line)
-                    # Simplified parsing for testing
-                    if 'created_at' in data:
-                        data['created_at'] = datetime.fromisoformat(data['created_at'])
-                    if 'updated_at' in data:
-                        data['updated_at'] = datetime.fromisoformat(data['updated_at'])
-                    if 'closed_at' in data and data['closed_at']:
-                        data['closed_at'] = datetime.fromisoformat(data['closed_at'])
+        def _parse_case(data):
+            if 'created_at' in data:
+                data['created_at'] = datetime.fromisoformat(data['created_at'])
+            if 'updated_at' in data:
+                data['updated_at'] = datetime.fromisoformat(data['updated_at'])
+            if 'closed_at' in data and data['closed_at']:
+                data['closed_at'] = datetime.fromisoformat(data['closed_at'])
 
-                    data['status'] = ReviewCaseStatus[data['status']]
-                    data['case_type'] = ReviewCaseType[data['case_type']]
-                    data['priority'] = ReviewCasePriority[data['priority']]
-                    data['disposition'] = ReviewDisposition[data['disposition']]
-                    data['signoff_status'] = SignoffStatus[data['signoff_status']]
+            data['status'] = ReviewCaseStatus[data['status']]
+            data['case_type'] = ReviewCaseType[data['case_type']]
+            data['priority'] = ReviewCasePriority[data['priority']]
+            data['disposition'] = ReviewDisposition[data['disposition']]
+            data['signoff_status'] = SignoffStatus[data['signoff_status']]
 
-                    case = ReviewCase(**data)
+            return ReviewCase(**data)
 
-                    if status and case.status != status:
-                        continue
-                    if symbol and case.symbol != symbol:
-                        continue
+        all_cases = self._load_cached_jsonl(path, "_cases_cache", "_cases_mtime", _parse_case)
 
-                    cases.append(case)
-                except Exception as e:
-                    logger.warning(f"Error parsing case line: {e}")
+        # Filter cases
+        filtered_cases = []
+        for case in all_cases:
+            if status and case.status != status:
+                continue
+            if symbol and case.symbol != symbol:
+                continue
+            filtered_cases.append(case)
 
-        # Since append-only, return the latest version of each case
-        case_map = {c.case_id: c for c in cases}
+        # Since append-only, return the latest version of each case. We use copy.copy to avoid mutating the cache
+        case_map = {c.case_id: copy.copy(c) for c in filtered_cases}
         result = list(case_map.values())
         return result[-limit:] if limit else result
 
@@ -107,6 +128,10 @@ class ReviewWorkflowStore:
         if not path.exists():
             return []
 
+        mtime = path.stat().st_mtime
+        if getattr(self, "_playbooks_cache", None) is not None and getattr(self, "_playbooks_mtime", 0.0) == mtime:
+            return [copy.copy(pb) for pb in self._playbooks_cache]
+
         with open(path, "r") as f:
             data_list = json.load(f)
 
@@ -119,7 +144,10 @@ class ReviewWorkflowStore:
                 playbooks.append(ReviewPlaybook(**data))
             except Exception as e:
                 logger.warning(f"Error parsing playbook: {e}")
-        return playbooks
+
+        self._playbooks_cache = playbooks
+        self._playbooks_mtime = mtime
+        return [copy.copy(pb) for pb in playbooks]
 
     def append_journal_entry(self, entry: DecisionJournalEntry) -> Path:
         path = self.journal_dir / "decision_journal.jsonl"
@@ -128,31 +156,27 @@ class ReviewWorkflowStore:
 
     def load_journal(self, case_id: Optional[str] = None, limit: int = 1000) -> List[DecisionJournalEntry]:
         path = self.journal_dir / "decision_journal.jsonl"
-        if not path.exists():
-            return []
 
-        entries = []
-        with open(path, "r") as f:
-            for line in f:
-                try:
-                    data = json.loads(line)
-                    if case_id and data.get("case_id") != case_id:
-                        continue
+        def _parse_entry(data):
+            if 'created_at' in data:
+                data['created_at'] = datetime.fromisoformat(data['created_at'])
+            if data.get('previous_status'):
+                data['previous_status'] = ReviewCaseStatus[data['previous_status']]
+            if data.get('new_status'):
+                data['new_status'] = ReviewCaseStatus[data['new_status']]
+            if data.get('disposition'):
+                data['disposition'] = ReviewDisposition[data['disposition']]
+            return DecisionJournalEntry(**data)
 
-                    if 'created_at' in data:
-                        data['created_at'] = datetime.fromisoformat(data['created_at'])
-                    if data.get('previous_status'):
-                        data['previous_status'] = ReviewCaseStatus[data['previous_status']]
-                    if data.get('new_status'):
-                        data['new_status'] = ReviewCaseStatus[data['new_status']]
-                    if data.get('disposition'):
-                        data['disposition'] = ReviewDisposition[data['disposition']]
+        all_entries = self._load_cached_jsonl(path, "_journal_cache", "_journal_mtime", _parse_entry)
 
-                    entries.append(DecisionJournalEntry(**data))
-                except Exception as e:
-                    logger.warning(f"Error parsing journal line: {e}")
+        filtered_entries = []
+        for entry in all_entries:
+            if case_id and entry.case_id != case_id:
+                continue
+            filtered_entries.append(copy.copy(entry))
 
-        return entries[-limit:] if limit else entries
+        return filtered_entries[-limit:] if limit else filtered_entries
 
     def append_signoff(self, signoff: ReviewSignoffRequest) -> Path:
         path = self.signoffs_dir / "review_signoffs.jsonl"
@@ -161,31 +185,28 @@ class ReviewWorkflowStore:
 
     def load_signoffs(self, case_id: Optional[str] = None, limit: int = 1000) -> List[ReviewSignoffRequest]:
         path = self.signoffs_dir / "review_signoffs.jsonl"
-        if not path.exists():
-            return []
 
-        signoffs = []
-        with open(path, "r") as f:
-            for line in f:
-                try:
-                    data = json.loads(line)
-                    if case_id and data.get("case_id") != case_id:
-                        continue
+        def _parse_signoff(data):
+            if 'requested_at' in data:
+                data['requested_at'] = datetime.fromisoformat(data['requested_at'])
+            if 'approved_at' in data and data['approved_at']:
+                data['approved_at'] = datetime.fromisoformat(data['approved_at'])
+            if 'expires_at' in data and data['expires_at']:
+                data['expires_at'] = datetime.fromisoformat(data['expires_at'])
 
-                    if 'requested_at' in data:
-                        data['requested_at'] = datetime.fromisoformat(data['requested_at'])
-                    if 'approved_at' in data and data['approved_at']:
-                        data['approved_at'] = datetime.fromisoformat(data['approved_at'])
-                    if 'expires_at' in data and data['expires_at']:
-                        data['expires_at'] = datetime.fromisoformat(data['expires_at'])
+            data['status'] = SignoffStatus[data['status']]
+            return ReviewSignoffRequest(**data)
 
-                    data['status'] = SignoffStatus[data['status']]
-                    signoffs.append(ReviewSignoffRequest(**data))
-                except Exception as e:
-                    logger.warning(f"Error parsing signoff line: {e}")
+        all_signoffs = self._load_cached_jsonl(path, "_signoffs_cache", "_signoffs_mtime", _parse_signoff)
+
+        filtered_signoffs = []
+        for signoff in all_signoffs:
+            if case_id and signoff.case_id != case_id:
+                continue
+            filtered_signoffs.append(signoff)
 
         # Return latest version of each signoff
-        so_map = {s.signoff_id: s for s in signoffs}
+        so_map = {s.signoff_id: copy.copy(s) for s in filtered_signoffs}
         result = list(so_map.values())
         return result[-limit:] if limit else result
 
@@ -197,29 +218,25 @@ class ReviewWorkflowStore:
 
     def load_data_actions(self, status: Optional[str] = None, limit: int = 1000) -> List[ReviewDataAction]:
         path = self.data_actions_dir / "review_data_actions.jsonl"
-        if not path.exists():
-            return []
 
-        actions = []
-        with open(path, "r") as f:
-            for line in f:
-                try:
-                    data = json.loads(line)
-                    if 'created_at' in data:
-                        data['created_at'] = datetime.fromisoformat(data['created_at'])
-                    if 'resolved_at' in data and data['resolved_at']:
-                        data['resolved_at'] = datetime.fromisoformat(data['resolved_at'])
-                    if 'priority' in data:
-                        data['priority'] = ReviewCasePriority[data['priority']]
+        def _parse_action(data):
+            if 'created_at' in data:
+                data['created_at'] = datetime.fromisoformat(data['created_at'])
+            if 'resolved_at' in data and data['resolved_at']:
+                data['resolved_at'] = datetime.fromisoformat(data['resolved_at'])
+            if 'priority' in data:
+                data['priority'] = ReviewCasePriority[data['priority']]
+            return ReviewDataAction(**data)
 
-                    action = ReviewDataAction(**data)
-                    if status and action.status != status:
-                        continue
-                    actions.append(action)
-                except Exception as e:
-                    logger.warning(f"Error parsing action line: {e}")
+        all_actions = self._load_cached_jsonl(path, "_data_actions_cache", "_data_actions_mtime", _parse_action)
 
-        act_map = {a.action_id: a for a in actions}
+        filtered_actions = []
+        for action in all_actions:
+            if status and action.status != status:
+                continue
+            filtered_actions.append(action)
+
+        act_map = {a.action_id: copy.copy(a) for a in filtered_actions}
         result = list(act_map.values())
         return result[-limit:] if limit else result
 
@@ -259,21 +276,19 @@ class ReviewWorkflowStore:
 
     def load_checklist(self, case_id: str) -> List[ReviewChecklistItem]:
         path = self.checklists_dir / "review_checklists.jsonl"
-        if not path.exists():
-            return []
 
-        items = []
-        with open(path, "r") as f:
-            for line in f:
-                try:
-                    data = json.loads(line)
-                    if data.get("case_id") != case_id:
-                        continue
-                    data['status'] = ChecklistItemStatus[data['status']]
-                    items.append(ReviewChecklistItem(**data))
-                except Exception as e:
-                    logger.warning(f"Error parsing checklist line: {e}")
+        def _parse_checklist(data):
+            data['status'] = ChecklistItemStatus[data['status']]
+            return ReviewChecklistItem(**data)
+
+        all_items = self._load_cached_jsonl(path, "_checklists_cache", "_checklists_mtime", _parse_checklist)
+
+        filtered_items = []
+        for item in all_items:
+            if item.case_id != case_id:
+                continue
+            filtered_items.append(item)
 
         # Return latest versions
-        item_map = {i.item_id: i for i in items}
+        item_map = {i.item_id: copy.copy(i) for i in filtered_items}
         return list(item_map.values())
