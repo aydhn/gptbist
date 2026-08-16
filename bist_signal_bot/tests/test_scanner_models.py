@@ -1,3 +1,4 @@
+from bist_signal_bot.risk.models import RiskDecision
 from bist_signal_bot.scanner.models import (
     ScanRequest, SymbolScanResult, ScanReport, ScanUniverseMode,
     ScanCandidateStatus, ScanStatus
@@ -105,3 +106,49 @@ def test_scan_report_summary_extended():
     assert summ["error"] == 5
     assert summ["elapsed_seconds"] == 12.5
     assert summ["output_files"] == {"report": "path/to/report.html"}
+
+def test_symbol_scan_result_full_summary():
+    sig = SignalCandidate(
+        strategy_name="full_test",
+        symbol="THYAO",
+        direction=SignalDirection.SHORT,
+        score=90.0,
+        confidence=95.0,
+        strength=SignalStrength.STRONG
+    )
+
+    risk_dec = RiskDecision(
+        symbol="THYAO",
+        action="PASS",
+        final_score=88.5,
+        risk_grade="A",
+        reasons=[],
+        warnings=[],
+        signal=sig,
+        status="APPROVED",
+        side="SHORT",
+        approved=True,
+        filter_result={"passed": True, "status": "APPROVED"}
+    )
+
+    res = SymbolScanResult(
+        symbol="THYAO",
+        status=ScanCandidateStatus.PASSED,
+        signal=sig,
+        risk_decision=risk_dec,
+        portfolio_status="OK",
+        rank=5,
+        rank_score=88.5,
+        elapsed_seconds=1.23
+    )
+
+    summ = res.summary()
+    assert summ["symbol"] == "THYAO"
+    assert summ["status"] == "PASSED"
+    assert summ["signal_intent"] == "SHORT"
+    assert summ["signal_score"] == 90.0
+    assert summ["final_score"] == 88.5
+    assert summ["portfolio_status"] == "OK"
+    assert summ["rank"] == 5
+    assert summ["rank_score"] == 88.5
+    assert summ["elapsed_seconds"] == 1.23
