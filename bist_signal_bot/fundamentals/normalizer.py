@@ -20,13 +20,41 @@ class FundamentalNormalizer:
         cols = {c.lower(): c for c in df.columns}
         sym_col = cols.get("symbol", cols.get("sembol", cols.get("kod")))
         end_col = cols.get("period_end_date", cols.get("donem_sonu", cols.get("dönem_sonu", "date")))
-        for row in df.itertuples(index=False):
-            sym = getattr(row, sym_col) if sym_col else request.symbol
-            if not sym: continue
-            end_date_raw = getattr(row, end_col) if end_col else None
-            end_date = self.parse_date(end_date_raw) if end_date_raw else None
-            if not end_date: continue
-            records.append(FinancialStatementRecord(record_id=f"{sym}", symbol=str(sym), statement_type=request.statement_type or FinancialStatementType.UNKNOWN, period_type=request.period_type or FinancialPeriodType.UNKNOWN, fiscal_year=end_date.year, period_end_date=end_date, currency="TRY", values={}, imported_at=datetime.now()))
+
+        symbols = df[sym_col].fillna("") if sym_col else pd.Series([request.symbol] * len(df), index=df.index)
+
+        if end_col:
+            # We first try to map with self.parse_date to keep the original logic, which returns a datetime or None.
+            # Then we convert to a pandas Series, which allows using .dt accessor on datetime objects if any.
+            # However, since valid_dates will be a series of datetimes, we can just do that.
+            dates = df[end_col].apply(self.parse_date)
+            # Create a mask for not-null dates
+            dates_notna = dates.notna()
+        else:
+            dates = pd.Series([None] * len(df), index=df.index)
+            dates_notna = pd.Series(False, index=df.index)
+
+        valid_mask = (symbols != "") & symbols.notna() & dates_notna
+
+        valid_symbols = symbols[valid_mask].astype(str)
+        valid_dates = dates[valid_mask]
+
+        now = datetime.now()
+
+        records = [
+            FinancialStatementRecord(
+                record_id=f"{sym}",
+                symbol=sym,
+                statement_type=request.statement_type or FinancialStatementType.UNKNOWN,
+                period_type=request.period_type or FinancialPeriodType.UNKNOWN,
+                fiscal_year=date.year,
+                period_end_date=date,
+                currency="TRY",
+                values={},
+                imported_at=now
+            )
+            for sym, date in zip(valid_symbols, valid_dates)
+        ]
         return records
     def normalize_events_dataframe(self, df, request): return []
     def normalize_sector_dataframe(self, df, request): return []
