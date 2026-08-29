@@ -191,8 +191,8 @@ class SchedulerStore:
                 runs.append(d)
                 if len(runs) >= limit:
                     break
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning(f"Failed to parse scheduled job run line: {e}")
 
         res = []
         for d in runs:
