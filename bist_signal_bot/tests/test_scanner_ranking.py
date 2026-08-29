@@ -241,3 +241,24 @@ def test_scan_ranker_bottom_results():
     assert rankings[2].symbol == "C"
     assert rankings[2].rank_score == 0.0
     assert rankings[2].rank == 9999
+
+def test_score_final_fallback():
+    # test final score fallback to signal score
+    res = _make_result("A", 60)
+    res.risk_decision.final_score = None
+    ranker = ScanRanker()
+    assert ranker.calculate_rank_score(res, ScanSortKey.FINAL_SCORE) == 60.0
+
+def test_score_risk_reward_fallback():
+    # test risk reward fallback to signal risk reward
+    res = _make_result("A", 60)
+    res.risk_decision.stop_target = None
+    res.signal.risk_reward = 3.0
+    ranker = ScanRanker()
+    assert ranker.calculate_rank_score(res, ScanSortKey.RISK_REWARD) == 3.0
+
+def test_calculate_rank_score_invalid_key():
+    # test calculate rank score with invalid key
+    res = _make_result("A", 60)
+    ranker = ScanRanker()
+    assert ranker.calculate_rank_score(res, "INVALID_KEY") == 0.0
