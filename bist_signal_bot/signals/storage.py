@@ -75,13 +75,14 @@ class SignalStore:
             return None
         with open(self.tracked_signals_path, "r", encoding="utf-8") as f:
             for line in reversed(f.readlines()):
-                if not line.strip(): continue
+                if not line.strip():
+                    continue
                 try:
                     data = json.loads(line)
                     if data.get("signal_id") == signal_id:
                         return TrackedSignal(**data)
                 except json.JSONDecodeError:
-                    pass
+                    logger.warning("Skipping corrupted JSON line in get_signal", exc_info=True)
         return None
 
     def find_by_fingerprint(self, fingerprint_id: str, active_only: bool = True) -> Optional[TrackedSignal]:

@@ -5,12 +5,16 @@ from pathlib import Path
 from typing import Any, Iterable
 
 import pandas as pd
+import logging
 
 from bist_signal_bot.core.exceptions import DataImportAdapterError
+
 from bist_signal_bot.data_import.models import (
     ImportAdapterCapability,
     ImportSourceFormat,
 )
+
+logger = logging.getLogger(__name__)
 
 class LocalImportAdapterRegistry:
     def __init__(self, settings: Any = None, base_dir: Path | None = None):
@@ -89,6 +93,7 @@ class LocalImportAdapterRegistry:
                 try:
                     rows.append(json.loads(line))
                 except json.JSONDecodeError:
+                    logger.warning("Skipping corrupted JSONL line", exc_info=True)
                     continue
         return rows
 
