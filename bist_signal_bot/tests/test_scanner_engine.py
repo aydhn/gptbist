@@ -421,3 +421,25 @@ def test_scan_symbol_with_trade_risk():
     assert res.risk_decision is not None
     assert res.risk_decision.status == RiskDecisionStatus.REJECTED
     assert "Mocked risk rejection" in res.risk_decision.filter_result.warnings
+
+def test_add_valuation_context_exception_handling():
+    from bist_signal_bot.scanner.engine import SignalScannerEngine, SignalScannerDependencies
+    from bist_signal_bot.scanner.models import SymbolScanResult, ScanCandidateStatus
+    from bist_signal_bot.config.settings import Settings
+    from unittest.mock import patch
+
+    deps = SignalScannerDependencies(data_service=None, strategy_engine=None, settings=Settings(SCANNER_INCLUDE_VALUATION_CONTEXT=True))
+    engine = SignalScannerEngine(deps)
+
+    result = SymbolScanResult(symbol="TEST", status=ScanCandidateStatus.PASSED)
+
+    with patch("builtins.__import__", side_effect=Exception("Test Exception")):
+        with patch.object(engine.logger, "error") as mock_logger:
+            engine.add_valuation_context(result)
+
+            mock_logger.assert_called_once_with("Failed to add valuation context for %s", "TEST", exc_info=True)
+
+            assert len(result.issues) == 1
+            assert result.issues[0].severity == "WARNING"
+            assert "Failed to add valuation context: Test Exception" in result.issues[0].message
+            assert result.issues[0].stage == "valuation_enrichment"
