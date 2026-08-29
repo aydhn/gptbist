@@ -1,4 +1,5 @@
 import json
+import logging
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -10,6 +11,8 @@ from bist_signal_bot.storage.paths import (
     get_scenario_runs_dir,
     get_scenario_golden_dir,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class ScenarioStore:
@@ -81,9 +84,8 @@ class ScenarioStore:
                     try:
                         with open(target, "r") as f:
                             return ScenarioResult(**json.load(f))
-                    except Exception as e:
-                        import logging
-                        logging.warning(f"Failed to load scenario result from {target}: {e}")
+                    except Exception:
+                        logger.error(f"Failed to load scenario result from {target}", exc_info=True)
         return None
 
     def list_recent_runs(self, limit: int = 20) -> List[Dict[str, Any]]:
@@ -112,9 +114,17 @@ class ScenarioStore:
                                     "started_at": data.get("started_at"),
                                 }
                             )
-                    except Exception as e:
-                        import logging
-                        logging.warning(f"Failed to parse scenario result at {json_path}: {e}")
+                    except Exception:
+                        logger.error(f"Failed to parse scenario result at {json_path}", exc_info=True)
+                        runs.append(
+                            {
+                                "run_id": run_dir.name,
+                                "scenario_id": "UNKNOWN",
+                                "status": "ERROR",
+                                "elapsed_seconds": 0,
+                                "started_at": None,
+                            }
+                        )
 
             if len(runs) >= limit:
                 break

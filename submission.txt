@@ -1,5 +1,4 @@
-Finished optimization of load_latest_composed_report and load_composed_reports in bist_signal_bot/report_templates/storage.py. Code now uses `f.readlines()` to loop lines backwards, thus optimizing the number of iterations and the JSON parsing / Pydantic object creation dynamically, since it exits early as soon as the criteria is met (`limit` reached or `kind` found).
-
-Tested locally with benchmark indicating execution dropping from ~5.3 seconds to ~0.17 seconds (x30 performance improvements when reading up to 5000 items). Tested with `pytest` locally which passed.
-
-Ready for submission.
+🎯 **What:** Replaced inline `import logging` and `logging.warning()` exception handling with proper module-level `logger.error(..., exc_info=True)` usage, and correctly updated the fallback application state when parsing fails by appending a dummy run with `"status": "ERROR"`.
+💡 **Why:** Proper exception handling with stack traces ensures errors are visible for debugging, and updating application state on parsing failures correctly surfaces the failure to downstream control flow without completely swallowing the entry.
+✅ **Verification:** Verified changes via linting (`ruff check`) and the test suite (`pytest bist_signal_bot/tests/test_scenario_storage.py`), ensuring no regressions occurred.
+✨ **Result:** Improved code health and maintainability by utilizing standard logging configurations with stack trace retention.
