@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 import uuid
 from typing import Any
+import logging
 
 from bist_signal_bot.portfolio_ledger.models import (
     ResearchPortfolio,
@@ -10,6 +11,8 @@ from bist_signal_bot.portfolio_ledger.models import (
     PortfolioNavPoint
 )
 from bist_signal_bot.config.settings import Settings
+
+logger = logging.getLogger(__name__)
 
 class PortfolioOutcomeEvaluator:
     def __init__(self, data_service: Any = None, settings: Settings | None = None):
@@ -62,8 +65,8 @@ class PortfolioOutcomeEvaluator:
                     assessments = engine.assess_portfolio(symbols)
                     has_event = any(ass.matching_windows for ass in assessments.values())
                     event_metadata["event_window_active"] = has_event
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning(f"Failed to evaluate event calendar for portfolio {portfolio.portfolio_id}: {e}")
 
         result = PortfolioOutcomeResult(
             outcome_id=f"out_{uuid.uuid4().hex[:8]}",
