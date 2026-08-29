@@ -3,11 +3,14 @@ import json
 from pathlib import Path
 from datetime import datetime
 import uuid
-from typing import Any
 
 from bist_signal_bot.events.models import (
     MarketEvent, MarketEventType, MarketEventScope, MarketEventStatus, EventSeverity, EventImportResult
 )
+
+import logging
+
+logger = logging.getLogger(__name__)
 
 class EventImporter:
     def __init__(self, calendar=None):
@@ -71,8 +74,8 @@ class EventImporter:
                     )
                     events.append(event)
                 except Exception as e:
+                    logger.warning(f"Error parsing CSV row: {e}")
                     # Skip broken rows
-                    pass
         return events
 
     def parse_json(self, path: Path) -> list[MarketEvent]:
@@ -91,7 +94,7 @@ class EventImporter:
                     event = MarketEvent(**row)
                     events.append(event)
                 except Exception as e:
-                    pass
+                    logger.warning(f"Error parsing JSON row: {e}")
         return events
 
     def validate_events(self, events: list[MarketEvent]) -> list[str]:
