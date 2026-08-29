@@ -521,5 +521,10 @@ class SignalScannerEngine:
                 setattr(result, "valuation_score", risk.valuation_score)
                 setattr(result, "valuation_risk_level", risk.valuation_risk_level.value)
                 setattr(result, "valuation_status", "FAIR") # Mock
-        except Exception:
-            pass
+        except Exception as e:
+            self.logger.error("Failed to add valuation context for %s", result.symbol, exc_info=True)
+            result.issues.append(SymbolScanIssue(
+                stage="valuation_enrichment",
+                message=f"Failed to add valuation context: {e}",
+                severity="WARNING"
+            ))
