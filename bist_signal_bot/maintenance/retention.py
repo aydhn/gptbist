@@ -1,6 +1,9 @@
 from pathlib import Path
 from bist_signal_bot.maintenance.models import RetentionPolicy, RetentionTarget
 from bist_signal_bot.config.settings import get_settings
+import logging
+
+logger = logging.getLogger(__name__)
 
 class RetentionPolicyManager:
     @staticmethod
@@ -32,8 +35,8 @@ class RetentionPolicyManager:
                 with open(path, "r", encoding="utf-8") as f:
                     data = json.load(f)
                     return [RetentionPolicy.model_validate(p) for p in data]
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning(f"Failed to load retention policies from {path}: {e}")
         return RetentionPolicyManager.default_policies()
 
     @staticmethod
