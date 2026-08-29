@@ -529,12 +529,42 @@ class AroonIndicator(BaseIndicator):
         # Alternatively, loop if data is small, but pandas rolling apply is okay.
         # Days since highest high
 
-        aroon_up = high.rolling(window=window+1, min_periods=1).apply(lambda x: 100 * (window - (len(x) - 1 - np.argmax(x))) / window, raw=True)
-        aroon_down = low.rolling(window=window+1, min_periods=1).apply(lambda x: 100 * (window - (len(x) - 1 - np.argmin(x))) / window, raw=True)
+        # Optimization: use numpy stride tricks for sliding window to avoid slow apply
+        w_size = window + 1
+        n = len(high)
+        h_vals = high.values
+        l_vals = low.values
+
+        up_res = np.empty(n, dtype=np.float64)
+        down_res = np.empty(n, dtype=np.float64)
+
+        # Handle the initial min_periods phase where length < w_size
+        for i in range(min(n, w_size - 1)):
+            sub_h = h_vals[:i+1]
+            sub_l = l_vals[:i+1]
+            # Match pandas original behavior which uses np.argmax not np.nanargmax
+            up_res[i] = 100 * (window - (i - np.argmax(sub_h))) / window
+            down_res[i] = 100 * (window - (i - np.argmin(sub_l))) / window
+
+        if n >= w_size:
+            shape = (n - w_size + 1, w_size)
+            strides = (h_vals.strides[0], h_vals.strides[0])
+
+            h_strided = np.lib.stride_tricks.as_strided(h_vals, shape=shape, strides=strides)
+            l_strided = np.lib.stride_tricks.as_strided(l_vals, shape=shape, strides=strides)
+
+            argmax_h = np.argmax(h_strided, axis=1)
+            argmin_l = np.argmin(l_strided, axis=1)
+
+            up_res[w_size-1:] = 100 * argmax_h / window
+            down_res[w_size-1:] = 100 * argmin_l / window
 
         # Cap at 100 just in case min_periods causes >100 when len < window
-        aroon_up = aroon_up.clip(upper=100)
-        aroon_down = aroon_down.clip(upper=100)
+        up_res = np.clip(up_res, a_min=None, a_max=100.0)
+        down_res = np.clip(down_res, a_min=None, a_max=100.0)
+
+        aroon_up = pd.Series(up_res, index=high.index)
+        aroon_down = pd.Series(down_res, index=low.index)
 
         result[col_up] = aroon_up
         result[col_down] = aroon_down

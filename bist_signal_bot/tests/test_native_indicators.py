@@ -133,3 +133,13 @@ def test_input_mutation(sample_data):
     original_cols = list(sample_data.columns)
     ind(sample_data)
     assert list(sample_data.columns) == original_cols # Input should not be mutated
+
+def test_aroon_indicator(sample_data):
+    from bist_signal_bot.indicators.trend import AroonIndicator
+    ind = AroonIndicator()
+    res = ind(sample_data, window=25)
+    assert "aroon_up_25" in res.columns
+    assert "aroon_down_25" in res.columns
+    assert "aroon_osc_25" in res.columns
+    assert len(res) == 100
+    assert not res["aroon_up_25"].isna().all()
