@@ -81,8 +81,9 @@ class ScenarioStore:
                     try:
                         with open(target, "r") as f:
                             return ScenarioResult(**json.load(f))
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        import logging
+                        logging.warning(f"Failed to load scenario result from {target}: {e}")
         return None
 
     def list_recent_runs(self, limit: int = 20) -> List[Dict[str, Any]]:
@@ -111,8 +112,9 @@ class ScenarioStore:
                                     "started_at": data.get("started_at"),
                                 }
                             )
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        import logging
+                        logging.warning(f"Failed to parse scenario result at {json_path}: {e}")
 
             if len(runs) >= limit:
                 break
