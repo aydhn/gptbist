@@ -1,4 +1,3 @@
-import pytest
 import pandas as pd
 from bist_signal_bot.stress.reporting import (
     format_shock_result_text,
@@ -120,7 +119,7 @@ def test_shock_results_to_dataframe():
 
     assert df.iloc[1]["Scenario"] == "Liquidity Crisis"
     assert df.iloc[1]["Severity"] == "EXTREME"
-    import pandas as pd; assert pd.isna(df.iloc[1]["Portfolio Impact %"])
+    assert pd.isna(df.iloc[1]["Portfolio Impact %"])
     assert df.iloc[1]["Status"] == "ERROR"
 
 def test_shock_results_to_dataframe_empty():
@@ -674,3 +673,55 @@ def test_to_dict_functions():
     )
     d = shock_result_to_dict(shock_result)
     assert d["result_id"] == "shock_dict"
+
+def test_monte_carlo_to_dict_dedicated():
+    from bist_signal_bot.stress.reporting import monte_carlo_to_dict
+
+    config = MonteCarloConfig(
+        method=MonteCarloMethod.BOOTSTRAP,
+        simulations=500,
+        horizon_days=30,
+        seed=123,
+        initial_value=5000.0
+    )
+
+    mc_result = MonteCarloResult(
+        result_id="mc_dedicated",
+        config=config,
+        status=StressStatus.WARN,
+        final_values=[100.0, 110.0, 90.0],
+        final_return_pct_p05=-10.0,
+        final_return_pct_p50=5.0,
+        final_return_pct_p95=20.0,
+        max_drawdown_pct_p05=-20.0,
+        max_drawdown_pct_p50=-5.0,
+        max_drawdown_pct_p95=-1.0,
+        ruin_probability_pct=2.5,
+        sample_paths=[[100.0, 105.0], [100.0, 95.0]],
+        warnings=["Test warning 1"],
+        disclaimer="Test disclaimer",
+        metadata={"key": "value"}
+    )
+
+    d = monte_carlo_to_dict(mc_result)
+
+    assert d["result_id"] == "mc_dedicated"
+    assert d["status"] == StressStatus.WARN
+    assert d["final_values"] == [100.0, 110.0, 90.0]
+    assert d["final_return_pct_p05"] == -10.0
+    assert d["final_return_pct_p50"] == 5.0
+    assert d["final_return_pct_p95"] == 20.0
+    assert d["max_drawdown_pct_p05"] == -20.0
+    assert d["max_drawdown_pct_p50"] == -5.0
+    assert d["max_drawdown_pct_p95"] == -1.0
+    assert d["ruin_probability_pct"] == 2.5
+    assert d["sample_paths"] == [[100.0, 105.0], [100.0, 95.0]]
+    assert d["warnings"] == ["Test warning 1"]
+    assert d["disclaimer"] == "Test disclaimer"
+    assert d["metadata"] == {"key": "value"}
+
+    assert d["config"]["method"] == MonteCarloMethod.BOOTSTRAP
+    assert d["config"]["simulations"] == 500
+    assert d["config"]["horizon_days"] == 30
+    assert d["config"]["seed"] == 123
+    assert d["config"]["initial_value"] == 5000.0
