@@ -174,3 +174,100 @@ def test_sector_exposure_from_holdings():
     assert sectors["Tech"] == 100.0 / 400.0
     assert sectors["Bank"] == 200.0 / 400.0
     assert sectors["UNKNOWN"] == 100.0 / 400.0
+
+def test_simulate_post_allocation_exposure_edge_cases():
+    from datetime import datetime
+    from unittest.mock import patch
+
+    # Test existing holding but with quantity that makes new_qty <= 0
+    h1 = PortfolioHolding(symbol="EXISTING_NEG_QTY", side=PortfolioPositionSide.LONG, quantity=10, avg_price=10.0, market_value=100.0, weight_pct=0.1, sector="Tech")
+    state1 = PortfolioState(equity=1000.0, cash=900.0, holdings=[h1])
+    alloc_item_neg_qty = AllocationResultItem(
+        symbol="EXISTING_NEG_QTY",
+        approved=True,
+        original_notional=50.0,
+        allocated_notional=50.0,
+        allocated_weight_pct=0.05,
+        quantity=-10.0,  # new_qty = 10 + (-10) = 0
+        reduction_pct=0.0,
+        reasons=[],
+        metadata={}
+    )
+    allocation1 = AllocationResult(
+        method="EQUAL_WEIGHT",
+        items=[alloc_item_neg_qty],
+        total_allocated_notional=50.0,
+        total_allocated_pct=0.05,
+        rejected_symbols=[],
+        reduced_symbols=[],
+        issues=[],
+        generated_at=datetime.utcnow()
+    )
+    analyzer = ExposureAnalyzer()
+    report1 = analyzer.simulate_post_allocation_exposure(state1, allocation1)
+    # The existing holding is replaced, but since new_qty <= 0, new_avg falls back to existing.avg_price
+    # The holding is still added to sim_holdings (count remains 1)
+    assert report1.open_position_count == 1
+
+    # Test new holding with item.quantity <= 0
+    state2 = PortfolioState(equity=1000.0, cash=900.0, holdings=[])
+    alloc_item_zero_qty = AllocationResultItem(
+        symbol="NEW_ZERO_QTY",
+        approved=True,
+        original_notional=50.0,
+        allocated_notional=50.0,
+        allocated_weight_pct=0.05,
+        quantity=0.0,  # quantity = 0 triggers fallback to avg_price = 1.0
+        reduction_pct=0.0,
+        reasons=[],
+        metadata={}
+    )
+    allocation2 = AllocationResult(
+        method="EQUAL_WEIGHT",
+        items=[alloc_item_zero_qty],
+        total_allocated_notional=50.0,
+        total_allocated_pct=0.05,
+        rejected_symbols=[],
+        reduced_symbols=[],
+        issues=[],
+        generated_at=datetime.utcnow()
+    )
+    report2 = analyzer.simulate_post_allocation_exposure(state2, allocation2)
+    assert report2.open_position_count == 1
+
+    # Test sim_equity <= 0 override using mock to avoid Pydantic validation error
+    state3 = PortfolioState(equity=1000.0, cash=900.0, holdings=[])
+    alloc_item_neg_equity = AllocationResultItem(
+        symbol="ANY",
+        approved=True,
+        original_notional=50.0,
+        allocated_notional=50.0,
+        allocated_weight_pct=0.05,
+        quantity=1.0,
+        reduction_pct=0.0,
+        reasons=[],
+        metadata={}
+    )
+    allocation3 = AllocationResult(
+        method="EQUAL_WEIGHT",
+        items=[alloc_item_neg_equity],
+        total_allocated_notional=50.0,
+        total_allocated_pct=0.05,
+        rejected_symbols=[],
+        reduced_symbols=[],
+        issues=[],
+        generated_at=datetime.utcnow()
+    )
+
+    # Instead of bypassing validation in production, we patch the instance property directly
+    # to simulate the error condition entering calculate_exposure during simulation
+    with patch('bist_signal_bot.portfolio.exposure.PortfolioState') as mock_state_class:
+        from unittest.mock import MagicMock
+        mock_instance = MagicMock(spec=PortfolioState)
+        mock_instance.equity = -100.0
+        mock_instance.cash = 900.0
+        mock_instance.holdings = []
+        mock_state_class.return_value = mock_instance
+
+        report3 = analyzer.simulate_post_allocation_exposure(state3, allocation3)
+        assert "Portfolio equity is zero or negative" in report3.issues
