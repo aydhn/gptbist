@@ -1,4 +1,9 @@
 from typing import Any
+import logging
+
+logger = logging.getLogger(__name__)
+
+
 
 def run_doctor(settings=None, as_json=False, data_catalog=False, feature_store=False, leaderboard=False, orchestrator=False, final_audit=False, final_handoff=False):
     res = {
@@ -68,8 +73,12 @@ def append_final_audit_doctor_checks(report: dict, settings: Any):
             "status": "FAIL" if issues else "PASS",
             "issues": issues
         }
-    except Exception:
-        pass
+    except Exception as e:
+        logger.error(f"Error checking final audit: {e}", exc_info=True)
+        report["final_audit"] = {
+            "status": "ERROR",
+            "issues": [f"Exception during check: {e}"]
+        }
 
 def append_final_handoff_doctor_checks(report: dict, settings: Any):
     if not getattr(settings, "ENABLE_FINAL_HANDOFF", True):
@@ -98,5 +107,9 @@ def append_final_handoff_doctor_checks(report: dict, settings: Any):
             "status": "FAIL" if issues else "PASS",
             "issues": issues
         }
-    except Exception:
-        pass
+    except Exception as e:
+        logger.error(f"Error checking final handoff: {e}", exc_info=True)
+        report["final_handoff"] = {
+            "status": "ERROR",
+            "issues": [f"Exception during check: {e}"]
+        }
