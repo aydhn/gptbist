@@ -68,8 +68,13 @@ def append_final_audit_doctor_checks(report: dict, settings: Any):
             "status": "FAIL" if issues else "PASS",
             "issues": issues
         }
-    except Exception:
-        pass
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"Failed to append final audit checks: {e}")
+        report["final_audit"] = {
+            "status": "ERROR",
+            "issues": [f"Error running checks: {e}"]
+        }
 
 def append_final_handoff_doctor_checks(report: dict, settings: Any):
     if not getattr(settings, "ENABLE_FINAL_HANDOFF", True):
@@ -98,5 +103,10 @@ def append_final_handoff_doctor_checks(report: dict, settings: Any):
             "status": "FAIL" if issues else "PASS",
             "issues": issues
         }
-    except Exception:
-        pass
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"Failed to append final handoff checks: {e}")
+        report["final_handoff"] = {
+            "status": "ERROR",
+            "issues": [f"Error running checks: {e}"]
+        }
