@@ -674,3 +674,24 @@ def test_to_dict_functions():
     )
     d = shock_result_to_dict(shock_result)
     assert d["result_id"] == "shock_dict"
+
+def test_shock_result_to_dict():
+    scenario = StressScenario(
+        scenario_id="scen_dict_dedicated",
+        name="Market Crash 20%",
+        scenario_type=StressScenarioType.MARKET_SHOCK,
+        severity=StressSeverity.HIGH
+    )
+    shock_result = ShockScenarioResult(
+        result_id="shock_dict_dedicated",
+        scenario=scenario,
+        status=StressStatus.PASS,
+        estimated_portfolio_impact_pct=-15.5
+    )
+
+    from bist_signal_bot.stress.reporting import shock_result_to_dict
+    d = shock_result_to_dict(shock_result)
+
+    assert d["result_id"] == "shock_dict_dedicated"
+    assert d["status"] == StressStatus.PASS.value # Using value to match model_dump() serialization
+    assert d["estimated_portfolio_impact_pct"] == -15.5
