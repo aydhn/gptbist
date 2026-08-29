@@ -74,7 +74,7 @@ class EventImporter:
                     )
                     events.append(event)
                 except Exception as e:
-                    logger.warning(f"Error parsing CSV row: {e}")
+                    logger.error(f'Error parsing CSV row: {e}', exc_info=True)
                     # Skip broken rows
         return events
 
@@ -94,7 +94,7 @@ class EventImporter:
                     event = MarketEvent(**row)
                     events.append(event)
                 except Exception as e:
-                    logger.warning(f"Error parsing JSON row: {e}")
+                    logger.error(f'Error parsing JSON row: {e}', exc_info=True)
         return events
 
     def validate_events(self, events: list[MarketEvent]) -> list[str]:
