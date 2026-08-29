@@ -225,6 +225,6 @@ class SignalLifecycleManager:
             )
 
             inbox.add_message(msg)
-        except Exception as e:
+        except Exception:
             # gracefully ignore missing telegram center dependencies
-            pass
+            logger.error("Error routing to telegram inbox", exc_info=True)

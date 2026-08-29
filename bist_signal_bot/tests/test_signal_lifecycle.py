@@ -1,6 +1,7 @@
 from datetime import datetime, timezone, timedelta
+from unittest.mock import MagicMock, patch
 from bist_signal_bot.signals.lifecycle import SignalLifecycleManager
-from bist_signal_bot.signals.models import TrackedSignal, SignalAlertPolicy, SignalLifecycleState
+from bist_signal_bot.signals.models import SignalAlertPolicy, SignalLifecycleState
 from bist_signal_bot.signals.storage import SignalStore
 from bist_signal_bot.signals.fingerprint import SignalFingerprintBuilder
 
@@ -57,3 +58,24 @@ def test_lifecycle_expire(tmp_path):
     expired = lm.expire_stale_signals()
     assert len(expired) == 1
     assert expired[0].state == SignalLifecycleState.EXPIRED
+
+@patch('bist_signal_bot.signals.lifecycle.logger')
+@patch('bist_signal_bot.signals.lifecycle.get_settings')
+def test_route_to_telegram_inbox_error_logged(mock_get_settings, mock_logger):
+    mock_get_settings.return_value = MagicMock()
+
+    manager = SignalLifecycleManager(MagicMock(), MagicMock(), MagicMock())
+
+    settings = MagicMock()
+    settings.ENABLE_TELEGRAM_CENTER = True
+
+    eval_result = MagicMock()
+    eval_result.action.value = "SEND"
+    eval_result.reason = "test reason"
+    eval_result.signal.symbol = "TEST"
+    eval_result.signal.signal_id = "test_id"
+
+    with patch('bist_signal_bot.app.telegram_center_app.create_notification_inbox', side_effect=ImportError("Mocked error"), create=True):
+        manager.route_to_telegram_inbox(eval_result, settings)
+
+    mock_logger.error.assert_called_once_with("Error routing to telegram inbox", exc_info=True)
