@@ -674,3 +674,31 @@ def test_to_dict_functions():
     )
     d = shock_result_to_dict(shock_result)
     assert d["result_id"] == "shock_dict"
+
+def test_risk_of_ruin_to_dict_dedicated():
+    ror_result = RiskOfRuinResult(
+        result_id="dedicated_ror_123",
+        status=StressStatus.PASS,
+        ruin_threshold_pct=15.0,
+        estimated_ruin_probability_pct=5.5,
+        expected_loss_streak=3,
+        worst_loss_streak=10,
+        required_buffer_estimate_pct=25.0,
+        warnings=["High volatility detected"],
+        metadata={"key": "value"}
+    )
+
+    from bist_signal_bot.stress.reporting import risk_of_ruin_to_dict
+    result_dict = risk_of_ruin_to_dict(ror_result)
+
+    assert isinstance(result_dict, dict)
+    assert result_dict["result_id"] == "dedicated_ror_123"
+    assert result_dict["status"] == "PASS"
+    assert result_dict["ruin_threshold_pct"] == 15.0
+    assert result_dict["estimated_ruin_probability_pct"] == 5.5
+    assert result_dict["expected_loss_streak"] == 3
+    assert result_dict["worst_loss_streak"] == 10
+    assert result_dict["required_buffer_estimate_pct"] == 25.0
+    assert result_dict["warnings"] == ["High volatility detected"]
+    assert result_dict["metadata"] == {"key": "value"}
+    assert "disclaimer" in result_dict
