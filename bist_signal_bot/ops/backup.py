@@ -2,12 +2,15 @@
 import shutil
 import hashlib
 import datetime
+import logging
 from pathlib import Path
 
 from bist_signal_bot.config.settings import Settings
 from bist_signal_bot.security.path_guard import PathGuard
 from bist_signal_bot.ops.models import BackupManifest, BackupScope, OpsStatus
 from bist_signal_bot.ops.storage import OpsStore
+
+logger = logging.getLogger(__name__)
 
 class BackupManager:
     def __init__(self, settings: Settings | None = None, base_dir: Path | None = None, store: OpsStore | None = None):
@@ -49,8 +52,8 @@ class BackupManager:
                 with open(p, "rb") as f:
                     # Using file_digest which handles efficient chunking in C
                     return str(p), hashlib.file_digest(f, "sha256").hexdigest()
-        except Exception:
-            pass
+        except Exception as e:
+            logger.error(f"Failed to hash file {p}: {e}")
         return None
 
     def build_checksum_manifest(self, paths: list[Path]) -> dict[str, str]:
