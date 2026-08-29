@@ -32,7 +32,8 @@ class SchedulerLockManager:
 
                 if now < created_at + timedelta(seconds=ttl):
                     return False # Still locked
-            except (json.JSONDecodeError, KeyError, ValueError):
+            except (json.JSONDecodeError, KeyError, ValueError) as e:
+                logger.warning(f"Invalid lock file {lock_path} found, will overwrite: {e}")
                 pass # Invalid lock file, we will overwrite
 
         # Create or overwrite lock
@@ -76,7 +77,8 @@ class SchedulerLockManager:
             ttl = data['ttl_seconds']
 
             return datetime.utcnow() < created_at + timedelta(seconds=ttl)
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Invalid lock file {lock_path} considered unlocked: {e}")
             return False # Invalid lock is considered unlocked
 
     def cleanup_expired_locks(self) -> int:
@@ -93,11 +95,12 @@ class SchedulerLockManager:
                 if now >= created_at + timedelta(seconds=ttl):
                     lock_file.unlink()
                     cleaned += 1
-            except Exception:
+            except Exception as e:
                 # Corrupted lock file, just delete it
+                logger.warning(f"Corrupted lock file {lock_file}, attempting to delete. Error: {e}")
                 try:
                     lock_file.unlink()
                     cleaned += 1
-                except Exception:
-                    pass
+                except Exception as unlink_e:
+                    logger.error(f"Failed to delete corrupted lock file {lock_file}: {unlink_e}")
         return cleaned
