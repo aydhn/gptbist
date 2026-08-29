@@ -126,9 +126,20 @@ class ScanReportStore:
         if not self.base_dir.exists():
             return scans
 
+        file_info = []
         for json_file in self.base_dir.rglob("scan_report.json"):
             try:
                 mtime = json_file.stat().st_mtime
+                file_info.append((mtime, json_file))
+            except Exception:
+                continue
+
+        # Sort by mtime descending
+        file_info.sort(key=lambda x: x[0], reverse=True)
+
+        buffer = min(len(file_info), limit + 50)
+        for mtime, json_file in file_info[:buffer]:
+            try:
                 file_path_str = str(json_file)
                 cached = self._file_cache.get(file_path_str)
 
