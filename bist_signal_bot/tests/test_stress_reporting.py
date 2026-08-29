@@ -1,4 +1,3 @@
-import pytest
 import pandas as pd
 from bist_signal_bot.stress.reporting import (
     format_shock_result_text,
@@ -120,7 +119,7 @@ def test_shock_results_to_dataframe():
 
     assert df.iloc[1]["Scenario"] == "Liquidity Crisis"
     assert df.iloc[1]["Severity"] == "EXTREME"
-    import pandas as pd; assert pd.isna(df.iloc[1]["Portfolio Impact %"])
+    assert pd.isna(df.iloc[1]["Portfolio Impact %"])
     assert df.iloc[1]["Status"] == "ERROR"
 
 def test_shock_results_to_dataframe_empty():
@@ -674,3 +673,32 @@ def test_to_dict_functions():
     )
     d = shock_result_to_dict(shock_result)
     assert d["result_id"] == "shock_dict"
+
+def test_drawdown_result_to_dict_detailed():
+    from bist_signal_bot.stress.reporting import drawdown_result_to_dict
+
+    dd_result = DrawdownSimulationResult(
+        result_id="dd_detailed",
+        status=StressStatus.PASS,
+        max_drawdown_pct=-15.0,
+        average_drawdown_pct=-5.0,
+        longest_drawdown_days=45,
+        recovery_days_estimate=30,
+        underwater_curve=[{"day": 1, "pct": -5.0}],
+        warnings=["Test warning"],
+        disclaimer="Test disclaimer",
+        metadata={"key": "value"}
+    )
+
+    result = drawdown_result_to_dict(dd_result)
+
+    assert result["result_id"] == "dd_detailed"
+    assert result["status"] == "PASS"
+    assert result["max_drawdown_pct"] == -15.0
+    assert result["average_drawdown_pct"] == -5.0
+    assert result["longest_drawdown_days"] == 45
+    assert result["recovery_days_estimate"] == 30
+    assert result["underwater_curve"] == [{"day": 1, "pct": -5.0}]
+    assert result["warnings"] == ["Test warning"]
+    assert result["disclaimer"] == "Test disclaimer"
+    assert result["metadata"] == {"key": "value"}
