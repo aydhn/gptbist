@@ -72,3 +72,13 @@ def test_append_final_handoff_section_success_no_data(mock_create_store):
     section = append_final_handoff_section(MockSettings())
     assert section.title == "Final MVP Handoff"
     assert "No final handoff data found" in section.body_markdown
+
+def test_execution_sim_section():
+    from bist_signal_bot.reports.sections import execution_sim_section
+
+    report_data = {}
+    result = execution_sim_section(report_data)
+
+    assert result.startswith("## Execution Simulation")
+    assert "Execution assumes theoretical cost drag and slippage" in result
+    assert "No real orders sent" in result
