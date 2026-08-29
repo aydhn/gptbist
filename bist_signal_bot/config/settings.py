@@ -18,12 +18,15 @@ module-level ``settings`` singleton all behave as before — except they now ret
 **real values from ``.env`` instead of the string ``"mock_value"``**.
 """
 
+import logging
 import os
 import re
 from pathlib import Path
 from typing import Any
 
 from bist_signal_bot.config.defaults import DEFAULTS
+
+logger = logging.getLogger(__name__)
 
 # repo root: bist_signal_bot/config/settings.py -> config -> bist_signal_bot -> <root>
 _ROOT = Path(__file__).resolve().parents[2]
@@ -111,12 +114,12 @@ def _coerce(key: str, raw: str) -> Any:
         try:
             return int(s)
         except ValueError:
-            pass
+            logger.warning("Failed to coerce %s=%r to int", key, s)
     if re.fullmatch(r"[+-]?(?:\d+\.\d*|\.\d+|\d+(?:\.\d*)?[eE][+-]?\d+)", s):
         try:
             return float(s)
         except ValueError:
-            pass
+            logger.warning("Failed to coerce %s=%r to float", key, s)
     if up.endswith(("_DIR", "_PATH")):  # NB: "_DIR_NAME" stays a plain string
         return Path(s)
     return s

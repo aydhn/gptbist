@@ -33,3 +33,18 @@ def test_get_settings_returns_singleton():
     """Test that get_settings returns the global _settings singleton."""
     from bist_signal_bot.config.settings import get_settings, _settings
     assert get_settings() is _settings
+
+def test_coerce_silent_exceptions(caplog):
+    """Test that failed type coercion logs a warning instead of passing silently."""
+    from bist_signal_bot.config.settings import _coerce
+
+    import pytest
+    from unittest.mock import patch
+
+    with patch("bist_signal_bot.config.settings.int", side_effect=ValueError):
+        assert _coerce("MY_INT", "123") == "123"
+        assert "Failed to coerce MY_INT='123' to int" in caplog.text
+
+    with patch("bist_signal_bot.config.settings.float", side_effect=ValueError):
+        assert _coerce("MY_FLOAT", "123.45") == "123.45"
+        assert "Failed to coerce MY_FLOAT='123.45' to float" in caplog.text
