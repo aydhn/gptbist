@@ -78,4 +78,4 @@ class LocalCacheManager:
 
     def checksum_payload(self, payload: dict[str, Any]) -> str:
         s = json.dumps(payload, sort_keys=True)
-        return hashlib.md5(s.encode()).hexdigest()
+        return hashlib.sha256(s.encode()).hexdigest()
