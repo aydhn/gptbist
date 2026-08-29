@@ -1,6 +1,6 @@
 import json
-import pytest
 import os
+from unittest.mock import patch
 from bist_signal_bot.config.settings import Settings
 from bist_signal_bot.scanner.storage import ScanReportStore
 from bist_signal_bot.scanner.models import ScanReport, ScanRequest, ScanUniverseMode, ScanRankingItem, SymbolScanResult, ScanCandidateStatus, SymbolScanIssue, ScanStatus
@@ -267,7 +267,6 @@ def test_save_csv_specific_cases(tmp_path):
     assert "results" not in paths_issues
     assert "issues" in paths_issues
 
-from unittest.mock import patch, mock_open
 
 def test_list_recent_scans_exception(tmp_path):
     settings = Settings()
@@ -372,3 +371,23 @@ def test_create_scan_output_dir_empty_strategy(tmp_path):
     assert output_dir == expected_path
     assert os.path.exists(output_dir)
     assert os.path.isdir(output_dir)
+
+def test_list_recent_scans_uses_cache(tmp_path):
+    settings = Settings()
+    store = ScanReportStore(settings, base_dir=tmp_path)
+    req = ScanRequest(strategy_name="test_strat", universe_mode=ScanUniverseMode.SYMBOLS, symbols=["A"])
+    report = ScanReport(request=req)
+
+    # Save to disk
+    store.save_json(report)
+
+    # First call - should read from disk and populate cache
+    scans1 = store.list_recent_scans()
+    assert len(scans1) == 1
+    assert len(store._file_cache) == 1
+
+    # Second call - should use cache (hitting line 136)
+    with patch("builtins.open") as mock_open_call:
+        scans2 = store.list_recent_scans()
+        assert len(scans2) == 1
+        mock_open_call.assert_not_called()
