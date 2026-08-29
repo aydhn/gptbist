@@ -180,3 +180,46 @@ def test_engine_save_output_success(tmp_path):
             assert result_pre.output_files["result_json"] == str(dummy_json_path)
             assert result_pre.output_files["report_md"] == str(tmp_path / "stress_report.md")
             assert len(result_pre.warnings) == 0
+
+def test_engine_save_output_write_error(tmp_path):
+    from unittest.mock import patch, MagicMock
+    from bist_signal_bot.stress.models import MonteCarloConfig, MonteCarloMethod, StressStatus, StressSeverity
+
+    engine = StressTestEngine(
+        return_builder=ReturnSeriesBuilder(),
+        monte_carlo_simulator=MonteCarloSimulator(),
+        shock_engine=ShockScenarioEngine(),
+        drawdown_simulator=DrawdownSimulator(),
+        risk_of_ruin_estimator=RiskOfRuinEstimator()
+    )
+
+    dummy_json_path = tmp_path / "result.json"
+    engine.store.save_result = MagicMock(return_value={"result_json": dummy_json_path})
+
+    req = StressTestRequest(
+        input_type=StressInputType.CUSTOM_RETURNS,
+        monte_carlo_config=MonteCarloConfig(
+            method=MonteCarloMethod.BOOTSTRAP,
+            simulations=10,
+            horizon_days=5,
+            seed=42,
+            initial_value=100.0
+        ),
+        ruin_threshold_pct=30.0,
+        save_output=True,
+        metadata={"custom_returns": [0.01]}
+    )
+
+    result_pre = StressTestResult(
+        stress_id="test-id-write-error",
+        request=req,
+        status=StressStatus.PASS,
+        stress_rating=StressSeverity.MEDIUM,
+        warnings=[]
+    )
+
+    with patch("builtins.open", side_effect=OSError("Disk full")):
+        engine._save_output(req, result_pre)
+
+        assert len(result_pre.warnings) == 1
+        assert "Disk full" in result_pre.warnings[0]
