@@ -1,4 +1,4 @@
-import time
+import threading
 import logging
 from datetime import datetime, timedelta
 from typing import List, Optional
@@ -17,6 +17,10 @@ class RuntimeScheduler:
         self.settings = settings or Settings()
         self.logger = logger or logging.getLogger(__name__)
         self.kill_switch = KillSwitchManager(self.settings, get_data_dir(self.settings))
+        self._stop_event = threading.Event()
+
+    def stop(self):
+        self._stop_event.set()
 
     def run_loop(self, config: RuntimeScheduleConfig, pipeline_config: RuntimePipelineConfig) -> List[RuntimePipelineResult]:
         results = []
@@ -38,7 +42,8 @@ class RuntimeScheduler:
         while True:
             if self.kill_switch.is_active(KillSwitchScope.SCHEDULER):
                 self.logger.warning("Kill switch active for SCHEDULER. Pausing loop.")
-                time.sleep(10)
+                if self._stop_event.wait(10):
+                    break
                 continue
 
             if config.max_iterations and iterations >= config.max_iterations:
@@ -66,7 +71,8 @@ class RuntimeScheduler:
 
             # Small sleep step
             try:
-                time.sleep(config.sleep_seconds)
+                if self._stop_event.wait(config.sleep_seconds):
+                    break
             except KeyboardInterrupt:
                 self.logger.info("Keyboard interrupt during sleep. Stopping scheduler.")
                 break
