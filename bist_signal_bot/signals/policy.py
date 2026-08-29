@@ -1,8 +1,11 @@
+import logging
 from pathlib import Path
 from typing import Optional, Any
 import json
 from bist_signal_bot.signals.models import SignalAlertPolicy, SignalPriority
 from bist_signal_bot.config.settings import Settings
+
+logger = logging.getLogger(__name__)
 
 class SignalPolicyManager:
     def default_alert_policy(self, settings: Optional[Settings] = None) -> SignalAlertPolicy:
@@ -54,7 +57,7 @@ class SignalPolicyManager:
                 data = json.loads(path.read_text(encoding='utf-8'))
                 return SignalAlertPolicy(**data)
             except Exception:
-                pass
+                logger.error(f"Failed to load alert policy from {path}", exc_info=True)
         return self.default_alert_policy()
 
     def save_alert_policy(self, policy: SignalAlertPolicy, path: Optional[Path] = None, confirm: bool = False) -> Path:
