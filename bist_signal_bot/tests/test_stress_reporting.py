@@ -1,4 +1,3 @@
-import pytest
 import pandas as pd
 from bist_signal_bot.stress.reporting import (
     format_shock_result_text,
@@ -120,7 +119,7 @@ def test_shock_results_to_dataframe():
 
     assert df.iloc[1]["Scenario"] == "Liquidity Crisis"
     assert df.iloc[1]["Severity"] == "EXTREME"
-    import pandas as pd; assert pd.isna(df.iloc[1]["Portfolio Impact %"])
+    assert pd.isna(df.iloc[1]["Portfolio Impact %"])
     assert df.iloc[1]["Status"] == "ERROR"
 
 def test_shock_results_to_dataframe_empty():
@@ -589,16 +588,9 @@ def test_format_stress_report_markdown_minimal():
     ])
     assert md == expected
 
-def test_to_dict_functions():
-    from bist_signal_bot.stress.reporting import (
-        stress_result_to_dict,
-        monte_carlo_to_dict,
-        shock_result_to_dict,
-        drawdown_result_to_dict,
-        risk_of_ruin_to_dict
-    )
+def test_stress_result_to_dict():
+    from bist_signal_bot.stress.reporting import stress_result_to_dict
 
-    # Test stress_result_to_dict
     request = StressTestRequest(
         input_type=StressInputType.MOCK,
         symbols=["AAPL"],
@@ -626,19 +618,34 @@ def test_to_dict_functions():
     )
     d = stress_result_to_dict(result)
     assert d["stress_id"] == "STRESS_DICT"
+    # Ensure nested objects / enums are serialized as strings/primitives
+    assert isinstance(d["status"], str)
+    assert d["status"] == StressStatus.PASS.value
 
-    # Test monte_carlo_to_dict
+def test_monte_carlo_to_dict():
+    from bist_signal_bot.stress.reporting import monte_carlo_to_dict
+
+    config = MonteCarloConfig(
+        method=MonteCarloMethod.BOOTSTRAP,
+        simulations=1000,
+        horizon_days=252,
+        seed=42,
+        initial_value=10000.0
+    )
     mc_result = MonteCarloResult(
         result_id="mc_dict",
-        config=request.monte_carlo_config,
+        config=config,
         status=StressStatus.PASS,
         final_return_pct_p05=5.25,
         final_return_pct_p50=10.5
     )
     d = monte_carlo_to_dict(mc_result)
     assert d["result_id"] == "mc_dict"
+    assert isinstance(d["status"], str)
 
-    # Test risk_of_ruin_to_dict
+def test_risk_of_ruin_to_dict():
+    from bist_signal_bot.stress.reporting import risk_of_ruin_to_dict
+
     ror_result = RiskOfRuinResult(
         result_id="ror_dict",
         status=StressStatus.PASS,
@@ -648,8 +655,11 @@ def test_to_dict_functions():
     )
     d = risk_of_ruin_to_dict(ror_result)
     assert d["result_id"] == "ror_dict"
+    assert isinstance(d["status"], str)
 
-    # Test drawdown_result_to_dict
+def test_drawdown_result_to_dict():
+    from bist_signal_bot.stress.reporting import drawdown_result_to_dict
+
     dd_result = DrawdownSimulationResult(
         result_id="dd_dict",
         status=StressStatus.PASS,
@@ -658,8 +668,11 @@ def test_to_dict_functions():
     )
     d = drawdown_result_to_dict(dd_result)
     assert d["result_id"] == "dd_dict"
+    assert isinstance(d["status"], str)
 
-    # Test shock_result_to_dict
+def test_shock_result_to_dict():
+    from bist_signal_bot.stress.reporting import shock_result_to_dict
+
     scenario = StressScenario(
         scenario_id="scen_dict",
         name="Market Crash 20%",
@@ -674,3 +687,4 @@ def test_to_dict_functions():
     )
     d = shock_result_to_dict(shock_result)
     assert d["result_id"] == "shock_dict"
+    assert isinstance(d["status"], str)
