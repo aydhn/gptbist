@@ -24,6 +24,9 @@ from pathlib import Path
 from typing import Any
 
 from bist_signal_bot.config.defaults import DEFAULTS
+import logging
+
+logger = logging.getLogger(__name__)
 
 # repo root: bist_signal_bot/config/settings.py -> config -> bist_signal_bot -> <root>
 _ROOT = Path(__file__).resolve().parents[2]
@@ -110,13 +113,13 @@ def _coerce(key: str, raw: str) -> Any:
     if re.fullmatch(r"[+-]?\d+", s):
         try:
             return int(s)
-        except ValueError:
-            pass
+        except ValueError as e:
+            logger.warning("Failed to parse int from %r for key %r: %s", s, key, e)
     if re.fullmatch(r"[+-]?(?:\d+\.\d*|\.\d+|\d+(?:\.\d*)?[eE][+-]?\d+)", s):
         try:
             return float(s)
-        except ValueError:
-            pass
+        except ValueError as e:
+            logger.warning("Failed to parse float from %r for key %r: %s", s, key, e)
     if up.endswith(("_DIR", "_PATH")):  # NB: "_DIR_NAME" stays a plain string
         return Path(s)
     return s
