@@ -1,3 +1,4 @@
+import logging
 import json
 from pathlib import Path
 from typing import Any
@@ -10,6 +11,8 @@ from bist_signal_bot.maintenance.models import (
     MaintenanceDoctorReport
 )
 from bist_signal_bot.config.settings import get_settings
+
+logger = logging.getLogger(__name__)
 
 class MaintenanceStore:
     def __init__(self, base_dir: Path):
@@ -141,7 +144,8 @@ class MaintenanceStore:
 
                 if len(backups) >= limit:
                     break
-            except Exception:
+            except Exception as e:
+                logger.error(f"Error reading backup manifest {p}: {e}", exc_info=True)
                 continue
         return backups
 
@@ -169,6 +173,6 @@ class MaintenanceStore:
                         # But to fix the mutable issue, we need to return copies.
                     self._operations_cache = {"mtime": mtime, "data": all_ops}
                     return [op.copy() for op in all_ops[:limit]]
-            except Exception:
-                pass
+            except Exception as e:
+                logger.error(f"Error parsing operations log: {e}", exc_info=True)
         return ops
