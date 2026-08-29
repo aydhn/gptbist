@@ -1,4 +1,3 @@
-import pytest
 from bist_signal_bot.signals.scoring import (
     clamp_score,
     classify_signal_strength,
@@ -86,3 +85,17 @@ def test_safe_risk_reward():
     # Non-LONG/SHORT -> None
     assert safe_risk_reward(100.0, 90.0, 120.0, SignalDirection.FLAT) is None
     assert safe_risk_reward(100.0, 90.0, 120.0, SignalDirection.WATCH) is None
+
+def test_weighted_score_order_preservation():
+    # Floating point precision loss demonstrates order dependence.
+    parts1 = {"a": 1e16, "b": -1e16, "c": 1.0}
+    weights1 = {"a": 1.0, "b": 1.0, "c": 1.0}
+
+    parts2 = {"c": 1.0, "a": 1e16, "b": -1e16}
+    weights2 = {"c": 1.0, "a": 1.0, "b": 1.0}
+
+    res1 = weighted_score(parts1, weights1)
+    res2 = weighted_score(parts2, weights2)
+
+    assert res1 != res2
+    assert res2 == 0.0
