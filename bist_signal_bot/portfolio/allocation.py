@@ -104,8 +104,9 @@ class PortfolioAllocator:
         elif request.method == AllocationMethod.RISK_PARITY_SIMPLE:
             inv_risks = {}
             for d in valid_decisions:
-                r_pct = d.risk_pct or 0.01
-                if r_pct <= 0: r_pct = 0.01
+                r_pct = (d.position_size.risk_pct if d.position_size else None) or 0.01
+                if r_pct <= 0:
+                    r_pct = 0.01
                 inv_risks[d.signal.symbol] = 1.0 / r_pct
             tot_inv = sum(inv_risks.values())
             if tot_inv > 0:
@@ -122,7 +123,7 @@ class PortfolioAllocator:
             raw_weights = {d.signal.symbol: w for d in valid_decisions}
             issues.append("LIQUIDITY_WEIGHTED fallback to EQUAL_WEIGHT")
         elif request.method == AllocationMethod.RISK_BUDGET:
-            raw_weights = {d.signal.symbol: d.risk_pct or 0.01 for d in valid_decisions}
+            raw_weights = {d.signal.symbol: (d.position_size.risk_pct if d.position_size else None) or 0.01 for d in valid_decisions}
         elif request.method == AllocationMethod.HYBRID:
             w = 1.0 / len(valid_decisions)
             raw_weights = {d.signal.symbol: w for d in valid_decisions}
@@ -237,7 +238,8 @@ class PortfolioAllocator:
         return capped
 
     def quantity_from_notional(self, notional: float, price: float, fractional: bool) -> float:
-        if price <= 0: return 0.0
+        if price <= 0:
+            return 0.0
         qty = notional / price
         if not fractional:
             qty = math.floor(qty)
