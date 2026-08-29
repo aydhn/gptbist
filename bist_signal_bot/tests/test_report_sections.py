@@ -1,4 +1,4 @@
-from bist_signal_bot.reports.sections import ReportSectionBuilder, append_final_handoff_section
+from bist_signal_bot.reports.sections import ReportSectionBuilder, append_final_handoff_section, add_drift_section
 from bist_signal_bot.reports.models import ReportConfig, ReportDataBundle, ReportType
 from unittest.mock import patch, MagicMock
 
@@ -72,3 +72,14 @@ def test_append_final_handoff_section_success_no_data(mock_create_store):
     section = append_final_handoff_section(MockSettings())
     assert section.title == "Final MVP Handoff"
     assert "No final handoff data found" in section.body_markdown
+
+@patch("bist_signal_bot.drift.reporting.format_drift_result_text")
+def test_add_drift_section(mock_format):
+    mock_format.return_value = "Mocked Drift Result"
+    mock_result = {"some": "result"}
+
+    output = add_drift_section(mock_result)
+
+    mock_format.assert_called_once_with(mock_result)
+    assert "\n--- Drift & Decay Monitoring ---\n" in output
+    assert "Mocked Drift Result" in output
