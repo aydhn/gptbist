@@ -1,4 +1,4 @@
-from unittest.mock import patch
+from unittest.mock import patch, Mock
 from bist_signal_bot.scanner.models import SymbolScanResult, ScanCandidateStatus, ScanRequest, ScanUniverseMode
 from bist_signal_bot.scanner.filters import ScanFilterEngine
 from bist_signal_bot.signals.models import SignalCandidate, SignalDirection, SignalStrength
@@ -246,3 +246,34 @@ def test_filter_results_preserves_order():
         assert out[0].symbol == "A"
         assert out[1].symbol == "B"
         assert out[2].symbol == "C"
+
+def test_filter_risk_rejected_with_rejection_reason():
+    req = ScanRequest(strategy_name="t", universe_mode=ScanUniverseMode.ALL, min_signal_score=10.0, min_confidence=10.0)
+    sig = SignalCandidate(strategy_name="t", symbol="A", direction=SignalDirection.LONG, score=80.0, confidence=80.0, strength=SignalStrength.STRONG)
+
+    # Use a mock since RiskDecision doesn't allow setting arbitrary fields in some pydantic versions
+    risk = Mock(spec=RiskDecision)
+    risk.status = RiskDecisionStatus.REJECTED
+    risk.rejection_reason = "Too risky"
+
+    res = SymbolScanResult(symbol="A", status=ScanCandidateStatus.PASSED, signal=sig, risk_decision=risk)
+
+    engine = ScanFilterEngine()
+    out = engine.filter_symbol_result(res, req)
+    assert out.status == ScanCandidateStatus.REJECTED
+    assert any("Too risky" in r for r in out.reasons)
+
+def test_filter_risk_final_score_none():
+    req = ScanRequest(strategy_name="t", universe_mode=ScanUniverseMode.ALL, min_signal_score=10.0, min_confidence=10.0, min_final_score=80.0)
+    sig = SignalCandidate(strategy_name="t", symbol="A", direction=SignalDirection.LONG, score=80.0, confidence=80.0, strength=SignalStrength.STRONG)
+
+    risk = Mock(spec=RiskDecision)
+    risk.status = RiskDecisionStatus.APPROVED
+    risk.final_score = None
+
+    res = SymbolScanResult(symbol="A", status=ScanCandidateStatus.PASSED, signal=sig, risk_decision=risk)
+
+    engine = ScanFilterEngine()
+    out = engine.filter_symbol_result(res, req)
+    # The final_score check is skipped if it's None. The forbidden check will pass, returning status PASSED.
+    assert out.status == ScanCandidateStatus.PASSED
