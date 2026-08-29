@@ -139,8 +139,8 @@ class AdaptiveStore:
                                 })
                                 if len(results) >= limit:
                                     return results
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            self.logger.warning(f"Failed to read adaptive recommendation from {json_file}: {e}")
             return results
         except Exception as e:
             self.logger.warning(f"Failed to list recent recommendations: {e}")
