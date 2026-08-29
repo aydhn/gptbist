@@ -1,4 +1,7 @@
 from bist_signal_bot.config.settings import Settings
+import logging
+
+logger = logging.getLogger(__name__)
 
 def load_with_deployment_profile(settings: Settings, profile_type_str: str) -> Settings:
     from bist_signal_bot.deployment.profiles import DeploymentProfileManager
@@ -27,7 +30,9 @@ def load_with_registry_validation(settings_cls, **kwargs):
             if getattr(settings, 'CONFIG_REGISTRY_WARN_UNKNOWN_ENV', False):
                 if res.status.value in ["FAIL", "BLOCKED"]:
                     # In a real impl we'd raise or log heavily here, but we will pass to let app fail cleanly
+                    logger.warning(f"Configuration validation failed or blocked: {res.status.value}")
                     pass
-        except Exception:
+        except Exception as e:
+            logger.error(f"Failed to load config with registry validation: {e}")
             pass # fallback safe load
     return settings
