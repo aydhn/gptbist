@@ -180,3 +180,32 @@ def test_engine_save_output_success(tmp_path):
             assert result_pre.output_files["result_json"] == str(dummy_json_path)
             assert result_pre.output_files["report_md"] == str(tmp_path / "stress_report.md")
             assert len(result_pre.warnings) == 0
+
+def test_engine_run_input_error():
+    from unittest.mock import patch
+    engine = StressTestEngine(
+        return_builder=ReturnSeriesBuilder(),
+        monte_carlo_simulator=MonteCarloSimulator(),
+        shock_engine=ShockScenarioEngine(),
+        drawdown_simulator=DrawdownSimulator(),
+        risk_of_ruin_estimator=RiskOfRuinEstimator()
+    )
+    req = StressTestRequest(
+        input_type=StressInputType.PORTFOLIO_RESEARCH_SNAPSHOT,
+        monte_carlo_config=MonteCarloConfig(
+            method=MonteCarloMethod.BOOTSTRAP,
+            simulations=10,
+            horizon_days=5,
+            seed=42,
+            initial_value=100.0
+        ),
+        ruin_threshold_pct=30.0,
+        save_output=False
+    )
+
+    with patch.object(engine, '_prepare_inputs', side_effect=Exception("Mocked input preparation error")):
+        res = engine.run(req)
+
+    assert res.status == StressStatus.ERROR
+    assert len(res.warnings) == 1
+    assert "Failed to prepare input: Mocked input preparation error" in res.warnings[0]
