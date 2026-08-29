@@ -82,3 +82,32 @@ def test_is_same_family_different_source_type():
     fp2 = builder.build_from_signal(s2, "PORTFOLIO")
 
     assert not builder.is_same_family(fp1, fp2)
+
+def test_normalize_payload_order_preservation():
+    builder = SignalFingerprintBuilder()
+    payload = {
+        "z_key": 10.1234,
+        "a_key": "UPPERCASE",
+        "m_key": ["B", "A", 1]
+    }
+    normalized = builder.normalize_payload(payload)
+
+    # Check that keys are sorted
+    assert list(normalized.keys()) == ["a_key", "m_key", "z_key"]
+    # Check string lowercasing
+    assert normalized["a_key"] == "uppercase"
+    # Check float rounding
+    assert normalized["z_key"] == 10.12
+    # Check list sorting and stringification
+    assert normalized["m_key"] == ["1", "a", "b"]
+
+def test_fingerprint_missing_score_fallback():
+    builder = SignalFingerprintBuilder()
+    s1 = MockSignal("ASELS", "trend", "NOT_A_FLOAT", "LONG", reasons=["R4", "R1", "R3", "R2"])
+
+    fp1 = builder.build_from_signal(s1, "SCANNER", timeframe="1h")
+
+    payload = fp1.metadata["normalized_payload"]
+    assert payload.get("rounded_score_bucket") is None
+    # Check major reasons are sliced to 3 and sorted/lowercased
+    assert payload.get("major_reasons") == ["r1", "r3", "r4"]
