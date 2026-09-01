@@ -1,7 +1,6 @@
-import json
 from pathlib import Path
 from datetime import datetime
-from typing import Optional, Any
+from typing import Optional
 
 from bist_signal_bot.docs_hub.models import (
     DocsIndex, DocsSearchResult, ArchitectureMap, CommandCookbook,
