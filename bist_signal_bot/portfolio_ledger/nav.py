@@ -7,7 +7,6 @@ from bist_signal_bot.portfolio_ledger.models import (
     PortfolioValuationSnapshot,
     PortfolioNavPoint
 )
-from bist_signal_bot.core.exceptions import PortfolioNavError
 
 class PortfolioNavBuilder:
     def __init__(self, store: Any = None):
