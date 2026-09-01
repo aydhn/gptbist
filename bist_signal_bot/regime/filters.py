@@ -1,5 +1,4 @@
 import logging
-from typing import Any
 
 from bist_signal_bot.config.settings import Settings
 from bist_signal_bot.signals.models import SignalCandidate, SignalDirection
@@ -40,7 +39,7 @@ class RegimeSignalFilter:
             if is_long and regime.market_regime in (MarketRegime.TRENDING_DOWN, MarketRegime.RISK_OFF):
                 if config.min_regime_score > 0 and regime.regime_score < config.min_regime_score:
                     decision = RegimeFilterDecision.REJECT
-                    reasons.append(f"Long signal rejected in down trend with low regime score.")
+                    reasons.append("Long signal rejected in down trend with low regime score.")
                 else:
                     decision = RegimeFilterDecision.REDUCE
                     reduction_factor = 0.5
@@ -49,7 +48,7 @@ class RegimeSignalFilter:
             elif not is_long and regime.market_regime in (MarketRegime.TRENDING_UP, MarketRegime.RISK_ON):
                 if config.min_regime_score > 0 and regime.regime_score > (100 - config.min_regime_score):
                     decision = RegimeFilterDecision.REJECT
-                    reasons.append(f"Short signal rejected in strong uptrend with high regime score.")
+                    reasons.append("Short signal rejected in strong uptrend with high regime score.")
                 else:
                     decision = RegimeFilterDecision.REDUCE
                     reduction_factor = 0.5
