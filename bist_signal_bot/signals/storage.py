@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
-from typing import List, Optional
+import os
+from typing import List, Optional, Iterator
 from bist_signal_bot.signals.models import (
     TrackedSignal, SignalLifecycleEvent, WatchlistEntry,
     ResearchExitSimulation, SignalAlertPolicy, SignalLifecycleState
@@ -25,21 +26,43 @@ class SignalStore:
             f.write(json.dumps(data) + "\n")
         return path
 
+    def _read_lines_reversed(self, filepath: Path, chunk_size: int = 8192) -> Iterator[str]:
+        with open(filepath, 'rb') as f:
+            f.seek(0, os.SEEK_END)
+            position = f.tell()
+            buffer = b''
+            while position > 0:
+                read_size = min(chunk_size, position)
+                position -= read_size
+                f.seek(position)
+                chunk = f.read(read_size)
+                buffer = chunk + buffer
+
+                lines = buffer.split(b'\n')
+                if position > 0:
+                    buffer = lines.pop(0)
+                else:
+                    buffer = b''
+
+                for line in reversed(lines):
+                    yield line.decode('utf-8')
+
+            if buffer:
+                yield buffer.decode('utf-8')
+
     def _load_jsonl(self, path: Path, limit: int = 1000) -> List[dict]:
         if not path.exists():
             return []
         results = []
-        with open(path, "r", encoding="utf-8") as f:
-            lines = f.readlines()
-            for line in reversed(lines):
-                if not line.strip():
-                    continue
-                try:
-                    results.append(json.loads(line))
-                    if len(results) >= limit:
-                        break
-                except json.JSONDecodeError as e:
-                    logger.warning(f"Skipping corrupted JSONL line: {e}")
+        for line in self._read_lines_reversed(path):
+            if not line.strip():
+                continue
+            try:
+                results.append(json.loads(line))
+                if len(results) >= limit:
+                    break
+            except json.JSONDecodeError as e:
+                logger.warning(f"Skipping corrupted JSONL line: {e}")
         return results
 
     def append_signal(self, signal: TrackedSignal) -> Path:
@@ -73,10 +96,14 @@ class SignalStore:
         # Optimize by loading from end until found
         if not self.tracked_signals_path.exists():
             return None
-        with open(self.tracked_signals_path, "r", encoding="utf-8") as f:
-            for line in reversed(f.readlines()):
-                if not line.strip():
-                    continue
+
+        target_str = f'"signal_id": "{signal_id}"'
+        for line in self._read_lines_reversed(self.tracked_signals_path):
+            if not line.strip():
+                continue
+
+            # Fast string check before parsing JSON
+            if target_str in line:
                 try:
                     data = json.loads(line)
                     if data.get("signal_id") == signal_id:
@@ -86,18 +113,26 @@ class SignalStore:
         return None
 
     def find_by_fingerprint(self, fingerprint_id: str, active_only: bool = True) -> Optional[TrackedSignal]:
-        raw_data = self._load_jsonl(self.tracked_signals_path, limit=5000)
-        latest_for_fp = None
-        for row in raw_data:
-            if row.get("fingerprint_id") == fingerprint_id:
-                if latest_for_fp is None or row.get("updated_at") > latest_for_fp.get("updated_at"):
-                    latest_for_fp = row
+        # Optimize by loading from end until found
+        if not self.tracked_signals_path.exists():
+            return None
 
-        if latest_for_fp:
-            s = TrackedSignal(**latest_for_fp)
-            if active_only and s.state not in [SignalLifecycleState.NEW, SignalLifecycleState.ACTIVE, SignalLifecycleState.WATCHING]:
-                return None
-            return s
+        target_str = f'"fingerprint_id": "{fingerprint_id}"'
+        for line in self._read_lines_reversed(self.tracked_signals_path):
+            if not line.strip():
+                continue
+
+            # Fast string check before parsing JSON
+            if target_str in line:
+                try:
+                    data = json.loads(line)
+                    if data.get("fingerprint_id") == fingerprint_id:
+                        s = TrackedSignal(**data)
+                        if active_only and s.state not in [SignalLifecycleState.NEW, SignalLifecycleState.ACTIVE, SignalLifecycleState.WATCHING]:
+                            return None
+                        return s
+                except json.JSONDecodeError:
+                    logger.warning("Skipping corrupted JSON line in find_by_fingerprint", exc_info=True)
         return None
 
     def append_event(self, event: SignalLifecycleEvent) -> Path:
