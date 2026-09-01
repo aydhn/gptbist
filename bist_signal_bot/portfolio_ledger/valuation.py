@@ -8,7 +8,6 @@ from bist_signal_bot.portfolio_ledger.models import (
     PortfolioValuationSnapshot,
     PortfolioValuationStatus
 )
-from bist_signal_bot.core.exceptions import PortfolioValuationError
 
 class PortfolioValuationEngine:
     def __init__(self, data_service: Any = None):
