@@ -1,8 +1,10 @@
+from __future__ import annotations
 from enum import Enum
 from typing import Any, Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
     import pandas as pd
+
 from datetime import datetime
 from dataclasses import dataclass, field
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -169,7 +171,7 @@ class PortfolioState(BaseModel):
 @dataclass
 class CorrelationMatrixResult:
     symbols: list[str]
-    matrix: "pd.DataFrame"
+    matrix: pd.DataFrame
     lookback_rows: int
     method: str
     generated_at: datetime
