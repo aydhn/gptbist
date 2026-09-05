@@ -1,6 +1,5 @@
 import json
 from typing import Any
-from datetime import datetime
 
 from bist_signal_bot.docs_hub.models import (
     DocPage, DocsIndex, DocsSearchResult, ArchitectureNode, ArchitectureEdge,
