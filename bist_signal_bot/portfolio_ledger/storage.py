@@ -1,8 +1,6 @@
 import json
 from pathlib import Path
-from typing import Any
 from pydantic import BaseModel
-from datetime import datetime, timezone
 
 from bist_signal_bot.portfolio_ledger.models import (
     ResearchPortfolio,
