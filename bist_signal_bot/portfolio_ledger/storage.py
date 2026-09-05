@@ -58,7 +58,8 @@ class PortfolioLedgerStore:
 
         with self.portfolios_file.open('r', encoding='utf-8') as f:
             for line in f:
-                if not line.strip(): continue
+                if not line.strip():
+                    continue
                 data = json.loads(line)
                 latest_states[data["portfolio_id"]] = data
 
@@ -93,7 +94,8 @@ class PortfolioLedgerStore:
 
         with self.events_file.open('r', encoding='utf-8') as f:
             for line in f:
-                if not line.strip(): continue
+                if not line.strip():
+                    continue
                 data = json.loads(line)
                 evt = PortfolioLedgerEvent(**data)
                 if portfolio_id is None or evt.portfolio_id == portfolio_id:
@@ -113,7 +115,8 @@ class PortfolioLedgerStore:
         latest = None
         with self.valuations_file.open('r', encoding='utf-8') as f:
             for line in f:
-                if not line.strip(): continue
+                if not line.strip():
+                    continue
                 data = json.loads(line)
                 snap = PortfolioValuationSnapshot(**data)
                 if snap.portfolio_id == portfolio_id:
@@ -132,7 +135,8 @@ class PortfolioLedgerStore:
         latest = None
         with self.attributions_file.open('r', encoding='utf-8') as f:
             for line in f:
-                if not line.strip(): continue
+                if not line.strip():
+                    continue
                 data = json.loads(line)
                 res = PortfolioAttributionResult(**data)
                 if res.portfolio_id == portfolio_id:
@@ -151,7 +155,8 @@ class PortfolioLedgerStore:
 
         with self.outcomes_file.open('r', encoding='utf-8') as f:
             for line in f:
-                if not line.strip(): continue
+                if not line.strip():
+                    continue
                 data = json.loads(line)
                 out = PortfolioOutcomeResult(**data)
                 if portfolio_id is None or out.portfolio_id == portfolio_id:
@@ -176,7 +181,8 @@ class PortfolioLedgerStore:
 
         with self.nav_file.open('r', encoding='utf-8') as f:
             for line in f:
-                if not line.strip(): continue
+                if not line.strip():
+                    continue
                 data = json.loads(line)
                 pt = PortfolioNavPoint(**data)
                 if pt.portfolio_id == portfolio_id:
