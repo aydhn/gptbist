@@ -77,31 +77,50 @@ class BISTMarketCalendar:
         return MarketCalendarDay(date=date, day_type=MarketDayType.TRADING_DAY)
 
     def is_trading_day(self, date: datetime) -> bool:
-        day = self.get_day(date)
-        return day.day_type in (MarketDayType.TRADING_DAY, MarketDayType.HALF_DAY)
+        self._ensure_loaded()
+        dt_date = date.date()
+        if dt_date in self._holidays:
+            return self._holidays[dt_date].day_type in (MarketDayType.TRADING_DAY, MarketDayType.HALF_DAY)
+        return dt_date.weekday() < 5
 
     def is_holiday(self, date: datetime) -> bool:
-        return self.get_day(date).day_type == MarketDayType.HOLIDAY
+        self._ensure_loaded()
+        dt_date = date.date()
+        if dt_date in self._holidays:
+            return self._holidays[dt_date].day_type == MarketDayType.HOLIDAY
+        return False
 
     def is_half_day(self, date: datetime) -> bool:
-        return self.get_day(date).day_type == MarketDayType.HALF_DAY
+        self._ensure_loaded()
+        dt_date = date.date()
+        if dt_date in self._holidays:
+            return self._holidays[dt_date].day_type == MarketDayType.HALF_DAY
+        return False
 
     def next_trading_day(self, date: datetime) -> MarketCalendarDay:
+        self._ensure_loaded()
         current = date + timedelta(days=1)
         # Prevent infinite loops in case calendar is fully blocked (unlikely)
         for _ in range(365):
-            day = self.get_day(current)
-            if day.day_type in (MarketDayType.TRADING_DAY, MarketDayType.HALF_DAY):
-                return day
+            dt_date = current.date()
+            if dt_date in self._holidays:
+                if self._holidays[dt_date].day_type in (MarketDayType.TRADING_DAY, MarketDayType.HALF_DAY):
+                    return self.get_day(current)
+            elif dt_date.weekday() < 5:
+                return MarketCalendarDay(date=current, day_type=MarketDayType.TRADING_DAY)
             current += timedelta(days=1)
         raise MarketCalendarError("Could not find next trading day within 1 year")
 
     def previous_trading_day(self, date: datetime) -> MarketCalendarDay:
+        self._ensure_loaded()
         current = date - timedelta(days=1)
         for _ in range(365):
-            day = self.get_day(current)
-            if day.day_type in (MarketDayType.TRADING_DAY, MarketDayType.HALF_DAY):
-                return day
+            dt_date = current.date()
+            if dt_date in self._holidays:
+                if self._holidays[dt_date].day_type in (MarketDayType.TRADING_DAY, MarketDayType.HALF_DAY):
+                    return self.get_day(current)
+            elif dt_date.weekday() < 5:
+                return MarketCalendarDay(date=current, day_type=MarketDayType.TRADING_DAY)
             current -= timedelta(days=1)
         raise MarketCalendarError("Could not find previous trading day within 1 year")
 
