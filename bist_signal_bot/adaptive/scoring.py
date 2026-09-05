@@ -1,4 +1,3 @@
-from typing import Any
 from bist_signal_bot.adaptive.models import (
     AdaptivePolicy,
     AdaptiveStrategyCandidate,
@@ -65,8 +64,10 @@ class AdaptiveScorer:
         count = sum(1 for ev in evidence_items if ev.confidence is not None)
 
         if count == 0:
-            if len(evidence_items) > 10: return AdaptiveConfidenceLevel.HIGH
-            if len(evidence_items) > 3: return AdaptiveConfidenceLevel.MEDIUM
+            if len(evidence_items) > 10:
+                return AdaptiveConfidenceLevel.HIGH
+            if len(evidence_items) > 3:
+                return AdaptiveConfidenceLevel.MEDIUM
             return AdaptiveConfidenceLevel.LOW
 
         avg = avg_conf / count
@@ -74,8 +75,10 @@ class AdaptiveScorer:
         if len(types) >= 4:
             avg += 10.0
 
-        if avg >= 75.0: return AdaptiveConfidenceLevel.HIGH
-        if avg >= 40.0: return AdaptiveConfidenceLevel.MEDIUM
+        if avg >= 75.0:
+            return AdaptiveConfidenceLevel.HIGH
+        if avg >= 40.0:
+            return AdaptiveConfidenceLevel.MEDIUM
         return AdaptiveConfidenceLevel.LOW
 
     def apply_policy_filters(self, candidate: AdaptiveStrategyCandidate, policy: AdaptivePolicy) -> AdaptiveStrategyCandidate:
