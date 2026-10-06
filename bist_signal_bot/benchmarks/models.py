@@ -2,7 +2,6 @@ import re
 from enum import Enum
 from datetime import datetime
 from typing import Any
-import pandas as pd
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 
