@@ -3,6 +3,7 @@ import tarfile
 import shutil
 import time
 from pathlib import Path
+import os
 from bist_signal_bot.maintenance.models import (
     RestoreRequest,
     RestoreResult,
@@ -132,6 +133,16 @@ class RestoreManager:
                 errors=[str(e)]
             )
 
+
+    @staticmethod
+    def _is_safe_path(basedir: Path, target: Path) -> bool:
+        try:
+            base_abs = os.path.abspath(basedir)
+            target_abs = os.path.abspath(target)
+            return os.path.commonpath([base_abs, target_abs]) == base_abs
+        except ValueError:
+            return False
+
     def restore_zip(self, backup_path: Path, target_dir: Path, request: RestoreRequest):
         restored = 0
         skipped = 0
@@ -142,7 +153,7 @@ class RestoreManager:
         with zipfile.ZipFile(backup_path, 'r') as zf:
              for name in zf.namelist():
                   path = Path(name)
-                  if '..' in path.parts or path.is_absolute():
+                  if not self._is_safe_path(target_dir, target_dir / name):
                        blocked += 1
                        errors.append(f"Blocked path traversal risk: {name}")
                        continue
@@ -174,13 +185,13 @@ class RestoreManager:
         valid_members = []
         with tarfile.open(backup_path, 'r:gz') as tar:
              for member in tar.getmembers():
-                  if not member.isfile():
-                       continue
                   name = member.name
                   path = Path(name)
-                  if '..' in path.parts or path.is_absolute():
+                  if not self._is_safe_path(target_dir, target_dir / name):
                        blocked += 1
                        errors.append(f"Blocked path traversal risk: {name}")
+                       continue
+                  if not member.isfile():
                        continue
                   is_excluded, reason = BackupManifestBuilder.should_exclude(path)
                   if is_excluded:
@@ -215,7 +226,7 @@ class RestoreManager:
                   continue
 
              rel_path = path.relative_to(backup_path)
-             if '..' in rel_path.parts or rel_path.is_absolute():
+             if not self._is_safe_path(target_dir, target_dir / rel_path):
                   blocked += 1
                   errors.append(f"Blocked path traversal risk: {rel_path}")
                   continue
