@@ -281,3 +281,46 @@ def test_load_jsonl_empty_line(tmp_path):
 
     results = store._load_jsonl(store.tracked_signals_path)
     assert len(results) == 1
+
+def test_jsondecodeerror_in_get_signal(tmp_path, caplog):
+    import logging
+    store = SignalStore(tmp_path)
+    with open(store.tracked_signals_path, "w", encoding="utf-8") as f:
+        f.write('{"signal_id": "trigger_err"  , \n')
+
+    with caplog.at_level(logging.WARNING):
+        res = store.get_signal("trigger_err")
+    assert res is None
+    assert "Skipping corrupted JSON line in get_signal" in caplog.text
+
+def test_jsondecodeerror_in_find_by_fingerprint(tmp_path, caplog):
+    import logging
+    store = SignalStore(tmp_path)
+    with open(store.tracked_signals_path, "w", encoding="utf-8") as f:
+        f.write('{"fingerprint_id": "trigger_err"  , \n')
+
+    with caplog.at_level(logging.WARNING):
+        res = store.find_by_fingerprint("trigger_err")
+    assert res is None
+    assert "Skipping corrupted JSON line in find_by_fingerprint" in caplog.text
+
+def test_read_lines_reversed_buffer_flush(tmp_path):
+    store = SignalStore(tmp_path)
+    test_file = tmp_path / "buffer_flush.txt"
+    with open(test_file, "wb") as f:
+        # We need a line that has no trailing newline and is greater than chunk_size
+        # to have leftover buffer when position == 0
+        f.write(b"a" * 8192 + b"b" * 10)
+    lines = list(store._read_lines_reversed(test_file, chunk_size=8192))
+    assert len(lines) == 1
+    assert lines[0] == "a" * 8192 + "b" * 10
+
+def test_read_lines_reversed_leftover_buffer(tmp_path):
+    store = SignalStore(tmp_path)
+    test_file = tmp_path / "buffer_leftover.txt"
+    with open(test_file, "w") as f:
+        f.write("A" * 10)
+
+    # read with chunk size 5 so it has to loop twice
+    lines = list(store._read_lines_reversed(test_file, chunk_size=5))
+    assert lines == ["A" * 10]
