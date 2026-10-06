@@ -108,3 +108,19 @@ def test_market_session_status_invalid_types():
             day_type=MarketDayType.TRADING_DAY,
             session_type=MarketSessionType.REGULAR
         )
+
+def test_market_session_status_arbitrary_types_allowed_in_init():
+    """Test that arbitrary types are allowed per model_config when initialized."""
+    class CustomType:
+        pass
+
+    now = datetime.now(timezone.utc)
+    status = MarketSessionStatus(
+        now=now,
+        timezone="Europe/Istanbul",
+        is_trading_day=True,
+        is_market_open=False,
+        day_type=MarketDayType.TRADING_DAY,
+        session_type=MarketSessionType.PRE_MARKET,
+    )
+    assert status.model_config.get("arbitrary_types_allowed") is True
