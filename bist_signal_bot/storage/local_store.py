@@ -2,6 +2,9 @@ import logging
 from datetime import datetime
 from pathlib import Path
 
+import os
+import pyarrow.csv as pv
+import pyarrow.compute as pc
 import pandas as pd
 
 from bist_signal_bot.config.settings import Settings
@@ -300,9 +303,31 @@ class LocalMarketDataStore:
                     symbol = file_path.stem
 
                     try:
-                        df = pd.read_csv(file_path, parse_dates=["timestamp"], index_col="timestamp")
-                        start = df.index.min().to_pydatetime() if not df.empty else None
-                        end = df.index.max().to_pydatetime() if not df.empty else None
+                        start, end, row_count = None, None, 0
+                        try:
+                            # Optimize using pyarrow.csv for much faster parsing and min/max aggregation
+                            table = pv.read_csv(
+                                file_path,
+                                read_options=pv.ReadOptions(use_threads=True),
+                                convert_options=pv.ConvertOptions(include_columns=['timestamp'], timestamp_parsers=[''])
+                            )
+                            row_count = table.num_rows
+                            if row_count > 0:
+                                ts_col = table.column("timestamp")
+
+                                # Use pyarrow compute to reliably find min/max
+                                start_val = pc.min(ts_col).as_py()
+                                end_val = pc.max(ts_col).as_py()
+
+                                start = pd.Timestamp(start_val).to_pydatetime() if start_val else None
+                                end = pd.Timestamp(end_val).to_pydatetime() if end_val else None
+
+                        except Exception:
+                            # Fallback to pandas if pyarrow fails
+                            df = pd.read_csv(file_path, parse_dates=["timestamp"], index_col="timestamp")
+                            row_count = len(df)
+                            start = df.index.min().to_pydatetime() if not df.empty else None
+                            end = df.index.max().to_pydatetime() if not df.empty else None
 
                         # Just grab existing adjusted if available, else True
                         adjusted = True
@@ -315,7 +340,7 @@ class LocalMarketDataStore:
                             vendor=vendor,
                             timeframe=timeframe,
                             file_path=str(file_path),
-                            row_count=len(df),
+                            row_count=row_count,
                             start=start,
                             end=end,
                             adjusted=adjusted
