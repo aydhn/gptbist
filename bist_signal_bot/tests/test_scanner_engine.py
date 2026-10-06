@@ -443,3 +443,34 @@ def test_add_valuation_context_exception_handling():
             assert result.issues[0].severity == "WARNING"
             assert "Failed to add valuation context: Test Exception" in result.issues[0].message
             assert result.issues[0].stage == "valuation_enrichment"
+
+def test_scan_wrappers():
+    from bist_signal_bot.scanner.engine import SignalScannerEngine, SignalScannerDependencies
+    from bist_signal_bot.config.settings import Settings
+    from bist_signal_bot.scanner.models import ScanUniverseMode
+
+    class MockEngine(SignalScannerEngine):
+        def scan(self, req):
+            return req
+
+    deps = SignalScannerDependencies(data_service=MockDataService(), strategy_engine=MockStrategyEngine(), settings=Settings())
+    engine = MockEngine(deps)
+
+    # scan_symbols
+    req1 = engine.scan_symbols(["AAPL"], "test_strat")
+    assert req1.universe_mode == ScanUniverseMode.SYMBOLS
+    assert req1.symbols == ["AAPL"]
+
+    # scan_watchlist
+    req2 = engine.scan_watchlist("my_watch", "test_strat")
+    assert req2.universe_mode == ScanUniverseMode.WATCHLIST
+    assert req2.watchlist_name == "my_watch"
+
+    # scan_group
+    req3 = engine.scan_group("my_group", "test_strat")
+    assert req3.universe_mode == ScanUniverseMode.GROUP
+    assert req3.group_name == "my_group"
+
+    # scan_all
+    req4 = engine.scan_all("test_strat")
+    assert req4.universe_mode == ScanUniverseMode.ALL
