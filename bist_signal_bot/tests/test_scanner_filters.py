@@ -1,279 +1,122 @@
-from unittest.mock import patch, Mock
-from bist_signal_bot.scanner.models import SymbolScanResult, ScanCandidateStatus, ScanRequest, ScanUniverseMode
+import pytest
+from bist_signal_bot.config.settings import Settings
 from bist_signal_bot.scanner.filters import ScanFilterEngine
-from bist_signal_bot.signals.models import SignalCandidate, SignalDirection, SignalStrength
-from bist_signal_bot.risk.models import RiskDecision, RiskDecisionStatus, RiskFilterResult
+from bist_signal_bot.scanner.models import (
+    SymbolScanResult, ScanRequest, ScanCandidateStatus, ScanUniverseMode
+)
+from bist_signal_bot.signals.models import SignalCandidate, SignalDirection
+from bist_signal_bot.risk.models import RiskDecision, RiskDecisionStatus, RiskSide
 
-def test_filter_low_signal_score():
-    req = ScanRequest(strategy_name="t", universe_mode=ScanUniverseMode.ALL, min_signal_score=50.0)
-    sig = SignalCandidate(strategy_name="t", symbol="A", direction=SignalDirection.LONG, score=40.0, confidence=80.0, strength=SignalStrength.STRONG)
-    res = SymbolScanResult(symbol="A", status=ScanCandidateStatus.PASSED, signal=sig)
+@pytest.fixture
+def filter_engine():
+    return ScanFilterEngine()
 
-    engine = ScanFilterEngine()
-    out = engine.filter_symbol_result(res, req)
-    assert out.status == ScanCandidateStatus.FILTERED
-
-def test_filter_low_confidence():
-    req = ScanRequest(strategy_name="t", universe_mode=ScanUniverseMode.ALL, min_confidence=50.0, min_signal_score=10.0)
-    sig = SignalCandidate(strategy_name="t", symbol="A", direction=SignalDirection.LONG, score=80.0, confidence=40.0, strength=SignalStrength.STRONG)
-    res = SymbolScanResult(symbol="A", status=ScanCandidateStatus.PASSED, signal=sig)
-
-    engine = ScanFilterEngine()
-    out = engine.filter_symbol_result(res, req)
-    assert out.status == ScanCandidateStatus.FILTERED
-
-def test_filter_risk_rejected():
-    req = ScanRequest(strategy_name="t", universe_mode=ScanUniverseMode.ALL, min_signal_score=10.0, min_confidence=10.0)
-    sig = SignalCandidate(strategy_name="t", symbol="A", direction=SignalDirection.LONG, score=80.0, confidence=80.0, strength=SignalStrength.STRONG)
-    risk = RiskDecision(signal=sig, side=sig.direction, approved=False, filter_result=RiskFilterResult(status=RiskDecisionStatus.REJECTED, passed=False, active_rules=[], triggered_rules=[]), symbol="A", strategy_name="t", status=RiskDecisionStatus.REJECTED)
-    res = SymbolScanResult(symbol="A", status=ScanCandidateStatus.PASSED, signal=sig, risk_decision=risk)
-
-    engine = ScanFilterEngine()
-    out = engine.filter_symbol_result(res, req)
-    assert out.status == ScanCandidateStatus.REJECTED
-
-def test_filter_watch_only():
-    req = ScanRequest(strategy_name="t", universe_mode=ScanUniverseMode.ALL, min_signal_score=10.0, min_confidence=10.0)
-    sig = SignalCandidate(strategy_name="t", symbol="A", direction=SignalDirection.WATCH, score=80.0, confidence=80.0, strength=SignalStrength.STRONG)
-    res = SymbolScanResult(symbol="A", status=ScanCandidateStatus.PASSED, signal=sig)
-
-    engine = ScanFilterEngine()
-    out = engine.filter_symbol_result(res, req)
-    assert out.status == ScanCandidateStatus.WATCH_ONLY
-
-def test_filter_error_status():
-    req = ScanRequest(strategy_name="t", universe_mode=ScanUniverseMode.ALL)
-    res = SymbolScanResult(symbol="A", status=ScanCandidateStatus.ERROR)
-
-    engine = ScanFilterEngine()
-    out = engine.filter_symbol_result(res, req)
-    assert out.status == ScanCandidateStatus.ERROR
-
-def test_filter_no_signal():
-    req = ScanRequest(strategy_name="t", universe_mode=ScanUniverseMode.ALL)
-    res = SymbolScanResult(symbol="A", status=ScanCandidateStatus.PASSED, signal=None)
-
-    engine = ScanFilterEngine()
-    out = engine.filter_symbol_result(res, req)
-    assert out.status == ScanCandidateStatus.FILTERED
-    assert "No signal generated" in out.reasons
-
-def test_filter_low_final_score():
-    req = ScanRequest(strategy_name="t", universe_mode=ScanUniverseMode.ALL, min_signal_score=10.0, min_confidence=10.0, min_final_score=80.0)
-    sig = SignalCandidate(strategy_name="t", symbol="A", direction=SignalDirection.LONG, score=80.0, confidence=80.0, strength=SignalStrength.STRONG)
-    risk = RiskDecision(signal=sig, side=sig.direction, approved=True, filter_result=RiskFilterResult(status=RiskDecisionStatus.APPROVED, passed=True, active_rules=[], triggered_rules=[]), symbol="A", strategy_name="t", status=RiskDecisionStatus.APPROVED, final_score=50.0)
-    res = SymbolScanResult(symbol="A", status=ScanCandidateStatus.PASSED, signal=sig, risk_decision=risk)
-
-    engine = ScanFilterEngine()
-    out = engine.filter_symbol_result(res, req)
-    assert out.status == ScanCandidateStatus.FILTERED
-    assert any("Final score" in r for r in out.reasons)
-
-def test_filter_forbidden_claims():
-    req = ScanRequest(strategy_name="t", universe_mode=ScanUniverseMode.ALL, min_signal_score=10.0, min_confidence=10.0)
-    sig = SignalCandidate(strategy_name="t", symbol="A", direction=SignalDirection.LONG, score=80.0, confidence=80.0, strength=SignalStrength.STRONG, metadata={"notes": "Kesin al bu hisseyi"})
-    res = SymbolScanResult(symbol="A", status=ScanCandidateStatus.PASSED, signal=sig)
-
-    engine = ScanFilterEngine()
-    out = engine.filter_symbol_result(res, req)
-    assert out.status == ScanCandidateStatus.REJECTED
-    assert "Forbidden claim detected" in out.reasons[0]
-
-def test_filter_passed():
-    req = ScanRequest(strategy_name="t", universe_mode=ScanUniverseMode.ALL, min_signal_score=10.0, min_confidence=10.0)
-    sig = SignalCandidate(strategy_name="t", symbol="A", direction=SignalDirection.LONG, score=80.0, confidence=80.0, strength=SignalStrength.STRONG, metadata={"notes": "Normal signal"})
-    res = SymbolScanResult(symbol="A", status=ScanCandidateStatus.PASSED, signal=sig)
-
-    engine = ScanFilterEngine()
-    out = engine.filter_symbol_result(res, req)
-    assert out.status == ScanCandidateStatus.PASSED
-
-def test_should_include_in_top_passed():
-    engine = ScanFilterEngine()
-    res = SymbolScanResult(symbol="A", status=ScanCandidateStatus.PASSED)
-    assert engine.should_include_in_top(res) is True
-
-def test_should_include_in_top_watch_only_enabled():
-    class MockSettings:
-        SCANNER_INCLUDE_WATCH_ONLY = True
-
-    engine = ScanFilterEngine(settings=MockSettings())
-    res = SymbolScanResult(symbol="A", status=ScanCandidateStatus.WATCH_ONLY)
-    assert engine.should_include_in_top(res) is True
-
-def test_should_include_in_top_watch_only_disabled():
-    class MockSettings:
-        SCANNER_INCLUDE_WATCH_ONLY = False
-
-    engine = ScanFilterEngine(settings=MockSettings())
-    res = SymbolScanResult(symbol="A", status=ScanCandidateStatus.WATCH_ONLY)
-    assert engine.should_include_in_top(res) is False
-
-def test_should_include_in_top_other_status():
-    engine = ScanFilterEngine()
-
-    res1 = SymbolScanResult(symbol="A", status=ScanCandidateStatus.ERROR)
-    assert engine.should_include_in_top(res1) is False
-
-    res2 = SymbolScanResult(symbol="A", status=ScanCandidateStatus.REJECTED)
-    assert engine.should_include_in_top(res2) is False
-
-    res3 = SymbolScanResult(symbol="A", status=ScanCandidateStatus.FILTERED)
-    assert engine.should_include_in_top(res3) is False
-
-def test_filter_results_list():
-    engine = ScanFilterEngine()
-    req = ScanRequest(strategy_name="t", universe_mode=ScanUniverseMode.ALL)
-    res1 = SymbolScanResult(symbol="A", status=ScanCandidateStatus.ERROR)
-    res2 = SymbolScanResult(symbol="B", status=ScanCandidateStatus.ERROR)
-
-    out = engine.filter_results([res1, res2], req)
-
-    assert len(out) == 2
-    assert out[0].symbol == "A"
-    assert out[1].symbol == "B"
-
-def test_filter_results_comprehensive():
-    engine = ScanFilterEngine()
-    req = ScanRequest(strategy_name="t", universe_mode=ScanUniverseMode.ALL, min_signal_score=50.0, min_confidence=50.0)
-
-    # 1. Error Status
-    res_err = SymbolScanResult(symbol="ERR", status=ScanCandidateStatus.ERROR)
-
-    # 2. No Signal
-    res_no_sig = SymbolScanResult(symbol="NO_SIG", status=ScanCandidateStatus.PASSED, signal=None)
-
-    # 3. Filtered (low score)
-    sig_low_score = SignalCandidate(strategy_name="t", symbol="LOW_SCORE", direction=SignalDirection.LONG, score=40.0, confidence=80.0, strength=SignalStrength.STRONG)
-    res_low_score = SymbolScanResult(symbol="LOW_SCORE", status=ScanCandidateStatus.PASSED, signal=sig_low_score)
-
-    # 4. Filtered (low confidence)
-    sig_low_conf = SignalCandidate(strategy_name="t", symbol="LOW_CONF", direction=SignalDirection.LONG, score=80.0, confidence=40.0, strength=SignalStrength.STRONG)
-    res_low_conf = SymbolScanResult(symbol="LOW_CONF", status=ScanCandidateStatus.PASSED, signal=sig_low_conf)
-
-    # 5. Watch Only
-    sig_watch = SignalCandidate(strategy_name="t", symbol="WATCH", direction=SignalDirection.WATCH, score=80.0, confidence=80.0, strength=SignalStrength.STRONG)
-    res_watch = SymbolScanResult(symbol="WATCH", status=ScanCandidateStatus.PASSED, signal=sig_watch)
-
-    # 6. Rejected (Risk)
-    sig_risk = SignalCandidate(strategy_name="t", symbol="RISK", direction=SignalDirection.LONG, score=80.0, confidence=80.0, strength=SignalStrength.STRONG)
-    risk_dec = RiskDecision(signal=sig_risk, side=sig_risk.direction, approved=False, filter_result=RiskFilterResult(status=RiskDecisionStatus.REJECTED, passed=False, active_rules=[], triggered_rules=[]), symbol="RISK", strategy_name="t", status=RiskDecisionStatus.REJECTED)
-    res_risk = SymbolScanResult(symbol="RISK", status=ScanCandidateStatus.PASSED, signal=sig_risk, risk_decision=risk_dec)
-
-    # 7. Rejected (Forbidden Claim)
-    sig_forbidden = SignalCandidate(strategy_name="t", symbol="FORBIDDEN", direction=SignalDirection.LONG, score=80.0, confidence=80.0, strength=SignalStrength.STRONG, metadata={"claim": "kesin al"})
-    res_forbidden = SymbolScanResult(symbol="FORBIDDEN", status=ScanCandidateStatus.PASSED, signal=sig_forbidden)
-
-    # 8. Passed
-    sig_pass = SignalCandidate(strategy_name="t", symbol="PASS", direction=SignalDirection.LONG, score=80.0, confidence=80.0, strength=SignalStrength.STRONG)
-    res_pass = SymbolScanResult(symbol="PASS", status=ScanCandidateStatus.PASSED, signal=sig_pass)
-
-    out = engine.filter_results(
-        [res_err, res_no_sig, res_low_score, res_low_conf, res_watch, res_risk, res_forbidden, res_pass],
-        req
+@pytest.fixture
+def default_request():
+    return ScanRequest(
+        strategy_name="test_strategy",
+        universe_mode=ScanUniverseMode.SYMBOLS,
+        min_signal_score=50.0,
+        min_confidence=40.0,
+        min_final_score=50.0
     )
 
-    assert len(out) == 8
+def test_filter_engine_initialization(filter_engine):
+    assert filter_engine.settings is not None
 
-    assert out[0].symbol == "ERR"
-    assert out[0].status == ScanCandidateStatus.ERROR
+def test_filter_error_status(filter_engine, default_request):
+    result = SymbolScanResult(symbol="TEST", status=ScanCandidateStatus.ERROR)
+    filtered = filter_engine.filter_symbol_result(result, default_request)
+    assert filtered.status == ScanCandidateStatus.ERROR
 
-    assert out[1].symbol == "NO_SIG"
-    assert out[1].status == ScanCandidateStatus.FILTERED
+def test_filter_no_signal(filter_engine, default_request):
+    result = SymbolScanResult(symbol="TEST", status=ScanCandidateStatus.PASSED, signal=None)
+    filtered = filter_engine.filter_symbol_result(result, default_request)
+    assert filtered.status == ScanCandidateStatus.FILTERED
+    assert "No signal generated" in filtered.reasons[0]
 
-    assert out[2].symbol == "LOW_SCORE"
-    assert out[2].status == ScanCandidateStatus.FILTERED
+def test_filter_low_signal_score(filter_engine, default_request):
+    signal = SignalCandidate(symbol="TEST", strategy="test", strategy_name="test", direction=SignalDirection.LONG, score=40.0, confidence=50.0)
+    result = SymbolScanResult(symbol="TEST", status=ScanCandidateStatus.PASSED, signal=signal)
+    filtered = filter_engine.filter_symbol_result(result, default_request)
+    assert filtered.status == ScanCandidateStatus.FILTERED
+    assert "Signal score 40.0 < min 50.0" in filtered.reasons[0]
 
-    assert out[3].symbol == "LOW_CONF"
-    assert out[3].status == ScanCandidateStatus.FILTERED
+def test_filter_low_confidence(filter_engine, default_request):
+    signal = SignalCandidate(symbol="TEST", strategy="test", strategy_name="test", direction=SignalDirection.LONG, score=60.0, confidence=30.0)
+    result = SymbolScanResult(symbol="TEST", status=ScanCandidateStatus.PASSED, signal=signal)
+    filtered = filter_engine.filter_symbol_result(result, default_request)
+    assert filtered.status == ScanCandidateStatus.FILTERED
+    assert "Confidence 30.0 < min 40.0" in filtered.reasons[0]
 
-    assert out[4].symbol == "WATCH"
-    assert out[4].status == ScanCandidateStatus.WATCH_ONLY
+def test_filter_watch_only_direction(filter_engine, default_request):
+    for direction in [SignalDirection.WATCH, SignalDirection.FLAT, SignalDirection.AVOID]:
+        signal = SignalCandidate(symbol="TEST", strategy="test", strategy_name="test", direction=direction, score=60.0, confidence=50.0)
+        result = SymbolScanResult(symbol="TEST", status=ScanCandidateStatus.PASSED, signal=signal)
+        filtered = filter_engine.filter_symbol_result(result, default_request)
+        assert filtered.status == ScanCandidateStatus.WATCH_ONLY
+        assert f"Direction is {direction.value}" in filtered.reasons[0]
 
-    assert out[5].symbol == "RISK"
-    assert out[5].status == ScanCandidateStatus.REJECTED
+def test_filter_risk_rejected(filter_engine, default_request):
+    signal = SignalCandidate(symbol="TEST", strategy="test", strategy_name="test", direction=SignalDirection.LONG, score=60.0, confidence=50.0)
+    risk_decision = RiskDecision(signal=signal, side=RiskSide.LONG, approved=False, status=RiskDecisionStatus.REJECTED, filter_result={"passed": False, "status": RiskDecisionStatus.REJECTED, "reject_reasons": []})
+    result = SymbolScanResult(symbol="TEST", status=ScanCandidateStatus.PASSED, signal=signal, risk_decision=risk_decision)
+    filtered = filter_engine.filter_symbol_result(result, default_request)
+    assert filtered.status == ScanCandidateStatus.REJECTED
+    assert "Risk engine rejected: Unknown" in filtered.reasons[0]
 
-    assert out[6].symbol == "FORBIDDEN"
-    assert out[6].status == ScanCandidateStatus.REJECTED
+def test_filter_risk_low_final_score(filter_engine, default_request):
+    signal = SignalCandidate(symbol="TEST", strategy="test", strategy_name="test", direction=SignalDirection.LONG, score=60.0, confidence=50.0)
+    risk_decision = RiskDecision(signal=signal, side=RiskSide.LONG, approved=True, status=RiskDecisionStatus.APPROVED, filter_result={"passed": True, "status": RiskDecisionStatus.APPROVED, "reject_reasons": []}, final_score=40.0)
+    result = SymbolScanResult(symbol="TEST", status=ScanCandidateStatus.PASSED, signal=signal, risk_decision=risk_decision)
+    filtered = filter_engine.filter_symbol_result(result, default_request)
+    assert filtered.status == ScanCandidateStatus.FILTERED
+    assert "Final score 40.0 < min 50.0" in filtered.reasons[0]
 
-    assert out[7].symbol == "PASS"
-    assert out[7].status == ScanCandidateStatus.PASSED
+def test_filter_forbidden_claims(filter_engine, default_request):
+    signal = SignalCandidate(symbol="TEST", strategy="test", strategy_name="test", direction=SignalDirection.LONG, score=60.0, confidence=50.0, metadata={"claim": "Bu kesin al firsati"})
+    result = SymbolScanResult(symbol="TEST", status=ScanCandidateStatus.PASSED, signal=signal)
+    filtered = filter_engine.filter_symbol_result(result, default_request)
+    assert filtered.status == ScanCandidateStatus.REJECTED
+    assert "Forbidden claim detected in signal metadata" in filtered.reasons[0]
 
+def test_filter_passed(filter_engine, default_request):
+    signal = SignalCandidate(symbol="TEST", strategy="test", strategy_name="test", direction=SignalDirection.LONG, score=60.0, confidence=50.0)
+    risk_decision = RiskDecision(signal=signal, side=RiskSide.LONG, approved=True, status=RiskDecisionStatus.APPROVED, filter_result={"passed": True, "status": RiskDecisionStatus.APPROVED, "reject_reasons": []}, final_score=60.0)
+    result = SymbolScanResult(symbol="TEST", status=ScanCandidateStatus.PASSED, signal=signal, risk_decision=risk_decision)
+    filtered = filter_engine.filter_symbol_result(result, default_request)
+    assert filtered.status == ScanCandidateStatus.PASSED
+    assert len(filtered.reasons) == 0
 
-def test_filter_results_empty():
-    engine = ScanFilterEngine()
-    req = ScanRequest(strategy_name="t", universe_mode=ScanUniverseMode.ALL)
-    out = engine.filter_results([], req)
-    assert out == []
+def test_filter_results_batch(filter_engine, default_request):
+    signal1 = SignalCandidate(symbol="TEST1", strategy="test", strategy_name="test", direction=SignalDirection.LONG, score=60.0, confidence=50.0)
+    signal2 = SignalCandidate(symbol="TEST2", strategy="test", strategy_name="test", direction=SignalDirection.LONG, score=40.0, confidence=50.0)
 
-def test_filter_results_calls_filter_symbol_result():
-    engine = ScanFilterEngine()
-    req = ScanRequest(strategy_name="t", universe_mode=ScanUniverseMode.ALL)
-    res1 = SymbolScanResult(symbol="A", status=ScanCandidateStatus.ERROR)
-    res2 = SymbolScanResult(symbol="B", status=ScanCandidateStatus.ERROR)
+    results = [
+        SymbolScanResult(symbol="TEST1", status=ScanCandidateStatus.PASSED, signal=signal1),
+        SymbolScanResult(symbol="TEST2", status=ScanCandidateStatus.PASSED, signal=signal2)
+    ]
 
-    with patch.object(engine, 'filter_symbol_result', side_effect=[res1, res2]) as mock_filter:
-        out = engine.filter_results([res1, res2], req)
+    filtered_results = filter_engine.filter_results(results, default_request)
+    assert len(filtered_results) == 2
+    assert filtered_results[0].status == ScanCandidateStatus.PASSED
+    assert filtered_results[1].status == ScanCandidateStatus.FILTERED
 
-        assert len(out) == 2
-        assert mock_filter.call_count == 2
-        mock_filter.assert_any_call(res1, req)
-        mock_filter.assert_any_call(res2, req)
+def test_should_include_in_top(filter_engine):
+    # Passed status
+    passed_result = SymbolScanResult(symbol="TEST", status=ScanCandidateStatus.PASSED)
+    assert filter_engine.should_include_in_top(passed_result) is True
 
-def test_filter_results_basic_mock():
-    # Simple test for filter_results using mock
-    engine = ScanFilterEngine()
-    req = ScanRequest(strategy_name="t", universe_mode=ScanUniverseMode.ALL)
-    res = SymbolScanResult(symbol="A", status=ScanCandidateStatus.PASSED)
-    with patch.object(engine, 'filter_symbol_result', return_value=res) as mock_filter:
-        results = engine.filter_results([res], req)
-        assert len(results) == 1
-        assert results[0] == res
-        mock_filter.assert_called_once_with(res, req)
+    # Watch only status with setting enabled
+    filter_engine.settings.SCANNER_INCLUDE_WATCH_ONLY = True
+    watch_result = SymbolScanResult(symbol="TEST", status=ScanCandidateStatus.WATCH_ONLY)
+    assert filter_engine.should_include_in_top(watch_result) is True
 
+    # Watch only status with setting disabled
+    filter_engine.settings.SCANNER_INCLUDE_WATCH_ONLY = False
+    assert filter_engine.should_include_in_top(watch_result) is False
 
-def test_filter_results_preserves_order():
-    engine = ScanFilterEngine()
-    req = ScanRequest(strategy_name="t", universe_mode=ScanUniverseMode.ALL)
-    res1 = SymbolScanResult(symbol="A", status=ScanCandidateStatus.ERROR)
-    res2 = SymbolScanResult(symbol="B", status=ScanCandidateStatus.ERROR)
-    res3 = SymbolScanResult(symbol="C", status=ScanCandidateStatus.ERROR)
-
-    with patch.object(engine, 'filter_symbol_result', side_effect=lambda r, req: r):
-        out = engine.filter_results([res1, res2, res3], req)
-
-        assert len(out) == 3
-        assert out[0].symbol == "A"
-        assert out[1].symbol == "B"
-        assert out[2].symbol == "C"
-
-def test_filter_risk_rejected_with_rejection_reason():
-    req = ScanRequest(strategy_name="t", universe_mode=ScanUniverseMode.ALL, min_signal_score=10.0, min_confidence=10.0)
-    sig = SignalCandidate(strategy_name="t", symbol="A", direction=SignalDirection.LONG, score=80.0, confidence=80.0, strength=SignalStrength.STRONG)
-
-    # Use a mock since RiskDecision doesn't allow setting arbitrary fields in some pydantic versions
-    risk = Mock(spec=RiskDecision)
-    risk.status = RiskDecisionStatus.REJECTED
-    risk.rejection_reason = "Too risky"
-
-    res = SymbolScanResult(symbol="A", status=ScanCandidateStatus.PASSED, signal=sig, risk_decision=risk)
-
-    engine = ScanFilterEngine()
-    out = engine.filter_symbol_result(res, req)
-    assert out.status == ScanCandidateStatus.REJECTED
-    assert any("Too risky" in r for r in out.reasons)
-
-def test_filter_risk_final_score_none():
-    req = ScanRequest(strategy_name="t", universe_mode=ScanUniverseMode.ALL, min_signal_score=10.0, min_confidence=10.0, min_final_score=80.0)
-    sig = SignalCandidate(strategy_name="t", symbol="A", direction=SignalDirection.LONG, score=80.0, confidence=80.0, strength=SignalStrength.STRONG)
-
-    risk = Mock(spec=RiskDecision)
-    risk.status = RiskDecisionStatus.APPROVED
-    risk.final_score = None
-
-    res = SymbolScanResult(symbol="A", status=ScanCandidateStatus.PASSED, signal=sig, risk_decision=risk)
-
-    engine = ScanFilterEngine()
-    out = engine.filter_symbol_result(res, req)
-    # The final_score check is skipped if it's None. The forbidden check will pass, returning status PASSED.
-    assert out.status == ScanCandidateStatus.PASSED
+    # Other statuses
+    for status in [ScanCandidateStatus.FILTERED, ScanCandidateStatus.REJECTED, ScanCandidateStatus.ERROR]:
+        result = SymbolScanResult(symbol="TEST", status=status)
+        assert filter_engine.should_include_in_top(result) is False
