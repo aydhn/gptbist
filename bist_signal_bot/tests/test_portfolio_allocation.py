@@ -211,3 +211,159 @@ def test_reduced_allocation():
     assert res.items[0].allocated_notional == 5000.0
     assert res.items[0].reduction_pct == 0.75 # (20000 - 5000) / 20000
     assert "A" in res.reduced_symbols
+
+# Keep the original tests above, appending the new missing tests below
+
+def test_normalize_weights():
+    allocator = PortfolioAllocator()
+    # Empty input
+    assert allocator.normalize_weights({}) == {}
+
+    # Zero total
+    assert allocator.normalize_weights({"A": 0.0, "B": 0.0}) == {"A": 0.0, "B": 0.0}
+
+    # Negative total (should not happen in practice but tested)
+    assert allocator.normalize_weights({"A": -1.0, "B": -1.0}) == {"A": 0.0, "B": 0.0}
+
+    # Normal case
+    weights = {"A": 20.0, "B": 30.0, "C": 50.0}
+    norm = allocator.normalize_weights(weights)
+    assert sum(norm.values()) == 1.0
+    assert norm["A"] == 0.2
+    assert norm["B"] == 0.3
+    assert norm["C"] == 0.5
+
+def test_cap_weights():
+    allocator = PortfolioAllocator()
+    weights = {"A": 0.5, "B": 0.3, "C": 0.2}
+
+    # No cap needed
+    capped = allocator.cap_weights(weights, max_symbol_weight=0.6)
+    assert capped == weights
+
+    # Cap needed, redistribution occurs
+    capped = allocator.cap_weights(weights, max_symbol_weight=0.4)
+    # A is capped at 0.4. Excess is 0.1.
+    # Redistribute 0.1 among B and C (0.05 each)
+    # B becomes 0.35, C becomes 0.25
+    # Total is still 1.0
+    assert capped["A"] == 0.4
+    assert abs(capped["B"] - 0.35) < 1e-9
+    assert abs(capped["C"] - 0.25) < 1e-9
+
+    # Cap so low everything hits it
+    capped = allocator.cap_weights(weights, max_symbol_weight=0.3)
+    assert capped["A"] == 0.3
+    assert capped["B"] == 0.3
+    assert capped["C"] == 0.3
+
+def test_quantity_from_notional():
+    allocator = PortfolioAllocator()
+    # Non-fractional (floor)
+    assert allocator.quantity_from_notional(150.0, 100.0, fractional=False) == 1.0
+    assert allocator.quantity_from_notional(200.0, 100.0, fractional=False) == 2.0
+
+    # Fractional
+    assert allocator.quantity_from_notional(150.0, 100.0, fractional=True) == 1.5
+
+    # Negative or zero price
+    assert allocator.quantity_from_notional(150.0, 0.0, fractional=False) == 0.0
+    assert allocator.quantity_from_notional(150.0, -10.0, fractional=False) == 0.0
+
+def test_allocate_happy_path():
+    allocator = PortfolioAllocator()
+    allocator.settings.PORTFOLIO_USE_FRACTIONAL_SHARES = True
+    allocator.settings.PORTFOLIO_MIN_ALLOCATION_NOTIONAL = 100.0
+
+    state = PortfolioState(equity=100000.0, cash=100000.0)
+    sig_a = _make_signal("A")
+    sig_b = _make_signal("B")
+    dec_a = _make_decision(sig_a, RiskDecisionStatus.APPROVED, final_notional=60000.0)
+    dec_b = _make_decision(sig_b, RiskDecisionStatus.APPROVED, final_notional=60000.0)
+
+    req = AllocationRequest(
+        signals=[],
+        risk_decisions=[dec_a, dec_b],
+        portfolio_state=state,
+        method=AllocationMethod.EQUAL_WEIGHT,
+        total_allocation_pct=1.0,
+        max_symbol_weight_pct=1.0
+    )
+
+    res = allocator.allocate(req)
+
+    assert res.total_allocated_notional == 100000.0
+    assert res.total_allocated_pct == 1.0
+    assert len(res.items) == 2
+
+    for item in res.items:
+        assert item.approved is True
+        assert item.allocated_notional == 50000.0
+        assert item.allocated_weight_pct == 0.5
+        assert abs(item.reduction_pct - 0.166666666) < 1e-4
+
+    assert set(res.reduced_symbols) == {"A", "B"}
+
+def test_remaining_fallbacks():
+    allocator = PortfolioAllocator()
+    allocator.settings.PORTFOLIO_MIN_ALLOCATION_NOTIONAL = 0.0
+    state = PortfolioState(equity=100000.0, cash=100000.0)
+    sig_a = _make_signal("A", score=0.0)
+    dec_a = _make_decision(sig_a, RiskDecisionStatus.APPROVED, risk_pct=0.0)
+
+    # LIQUIDITY_WEIGHTED
+    req = AllocationRequest(signals=[sig_a], risk_decisions=[dec_a], portfolio_state=state, method=AllocationMethod.LIQUIDITY_WEIGHTED, total_allocation_pct=1.0, max_symbol_weight_pct=1.0)
+    res = allocator.allocate(req)
+    assert res.items[0].allocated_notional == 100000.0
+    assert any("LIQUIDITY_WEIGHTED fallback" in issue for issue in res.issues)
+
+    # UNKNOWN METHOD
+    req.method = "UNKNOWN_NON_EXISTENT"
+    res = allocator.allocate(req)
+    assert res.items[0].allocated_notional == 100000.0
+    assert any("Unknown method" in issue for issue in res.issues)
+
+def test_allocation_min_notional_invalid_type():
+    allocator = PortfolioAllocator()
+    # Force the exception path by giving it a bad type
+    allocator.settings.PORTFOLIO_MIN_ALLOCATION_NOTIONAL = "invalid_string"
+    state = PortfolioState(equity=100000.0, cash=100000.0)
+    sig_a = _make_signal("A")
+    # By default, min is 100.0 when type fails. We ask for 50, so it fails min notional check.
+    dec_a = _make_decision(sig_a, RiskDecisionStatus.APPROVED, final_notional=50.0)
+    req = AllocationRequest(signals=[sig_a], risk_decisions=[dec_a], portfolio_state=state, method=AllocationMethod.EQUAL_WEIGHT, total_allocation_pct=1.0, max_symbol_weight_pct=1.0)
+    res = allocator.allocate(req)
+
+    assert not res.items[0].approved
+    assert res.items[0].allocated_notional == 0.0
+
+def test_insufficient_cash_fallback():
+    allocator = PortfolioAllocator()
+    allocator.settings.PORTFOLIO_MIN_ALLOCATION_NOTIONAL = 50.0
+    # Available cash 30, Target 100, Min Notional 50.
+    # It tries to allocate 30. But 30 < 50, so it rejects.
+    state = PortfolioState(equity=100000.0, cash=30.0)
+    sig_a = _make_signal("A")
+    dec_a = _make_decision(sig_a, RiskDecisionStatus.APPROVED, final_notional=100.0)
+
+    req = AllocationRequest(signals=[sig_a], risk_decisions=[dec_a], portfolio_state=state, method=AllocationMethod.EQUAL_WEIGHT, total_allocation_pct=1.0, max_symbol_weight_pct=1.0)
+    res = allocator.allocate(req)
+
+    assert len(res.items) == 1
+    assert not res.items[0].approved
+    assert "Insufficient cash" in str(res.items[0].reasons)
+
+def test_risk_parity_fallback():
+    allocator = PortfolioAllocator()
+    state = PortfolioState(equity=100000.0, cash=100000.0)
+    sig_a = _make_signal("A")
+    dec_a = _make_decision(sig_a, RiskDecisionStatus.APPROVED, risk_pct=-1.0)
+
+    # 1. Force negative risk pct to trigger `r_pct = 0.01` branch
+    req = AllocationRequest(signals=[sig_a], risk_decisions=[dec_a], portfolio_state=state, method=AllocationMethod.RISK_PARITY_SIMPLE, total_allocation_pct=1.0, max_symbol_weight_pct=1.0)
+    res = allocator.allocate(req)
+    assert res.items[0].allocated_notional == 100000.0
+
+    # 2. Force zero inv risks sum (impossible natively since risk_pct is clamped to 0.01, but we can mock it, or we see it's mathematically unreachable with the clamp).
+    # Since it's unreachable via normal clamping, we don't strictly need 100% line coverage for the `if tot_inv > 0:` else block if the clamp prevents `tot_inv <= 0`.
+    # Let's just leave it as is.
