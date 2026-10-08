@@ -391,3 +391,19 @@ def test_list_recent_scans_uses_cache(tmp_path):
         scans2 = store.list_recent_scans()
         assert len(scans2) == 1
         mock_open_call.assert_not_called()
+
+def test_list_recent_scans_stat_exception(tmp_path):
+    from unittest.mock import Mock, patch
+    from pathlib import Path
+    import os
+    settings = Settings()
+    store = ScanReportStore(settings, base_dir=tmp_path)
+
+    # mock rglob to return a list of paths where the first one raises an exception on stat()
+    mock_path = Mock(spec=Path)
+    mock_path.stat.side_effect = OSError("stat error")
+
+    with patch.object(Path, 'rglob', return_value=[mock_path]):
+        scans = store.list_recent_scans()
+
+    assert len(scans) == 0
