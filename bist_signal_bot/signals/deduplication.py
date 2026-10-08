@@ -5,6 +5,10 @@ from bist_signal_bot.signals.models import (
     SignalAlertDecision, SignalPriority
 )
 
+_SEND_DECISIONS = frozenset({SignalAlertDecision.SEND, SignalAlertDecision.SEND_DIGEST_ONLY})
+_DIGEST_DECISIONS = frozenset({SignalAlertDecision.SEND, SignalAlertDecision.SEND_DIGEST_ONLY, SignalAlertDecision.MUTE_COOLDOWN})
+
+
 class SignalDeduplicator:
     def evaluate_alert(self, signal: TrackedSignal, previous: Optional[TrackedSignal],
                        policy: SignalAlertPolicy, now: Optional[datetime] = None) -> AlertEvaluationResult:
@@ -52,8 +56,8 @@ class SignalDeduplicator:
                 decision = SignalAlertDecision.SEND_DIGEST_ONLY
                 reason = "Low priority signal"
 
-        should_send = decision in [SignalAlertDecision.SEND, SignalAlertDecision.SEND_DIGEST_ONLY]
-        should_add_to_digest = decision in [SignalAlertDecision.SEND, SignalAlertDecision.SEND_DIGEST_ONLY, SignalAlertDecision.MUTE_COOLDOWN]
+        should_send = decision in _SEND_DECISIONS
+        should_add_to_digest = decision in _DIGEST_DECISIONS
 
         return AlertEvaluationResult(
             signal_id=signal.signal_id,
