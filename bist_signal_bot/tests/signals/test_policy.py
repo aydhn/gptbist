@@ -1,9 +1,10 @@
+from unittest.mock import patch
 import json
 import pytest
-from pathlib import Path
 from bist_signal_bot.signals.policy import SignalPolicyManager
 from bist_signal_bot.signals.models import SignalAlertPolicy, SignalPriority
 from bist_signal_bot.config.settings import Settings
+
 
 def test_default_alert_policy():
     manager = SignalPolicyManager()
@@ -19,7 +20,7 @@ def test_default_alert_policy():
     custom_settings = Settings(
         SIGNAL_ALERT_COOLDOWN_MINUTES=120,
         SIGNAL_DIGEST_ONLY_BELOW_PRIORITY="HIGH",
-        SIGNAL_MUTE_LOW_AGREEMENT=False
+        SIGNAL_MUTE_LOW_AGREEMENT=False,
     )
     policy_custom = manager.default_alert_policy(settings=custom_settings)
     assert policy_custom.cooldown_minutes == 120
@@ -27,9 +28,7 @@ def test_default_alert_policy():
     assert policy_custom.mute_low_agreement is False
 
     # Test with invalid priority string in settings falls back to NORMAL
-    invalid_settings = Settings(
-        SIGNAL_DIGEST_ONLY_BELOW_PRIORITY="INVALID_PRIO"
-    )
+    invalid_settings = Settings(SIGNAL_DIGEST_ONLY_BELOW_PRIORITY="INVALID_PRIO")
     policy_invalid = manager.default_alert_policy(settings=invalid_settings)
     assert policy_invalid.digest_only_below_priority == SignalPriority.NORMAL
 
@@ -39,7 +38,7 @@ def test_load_alert_policy(tmp_path):
 
     # 1. Missing file -> falls back to default
     policy1 = manager.load_alert_policy(path=tmp_path / "nonexistent.json")
-    assert policy1.cooldown_minutes == 240 # Default value
+    assert policy1.cooldown_minutes == 240  # Default value
 
     # 2. Invalid JSON -> falls back to default
     invalid_file = tmp_path / "invalid.json"
@@ -52,7 +51,7 @@ def test_load_alert_policy(tmp_path):
         "cooldown_minutes": 60,
         "validity_minutes": 120,
         "max_alerts_per_signal": 5,
-        "digest_only_below_priority": "CRITICAL"
+        "digest_only_below_priority": "CRITICAL",
     }
     valid_file = tmp_path / "valid.json"
     valid_file.write_text(json.dumps(valid_data))
@@ -63,12 +62,10 @@ def test_load_alert_policy(tmp_path):
     assert policy3.max_alerts_per_signal == 5
     assert policy3.digest_only_below_priority == SignalPriority.CRITICAL
 
+
 def test_save_alert_policy(tmp_path):
     manager = SignalPolicyManager()
-    policy = SignalAlertPolicy(
-        cooldown_minutes=123,
-        digest_only_below_priority=SignalPriority.HIGH
-    )
+    policy = SignalAlertPolicy(cooldown_minutes=123, digest_only_below_priority=SignalPriority.HIGH)
 
     save_path = tmp_path / "saved_policy.json"
 
@@ -85,12 +82,13 @@ def test_save_alert_policy(tmp_path):
     assert saved_data["cooldown_minutes"] == 123
     assert saved_data["digest_only_below_priority"] == "HIGH"
 
+
 def test_validate_policy():
     manager = SignalPolicyManager()
 
     # Valid policy
     valid_policy = SignalAlertPolicy()
-    manager.validate_policy(valid_policy) # Should not raise
+    manager.validate_policy(valid_policy)  # Should not raise
 
     # Invalid cooldown_minutes
     with pytest.raises(ValueError, match="cooldown_minutes must be positive"):
@@ -112,11 +110,15 @@ def test_validate_policy():
         manager.validate_policy(p)
 
     # Invalid min_score_change_for_repeat_alert
-    with pytest.raises(ValueError, match="min_score_change_for_repeat_alert must be between 0 and 100"):
+    with pytest.raises(
+        ValueError, match="min_score_change_for_repeat_alert must be between 0 and 100"
+    ):
         p = SignalAlertPolicy(min_score_change_for_repeat_alert=-1)
         manager.validate_policy(p)
 
-    with pytest.raises(ValueError, match="min_score_change_for_repeat_alert must be between 0 and 100"):
+    with pytest.raises(
+        ValueError, match="min_score_change_for_repeat_alert must be between 0 and 100"
+    ):
         p = SignalAlertPolicy(min_score_change_for_repeat_alert=101)
         manager.validate_policy(p)
 
@@ -129,6 +131,7 @@ def test_validate_policy():
         p = SignalAlertPolicy(min_confidence_for_alert=101)
         manager.validate_policy(p)
 
+
 class MockSignal:
     def __init__(self, score=0, confidence=0, risk_decision=None, warnings=None):
         self.score = score
@@ -136,11 +139,14 @@ class MockSignal:
         self.risk_decision = risk_decision
         self.warnings = warnings or []
 
+
 def test_priority_from_signal():
     manager = SignalPolicyManager()
 
     # 1. Security warning -> LOW
-    s1 = MockSignal(score=100, confidence=100, risk_decision="PASS", warnings=["critical security issue"])
+    s1 = MockSignal(
+        score=100, confidence=100, risk_decision="PASS", warnings=["critical security issue"]
+    )
     assert manager.priority_from_signal(s1) == SignalPriority.LOW
 
     # 2. Risk decision conflict -> LOW
@@ -178,3 +184,57 @@ def test_priority_from_signal():
     # 6. Default LOW
     s11 = MockSignal(score=59, confidence=100, risk_decision="PASS")
     assert manager.priority_from_signal(s11) == SignalPriority.LOW
+
+
+def test_default_alert_policy_safe_get_zero_int():
+    manager = SignalPolicyManager()
+    settings = Settings(
+        SIGNAL_ALERT_COOLDOWN_MINUTES=0,
+        SIGNAL_VALIDITY_MINUTES=0,
+        SIGNAL_MAX_ALERTS_PER_SIGNAL=0,
+    )
+    policy = manager.default_alert_policy(settings)
+    assert policy.cooldown_minutes == 240
+    assert policy.validity_minutes == 1440
+    assert policy.max_alerts_per_signal == 3
+
+
+def test_default_alert_policy_safe_get_zero_float():
+    manager = SignalPolicyManager()
+    settings = Settings(
+        SIGNAL_MIN_SCORE_CHANGE_FOR_REPEAT_ALERT=0.0,
+        SIGNAL_MIN_CONFIDENCE_FOR_ALERT=0.0,
+    )
+    policy = manager.default_alert_policy(settings)
+    assert policy.min_score_change_for_repeat_alert == 7.5
+    assert policy.min_confidence_for_alert == 45.0
+
+
+def test_save_alert_policy_no_path(tmp_path):
+    manager = SignalPolicyManager()
+    mock_dir = tmp_path / "mock_signals_dir"
+
+    with patch("bist_signal_bot.storage.paths.get_signals_dir", return_value=mock_dir):
+        policy = SignalAlertPolicy(
+            cooldown_minutes=123, digest_only_below_priority=SignalPriority.HIGH
+        )
+
+        saved_path = manager.save_alert_policy(policy, confirm=True)
+        expected_path = mock_dir / "policy" / "alert_policy.json"
+
+        assert saved_path == expected_path
+        assert saved_path.exists()
+
+        content = saved_path.read_text()
+        assert "123" in content
+        assert "HIGH" in content
+
+
+def test_default_alert_policy_no_settings_provided():
+    manager = SignalPolicyManager()
+    with patch("bist_signal_bot.config.settings.get_settings") as mock_get_settings:
+        mock_get_settings.return_value = Settings()
+        policy = manager.default_alert_policy()
+        assert policy is not None
+        assert policy.cooldown_minutes == 240
+        mock_get_settings.assert_called_once()
