@@ -111,3 +111,18 @@ def test_fingerprint_missing_score_fallback():
     assert payload.get("rounded_score_bucket") is None
     # Check major reasons are sliced to 3 and sorted/lowercased
     assert payload.get("major_reasons") == ["r1", "r3", "r4"]
+
+def test_build_from_signal_missing_attributes():
+    builder = SignalFingerprintBuilder()
+    class EmptySignal:
+        pass
+
+    fp1 = builder.build_from_signal(EmptySignal(), "SCANNER")
+
+    assert fp1.symbol == "UNKNOWN"
+    assert fp1.strategy_name is None
+    assert fp1.signal_direction is None
+
+    payload = fp1.metadata["normalized_payload"]
+    assert payload.get("rounded_score_bucket") is None
+    assert payload.get("major_reasons") == []
