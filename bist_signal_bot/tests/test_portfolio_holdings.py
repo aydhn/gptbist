@@ -125,3 +125,25 @@ def test_portfolio_state_from_backtest_snapshot_zero_equity():
 
     with pytest.raises(ValidationError):
         portfolio_state_from_backtest_snapshot(snapshot, [pos1])
+
+def test_update_holding_prices_zero_equity():
+
+
+    h1 = PortfolioHolding(symbol="ASELS", side=PortfolioPositionSide.LONG, quantity=10, avg_price=10.0, market_value=100.0, weight_pct=1.0)
+    state = build_portfolio_state(equity=100.0, cash=0.0, holdings=[h1])
+
+    # Drop price to 0, making equity 0
+    new_state = update_holding_prices(state, {"ASELS": 0.0})
+    assert new_state.equity == 0.0
+    assert new_state.holdings[0].market_value == 0.0
+    assert new_state.holdings[0].weight_pct == 1.0 # Should remain unchanged since new_equity <= 0
+
+def test_update_holding_prices_flat_side():
+
+
+    h1 = PortfolioHolding(symbol="ASELS", side=PortfolioPositionSide.FLAT, quantity=10, avg_price=10.0, market_value=100.0, weight_pct=1.0)
+    state = build_portfolio_state(equity=100.0, cash=0.0, holdings=[h1])
+
+    new_state = update_holding_prices(state, {"ASELS": 12.0})
+    assert new_state.holdings[0].unrealized_pnl is None
+    assert new_state.holdings[0].market_value == 120.0
