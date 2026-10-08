@@ -43,7 +43,7 @@ class EventWindowBuilder:
         if event.sector:
             applies_to_sectors.append(event.sector)
 
-        applies_to_market = event.scope in ["MARKET", "MACRO"]
+        applies_to_market = event.scope in {"MARKET", "MACRO"}
 
         window = EventWindow(
             window_id=str(uuid.uuid4()),
@@ -62,14 +62,14 @@ class EventWindowBuilder:
         return windows
 
     def default_pre_post_days(self, event_type: MarketEventType, severity: EventSeverity) -> tuple[int, int]:
-        if event_type in [MarketEventType.EARNINGS, MarketEventType.FINANCIAL_STATEMENT]:
+        if event_type in {MarketEventType.EARNINGS, MarketEventType.FINANCIAL_STATEMENT}:
             return 3, 2
-        elif event_type in [MarketEventType.MACRO_DATA, MarketEventType.CENTRAL_BANK, MarketEventType.INTEREST_RATE_DECISION]:
+        elif event_type in {MarketEventType.MACRO_DATA, MarketEventType.CENTRAL_BANK, MarketEventType.INTEREST_RATE_DECISION}:
             return 1, 1
         elif event_type == MarketEventType.CORPORATE_ACTION:
             return 2, 2
 
-        if severity in [EventSeverity.HIGH, EventSeverity.CRITICAL]:
+        if severity in {EventSeverity.HIGH, EventSeverity.CRITICAL}:
             return 2, 2
 
         return 0, 0
