@@ -1,7 +1,7 @@
 import logging
 import math
 from typing import Optional
-from datetime import datetime
+from datetime import datetime, timezone
 
 from bist_signal_bot.config.settings import Settings
 from bist_signal_bot.portfolio.models import (
@@ -27,7 +27,7 @@ class PortfolioAllocator:
                 rejected_symbols=rejected,
                 reduced_symbols=reduced,
                 issues=issues,
-                generated_at=datetime.utcnow()
+                generated_at=datetime.now(timezone.utc)
             )
 
         raw_weights = self._compute_raw_weights(request, valid_decisions, issues)
@@ -56,7 +56,7 @@ class PortfolioAllocator:
             rejected_symbols=rejected,
             reduced_symbols=reduced,
             issues=issues,
-            generated_at=datetime.utcnow()
+            generated_at=datetime.now(timezone.utc)
         )
 
     def _filter_valid_decisions(self, request: AllocationRequest) -> tuple[list[RiskDecision], list[str], list[AllocationResultItem], list[str], list[str]]:

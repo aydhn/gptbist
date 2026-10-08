@@ -5,7 +5,7 @@ from typing import Any, Optional, TYPE_CHECKING
 if TYPE_CHECKING:
     import pandas as pd
 
-from datetime import datetime
+from datetime import datetime, timezone
 from dataclasses import dataclass, field
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -103,7 +103,7 @@ class PortfolioState(BaseModel):
     equity: float
     cash: float
     holdings: list[PortfolioHolding] = Field(default_factory=list)
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     daily_signal_count: int = 0
     metadata: dict[str, Any] = Field(default_factory=dict)
 
