@@ -39,6 +39,23 @@ class ModelRegistryStore:
         except Exception as e:
             raise ModelRegistryStorageError(f"Failed to append to {path}: {e}")
 
+    def _append_jsonl_batch(self, path: Path, objs: list[Any]) -> Path:
+        if not objs:
+            return path
+
+        try:
+            with open(path, "a", encoding="utf-8") as f:
+                # Assuming objs are Pydantic models
+                if hasattr(objs[0], "model_dump_json"):
+                    for obj in objs:
+                        f.write(obj.model_dump_json() + "\n")
+                else:
+                    for obj in objs:
+                        f.write(obj.json() + "\n")
+            return path
+        except Exception as e:
+            raise ModelRegistryStorageError(f"Failed to batch append to {path}: {e}")
+
     def _load_jsonl(self, path: Path, model_cls: Any) -> list[Any]:
         if not path.exists():
             return []
@@ -161,9 +178,7 @@ class ModelRegistryStore:
 
     def append_drift_findings(self, findings: list[ModelDriftFinding]) -> Path:
         path = self._get_file("drift", "model_drift_findings.jsonl")
-        for f in findings:
-            self._append_jsonl(path, f)
-        return path
+        return self._append_jsonl_batch(path, findings)
 
     def load_drift_findings(self, model_id: str | None = None, limit: int = 10000) -> list[ModelDriftFinding]:
         findings = self._load_jsonl(self._get_file("drift", "model_drift_findings.jsonl"), ModelDriftFinding)
@@ -175,9 +190,7 @@ class ModelRegistryStore:
 
     def append_lineage_edges(self, edges: list[ModelLineageEdge]) -> Path:
         path = self._get_file("lineage", "model_lineage_edges.jsonl")
-        for e in edges:
-            self._append_jsonl(path, e)
-        return path
+        return self._append_jsonl_batch(path, edges)
 
     def load_lineage_edges(self) -> list[ModelLineageEdge]:
         return self._load_jsonl(self._get_file("lineage", "model_lineage_edges.jsonl"), ModelLineageEdge)
