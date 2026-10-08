@@ -29,6 +29,13 @@ class ValuationStore:
         with open(file_path, "a", encoding="utf-8") as f:
             f.write(json.dumps(item, default=str) + "\n")
 
+    def _append_jsonl_batch(self, file_path: Path, items: list[dict]):
+        if not items:
+            return
+        with open(file_path, "a", encoding="utf-8") as f:
+            lines = [json.dumps(item, default=str) + "\n" for item in items]
+            f.writelines(lines)
+
     def _load_jsonl(self, file_path: Path, limit: int = 10000) -> List[dict]:
         if not file_path.exists():
             return []
@@ -54,8 +61,8 @@ class ValuationStore:
 
     def append_multiples(self, multiples: List[ValuationMultiple]) -> Path:
         p = self.multiples_dir / "valuation_multiples.jsonl"
-        for m in multiples:
-            self._append_jsonl(p, m.model_dump(mode="json"))
+        items = [m.model_dump(mode="json") for m in multiples]
+        self._append_jsonl_batch(p, items)
         return p
 
     def load_multiples(self, symbol: Optional[str] = None, metric_type: Optional[ValuationMetricType] = None, limit: int = 10000) -> List[ValuationMultiple]:
@@ -69,8 +76,8 @@ class ValuationStore:
 
     def append_bands(self, bands: List[ValuationBand]) -> Path:
         p = self.bands_dir / "valuation_bands.jsonl"
-        for b in bands:
-            self._append_jsonl(p, b.model_dump(mode="json"))
+        items = [b.model_dump(mode="json") for b in bands]
+        self._append_jsonl_batch(p, items)
         return p
 
     def load_bands(self, symbol: Optional[str] = None, limit: int = 10000) -> List[ValuationBand]:
@@ -82,8 +89,8 @@ class ValuationStore:
 
     def append_peer_comparisons(self, comparisons: List[PeerValuationComparison]) -> Path:
         p = self.peers_dir / "peer_valuation_comparisons.jsonl"
-        for c in comparisons:
-            self._append_jsonl(p, c.model_dump(mode="json"))
+        items = [c.model_dump(mode="json") for c in comparisons]
+        self._append_jsonl_batch(p, items)
         return p
 
     def append_risk_assessment(self, assessment: ValuationRiskAssessment) -> Path:
