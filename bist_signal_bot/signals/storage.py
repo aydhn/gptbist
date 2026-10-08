@@ -42,7 +42,9 @@ class SignalStore:
                 if position > 0:
                     buffer = lines.pop(0)
                 else:
-                    buffer = b''
+                    # Don't pop, keep the first element (which has no newline before it)
+                    # and don't clear the buffer, so the final block can yield it.
+                    buffer = lines.pop(0) if lines else b''
 
                 for line in reversed(lines):
                     yield line.decode('utf-8')
