@@ -55,6 +55,13 @@ religious holidays unverified, confirm with Borsa Istanbul), gap/halt detection 
 CLI: `python -m bist_signal_bot intraday archive-update|gaps|status`. Full BIST universe must be imported into the universe
 store from a local file (`universe import`); the built-in seed has only 20 symbols. Findings: `docs/claude-context/00-research-intraday.md`.
 
+## Edge validation (`edge_validation/`)
+
+Leak-free labels (`labels.py`), purged/embargoed K-Fold + CPCV + purged walk-forward (`cv.py`), DSR/PBO/BH/reality-check
+(`stats.py`), BIST cost model (`costs.py`), append-only trial ledger counting every attempt (`ledger.py`), `CandidateGate`
+(`gate.py`) and `runner.py`. CLI: `python -m bist_signal_bot edge run --family sma_trend --interval 1h [--placebo]`.
+A strategy is a candidate only if the gate says CANDIDATE. Results so far: `docs/claude-context/01-edge-results.md`.
+
 ## Setup & tests
 
 ```bash

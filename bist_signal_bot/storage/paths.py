@@ -666,3 +666,10 @@ def get_release_policy_dir(settings=None) -> Path:
 def get_intraday_archive_path(settings: Settings | None = None) -> Path:
     """SQLite intraday bar archive path: <DATA_DIR>/intraday/bars.sqlite (dir not created)."""
     return get_data_dir(settings) / "intraday" / "bars.sqlite"
+
+
+def get_edge_validation_dir(settings: Settings | None = None) -> Path:
+    """<DATA_DIR>/edge_validation (created)."""
+    d = get_data_dir(settings) / "edge_validation"
+    d.mkdir(parents=True, exist_ok=True)
+    return d
