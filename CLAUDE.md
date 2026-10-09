@@ -35,6 +35,14 @@ python -m bist_signal_bot runtime status      # persisted run state
 
 Windows: `start_windows.bat` creates `.venv`, installs deps, runs healthcheck + the demo.
 
+## Repo map (read on demand, not exhaustively)
+
+`bist_signal_bot/` is the package (~100 subpackages: `cli/`, `config/`, `runtime/`, `adaptive/`, `ml/`,
+`drift/`, `backtesting/`, `paper/`, `security/`, `tests/` mirrors the area names). `docs/` = 31 numbered guides +
+`runbooks/` (incident playbooks: kill switch, stale data, quality gate failed, ...). `AGENTS.md` restates the
+non-negotiables. Stray root files (`PR_DESCRIPTION.md`, `pr_description.txt`, `submission.txt`) are PR scratch, not docs.
+No `.venv` is checked in; create it first (see Setup).
+
 ## Setup & tests
 
 ```bash
@@ -85,9 +93,9 @@ The learning pieces that make it "self-improving":
 - **getattr(settings, X, default)** sites (~700): because `Settings` always returns a value
   (never `AttributeError`), the caller's default is bypassed for unknown keys. Add such keys to
   `DEFAULTS` rather than relying on the inline default. Long-term: consider refining `__getattr__`.
-- **Loop step coverage**: only HEALTHCHECK/SIGNAL_SCAN/PAPER_RUN/TELEGRAM_SUMMARY are executed in
-  `_execute_pipeline_steps`; DATA_REFRESH/REGIME_ANALYSIS/ML_INFERENCE/CLEANUP are emitted as steps
-  but not yet run. Wire these for full autonomy.
+- **Loop step coverage**: all steps (HEALTHCHECK, DATA_REFRESH, SIGNAL_SCAN, REGIME_ANALYSIS, ML_INFERENCE,
+  PAPER_RUN, TELEGRAM_SUMMARY, CLEANUP) are dispatched in `_execute_pipeline_steps`
+  (`runtime/orchestrator.py`); DATA_REFRESH feeds REGIME/ML/SIGNAL_SCAN via a shared `fetched_data` dict.
 - ML filter & drift check are off by default (`RUNTIME_USE_ML_FILTER`, `RUNTIME_RUN_DRIFT_CHECK`)
   until a baseline model is trained and registered.
 - **Backtest engine** (`backtesting/engine.py::run_single_symbol`) has a chain of half-wired

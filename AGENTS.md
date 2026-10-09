@@ -34,6 +34,6 @@ python -m bist_signal_bot runtime dry-run
 ## Current focus & known gaps
 
 See the "Known gaps / follow-ups" section of [CLAUDE.md](CLAUDE.md): portfolio construction
-rebuild, full runtime step coverage (data refresh / regime / ML inference / cleanup), enabling
+rebuild, enabling
 the ML filter + drift→retrain loop once a baseline model is registered, and migrating
 `getattr(settings, X, default)` sites onto `DEFAULTS`.
