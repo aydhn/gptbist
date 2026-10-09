@@ -553,14 +553,17 @@ class RuntimeOrchestrator:
         return self.job_runner.run_job(RuntimeJobType.TELEGRAM_SUMMARY, send_func)
 
     def build_default_pipeline_config(self) -> RuntimePipelineConfig:
+        # The ML filter needs a concrete model id; without one it stays off even if a baseline is registered.
+        ml_model_id = getattr(self.settings, "RUNTIME_ML_MODEL_ID", None) or None
         return RuntimePipelineConfig(
+            ml_model_id=ml_model_id,
             strategy_name=self.settings.RUNTIME_DEFAULT_STRATEGY,
             source=self.settings.RUNTIME_DEFAULT_SOURCE,
             top_n=self.settings.RUNTIME_DEFAULT_TOP_N,
             universe_mode=self.settings.RUNTIME_UNIVERSE_MODE,
             use_trade_risk=self.settings.RUNTIME_USE_TRADE_RISK,
             use_portfolio_risk=self.settings.RUNTIME_USE_PORTFOLIO_RISK,
-            use_ml_filter=self.settings.RUNTIME_USE_ML_FILTER,
+            use_ml_filter=_guarded_flag(self.settings, "ml") and bool(ml_model_id),
             use_regime_filter=self.settings.RUNTIME_USE_REGIME_FILTER,
             use_paper=self.settings.RUNTIME_USE_PAPER,
             send_telegram=self.settings.RUNTIME_SEND_TELEGRAM,
@@ -604,9 +607,20 @@ class RuntimeOrchestrator:
             return False
 
 
+def _guarded_flag(settings, which):
+    """RUNTIME_USE_ML_FILTER / RUNTIME_RUN_DRIFT_CHECK only take effect when a baseline model is registered."""
+    try:
+        from bist_signal_bot.model_loop.runtime_guard import ml_filter_effective, drift_check_effective
+
+        fn = ml_filter_effective if which == "ml" else drift_check_effective
+        return bool(fn(settings)[0])
+    except Exception:
+        return False
+
+
 # Add drift check
 def run_drift_check_if_enabled(engine, settings):
-    if settings.RUNTIME_RUN_DRIFT_CHECK:
+    if _guarded_flag(settings, "drift"):
         import logging
 
         logger = logging.getLogger(__name__)

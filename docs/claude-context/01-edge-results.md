@@ -16,3 +16,9 @@ Placebo (zamanlaması karıştırılmış sinyal) üç ailede de REJECTED: boru 
 **Sonuç:** Bu üç basit taban stratejide 1h ufkunda maliyet sonrası edge YOK; brüt getiri zaten sıfıra yakın,
 maliyet (~23 bps gidiş-dönüş) onu net negatife çeviriyor. Bu, "edge yoktur" kanıtı değil, "bu üç kural, bu veri ve bu
 maliyetle edge göstermedi" kanıtıdır. Kazanç vaadi yoktur.
+
+## Adım 4 — ilk ML baseline (hgb, 1h, 19 hisse, 72 354 olay, CPCV 6x2, embargo 1 gün)
+OOS AUC 0.533 (yol min 0.527, std 0.007), Brier 0.245, kalibrasyon hatası 0.013; 549 sinyal, isabet 0.523,
+olay başına net getiri −9.0 bps, net Sharpe −1.19, DSR 0.005. Kapı: **REJECTED** (dsr, pbo, fdr_bh, reality_check,
+ci_lower_positive, positive_paths). Model `WATCH` + `baseline` etiketiyle kayıtlı, "no proven edge" uyarısıyla; hiçbir şey
+otomatik champion olmaz. Sıralama becerisi çok düşük ve maliyet sonrası negatif.

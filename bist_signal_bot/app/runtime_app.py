@@ -83,7 +83,7 @@ def create_runtime_orchestrator(
     # ML inference is opt-in and requires an explicitly registered model.
     ml_inference_engine = None
     model_id = getattr(settings, "ML_INFERENCE_DEFAULT_MODEL_ID", "")
-    if getattr(settings, "RUNTIME_USE_ML_FILTER", False) and model_id:
+    if model_id and _ml_filter_guarded(settings):
         try:
             from bist_signal_bot.ml.inference.engine import MLInferenceEngine
 
@@ -99,6 +99,15 @@ def create_runtime_orchestrator(
         notifier=app_context.notifier,
         settings=settings,
     )
+
+
+def _ml_filter_guarded(settings) -> bool:
+    try:
+        from bist_signal_bot.model_loop.runtime_guard import ml_filter_effective
+
+        return bool(ml_filter_effective(settings)[0])
+    except Exception:
+        return False
 
 
 def create_runtime_pipeline_config_from_settings(settings: Settings) -> RuntimePipelineConfig:

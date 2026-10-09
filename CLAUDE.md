@@ -62,6 +62,15 @@ Leak-free labels (`labels.py`), purged/embargoed K-Fold + CPCV + purged walk-for
 (`gate.py`) and `runner.py`. CLI: `python -m bist_signal_bot edge run --family sma_trend --interval 1h [--placebo]`.
 A strategy is a candidate only if the gate says CANDIDATE. Results so far: `docs/claude-context/01-edge-results.md`.
 
+## Model loop (`model_loop/`)
+
+`features.py` (causal intraday features), `training.py` (CPCV OOS eval, calibration, gate verdict, registers in
+`model_registry`; non-CANDIDATE -> `WATCH` + warning, never auto-champion), `drift_monitor.py` (PSI, KS, ADWIN),
+`lifecycle.py` (drift -> challenger -> compare -> `promote(confirm=True)` via preflight + kill switch + audit; rollback),
+`runtime_guard.py` (RUNTIME_USE_ML_FILTER / RUNTIME_RUN_DRIFT_CHECK effective only when a baseline is registered; ML filter
+additionally needs `RUNTIME_ML_MODEL_ID`). CLI: `python -m bist_signal_bot model-loop train|models|evaluate|promote|rollback|status`.
+Tests that touch the real registry/data dir can change with local training state — prefer `tmp_data_dir`/`settings_factory`.
+
 ## Setup & tests
 
 ```bash
