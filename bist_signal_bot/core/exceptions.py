@@ -1,18 +1,3 @@
-
-class BistSignalBotError(Exception): pass
-class DataImportError(BistSignalBotError): pass
-class DataImportAdapterError(DataImportError): pass
-class SchemaMappingError(DataImportError): pass
-class ImportPreviewError(DataImportError): pass
-class ImportNormalizationError(DataImportError): pass
-class ImportValidationError(DataImportError): pass
-class LocalDataImporterError(DataImportError): pass
-class ImportChunkingError(DataImportError): pass
-class ImportProvenanceError(DataImportError): pass
-class DataImportStorageError(DataImportError): pass
-class BISTBotError(Exception):
-    pass
-
 from typing import Any
 
 
@@ -24,6 +9,20 @@ class BistSignalBotError(Exception):
         self.error_code = error_code
         self.context = context or {}
         self.recoverable = recoverable
+
+class DataImportError(BistSignalBotError): pass
+class DataImportAdapterError(DataImportError): pass
+class SchemaMappingError(DataImportError): pass
+class ImportPreviewError(DataImportError): pass
+class ImportNormalizationError(DataImportError): pass
+class ImportValidationError(DataImportError): pass
+class LocalDataImporterError(DataImportError): pass
+class ImportChunkingError(DataImportError): pass
+class ImportProvenanceError(DataImportError): pass
+class DataImportStorageError(DataImportError): pass
+
+
+
 
 
 class QAError(BistSignalBotError):
@@ -194,17 +193,8 @@ class PatternEngineError(PatternDetectionError):
     """Raised when there is an error in the pattern engine."""
     pass
 
-class PatternDetectionError(BistSignalBotError):
-    """Raised when an error occurs during pattern detection."""
-    pass
 
-class PatternValidationError(PatternDetectionError):
-    """Raised when pattern inputs or parameters are invalid."""
-    pass
 
-class PatternEngineError(PatternDetectionError):
-    """Raised when there is an error in the pattern engine."""
-    pass
 
 class DivergenceError(BistSignalBotError):
     """Raised when an error occurs during divergence detection."""
@@ -543,7 +533,6 @@ class PerformanceBenchmarkError(PerformanceError):
 class PerformanceStorageError(PerformanceError):
     pass
 
-class BistSignalBotError(Exception): pass
 
 class RuntimeErrorBase(BistSignalBotError): pass
 class RuntimeValidationError(RuntimeErrorBase): pass
@@ -803,8 +792,6 @@ class ReleaseStorageError(ReleaseError):
 class DataProviderV2Error(BistSignalBotError):
     pass
 
-class DataImportError(BistSignalBotError):
-    pass
 
 class DataLineageError(BistSignalBotError):
     pass
@@ -896,8 +883,6 @@ class PortfolioResearchError(BistSignalBotError):
 class PortfolioResearchValidationError(PortfolioResearchError):
     pass
 
-class PortfolioAllocationError(PortfolioResearchError):
-    pass
 
 class PortfolioConstraintError(PortfolioResearchError):
     pass
@@ -1175,17 +1160,13 @@ class TelegramStorageError(TelegramCenterError):
     """Error related to Telegram Center storage."""
     pass
 
-class SchedulerError(BISTBotError):
+class SchedulerError(BistSignalBotError):
     pass
 
 class ScheduleValidationError(SchedulerError):
     pass
 
-class MarketCalendarError(SchedulerError):
-    pass
 
-class MarketSessionError(SchedulerError):
-    pass
 
 class ScheduleTriggerError(SchedulerError):
     pass
@@ -1214,9 +1195,6 @@ class DeploymentProfileError(DeploymentError):
     """Raised when a deployment profile is invalid or unsafe."""
     pass
 
-class EnvironmentDoctorError(DeploymentError):
-    """Raised when environment validation fails."""
-    pass
 
 class FirstRunError(DeploymentError):
     """Raised when first run wizard encounters an error."""
@@ -1242,17 +1220,11 @@ class DeploymentStorageError(DeploymentError):
     """Raised when deployment storage read/write fails."""
     pass
 
-class PerformanceError(BistSignalBotError):
-    pass
 
-class PerformanceValidationError(PerformanceError):
-    pass
 
 class ProfilerError(PerformanceError):
     pass
 
-class BenchmarkError(PerformanceError):
-    pass
 
 class ResourceSamplingError(PerformanceError):
     pass
@@ -1266,44 +1238,15 @@ class PerformanceRegressionError(PerformanceError):
 class BottleneckAnalysisError(PerformanceError):
     pass
 
-class PerformanceStorageError(PerformanceError):
-    pass
 
-class PerformanceError(BistSignalBotError):
-    """Base exception for performance profiling and benchmarking."""
-    pass
 
-class PerformanceValidationError(PerformanceError):
-    """Raised when benchmark or profile validation fails."""
-    pass
 
-class ProfilerError(PerformanceError):
-    """Raised when there is an error during profiling."""
-    pass
 
-class BenchmarkError(PerformanceError):
-    """Raised when there is an error running a benchmark."""
-    pass
 
-class ResourceSamplingError(PerformanceError):
-    """Raised when there is an error sampling system resources."""
-    pass
 
-class PerformanceBaselineError(PerformanceError):
-    """Raised when there is an error managing performance baselines."""
-    pass
 
-class PerformanceRegressionError(PerformanceError):
-    """Raised when there is an error during regression checking."""
-    pass
 
-class BottleneckAnalysisError(PerformanceError):
-    """Raised when bottleneck analysis fails."""
-    pass
 
-class PerformanceStorageError(PerformanceError):
-    """Raised when saving or loading performance data fails."""
-    pass
 
 class ConfigRegistryError(BistSignalBotError):
     """Base exception for Config Registry operations."""
@@ -1351,8 +1294,6 @@ class SymbolLifecycleError(InstrumentError):
 class UniverseBuilderError(InstrumentError):
     pass
 
-class CorporateActionError(BistSignalBotError):
-    pass
 
 class CorporateActionImportError(CorporateActionError):
     pass
@@ -1360,8 +1301,6 @@ class CorporateActionImportError(CorporateActionError):
 class CorporateActionValidationError(CorporateActionError):
     pass
 
-class PriceAdjustmentError(CorporateActionError):
-    pass
 
 class DataReconciliationError(BistSignalBotError):
     pass
@@ -1372,11 +1311,7 @@ class AdjustedPriceError(DataReconciliationError):
 class ValidationError(BistSignalBotError):
     pass
 
-class StrategyValidationError(ValidationError):
-    pass
 
-class WalkForwardError(ValidationError):
-    pass
 
 class PurgedCVError(ValidationError):
     pass
@@ -1396,8 +1331,6 @@ class CostRobustnessError(ValidationError):
 class ValidationStorageError(ValidationError):
     pass
 
-class MonteCarloError(BistSignalBotError):
-    pass
 
 class MonteCarloValidationError(MonteCarloError):
     pass
@@ -1424,8 +1357,6 @@ class MonteCarloStorageError(MonteCarloError):
     pass
 
 
-class StrategyRegistryError(BistSignalBotError):
-    pass
 
 class StrategyCatalogError(StrategyRegistryError):
     pass
@@ -1464,8 +1395,6 @@ class RuleTraceError(ExplainabilityError):
 class MLExplainabilityError(ExplainabilityError):
     pass
 
-class EnsembleExplainabilityError(ExplainabilityError):
-    pass
 
 class EvidenceCardError(ExplainabilityError):
     pass
@@ -1476,8 +1405,6 @@ class DecisionTraceError(ExplainabilityError):
 class ExplainabilityStorageError(ExplainabilityError):
     pass
 
-class CalibrationError(BistSignalBotError):
-    pass
 
 class CalibrationValidationError(CalibrationError):
     pass
@@ -1668,18 +1595,15 @@ class ValuationStorageError(ValuationError):
     pass
 
 
-class FactorError(Exception): pass
+class FactorError(BistSignalBotError): pass
 class FactorInputError(FactorError): pass
 class FactorScoringError(FactorError): pass
 class FactorExposureError(FactorError): pass
-class SectorRotationError(FactorError): pass
 class ThemeExposureError(FactorError): pass
 class FactorCrowdingError(FactorError): pass
 class FactorAttributionError(FactorError): pass
 class FactorStorageError(FactorError): pass
 
-class BreadthError(BistSignalBotError):
-    pass
 
 class BreadthUniverseError(BreadthError):
     pass
@@ -1705,11 +1629,7 @@ class SectorBreadthError(BreadthError):
 class BreadthDivergenceError(BreadthError):
     pass
 
-class BreadthRegimeError(BreadthError):
-    pass
 
-class BreadthStorageError(BreadthError):
-    pass
 
 class ContextFusionError(BistSignalBotError):
     pass
@@ -1753,8 +1673,6 @@ class ReviewCaseError(ReviewWorkflowError):
 class ReviewPlaybookError(ReviewWorkflowError):
     pass
 
-class ReviewChecklistError(ReviewWorkflowError):
-    pass
 
 class ReviewPriorityError(ReviewWorkflowError):
     pass
@@ -1834,7 +1752,7 @@ class CLICompatibilityError(CLIUXError):
 class CLIUXStorageError(CLIUXError):
     pass
 
-class DocsHubError(BISTBotError):
+class DocsHubError(BistSignalBotError):
     """Base class for Docs Hub errors."""
     pass
 
@@ -1874,14 +1792,10 @@ class DatasetRegistryError(DataCatalogError):
 class DatasetProfilerError(DataCatalogError):
     pass
 
-class DataQualityError(DataCatalogError):
-    pass
 
 class SchemaDriftError(DataCatalogError):
     pass
 
-class DataLineageError(DataCatalogError):
-    pass
 
 class SourceProvenanceError(DataCatalogError):
     pass
@@ -1902,8 +1816,6 @@ class FeatureComputationError(FeatureStoreError):
 class FeatureServingError(FeatureStoreError):
     pass
 class FeatureQualityError(FeatureStoreError):
-    pass
-class FeatureDriftError(FeatureStoreError):
     pass
 class FeatureLineageError(FeatureStoreError):
     pass
@@ -1935,8 +1847,6 @@ class ModelCalibrationGovernanceError(ModelRegistryError):
 class ModelPromotionError(ModelRegistryError):
     pass
 
-class ModelDriftError(ModelRegistryError):
-    pass
 
 class ModelLineageError(ModelRegistryError):
     pass
@@ -1975,8 +1885,6 @@ class MonitoringEscalationError(ResearchMonitoringError):
 class MonitoringWatchlistError(ResearchMonitoringError):
     pass
 
-class MonitoringStorageError(ResearchMonitoringError):
-    pass
 
 class LeaderboardError(BistSignalBotError):
     pass
@@ -2050,8 +1958,6 @@ class FinalIntegrationMatrixError(FinalAuditError):
 class FinalSecurityAuditError(FinalAuditError):
     pass
 
-class ReleaseCandidateError(FinalAuditError):
-    pass
 
 class HardeningFreezeError(FinalAuditError):
     pass
@@ -2096,7 +2002,7 @@ class FinalHandoffStorageError(FinalHandoffError):
     pass
 
 
-class SyntheticScenarioError(Exception): pass
+class SyntheticScenarioError(BistSignalBotError): pass
 class SyntheticScenarioLibraryError(SyntheticScenarioError): pass
 class SyntheticGeneratorError(SyntheticScenarioError): pass
 class SyntheticOHLCVError(SyntheticGeneratorError): pass
@@ -2112,11 +2018,9 @@ class SyntheticScenarioValidationError(SyntheticScenarioError): pass
 class SyntheticScenarioStorageError(SyntheticScenarioError): pass
 
 
-class MarketRegistryError(Exception): pass
+class MarketRegistryError(BistSignalBotError): pass
 class MarketInstrumentError(Exception): pass
 class MarketSymbolError(Exception): pass
-class MarketCalendarError(Exception): pass
-class MarketSessionError(Exception): pass
 class MarketCurrencyError(Exception): pass
 class MarketAssetClassError(Exception): pass
 class MarketNormalizationError(Exception): pass
@@ -2129,8 +2033,6 @@ class MarketStorageError(Exception): pass
 class MaintenanceAutomationError(BistSignalBotError):
     pass
 
-class MaintenanceCadenceError(MaintenanceAutomationError):
-    pass
 
 class MaintenancePlanError(MaintenanceAutomationError):
     pass

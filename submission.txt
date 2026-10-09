@@ -1,4 +1,0 @@
-🎯 **What:** Replaced inline `import logging` and `logging.warning()` exception handling with proper module-level `logger.error(..., exc_info=True)` usage, and correctly updated the fallback application state when parsing fails by appending a dummy run with `"status": "ERROR"`.
-💡 **Why:** Proper exception handling with stack traces ensures errors are visible for debugging, and updating application state on parsing failures correctly surfaces the failure to downstream control flow without completely swallowing the entry.
-✅ **Verification:** Verified changes via linting (`ruff check`) and the test suite (`pytest bist_signal_bot/tests/test_scenario_storage.py`), ensuring no regressions occurred.
-✨ **Result:** Improved code health and maintainability by utilizing standard logging configurations with stack trace retention.

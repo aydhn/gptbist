@@ -13,9 +13,10 @@ def istanbul_now() -> datetime:
     """Returns the current time in Istanbul timezone as an aware datetime."""
     return datetime.now(ISTANBUL_TZ)
 
-def ensure_timezone(dt: datetime, timezone_name: str = get_settings().DEFAULT_TIMEZONE) -> datetime:
-    """Ensures the given datetime is timezone aware. If naive, sets to timezone_name."""
-    tz = ZoneInfo(timezone_name)
+def ensure_timezone(dt: datetime, timezone_name: str | None = None) -> datetime:
+    """Ensures the given datetime is timezone aware. If naive, sets to timezone_name
+    (defaults to the configured DEFAULT_TIMEZONE, resolved at call time)."""
+    tz = ZoneInfo(timezone_name or get_settings().DEFAULT_TIMEZONE)
     if dt.tzinfo is None:
         return dt.replace(tzinfo=tz)
     return dt.astimezone(tz)

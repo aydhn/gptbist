@@ -1,3 +1,0 @@
-🎯 **What:** Added missing explicit, concise test for `filter_results` in `bist_signal_bot/tests/test_scanner_filters.py`.
-📊 **Coverage:** The new test `test_filter_results_basic_mock` uses patching to mock `filter_symbol_result` and strictly verifies both the state changes and output lists, confirming basic delegation logic inside `filter_results`.
-✨ **Result:** Enhanced clarity and explicitness of coverage for `filter_results`, fulfilling the goal of having a focused mock-based test in under 20 lines.
