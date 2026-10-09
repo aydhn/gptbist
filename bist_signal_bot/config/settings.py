@@ -190,7 +190,9 @@ class Settings:
     """
 
     def __init__(self, **overrides: Any) -> None:
-        raw = dict(_load_raw())
+        # pydantic-style ``_env_file=None`` means "ignore .env files": .env.example + defaults only.
+        use_files = "_env_file" not in overrides or overrides.pop("_env_file") is not None
+        raw = dict(_load_raw()) if use_files else _parse_env_file(_ENV_EXAMPLE)
         for k, v in overrides.items():
             raw[k] = v if isinstance(v, str) else str(v)
         object.__setattr__(self, "_raw", raw)
@@ -232,6 +234,15 @@ class Settings:
 
     def dict(self, *args: Any, **kwargs: Any) -> dict[str, Any]:
         return self.as_dict()
+
+    def __repr__(self) -> str:
+        """Repr with secret-keyed values masked (never leak tokens via repr/logging)."""
+        from bist_signal_bot.security.redaction import SecretRedactor
+
+        data = self.as_dict()
+        data.update({k: v for k, v in vars(self).items() if not k.startswith("_")})
+        safe = SecretRedactor.redact_dict(data)
+        return "Settings(" + ", ".join(f"{k}={v!r}" for k, v in safe.items()) + ")"
 
 
 _settings = Settings()

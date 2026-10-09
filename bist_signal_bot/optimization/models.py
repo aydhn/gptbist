@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import Optional, Any
 from datetime import datetime
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, ValidationInfo
 
 from bist_signal_bot.backtesting.models import BacktestPerformanceReport
 
@@ -53,12 +53,12 @@ class ParameterSearchSpace(BaseModel):
         return v
 
     @field_validator("values")
-    def validate_values(cls, v: list[Any] | None, values: dict[str, Any]) -> list[Any] | None:
+    def validate_values(cls, v: list[Any] | None, info: ValidationInfo) -> list[Any] | None:
         if v is not None and len(v) == 0:
             from bist_signal_bot.core.exceptions import OptimizationValidationError
             raise OptimizationValidationError("If 'values' is provided, it cannot be empty")
 
-        param_type = values.get("param_type")
+        param_type = info.data.get("param_type")
         if param_type == ParameterType.BOOL and v is not None:
             if any(not isinstance(val, bool) for val in v):
                 from bist_signal_bot.core.exceptions import OptimizationValidationError
@@ -66,8 +66,8 @@ class ParameterSearchSpace(BaseModel):
         return v
 
     @field_validator("max_value")
-    def validate_range(cls, v: float | int | None, values: dict[str, Any]) -> float | int | None:
-        min_v = values.get("min_value")
+    def validate_range(cls, v: float | int | None, info: ValidationInfo) -> float | int | None:
+        min_v = info.data.get("min_value")
         if min_v is not None and v is not None:
             if min_v > v:
                 from bist_signal_bot.core.exceptions import OptimizationValidationError
@@ -82,8 +82,8 @@ class ParameterSearchSpace(BaseModel):
         return v
 
     @field_validator("choices")
-    def validate_choices(cls, v: list[Any] | None, values: dict[str, Any]) -> list[Any] | None:
-        param_type = values.get("param_type")
+    def validate_choices(cls, v: list[Any] | None, info: ValidationInfo) -> list[Any] | None:
+        param_type = info.data.get("param_type")
         if param_type == ParameterType.CATEGORICAL and (v is None or len(v) == 0):
             from bist_signal_bot.core.exceptions import OptimizationValidationError
             raise OptimizationValidationError("CATEGORICAL parameter requires non-empty 'choices'")

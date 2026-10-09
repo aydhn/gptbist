@@ -117,9 +117,21 @@ def dispatch_risk(args, ctx) -> int:
     ctx.logger = logger
     return handle_risk_commands(args, ctx)
 
+def _ensure_utf8_stdio() -> None:
+    """Make stdout/stderr UTF-8 safe (Windows consoles default to cp125x and crash on Turkish/box chars)."""
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is None:
+            continue
+        try:
+            reconfigure(encoding="utf-8", errors="replace")
+        except Exception:  # pragma: no cover - exotic/closed streams
+            pass
+
+
 def run_cli(argv: list[str] | None = None) -> int:
     """Top-level CLI entry point."""
-    import sys
+    _ensure_utf8_stdio()
     args_list = list(sys.argv[1:]) if argv is None else list(argv)
     first = args_list[0] if args_list else None
 
@@ -165,7 +177,6 @@ def run_cli(argv: list[str] | None = None) -> int:
         from bist_signal_bot.cli.model_loop_cli import main as model_loop_main
         return model_loop_main(args_list[1:])
 
-    import sys
     args_to_parse = args_list
 
 
@@ -183,7 +194,6 @@ def run_cli(argv: list[str] | None = None) -> int:
 
     if args_to_parse and args_to_parse[0] == 'review':
         from bist_signal_bot.cli.commands import review
-        import sys
         sys.argv = [sys.argv[0]] + args_to_parse[1:]
         review()
         return 0
@@ -207,14 +217,12 @@ def run_cli(argv: list[str] | None = None) -> int:
 
     if args_to_parse and args_to_parse[0] == 'maintenance':
         from bist_signal_bot.cli.commands_maintenance import run_maintenance_cli
-        import sys
         sys.argv = [sys.argv[0]] + args_to_parse[1:]
         run_maintenance_cli()
         return 0
 
     if args_to_parse and args_to_parse[0] == 'scenario':
         from bist_signal_bot.cli.commands_scenarios import scenario_cli
-        import sys
         sys.argv = [sys.argv[0]] + args_to_parse[1:]
         scenario_cli()
         return 0
@@ -238,14 +246,12 @@ def run_cli(argv: list[str] | None = None) -> int:
 
     if args_to_parse and args_to_parse[0] == 'validation':
         from bist_signal_bot.cli.validation_commands import app
-        import sys
         sys.argv = [sys.argv[0]] + args_to_parse[1:]
         app()
         return 0
 
     if args_to_parse and args_to_parse[0] == 'docs':
         from bist_signal_bot.cli.commands import docs_app
-        import sys
         sys.argv = [sys.argv[0]] + args_to_parse[1:]
         docs_app()
         return 0
@@ -253,21 +259,18 @@ def run_cli(argv: list[str] | None = None) -> int:
 
     if args_to_parse and args_to_parse[0] == 'instruments':
         from bist_signal_bot.cli.commands import instruments
-        import sys
         sys.argv = [sys.argv[0]] + args_to_parse[1:]
         instruments()
         return 0
 
     if args_to_parse and args_to_parse[0] == 'corporate-actions':
         from bist_signal_bot.cli.commands import corporate_actions
-        import sys
         sys.argv = [sys.argv[0]] + args_to_parse[1:]
         corporate_actions()
         return 0
 
     if args_to_parse and args_to_parse[0] == 'data-quality':
         from bist_signal_bot.cli.commands import data_quality
-        import sys
         sys.argv = [sys.argv[0]] + args_to_parse[1:]
         data_quality()
         return 0

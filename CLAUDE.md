@@ -136,7 +136,7 @@ The learning pieces that make it "self-improving":
   (`runtime/orchestrator.py`); DATA_REFRESH feeds REGIME/ML/SIGNAL_SCAN via a shared `fetched_data` dict.
 - ML filter & drift check are off by default (`RUNTIME_USE_ML_FILTER`, `RUNTIME_RUN_DRIFT_CHECK`)
   until a baseline model is trained and registered.
-- **Backtest** test files are green (models/audit enum repaired). Test suite baseline: ~215 failed / 46 errors / 24 import-broken files (stale tests vs code, see 00-research notes); no regressions allowed.
+- **Backtest** test files are green (models/audit enum repaired). Test suite baseline (2026-10-10): 142 failed / 23 errors / 2813 passed (stale tests + stubbed modules, mostly healthcheck_*, optimization/leaderboard, remaining test_cli_*); no regressions allowed. Paper ledger credits idle-cash interest (`paper/cash_interest.py`, PAPER_CASH_INTEREST_ANNUAL/WITHHOLDING are unverified placeholders).
 - **Audit metadata redaction**: `test_audit_logger_sanitizes_metadata` expects partial masking
   (`secr...6789`), but `SecretRedactor.redact_dict` does full `***REDACTED***` (stronger). The code
   is the safer behavior; treat the test as the stale side, not the code.

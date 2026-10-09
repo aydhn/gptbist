@@ -522,7 +522,16 @@ def add_costs_parser(subparsers):
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     """Parse command line arguments."""
     parser = build_parser()
-    args = parser.parse_args(argv)
+    import sys as _sys
+    raw = list(_sys.argv[1:]) if argv is None else list(argv)
+    # --json / --verbose are global flags; accept them before or after the sub-command.
+    # (Sub-parsers re-declare --json with a False default, which would clobber a global value.)
+    flags = {f for f in ("--json", "--verbose") if f in raw}
+    args = parser.parse_args([a for a in raw if a not in ("--json", "--verbose")])
+    if "--json" in flags:
+        args.json = True
+    if "--verbose" in flags:
+        args.verbose = True
     if getattr(args, "command", None) is None:
         args.command = "healthcheck"
         args.json = False
@@ -872,6 +881,8 @@ def build_parser() -> argparse.ArgumentParser:
     config_parser.add_argument("--show-secrets", action="store_false", dest="hide_secrets", help="Show sensitive fields")
 
     symbols_parser = subparsers.add_parser("symbols", help="List default BIST seed symbol universe")
+    symbols_parser.add_argument("--yfinance", action="store_true", help="Show yfinance tickers")
+    symbols_parser.add_argument("--group", type=str, default=None, help="Filter by symbol group")
     validate_symbol_parser = subparsers.add_parser("validate-symbol", help="Validate a symbol format against BIST rules")
     validate_symbol_parser.add_argument("symbol", type=str, help="Symbol to validate")
 
@@ -887,6 +898,7 @@ def build_parser() -> argparse.ArgumentParser:
     mock_parser = subparsers.add_parser("mock-data", help="Generate mock market data for testing")
     mock_parser.add_argument("symbol", type=str, help="Symbol to generate data for")
     mock_parser.add_argument("--rows", type=int, default=252, help="Number of rows to generate")
+    mock_parser.add_argument("--save", action="store_true", help="Save generated data to the local store")
 
     quality_parser = subparsers.add_parser("quality-demo", help="Generate mock data with synthetic errors to demonstrate quality checks")
     quality_parser.add_argument("symbol", type=str, help="Symbol to generate data for")

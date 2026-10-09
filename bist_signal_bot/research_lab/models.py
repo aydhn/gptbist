@@ -101,8 +101,8 @@ class ResearchJob(BaseModel):
         return sorted(list(set([str(s).upper().strip() for s in v if s])))
 
     @field_validator("command_preview", mode='before')
-    def validate_command_preview(cls, v, values):
-        if not v and not values.get('metadata', {}).get('function'):
+    def validate_command_preview(cls, v, info):
+        if not v and not info.data.get('metadata', {}).get('function'):
              pass
         return v
 

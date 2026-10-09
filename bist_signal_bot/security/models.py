@@ -128,6 +128,10 @@ class SecurityAuditReport:
     disclaimer: str = "Security audit output only. Not investment advice. No real order was sent."
     metadata: dict[str, Any] = field(default_factory=dict)
 
+    @property
+    def passed(self) -> bool:
+        return self.status not in (SecurityCheckStatus.FAIL, SecurityCheckStatus.ERROR)
+
     def summary(self) -> dict[str, Any]:
         return {
             "status": self.status.value,

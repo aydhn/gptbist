@@ -1,6 +1,7 @@
 import json
 from datetime import date, datetime
 from enum import Enum
+from pathlib import PurePath
 from typing import Any
 
 def _json_default(obj: Any) -> Any:
@@ -8,6 +9,8 @@ def _json_default(obj: Any) -> Any:
         return obj.isoformat()
     if isinstance(obj, Enum):
         return obj.value
+    if isinstance(obj, PurePath):
+        return str(obj)
     raise TypeError(f"Type {type(obj)} not serializable")
 
 def to_json_output(data: Any) -> str:

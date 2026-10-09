@@ -2,7 +2,7 @@ from typing import Any
 from pathlib import Path
 
 from bist_signal_bot.config.settings import Settings
-from bist_signal_bot.security.models import KillSwitchScope, SecurityAuditReport
+from bist_signal_bot.security.models import KillSwitchScope, SecurityAuditReport, SecurityCheckStatus
 from bist_signal_bot.security.secrets import SecretHygieneScanner
 from bist_signal_bot.security.forbidden_actions import ForbiddenActionGuard
 from bist_signal_bot.security.claims_guard import UnsafeClaimGuard
@@ -12,11 +12,6 @@ from bist_signal_bot.security.config_audit import ConfigSecurityAuditor
 from bist_signal_bot.core.exceptions import SecurityPreflightError
 
 class SecurityPreflightRunner:
-    def run_preflight(self):
-        try:
-            return self.run_runtime_preflight()
-        except Exception:
-            return PreflightResult(overall_pass=True)
     """Runs a series of security and safety checks before operational execution."""
 
     def __init__(
@@ -35,7 +30,11 @@ class SecurityPreflightRunner:
         self.kill_switch = kill_switch
         self.path_guard = path_guard
 
-    def original_run_runtime_preflight(self) -> SecurityAuditReport:
+    def run_preflight(self) -> SecurityAuditReport:
+        """Fail-closed alias: raises SecurityPreflightError when the preflight fails."""
+        return self.run_runtime_preflight()
+
+    def run_runtime_preflight(self) -> SecurityAuditReport:
         if self.kill_switch and self.kill_switch.is_active(KillSwitchScope.RUNTIME):
             raise SecurityPreflightError("Kill switch is active for RUNTIME scope. Preflight aborted.")
 
@@ -47,7 +46,7 @@ class SecurityPreflightRunner:
                 if report.secret_findings:
                     raise SecurityPreflightError(f"Security Preflight Failed: Found {len(report.secret_findings)} secret leaks in configuration.")
             return report
-        return SecurityAuditReport(status="SKIP", overall_score=100.0)
+        return SecurityAuditReport(status=SecurityCheckStatus.SKIP, overall_score=100.0)
 
     def run_notification_preflight(self, payload: Any) -> None:
         if not getattr(self.settings, "SECURITY_NOTIFICATION_PREFLIGHT_ENABLED", True):
@@ -83,7 +82,7 @@ class SecurityPreflightRunner:
 
     def run_cli_preflight(self, command_name: str, payload: dict[str, Any] | None = None) -> SecurityAuditReport:
         if not getattr(self.settings, "SECURITY_CLI_PREFLIGHT_ENABLED", True):
-            return SecurityAuditReport(status="SKIP", overall_score=100.0)
+            return SecurityAuditReport(status=SecurityCheckStatus.SKIP, overall_score=100.0)
 
         self.forbidden_guard.assert_no_html_scraping(command_name)
         self.forbidden_guard.assert_no_real_order_action(command_name)
@@ -97,8 +96,3 @@ class SecurityPreflightRunner:
     def run_optional_quality_checks(self):
         # Allow integration of quality reports if needed in preflight flow
         pass
-
-    def run_runtime_preflight(self):
-        class R:
-            passed = True
-        return R()

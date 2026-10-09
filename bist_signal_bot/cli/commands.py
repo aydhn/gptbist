@@ -78,9 +78,6 @@ def cmd_symbols(args, app_context: ApplicationContext) -> int:
 
     if getattr(args, "yfinance", False):
         res = [getattr(s, "yfinance_ticker", str(s) + ".IS") for s in symbols]
-
-    elif args.command == "context":
-        handle_context_command(args)
     else:
         res = [
             {

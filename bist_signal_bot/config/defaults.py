@@ -21,6 +21,11 @@ from typing import Any
 DEFAULTS: dict[str, Any] = {
     # ---- Core application ----
     "APP_NAME": "bist-signal-bot",
+    "APP_ENV": "development",
+    "RUN_MODE": "research",
+    "DEFAULT_MARKET": "BIST",
+    "DRY_RUN": True,
+    "ENABLE_TELEGRAM": False,
 
     # ---- Adaptive engine ----
     "ADAPTIVE_DEFAULT_TOP_N": 5,
@@ -272,6 +277,8 @@ DEFAULTS: dict[str, Any] = {
     "PAPER_EXECUTION_MODE": "CLOSE",
     "PAPER_DEFAULT_ACCOUNT_ID": "default",
     "PAPER_INITIAL_CASH": 100000.0,
+    "PAPER_CASH_INTEREST_ANNUAL": 0.30,  # PLACEHOLDER idle-cash yield (TL deposit/repo); unverified - set to your real rate
+    "PAPER_CASH_INTEREST_WITHHOLDING": 0.15,  # PLACEHOLDER stopaj on interest; unverified
     "ERROR_NOTIFICATION_MIN_LEVEL": "ERROR",
     "SECURITY_REDACT_AUDIT": True,  # redact secrets from audit metadata (security)
     "ENABLE_PERFORMANCE_PROFILING": False,  # opt-in; profiler is heavy and off by default

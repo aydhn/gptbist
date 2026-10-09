@@ -10,9 +10,9 @@ from bist_signal_bot.core.logging_setup import (
 
 def test_mask_sensitive_value():
     assert mask_sensitive_value("123") == "***"
-    assert mask_sensitive_value("12345678") == "***"
-    assert mask_sensitive_value("123456789") == "1234...6789"
-    assert mask_sensitive_value("some-long-token-value") == "some...alue"
+    assert mask_sensitive_value("12345") == "***"
+    assert mask_sensitive_value("123456789") == "123...89"
+    assert mask_sensitive_value("some-long-token-value") == "som...ue"
     assert mask_sensitive_value("") == ""
     assert mask_sensitive_value(None) == "None"
 
@@ -33,10 +33,11 @@ def test_sanitize_for_logging():
     sanitized = sanitize_for_logging(data)
 
     assert sanitized["normal_key"] == "normal_value"
-    assert sanitized["api_key"] == "secr...7890"
-    assert sanitized["nested"]["token"] == "my-s...oken"
+    # secret-keyed values are fully redacted (no partial leak)
+    assert sanitized["api_key"] == "***REDACTED***"
+    assert sanitized["nested"]["token"] == "***REDACTED***"
     assert sanitized["nested"]["other"] == 123
-    assert sanitized["list"][0]["password"] == "mypa...d123"
+    assert sanitized["list"][0]["password"] == "***REDACTED***"
     assert sanitized["list"][1] == "plain_text"
 
 def test_setup_logging(tmp_path):

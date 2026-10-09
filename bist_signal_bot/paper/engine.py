@@ -408,6 +408,7 @@ class PaperTradingEngine:
     def _finalize_run(self, start_time: datetime, state: PaperLedgerState, data_frames: dict, result: PaperRunResult) -> PaperLedgerState:
         latest_prices = {symbol: float(df.iloc[-1]['close']) for symbol, df in data_frames.items()}
         state = self.execution_simulator.mark_to_market(state, latest_prices)
+        self._accrue_interest(state, result)
         self.ledger_store.save(state)
 
         result.positions = state.open_positions()
@@ -418,6 +419,19 @@ class PaperTradingEngine:
         if result.issues:
              result.status = "COMPLETED_WITH_ISSUES"
         return state
+
+    def _accrue_interest(self, state: PaperLedgerState, result: PaperRunResult) -> None:
+        """Credit daily interest on idle cash (PAPER_CASH_INTEREST_ANNUAL, net of PAPER_CASH_INTEREST_WITHHOLDING)."""
+        try:
+            from datetime import date as _date
+            from bist_signal_bot.paper.cash_interest import apply_cash_interest
+            s = self.settings
+            amt = apply_cash_interest(state.account, _date.today(), float(getattr(s, 'PAPER_CASH_INTEREST_ANNUAL', 0.0)),
+                                      float(getattr(s, 'PAPER_CASH_INTEREST_WITHHOLDING', 0.0)))
+            if amt > 0:
+                result.metadata['cash_interest_credited'] = amt
+        except Exception as e:  # interest is best-effort and must never break a run
+            result.issues.append(f'Cash interest accrual failed: {e}')
 
     def _notify_and_log(self, result: PaperRunResult):
         if self.settings.PAPER_SEND_TELEGRAM_SUMMARY:

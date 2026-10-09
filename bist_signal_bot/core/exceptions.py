@@ -576,7 +576,7 @@ class ForbiddenActionError(SecurityError):
     pass
 class UnsafeClaimError(SecurityError):
     pass
-class PathSecurityError(SecurityError):
+class PathSecurityError(SecurityError, ValueError):
     pass
 class KillSwitchActiveError(SecurityError):
     pass
@@ -724,6 +724,9 @@ class ReportTemplateError(ReportError):
     pass
 
 class ReportGenerationError(ReportError):
+    pass
+
+class ReportComposerError(ReportTemplateError):
     pass
 
 class ReportExportError(ReportError):
