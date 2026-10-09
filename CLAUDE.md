@@ -43,6 +43,10 @@ Windows: `start_windows.bat` creates `.venv`, installs deps, runs healthcheck + 
 non-negotiables. Stray root files (`PR_DESCRIPTION.md`, `pr_description.txt`, `submission.txt`) are PR scratch, not docs.
 No `.venv` is checked in; create it first (see Setup).
 
+Per-package entry points, test layout (no `conftest.py`), CLI framework split and verified dead code/duplicates
+(`regimes/`, doubled `BistSignalBotError`, stray `*_patch.py`) live in `docs/claude-context/module-map.md` — read it
+only when touching those packages; it is not auto-loaded.
+
 ## Setup & tests
 
 ```bash
