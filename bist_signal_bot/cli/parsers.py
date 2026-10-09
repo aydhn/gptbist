@@ -988,6 +988,9 @@ def build_parser() -> argparse.ArgumentParser:
     update_parser = universe_subparsers.add_parser("update", help="Update symbol from data provider")
     update_parser.add_argument("--symbol", type=str, help="Specific symbol to update (optional)")
 
+    sync_parser = universe_subparsers.add_parser("sync", help="Sync full BIST universe from Yahoo screener")
+    sync_parser.add_argument("--dry-run", action="store_true", help="Report changes without writing")
+
     export_parser = universe_subparsers.add_parser("export", help="Export universe data")
     export_parser.add_argument("--format", type=str, choices=["json", "csv"], default="json", help="Export format")
     export_parser.add_argument("--output", type=str, required=True, help="Output file path")

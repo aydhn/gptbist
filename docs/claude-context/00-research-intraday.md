@@ -67,3 +67,7 @@ Kısa özet; kaynaklar bağlantılı. Doğrulanamayan maddeler "?" ile işaretli
   `intraday/sessions.py` varsayılanı bu "yahoo" ızgarasıdır; son 4 haftada 1h/15m kapsama 1.000, 5m ≈ 0.998-0.999.
 - Kapanış seansı (18:00-18:10) Yahoo barlarında görünmüyor; `closing_auction_window()` ayrı sunar.
 - Yahoo tarafında 429/oran sınırı bu denemelerde tetiklenmedi; geniş evrende yine de `RateLimitedFetcher` (parti + aralık + backoff + devre kesici) kullanılır.
+
+## Universe sync (Yahoo screener)
+
+- `yf.screen(EquityQuery('eq',['exchange','IST']))` pages (250/page) return ~629 IST listings (symbol, quoteType, firstTradeDate, ADV, marketCap). May include non-stock instruments; NOT verified against the official Borsa Istanbul list. Implemented in `data/universe_sync.py`; state in `universe_sync_state.json` next to the universe file.

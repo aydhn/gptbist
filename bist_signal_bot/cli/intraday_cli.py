@@ -43,6 +43,13 @@ def main(argv: list[str]) -> int:
     archive = BarArchive(settings=settings)
     try:
         if args.intraday_command == "archive-update":
+            if args.all_active and not args.symbols:
+                from bist_signal_bot.data.universe_sync import sync_if_stale
+
+                sres = sync_if_stale(settings)
+                if sres is not None:
+                    print(f"universe auto-sync: added={len(sres.added)} deactivated={len(sres.deactivated)} "
+                          f"new_ipos={len(sres.new_ipos)} skipped={sres.skipped_reason}")
             symbols = args.symbols if args.symbols else _universe_symbols(settings)
             if not symbols:
                 print("No symbols: pass --symbols or load a universe (python -m bist_signal_bot universe init/import).")

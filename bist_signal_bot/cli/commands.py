@@ -534,6 +534,23 @@ def cmd_universe(args, app_context) -> int:
                 print(format_error(res.message))
         return 0 if res.success else 1
 
+    elif args.universe_command == "sync":
+        from bist_signal_bot.data.universe_sync import sync_universe
+
+        sres = sync_universe(app_context.settings, dry_run=args.dry_run)
+        if args.json:
+            print_output(sres.summary(), as_json=True)
+        else:
+            print(
+                f"universe sync{' (dry-run)' if sres.dry_run else ''}: added={len(sres.added)} "
+                f"reactivated={len(sres.reactivated)} deactivated={len(sres.deactivated)} "
+                f"unchanged={sres.unchanged} total_active={sres.total} new_ipos={sres.new_ipos}"
+            )
+            if sres.skipped_reason:
+                print(format_error(f"skipped: {sres.skipped_reason}"))
+            print("No real order sent.")
+        return 1 if sres.skipped_reason else 0
+
     elif args.universe_command == "export":
         fmt = UniverseFileFormat(args.format)
         out_path = Path(args.output) if args.output else None

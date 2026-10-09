@@ -195,6 +195,15 @@ class RuntimeOrchestrator:
     def _execute_data_refresh(
         self, config: RuntimePipelineConfig, result: RuntimePipelineResult, fetched_data: dict
     ) -> None:
+        if getattr(self.settings, "INTRADAY_UNIVERSE_AUTO_SYNC", False) and not getattr(
+            config, "dry_run", False
+        ):
+            try:  # best-effort; never fails the pipeline
+                from bist_signal_bot.data.universe_sync import sync_if_stale
+
+                sync_if_stale(self.settings)
+            except Exception:
+                pass
         data_service = getattr(self.scanner_engine, "data_service", None)
         if data_service is not None and hasattr(data_service, "get_many_ohlcv"):
 

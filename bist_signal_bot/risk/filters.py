@@ -16,9 +16,19 @@ class SignalScoreFilter:
         rejects = []
         if signal.score < settings.RISK_MIN_SIGNAL_SCORE:
             rejects.append(RiskRejectReason.SCORE_TOO_LOW)
-        if signal.confidence < settings.RISK_MIN_CONFIDENCE:
-            rejects.append(RiskRejectReason.CONFIDENCE_TOO_LOW)
-        return rejects, []
+        warnings = []
+        conf = float(signal.confidence or 0.0)
+        if conf <= 0.0:
+            # Strategies do not populate confidence (0 = unset): do not reject on a value nobody computed.
+            warnings.append('confidence_not_provided: confidence check skipped')
+        else:
+            min_conf = float(settings.RISK_MIN_CONFIDENCE)
+            # signal.confidence is on a 0-100 scale; thresholds <= 1 are fractions.
+            if min_conf <= 1.0:
+                min_conf *= 100.0
+            if conf < min_conf:
+                rejects.append(RiskRejectReason.CONFIDENCE_TOO_LOW)
+        return rejects, warnings
 
 class RiskRewardFilter:
     def evaluate(self, signal: SignalCandidate, context: RiskContext, stop_target: StopTargetReference | None, position_size: PositionSizeResult | None, data: pd.DataFrame | None, settings: Settings) -> Tuple[List[RiskRejectReason], List[str]]:
