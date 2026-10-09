@@ -1,3 +1,4 @@
+import inspect
 import logging
 from datetime import datetime, UTC
 from typing import Any
@@ -24,6 +25,14 @@ class BacktestEngine:
         self.cost_engine = cost_engine
         self.settings = settings or Settings()
         self.logger = logger or logging.getLogger("bist_signal_bot.backtest")
+        # Strategy sees the same trailing window as PaperTradingEngine (200 bars); None = full history.
+        self.signal_lookback_rows: int | None = 200
+        self.signal_timeframe: str = "1d"
+        self.trade_from = None  # optional datetime.date: no signals before this bar date (warm-up)
+        self._strategy_name: str = ""
+        self._strategy_params: dict[str, Any] = {}
+        self._signal_error_count = 0
+        self._signal_error_first: str | None = None
 
     def build_default_config(self) -> BacktestConfig:
         return BacktestConfig(
@@ -34,7 +43,8 @@ class BacktestEngine:
             allow_short=self.settings.BACKTEST_ALLOW_SHORT,
             max_position_size_pct=self.settings.BACKTEST_MAX_POSITION_SIZE_PCT,
             min_trade_notional=self.settings.BACKTEST_MIN_TRADE_NOTIONAL,
-            trade_on_candidate_statuses=["ACTIVE"],
+            # Strategies emit CANDIDATE (research signal) or ACTIVE; both are tradable in a backtest.
+            trade_on_candidate_statuses=["ACTIVE", "CANDIDATE"],
             close_on_opposite_signal=self.settings.BACKTEST_CLOSE_ON_OPPOSITE_SIGNAL,
             close_on_flat_signal=self.settings.BACKTEST_CLOSE_ON_FLAT_SIGNAL,
             one_position_per_symbol=self.settings.BACKTEST_ONE_POSITION_PER_SYMBOL,
@@ -100,7 +110,7 @@ class BacktestEngine:
             return
 
         try:
-            candidate = strategy_instance.generate_candidate(symbol, historical_slice)
+            candidate = self._get_candidate(symbol, historical_slice, strategy_instance)
             if candidate and candidate.status.value in config.trade_on_candidate_statuses:
                 pos = portfolio.get_position(symbol)
                 if self.should_close_position(candidate, pos, config):
@@ -110,7 +120,7 @@ class BacktestEngine:
                          self._execute_close_order(close_order, current_price, current_time, portfolio, exec_model)
                     else: pending_orders.append(close_order)
                 elif candidate.direction in [SignalDirection.LONG, SignalDirection.SHORT]:
-                     if config.one_position_per_symbol and pos: pass
+                     if pos: pass  # BacktestPortfolio supports a single position per symbol (no pyramiding)
                      else:
                          equity = portfolio.current_equity({symbol: current_price})
                          entry_order = self.generate_order_from_candidate(candidate, current_time, current_price, equity, config)
@@ -120,7 +130,46 @@ class BacktestEngine:
                                  self._execute_entry_order(entry_order, current_price, current_time, portfolio, exec_model, config)
                              else: pending_orders.append(entry_order)
         except Exception as e:
-            pass
+            self._record_signal_error(symbol, current_time, e)
+
+    def _record_signal_error(self, symbol: str, current_time: Any, err: Any) -> None:
+        """Never swallow strategy/engine errors silently: log, count and keep the first message for the result."""
+        self._signal_error_count += 1
+        if self._signal_error_first is None:
+            self._signal_error_first = f"{symbol} @ {current_time}: {type(err).__name__}: {err}" if isinstance(err, BaseException) else f"{symbol} @ {current_time}: {err}"
+            self.logger.warning("Backtest signal generation failed (%s)", self._signal_error_first)
+        else:
+            self.logger.debug("Backtest signal generation failed again for %s: %s", symbol, err)
+
+    def _get_candidate(self, symbol: str, historical_slice: pd.DataFrame, strategy_instance) -> SignalCandidate | None:
+        """Obtain the signal for the last bar through the SAME path the paper engine uses
+        (StrategyEngine.run_strategy_on_data -> strategy.run(context, params)).
+
+        Legacy strategies whose generate_candidate takes (symbol, data) instead of (context, params) are still
+        called directly. A strategy 'error' result is recorded as a warning (not swallowed)."""
+        if self.trade_from is not None and pd.Timestamp(historical_slice.index[-1]).date() < self.trade_from:
+            return None  # warm-up bars before the evaluation window: no signals
+        gen = getattr(strategy_instance, "generate_candidate", None)
+        if gen is not None:
+            try:
+                first = next(iter(inspect.signature(gen).parameters), "")
+            except (TypeError, ValueError):
+                first = ""
+            if first not in ("context", "ctx"):
+                return gen(symbol, historical_slice)
+
+        spec = getattr(strategy_instance, "spec", None)
+        min_rows = getattr(spec, "min_rows", 0) or 0
+        if len(historical_slice) < min_rows:
+            return None  # warm-up, not an error
+        window = historical_slice if not self.signal_lookback_rows else historical_slice.tail(self.signal_lookback_rows)
+        name = getattr(spec, "name", None) or self._strategy_name
+        res = self.strategy_engine.run_strategy_on_data(
+            strategy_name=name, symbol=symbol, data=window, params=self._strategy_params, timeframe=self.signal_timeframe)
+        if getattr(res, "status", "success") == "error":
+            msgs = "; ".join(getattr(i, "message", str(i)) for i in getattr(res, "issues", [])) or "strategy error"
+            raise RuntimeError(msgs)
+        return getattr(res, "candidate", None)
 
     def _close_open_positions_at_end(self, symbol: str, df: pd.DataFrame, portfolio: BacktestPortfolio, exec_model: BacktestExecutionModel, orders: list[BacktestOrder], config: BacktestConfig):
         if config.close_open_positions_at_end and portfolio.has_position(symbol):
@@ -161,6 +210,8 @@ class BacktestEngine:
         if not strategy_instance: raise ValueError(f"Strategy {strategy_name} not found")
 
         pending_orders = []
+        self._strategy_name, self._strategy_params = strategy_name, dict(params or {})
+        self._signal_error_count, self._signal_error_first = 0, None
 
         for i in range(len(df)):
             current_time = df.index[i]
@@ -180,15 +231,19 @@ class BacktestEngine:
 
         self._close_open_positions_at_end(symbol, df, portfolio, exec_model, orders, config)
 
+        if self._signal_error_count:
+            issues.append(f"WARNING: signal generation failed {self._signal_error_count} time(s); first: {self._signal_error_first}")
+            self.logger.warning("Backtest %s %s: %d signal generation failure(s)", strategy_name, symbol, self._signal_error_count)
+
         finished_at = datetime.now(UTC)
-        elapsed = (finished_at - started_at).total_seconds()
+        elapsed =(finished_at - started_at).total_seconds()
 
         eq_df = pd.DataFrame([{"timestamp": s.timestamp, "cash": s.cash, "position_value": s.position_value, "equity": s.equity, "gross_exposure": s.gross_exposure, "net_exposure": s.net_exposure, "open_positions": s.open_positions} for s in portfolio.snapshots])
         if not eq_df.empty: eq_df.set_index("timestamp", inplace=True)
 
         res = BacktestResult(strategy_name=strategy_name, symbol=symbol, mode=BacktestMode.SINGLE_SYMBOL, config=config, trades=portfolio.trades, fills=portfolio.fills, portfolio_snapshots=portfolio.snapshots, orders=orders, equity_curve=eq_df, started_at=started_at, finished_at=finished_at, elapsed_seconds=elapsed,
             data_source=data.source.value if hasattr(data, "source") else "UNKNOWN",
-            data_row_count=len(df), issues=issues)
+            data_row_count=len(df), issues=issues, metadata={"signal_errors": self._signal_error_count})
 
 
         # Phase 47: Research Logging

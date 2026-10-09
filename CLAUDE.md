@@ -79,7 +79,9 @@ correlation cluster, daily turnover), `daily_loss.py` (`DailyLossGuard`: daily l
 -> HALTED_FOR_DAY + PAPER kill switch + audit; drawdown/corrupt-state need `reset(confirm=True)`; fails closed),
 `decision.py` (`DecisionLayer`: guard -> session/auction -> sizing -> limits -> edge-vs-cost; reduce-only exits bypass).
 CLI: `python -m bist_signal_bot risk status|reset --confirm|simulate-day`. `RUNTIME_USE_DECISION_LAYER` (default False)
-only wires the guard into PAPER_RUN; per-order `DecisionLayer` hooking in `PaperTradingEngine._execute_orders` is still TODO.
+gates PAPER_RUN; per-order hooking is `paper/decision_hook.py::PaperDecisionHook`. `PaperTradingEngine.run(strategy_name, **kw)` is the
+runtime adapter (point-in-time via `as_of`/`data_override`). `evidence/` (`replay_paper`, `compare_paper_backtest`; CLI
+`python -m bist_signal_bot evidence ...`) reports paper-vs-backtest divergence to `data/evidence/`. No strategy/model has passed the edge gate yet.
 
 ## Setup & tests
 

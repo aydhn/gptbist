@@ -305,6 +305,17 @@ class PaperRunResult(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
 
     def summary(self) -> dict[str, Any]:
+        out = self._base_summary()
+        if self.metadata.get("risk_rejections"):
+            out["risk_rejections"] = list(self.metadata["risk_rejections"])
+        if "decisions" in self.metadata or "realized_pnl_today" in self.metadata:  # decision layer on
+            out["decisions"] = list(self.metadata.get("decisions", []))
+            out["rejection_reasons"] = dict(self.metadata.get("rejection_reasons", {}))
+            if "realized_pnl_today" in self.metadata:
+                out["realized_pnl_today"] = self.metadata["realized_pnl_today"]
+        return out
+
+    def _base_summary(self) -> dict[str, Any]:
         return {
             "account_id": self.account.account_id,
             "signals_count": len(self.signals),

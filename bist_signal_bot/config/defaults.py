@@ -246,6 +246,8 @@ DEFAULTS: dict[str, Any] = {
     "RUNTIME_JOB_RETRY_DELAY_SECONDS": 5,
     "RUNTIME_JOB_TIMEOUT_SECONDS": 300,
     "RUNTIME_LOCK_TTL_SECONDS": 3600,
+    "RUNTIME_RUN_IMMEDIATELY": True,
+    "RUNTIME_STOP_ON_FAILURE": False,
     "RUNTIME_MAX_ITERATIONS": 1,
     "RUNTIME_SLEEP_SECONDS": 60,
     "RUNTIME_UNIVERSE_MODE": "ALL",  # scan the whole seed universe (ScanUniverseMode has no FILE)
@@ -269,6 +271,7 @@ DEFAULTS: dict[str, Any] = {
     "MTF_ALIGNMENT_MODE": "STRICT",
     "PAPER_EXECUTION_MODE": "CLOSE",
     "PAPER_DEFAULT_ACCOUNT_ID": "default",
+    "PAPER_INITIAL_CASH": 100000.0,
     "ERROR_NOTIFICATION_MIN_LEVEL": "ERROR",
     "SECURITY_REDACT_AUDIT": True,  # redact secrets from audit metadata (security)
     "ENABLE_PERFORMANCE_PROFILING": False,  # opt-in; profiler is heavy and off by default

@@ -155,6 +155,9 @@ def run_cli(argv: list[str] | None = None) -> int:
     if first == 'edge':
         from bist_signal_bot.cli.edge_cli import main as edge_main
         return edge_main(args_list[1:])
+    if first == 'evidence':
+        from bist_signal_bot.cli.evidence_cli import main as evidence_main
+        return evidence_main(args_list[1:])
     if first == 'risk':
         from bist_signal_bot.cli.risk_cli import main as risk_main
         return risk_main(args_list[1:])

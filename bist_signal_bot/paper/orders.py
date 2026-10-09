@@ -21,6 +21,20 @@ _ACCEPTABLE_STATUSES = frozenset({PaperOrderStatus.CREATED, PaperOrderStatus.REJ
 _REJECTABLE_STATUSES = frozenset({PaperOrderStatus.FILLED, PaperOrderStatus.CANCELLED, PaperOrderStatus.EXPIRED})
 _TERMINAL_STATUSES = frozenset({PaperOrderStatus.FILLED, PaperOrderStatus.CANCELLED, PaperOrderStatus.EXPIRED, PaperOrderStatus.REJECTED})
 
+def _summ(d):
+    """JSON-safe summary of a risk/portfolio decision (pydantic model or dataclass)."""
+    if d is None:
+        return {}
+    if hasattr(d, "summary"):
+        try:
+            return dict(d.summary())
+        except Exception:
+            pass
+    if hasattr(d, "model_dump"):
+        return d.model_dump()
+    return {"status": str(getattr(getattr(d, "status", None), "value", getattr(d, "status", "")))}
+
+
 class PaperOrderManager:
 
     def create_market_order(
@@ -35,13 +49,13 @@ class PaperOrderManager:
         status = PaperOrderStatus.CREATED
         reject_reason = None
 
-        if request.risk_decision and request.risk_decision.status.value != "APPROVED":
+        if request.risk_decision and request.risk_decision.status.value not in ("APPROVED", "REDUCED"):
              status = PaperOrderStatus.REJECTED
              reject_reason = f"Risk rejected: {request.risk_decision.issues[0] if getattr(request.risk_decision, 'issues', None) else 'No reason provided'}"
 
-        if request.portfolio_decision and request.portfolio_decision.status.value != "APPROVED":
+        if request.portfolio_decision and request.portfolio_decision.status.value not in ("APPROVED", "REDUCED", "PARTIALLY_APPROVED"):
              status = PaperOrderStatus.REJECTED
-             reject_reason = f"Portfolio Risk rejected: {request.portfolio_decision.reasons[0] if request.portfolio_decision.reasons else 'No reason provided'}"
+             reject_reason = f"Portfolio Risk rejected: {(str(getattr(request.portfolio_decision, 'reject_reasons', None) or getattr(request.portfolio_decision, 'warnings', None) or ['x'][:0])[:200]) if (getattr(request.portfolio_decision, 'reject_reasons', None) or getattr(request.portfolio_decision, 'warnings', None)) else 'No reason provided'}"
 
         order = PaperOrder(
             order_id=order_id,
@@ -54,8 +68,8 @@ class PaperOrderManager:
             requested_price=request.requested_price,
             signal_id=getattr(request.signal, "signal_id", None),
             strategy_name=request.signal.strategy_name if request.signal else None,
-            risk_decision_summary=request.risk_decision.model_dump() if request.risk_decision else {},
-            portfolio_decision_summary=request.portfolio_decision.model_dump() if request.portfolio_decision else {},
+            risk_decision_summary=_summ(request.risk_decision),
+            portfolio_decision_summary=_summ(request.portfolio_decision),
             reject_reason=reject_reason
         )
 

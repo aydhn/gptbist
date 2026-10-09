@@ -2,8 +2,10 @@ from __future__ import annotations
 from enum import Enum
 from typing import Any, Optional, TYPE_CHECKING
 
+import pandas as pd
+
 if TYPE_CHECKING:
-    import pandas as pd
+    pass
 
 from datetime import datetime, timezone
 from dataclasses import dataclass, field

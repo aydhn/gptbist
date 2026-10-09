@@ -962,6 +962,7 @@ def build_parser() -> argparse.ArgumentParser:
     download_batch.add_argument("--group", type=str, help="Download for a specific symbol group")
     download_batch.add_argument("--timeframe", type=str, default="1d", help="Timeframe")
     download_batch.add_argument("--period", type=str, default="2y", help="Period")
+    download_batch.add_argument("--refresh", action="store_true", help="Ignore local cache and re-download")
 
     version_parser = subparsers.add_parser("version", help="Show application version")
     diagnose_parser = subparsers.add_parser("diagnose", help="Run diagnostic checks on the environment")

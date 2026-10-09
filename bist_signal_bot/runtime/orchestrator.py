@@ -367,10 +367,23 @@ class RuntimeOrchestrator:
                         }
                     )
                     return
+                try:  # share one guard so per-trade PnL fed by the paper engine trips it here too
+                    if hasattr(self.paper_engine, "decision_guard"):
+                        self.paper_engine.decision_guard = guard
+                except Exception:
+                    pass
             job_res = self.job_runner.run_job(
                 RuntimeJobType.PAPER_RUN,
                 lambda: (
-                    self.paper_engine.run(getattr(config, "strategy_name", ""))
+                    self.paper_engine.run(
+                        getattr(config, "strategy_name", ""),
+                        symbols=list(getattr(config, "symbols", None) or [])
+                        or list(getattr(config, "metadata", {}).get("paper_symbols", [])),
+                        source=getattr(config, "source", None),
+                        timeframe=getattr(config, "timeframe", None),
+                        use_trade_risk=getattr(config, "use_trade_risk", True),
+                        use_portfolio_risk=getattr(config, "use_portfolio_risk", True),
+                    )
                     if hasattr(self.paper_engine, "run")
                     else {"mock_paper": True}
                 ),
@@ -403,7 +416,10 @@ class RuntimeOrchestrator:
             if equity is None:
                 return
             realized = data.get("realized_pnl_today")
-            guard.update(float(equity), float(realized or 0.0))
+            if realized is None:
+                # never overwrite the guard's tracked realized PnL with a fake 0.0 (would reset loss streaks)
+                realized = (getattr(guard, "state", None) or {}).get("realized_pnl_today") or 0.0
+            guard.update(float(equity), float(realized))
         except Exception:
             pass
 

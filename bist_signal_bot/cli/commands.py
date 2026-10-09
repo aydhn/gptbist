@@ -289,7 +289,21 @@ def cmd_diagnose(args, app_context: ApplicationContext) -> int:
     return 0
 
 
+def _normalize_download_args(args) -> None:
+    """The `download-data single|batch` parser and this handler use different arg names; reconcile them."""
+    if getattr(args, "download_command", None) == "single" and not hasattr(args, "symbols"):
+        args.symbols = [args.symbol]
+    for name, default in (("symbols", None), ("group", None), ("all", False), ("refresh", False),
+                          ("no_save", False), ("continue_on_error", False), ("fail_fast", False), ("json", False),
+                          ("telegram_summary", False)):
+        if not hasattr(args, name):
+            setattr(args, name, default)
+    if getattr(args, "all_active", False):
+        args.all = True
+
+
 def cmd_download_data(args, app_context: ApplicationContext) -> int:
+    _normalize_download_args(args)
     if not args.symbols and not args.all and not args.group:
         print(format_error("Lütfen symbol(ler) belirtin, --all veya --group kullanın."))
         return 1
