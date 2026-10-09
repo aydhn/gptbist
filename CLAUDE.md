@@ -40,22 +40,22 @@ Windows: `start_windows.bat` creates `.venv`, installs deps, runs healthcheck + 
 `bist_signal_bot/` is the package (~100 subpackages: `cli/`, `config/`, `runtime/`, `adaptive/`, `ml/`,
 `drift/`, `backtesting/`, `paper/`, `security/`, `tests/` mirrors the area names). `docs/` = 31 numbered guides +
 `runbooks/` (incident playbooks: kill switch, stale data, quality gate failed, ...). `AGENTS.md` restates the
-non-negotiables. Stray root files (`PR_DESCRIPTION.md`, `pr_description.txt`, `submission.txt`) are PR scratch, not docs.
+non-negotiables.
 No `.venv` is checked in; create it first (see Setup).
 
-Per-package entry points, test layout (no `conftest.py`), CLI framework split and verified dead code/duplicates
-(`regimes/`, doubled `BistSignalBotError`, stray `*_patch.py`) live in `docs/claude-context/module-map.md` — read it
+Per-package entry points, test layout (shared `tests/conftest.py`: seed, `tmp_data_dir`, `settings_factory`), CLI framework split and
+remaining verified duplicates (`PriceAdjustmentEngine` x2, `markets/calendar.py` vs `calendar/`) live in `docs/claude-context/module-map.md` — read it
 only when touching those packages; it is not auto-loaded.
 
 ## Setup & tests
 
 ```bash
-python -m venv .venv && .venv/Scripts/python -m pip install -r requirements.txt   # + scikit-learn for ML
+python -m venv .venv && .venv/Scripts/python -m pip install -r requirements.txt pytest pytest-xdist pytest-timeout
 .venv/Scripts/python -m pytest bist_signal_bot/tests/<area> -q
 ```
 
 Runtime deps: pandas, numpy, pydantic, requests, yfinance, **typer**, **click**, joblib, scikit-learn,
-python-dotenv. (`requirements.txt` and `pyproject.toml` are kept in sync.)
+python-dotenv, pyarrow, tabulate. (`requirements.txt` and `pyproject.toml` are kept in sync.)
 
 ## Configuration system (important)
 
@@ -91,21 +91,15 @@ The learning pieces that make it "self-improving":
 
 ## Known gaps / follow-ups
 
-- **Portfolio construction is half-wired**: `portfolio_construction/engine.py` uses undefined
-  `AllocationDecision`/`AllocationStatus` and `app/portfolio_construction_app.py` passes 10 ctor
-  args the engine doesn't accept. Excluded from the demo until rebuilt.
-- **getattr(settings, X, default)** sites (~700): because `Settings` always returns a value
-  (never `AttributeError`), the caller's default is bypassed for unknown keys. Add such keys to
-  `DEFAULTS` rather than relying on the inline default. Long-term: consider refining `__getattr__`.
+- **Portfolio construction** was rebuilt (`construct`, `compare_methods`; ctor collaborators optional). Still excluded from the demo.
+- **getattr(settings, X, default)**: `Settings` never raises `AttributeError`, so inline defaults are bypassed. ~330 such defaults were
+  promoted to `DEFAULTS`; unknown `*_DIR_NAME` keys now derive `key minus suffix` (no stray `data/<key>_dir_name`). Add new keys to `DEFAULTS`.
 - **Loop step coverage**: all steps (HEALTHCHECK, DATA_REFRESH, SIGNAL_SCAN, REGIME_ANALYSIS, ML_INFERENCE,
   PAPER_RUN, TELEGRAM_SUMMARY, CLEANUP) are dispatched in `_execute_pipeline_steps`
   (`runtime/orchestrator.py`); DATA_REFRESH feeds REGIME/ML/SIGNAL_SCAN via a shared `fetched_data` dict.
 - ML filter & drift check are off by default (`RUNTIME_USE_ML_FILTER`, `RUNTIME_RUN_DRIFT_CHECK`)
   until a baseline model is trained and registered.
-- **Backtest engine** (`backtesting/engine.py::run_single_symbol`) has a chain of half-wired
-  integrations (performance profiler API, then strategy-registry/None handling around line 158).
-  The profiling call is now guarded (best-effort), but downstream wiring still needs repair —
-  `test_backtest_engine.py` is not green yet. Backtest is not on the autonomous loop's hot path.
+- **Backtest** test files are green (models/audit enum repaired). Test suite baseline: ~215 failed / 46 errors / 24 import-broken files (stale tests vs code, see 00-research notes); no regressions allowed.
 - **Audit metadata redaction**: `test_audit_logger_sanitizes_metadata` expects partial masking
   (`secr...6789`), but `SecretRedactor.redact_dict` does full `***REDACTED***` (stronger). The code
   is the safer behavior; treat the test as the stale side, not the code.

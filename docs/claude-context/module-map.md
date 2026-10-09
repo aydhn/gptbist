@@ -30,14 +30,11 @@ mixed in `cli/commands.py` and `cli/validation_commands.py`. Routing: `cli/route
 A command may exist in only one framework: grep `add_parser`/`@app.command` to confirm.
 
 ## Tests
-`bist_signal_bot/tests/` flat, ~990 `test_*.py` named by feature, a few subfolders (e.g. `tests/signals/`). **No `conftest.py`**:
+`bist_signal_bot/tests/` flat, ~990 `test_*.py` named by feature, a few subfolders (e.g. `tests/signals/`). `tests/conftest.py` (seed, `tmp_data_dir`, `settings_factory`); other
 fixtures are per-file; shared helpers in `qa/fixtures.py`, `scenarios/fixtures.py`. `testpaths` set in `pyproject.toml`.
 
 ## Verified gotchas / dead code
-- `regimes/` (plural): only abstract `BaseRegimeDetector`, no importer. Dead; use `regime/`.
-- `core/exceptions.py`: `BistSignalBotError` defined twice (lines 2 and 19) plus near-duplicate `BISTBotError`; the later def shadows the first.
-- `core/time_utils.py:16`: `ensure_timezone` default arg calls `get_settings()` at import time (import-order/circularity risk).
-- Stray unimported patch files: `maintenance/doctor.py_patch.py`, `qa/release_gate_patch.py`.
+- Removed (proven unreferenced): `regimes/`, `*_patch.py`, `docs/troubleshooting.py`, `app/{maintenance_automation,docs_hub}_app.py`; `core/exceptions.py` now has one `BistSignalBotError` base.
 - `release/checks.py` references `"bist_signal_bot.regime"` by string; renaming that package breaks it silently.
 - Duplicate names across packages: `PriceAdjustmentEngine` (`corporate_actions/` and `data/adjustments.py`), `CorporateActionStore`; troubleshooting builders in `docs/` and `docs_hub/`.
 - Overlaps (unverified wiring): `portfolio` vs `portfolio_construction`; `maintenance` vs `maintenance_automation` vs `ops` backup/restore; `report_templates` vs `reports`; `research*` trio; `review` vs `review_workflow`; `adaptive` refresh planners (`model_refresh.py` vs `refresh_planner.py`); `backtesting/reports.py` vs `reporting.py`.

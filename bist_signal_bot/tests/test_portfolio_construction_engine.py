@@ -47,3 +47,17 @@ def test_portfolio_construction_engine(tmp_path):
     loaded = engine.store.load_latest_result()
     assert loaded is not None
     assert loaded.result_id == res.result_id
+
+
+def test_portfolio_construction_engine_default_ctor_no_save():
+    from bist_signal_bot.portfolio_construction.engine import PortfolioConstructionEngine
+    engine = PortfolioConstructionEngine()
+    req = PortfolioConstructionRequest(
+        request_id="req2", symbols=["ASELS", "GARAN", "THYAO", "EREGL"], strategy_names=["test"],
+        weighting_method=PortfolioWeightingMethod.EQUAL_WEIGHT, max_positions=10,
+        portfolio_notional=100000.0, current_weights={}, save_output=False,
+    )
+    res = engine.construct(req)
+    assert len(res.positions) == 4
+    assert abs(sum(p.target_weight for p in res.positions) - 1.0) < 1e-6
+    assert "No real order was sent" in res.disclaimer
