@@ -63,6 +63,26 @@ class ReplayResult:
     issues: list[str] = field(default_factory=list)
     days: int = 0
     disclaimer: str = NO_ORDER
+    cash_interest_enabled: bool = False
+    cash_interest_total: float = 0.0
+    cash_benchmark: pd.Series = field(default_factory=lambda: pd.Series(dtype=float))  # cash-only compounding of initial_cash
+
+    @property
+    def equity_ex_cash(self) -> pd.Series:
+        """Equity with cumulative credited cash interest removed."""
+        if self.equity_curve.empty:
+            return pd.Series(dtype=float)
+        if "interest_cum" not in self.equity_curve:
+            return self.equity_curve["equity"].copy()
+        return self.equity_curve["equity"] - self.equity_curve["interest_cum"]
+
+    @property
+    def cash_benchmark_return_pct(self) -> float:
+        return (float(self.cash_benchmark.iloc[-1]) / self.initial_cash - 1) * 100 if len(self.cash_benchmark) and self.initial_cash else 0.0
+
+    @property
+    def excess_over_cash_pct(self) -> float:
+        return (self.final_equity / self.initial_cash - 1) * 100 - self.cash_benchmark_return_pct if self.initial_cash else 0.0
 
     @property
     def final_equity(self) -> float:
@@ -82,7 +102,10 @@ class ReplayResult:
             "rejections": len(self.rejections), "initial_cash": self.initial_cash,
             "final_equity": round(self.final_equity, 2),
             "return_pct": round((self.final_equity / self.initial_cash - 1) * 100, 4),
-            "total_costs": round(self.total_costs, 2), "disclaimer": self.disclaimer,
+            "total_costs": round(self.total_costs, 2),
+            "cash_interest_enabled": self.cash_interest_enabled, "cash_interest_total": round(self.cash_interest_total, 2),
+            "cash_benchmark_return_pct": round(self.cash_benchmark_return_pct, 4),
+            "excess_over_cash_pct": round(self.excess_over_cash_pct, 4), "disclaimer": self.disclaimer,
         }
 
 
@@ -177,8 +200,13 @@ def replay_paper(
     close_open_at_end: bool = False,
     initial_cash: Optional[float] = None,
     ledger_dir: Optional[Path] = None,
+    cash_interest: Optional[bool] = None,
 ) -> ReplayResult:
-    """Replay the paper engine day by day with point-in-time data. No real order sent."""
+    """Replay the paper engine day by day with point-in-time data. No real order sent.
+
+    Idle-cash interest (``cash_interest``; default BACKTEST_CASH_INTEREST_ENABLED) is credited per replayed day with the
+    paper ledger's own ``apply_cash_interest`` on the replay date (PAPER_CASH_INTEREST_ANNUAL/WITHHOLDING); the engine's
+    wall-clock accrual is neutralised during the replay."""
     from bist_signal_bot.config.settings import Settings
     from bist_signal_bot.paper.engine import PaperTradingDependencies, PaperTradingEngine
     from bist_signal_bot.paper.ledger import PaperLedgerStore
@@ -194,6 +222,12 @@ def replay_paper(
     frames = frames if frames is not None else load_local_frames(settings, symbols)
     frames = {s: frames[s] for s in symbols if s in frames}
     cash0 = float(initial_cash if initial_cash is not None else settings.PAPER_INITIAL_CASH)
+    from bist_signal_bot.backtesting.cash import CashParams, cash_benchmark_curve
+    from bist_signal_bot.paper.cash_interest import apply_cash_interest
+    cparams = CashParams(enabled=bool(getattr(settings, "BACKTEST_CASH_INTEREST_ENABLED", True)) if cash_interest is None else bool(cash_interest),
+                         annual=float(getattr(settings, "PAPER_CASH_INTEREST_ANNUAL", 0.0)),
+                         withholding=float(getattr(settings, "PAPER_CASH_INTEREST_WITHHOLDING", 0.0)))
+    interest_total, last_interest_day = 0.0, None
 
     own_dir = ledger_dir is None
     base = Path(ledger_dir) if ledger_dir else Path(tempfile.mkdtemp(prefix="replay_ledger_"))
@@ -206,7 +240,7 @@ def replay_paper(
 
     try:
         with _setting(settings, "RUNTIME_USE_DECISION_LAYER", bool(use_decision_layer)), \
-             _setting(settings, "PAPER_REJECT_IF_INSUFFICIENT_CASH", True):
+             _setting(settings, "PAPER_REJECT_IF_INSUFFICIENT_CASH", True),              _setting(settings, "PAPER_CASH_INTEREST_ANNUAL", 0.0):  # engine accrues on wall-clock today(); replay accrues on d
             engine = PaperTradingEngine(PaperTradingDependencies(
                 ledger_store=PaperLedgerStore(settings, base_dir=base),
                 strategy_engine=StrategyEngine(settings=settings),
@@ -276,11 +310,23 @@ def replay_paper(
                         except Exception as e:
                             day["issues"].append(f"final close {sym}: {e}")
                 st = engine.load_state(acc)
+                if cparams.enabled:
+                    if last_interest_day is None:
+                        st.account.metadata.pop("last_interest_date", None)
+                    else:
+                        st.account.metadata["last_interest_date"] = last_interest_day.isoformat()
+                    amt = apply_cash_interest(st.account, d, cparams.annual, cparams.withholding)
+                    last_interest_day = d
+                    if amt > 0:
+                        interest_total += amt
+                        engine.ledger_store.save(st)
                 rows.append({"date": d, "equity": float(st.account.equity), "cash": float(st.account.cash),
-                             "open_positions": len(st.open_positions())})
+                             "open_positions": len(st.open_positions()), "interest_cum": interest_total})
                 res.decisions.append(day)
             res.days = len(days)
-            res.equity_curve = pd.DataFrame(rows).set_index("date") if rows else pd.DataFrame(columns=["equity", "cash", "open_positions"])
+            res.cash_interest_enabled, res.cash_interest_total = cparams.enabled, interest_total
+            res.cash_benchmark = cash_benchmark_curve(days, cash0, cparams) if days else pd.Series(dtype=float)
+            res.equity_curve = pd.DataFrame(rows).set_index("date") if rows else pd.DataFrame(columns=["equity", "cash", "open_positions", "interest_cum"])
             res.trades = [t for t in res.trades] + list(open_trades.values())
             res.trades.sort(key=lambda t: (t.entry_date, t.symbol))
     finally:

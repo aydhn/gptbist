@@ -18,6 +18,7 @@ from bist_signal_bot.strategies.engine import StrategyEngine
 from bist_signal_bot.signals.models import SignalCandidate, SignalDirection
 from bist_signal_bot.config.settings import Settings
 from bist_signal_bot.data.models import MarketDataFrame
+from bist_signal_bot.backtesting.cash import CashParams, CashAccrual, cash_benchmark_curve, excess_over_cash_pct
 
 class BacktestEngine:
     def __init__(self, strategy_engine: StrategyEngine, cost_engine: TransactionCostEngine, settings: Settings | None = None, logger: logging.Logger | None = None):
@@ -33,6 +34,10 @@ class BacktestEngine:
         self._strategy_params: dict[str, Any] = {}
         self._signal_error_count = 0
         self._signal_error_first: str | None = None
+        # Idle-cash interest overrides (None -> BACKTEST_CASH_INTEREST_* settings; see backtesting/cash.py)
+        self.cash_interest_enabled: bool | None = None
+        self.cash_interest_annual: float | None = None
+        self.cash_interest_withholding: float | None = None
 
     def build_default_config(self) -> BacktestConfig:
         return BacktestConfig(
@@ -210,6 +215,8 @@ class BacktestEngine:
         if not strategy_instance: raise ValueError(f"Strategy {strategy_name} not found")
 
         pending_orders = []
+        cash_params = CashParams.from_settings(self.settings, self.cash_interest_enabled, self.cash_interest_annual, self.cash_interest_withholding)
+        accrual = CashAccrual(cash_params, start_date=self.trade_from)
         self._strategy_name, self._strategy_params = strategy_name, dict(params or {})
         self._signal_error_count, self._signal_error_first = 0, None
 
@@ -222,11 +229,13 @@ class BacktestEngine:
 
             historical_slice = df.iloc[:i+1]
             if len(historical_slice) < 5:
+                 accrual.step(portfolio, current_time)
                  portfolio.mark_to_market(current_time, {symbol: current_price})
                  continue
 
             self._process_signals(symbol, current_price, current_time, historical_slice, strategy_instance, portfolio, exec_model, orders, pending_orders, config)
 
+            accrual.step(portfolio, current_time)
             portfolio.mark_to_market(current_time, {symbol: current_price})
 
         self._close_open_positions_at_end(symbol, df, portfolio, exec_model, orders, config)
@@ -241,9 +250,26 @@ class BacktestEngine:
         eq_df = pd.DataFrame([{"timestamp": s.timestamp, "cash": s.cash, "position_value": s.position_value, "equity": s.equity, "gross_exposure": s.gross_exposure, "net_exposure": s.net_exposure, "open_positions": s.open_positions} for s in portfolio.snapshots])
         if not eq_df.empty: eq_df.set_index("timestamp", inplace=True)
 
+        # Cash interest accounting (equity above already includes credited interest)
+        cum = pd.Series({t: v for t, v in accrual.history}, dtype=float) if accrual.history else pd.Series(dtype=float)
+        if not eq_df.empty:
+            cum = cum[~cum.index.duplicated(keep="last")].reindex(eq_df.index).ffill().fillna(0.0)
+            ex_cash = eq_df["equity"] - cum
+        else:
+            ex_cash = pd.Series(dtype=float)
+        bench_dates = [t for t in eq_df.index if self.trade_from is None or pd.Timestamp(t).date() >= self.trade_from] if not eq_df.empty else []
+        bench = cash_benchmark_curve(bench_dates, config.initial_capital, cash_params) if bench_dates else pd.Series(dtype=float)
+        bench_final = float(bench.iloc[-1]) if len(bench) else config.initial_capital
+        final_eq = float(eq_df["equity"].iloc[-1]) if not eq_df.empty else config.initial_capital
+        bench_ret = (bench_final / config.initial_capital - 1.0) * 100.0 if config.initial_capital else 0.0
+        excess = excess_over_cash_pct(final_eq, config.initial_capital, bench_final)
+
         res = BacktestResult(strategy_name=strategy_name, symbol=symbol, mode=BacktestMode.SINGLE_SYMBOL, config=config, trades=portfolio.trades, fills=portfolio.fills, portfolio_snapshots=portfolio.snapshots, orders=orders, equity_curve=eq_df, started_at=started_at, finished_at=finished_at, elapsed_seconds=elapsed,
             data_source=data.source.value if hasattr(data, "source") else "UNKNOWN",
-            data_row_count=len(df), issues=issues, metadata={"signal_errors": self._signal_error_count})
+            data_row_count=len(df), issues=issues, metadata={"signal_errors": self._signal_error_count, "cash_interest_enabled": cash_params.enabled,
+            "cash_interest_annual": cash_params.annual, "cash_interest_withholding": cash_params.withholding},
+            cash_interest_total=accrual.total, equity_curve_ex_cash=ex_cash, cash_benchmark_curve=bench,
+            cash_benchmark_return_pct=bench_ret, excess_over_cash=excess)
 
 
         # Phase 47: Research Logging

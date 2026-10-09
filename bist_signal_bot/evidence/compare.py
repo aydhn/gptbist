@@ -45,6 +45,9 @@ ASSUMPTIONS = [
     "Risk engines (trade/portfolio/decision layer) are OFF in the aligned comparison unless use_risk=True; the backtest "
     "has no risk layer at all.",
     "Equity curves are compared on trading dates present in both; paper marks stale symbols at their last close.",
+    "Idle-cash interest: both sides credit interest per calendar-day gap with paper.cash_interest.accrue_cash_interest "
+    "(PAPER_CASH_INTEREST_ANNUAL/WITHHOLDING). The backtest runs per-symbol portfolios WITHOUT interest and credits interest "
+    "once on the aggregated shared idle cash (initial cash + summed per-symbol cash deltas), mirroring paper's single account.",
 ]
 
 
@@ -84,6 +87,16 @@ class DivergenceReport(BaseModel):
     paper_max_drawdown_pct: float
     backtest_max_drawdown_pct: float
     drawdown_diff_pct_points: float
+    cash_interest_enabled: bool = False
+    paper_cash_interest_total: float = 0.0
+    backtest_cash_interest_total: float = 0.0
+    cash_interest_diff: float = 0.0
+    cash_benchmark_return_pct: float = 0.0
+    paper_excess_over_cash_pct: float = 0.0
+    backtest_excess_over_cash_pct: float = 0.0
+    paper_return_ex_cash_pct: float = 0.0
+    backtest_return_ex_cash_pct: float = 0.0
+    return_diff_ex_cash_pct_points: float = 0.0
     paper_rejections: int
     paper_rejection_breakdown: dict[str, int] = Field(default_factory=dict)
     insufficient_trades: bool
@@ -115,8 +128,14 @@ def _stats(v: list[float]) -> tuple[Optional[float], Optional[float]]:
 
 
 def run_backtest_aligned(strategy: str, frames: dict[str, pd.DataFrame], start: date, end: date, settings: Any,
-                         cash0: float, bt_mode: str = "SAME_CLOSE_FOR_RESEARCH_ONLY", size_pct: float = 0.10):
-    """Per-symbol backtests -> (aggregate equity Series by date, trades list, total cost, issues)."""
+                         cash0: float, bt_mode: str = "SAME_CLOSE_FOR_RESEARCH_ONLY", size_pct: float = 0.10,
+                         cash_interest: Optional[bool] = None, extras: Optional[dict] = None):
+    """Per-symbol backtests -> (aggregate equity Series by date, trades list, total cost, issues).
+
+    Per-symbol portfolios run with interest OFF; interest is then credited once on the aggregated shared idle cash
+    (so N symbols do not earn N x interest). ``extras`` (if given) receives cash_interest_total, equity_ex_cash,
+    cash_benchmark."""
+    from bist_signal_bot.backtesting.cash import CashAccrual, CashParams, cash_benchmark_curve
     from bist_signal_bot.backtesting.engine import BacktestEngine
     from bist_signal_bot.backtesting.models import ExecutionPriceMode
     from bist_signal_bot.costs.engine import TransactionCostEngine
@@ -128,6 +147,10 @@ def run_backtest_aligned(strategy: str, frames: dict[str, pd.DataFrame], start: 
     eng = BacktestEngine(se, TransactionCostEngine.from_settings(settings), settings)
     eng.signal_lookback_rows = LOOKBACK_ROWS  # same window as the paper engine
     eng.trade_from = start  # bars before the evaluation window are warm-up only
+    cparams = CashParams(enabled=bool(getattr(settings, "BACKTEST_CASH_INTEREST_ENABLED", True)) if cash_interest is None else bool(cash_interest),
+                         annual=float(getattr(settings, "PAPER_CASH_INTEREST_ANNUAL", 0.0)),
+                         withholding=float(getattr(settings, "PAPER_CASH_INTEREST_WITHHOLDING", 0.0)))
+    eng.cash_interest_enabled = False  # aggregate-level accrual below
     cfg = eng.build_default_config()
     cfg.initial_capital = cash0
     cfg.execution_price_mode = ExecutionPriceMode(bt_mode)
@@ -139,7 +162,7 @@ def run_backtest_aligned(strategy: str, frames: dict[str, pd.DataFrame], start: 
     cfg.one_position_per_symbol = True
     cfg.min_trade_notional = 0.0
 
-    trades, issues, total_cost, curves = [], [], 0.0, []
+    trades, issues, total_cost, curves, cash_curves = [], [], 0.0, [], []
     prev_rl = getattr(settings, "RESEARCH_AUTO_LOG_BACKTEST", False)
     settings.RESEARCH_AUTO_LOG_BACKTEST = False  # no research-ledger side effects from evidence runs
     for sym, df in frames.items():
@@ -162,12 +185,31 @@ def run_backtest_aligned(strategy: str, frames: dict[str, pd.DataFrame], start: 
             eq.index = [pd.Timestamp(i).date() for i in eq.index]
             eq = eq[~eq.index.duplicated(keep="last")]
             curves.append(eq - cash0)
+            ce = r.equity_curve["cash"].copy()
+            ce.index = [pd.Timestamp(i).date() for i in ce.index]
+            cash_curves.append(ce[~ce.index.duplicated(keep="last")] - cash0)
     settings.RESEARCH_AUTO_LOG_BACKTEST = prev_rl
     if curves:
         pnl = pd.concat(curves, axis=1).sort_index().ffill().fillna(0.0).sum(axis=1)
-        agg = (cash0 + pnl)
+        cash_delta = pd.concat(cash_curves, axis=1).sort_index().ffill().fillna(0.0).sum(axis=1)
+        cum, ex_cash = pd.Series(0.0, index=pnl.index), cash0 + pnl
+        total_int = 0.0
+        if cparams.enabled:
+            acc = CashAccrual(cparams, start_date=start)
+            shim = SimpleNamespace(cash=cash0)
+            for d_ in pnl.index:
+                shim.cash = cash0 + float(cash_delta.loc[d_]) + acc.total  # shared idle cash incl. interest so far
+                acc.step(shim, d_)
+                cum.loc[d_] = acc.total
+            total_int = acc.total
+        agg = ex_cash + cum
+        if extras is not None:
+            extras.update(cash_interest_total=total_int, equity_ex_cash=ex_cash,
+                          cash_benchmark=cash_benchmark_curve(list(pnl.index), cash0, cparams), enabled=cparams.enabled)
     else:
         agg = pd.Series(dtype=float)
+        if extras is not None:
+            extras.update(cash_interest_total=0.0, equity_ex_cash=agg, cash_benchmark=pd.Series(dtype=float), enabled=cparams.enabled)
     return agg, trades, total_cost, issues
 
 
@@ -210,6 +252,7 @@ def compare_paper_backtest(
     save: bool = True,
     out_dir: Optional[Path] = None,
     match_tolerance_days: int = 0,
+    cash_interest: Optional[bool] = None,
 ) -> DivergenceReport:
     """Replay paper and run the backtest on the same symbols/period/strategy/capital; report the divergence."""
     from bist_signal_bot.config.settings import Settings
@@ -227,12 +270,14 @@ def compare_paper_backtest(
     frames = {s: frames[s] for s in symbols if s in frames}
     cash0 = float(paper_settings.PAPER_INITIAL_CASH)
 
+    ci = cash_interest if cash_interest is not None else bool(getattr(settings, "BACKTEST_CASH_INTEREST_ENABLED", True))
     rep: ReplayResult = replay_paper(
         strategy, symbols, start_d, end_d, settings=paper_settings, use_decision_layer=use_decision_layer,
         execution_mode=execution_mode, frames=frames, use_trade_risk=use_risk, use_portfolio_risk=use_risk,
-        close_open_at_end=True)
+        close_open_at_end=True, cash_interest=ci)
+    bt_extras: dict = {}
     bt_eq, bt_trades, bt_cost, bt_issues = run_backtest_aligned(
-        strategy, frames, start_d, end_d, settings, cash0, backtest_execution_mode)
+        strategy, frames, start_d, end_d, settings, cash0, backtest_execution_mode, cash_interest=ci, extras=bt_extras)
 
     pairs, un_p, un_b = _pair(rep.trades, bt_trades, match_tolerance_days)
     ent_bps, ex_bps, ex_ok = [], [], 0
@@ -258,6 +303,10 @@ def compare_paper_backtest(
     b_final = float(bt_eq.iloc[-1]) if len(bt_eq) else cash0
     p_ret, b_ret = (p_final / cash0 - 1) * 100, (b_final / cash0 - 1) * 100
     p_dd, b_dd = _max_dd(pe), _max_dd(bt_eq)
+    p_int, b_int = float(rep.cash_interest_total), float(bt_extras.get("cash_interest_total", 0.0))
+    bench = rep.cash_benchmark if len(rep.cash_benchmark) else bt_extras.get("cash_benchmark", pd.Series(dtype=float))
+    bench_ret = (float(bench.iloc[-1]) / cash0 - 1) * 100 if len(bench) else 0.0
+    p_ex, b_ex = p_ret - p_int / cash0 * 100, b_ret - b_int / cash0 * 100
 
     breakdown: dict[str, int] = {}
     for r in rep.rejections:
@@ -271,6 +320,12 @@ def compare_paper_backtest(
     notes.extend(rep.issues[:5])
     if rep.execution_mode != "LATEST_CLOSE_RESEARCH" or backtest_execution_mode != "SAME_CLOSE_FOR_RESEARCH_ONLY":
         attr.append(f"execution price mode: paper={rep.execution_mode} vs backtest={backtest_execution_mode}")
+    if ci:
+        attr.append(f"cash interest: paper {p_int:.2f} vs backtest {b_int:.2f} (diff {p_int - b_int:+.2f} = {(p_int - b_int) / cash0 * 100:+.4f} pp of capital; "
+                    f"cash-only benchmark {bench_ret:.2f}%, alpha over cash paper {p_ret - bench_ret:+.2f} pp / backtest {b_ret - bench_ret:+.2f} pp); "
+                    f"return diff ex-cash {p_ex - b_ex:+.2f} pp")
+    else:
+        attr.append("cash interest OFF on both sides (idle cash earns nothing)")
     if abs(rep.total_costs - bt_cost) > max(1.0, 0.02 * max(bt_cost, 1.0)):
         attr.append(f"costs: paper {rep.total_costs:.2f} vs backtest {bt_cost:.2f} (cost settings/scenario differ)")
     if breakdown.get("execution"):
@@ -305,6 +360,10 @@ def compare_paper_backtest(
         max_equity_divergence_pct_of_capital=maxdiv / cash0 * 100,
         paper_total_cost=rep.total_costs, backtest_total_cost=bt_cost, cost_diff=rep.total_costs - bt_cost,
         paper_max_drawdown_pct=p_dd, backtest_max_drawdown_pct=b_dd, drawdown_diff_pct_points=p_dd - b_dd,
+        cash_interest_enabled=bool(ci), paper_cash_interest_total=p_int, backtest_cash_interest_total=b_int,
+        cash_interest_diff=p_int - b_int, cash_benchmark_return_pct=bench_ret,
+        paper_excess_over_cash_pct=p_ret - bench_ret, backtest_excess_over_cash_pct=b_ret - bench_ret,
+        paper_return_ex_cash_pct=p_ex, backtest_return_ex_cash_pct=b_ex, return_diff_ex_cash_pct_points=p_ex - b_ex,
         paper_rejections=len(rep.rejections), paper_rejection_breakdown=breakdown,
         insufficient_trades=insufficient, notes=notes, attribution=attr, data_gaps=gaps)
     if save:
@@ -339,6 +398,9 @@ def to_markdown(r: DivergenceReport) -> str:
           f"| net P&L | {_f(r.paper_net_pnl)} | {_f(r.backtest_net_pnl)} | {_f(r.paper_net_pnl - r.backtest_net_pnl)} |",
           f"| total cost | {_f(r.paper_total_cost)} | {_f(r.backtest_total_cost)} | {_f(r.cost_diff)} |",
           f"| max drawdown % | {_f(r.paper_max_drawdown_pct)} | {_f(r.backtest_max_drawdown_pct)} | {_f(r.drawdown_diff_pct_points)} pp |",
+          f"| cash interest | {_f(r.paper_cash_interest_total)} | {_f(r.backtest_cash_interest_total)} | {_f(r.cash_interest_diff)} |",
+          f"| return ex-cash % | {_f(r.paper_return_ex_cash_pct)} | {_f(r.backtest_return_ex_cash_pct)} | {_f(r.return_diff_ex_cash_pct_points)} pp |",
+          f"| alpha over cash (pp) | {_f(r.paper_excess_over_cash_pct)} | {_f(r.backtest_excess_over_cash_pct)} | cash benchmark {_f(r.cash_benchmark_return_pct)}% |",
           "", f"- entry date aligned: {_f(r.entry_date_aligned_pct, 1)}%; exit date aligned (of matched): {_f(r.exit_date_aligned_pct, 1)}%",
           f"- fill diff bps (paper-backtest) entry mean {_f(r.entry_fill_diff_bps_mean)} / abs {_f(r.entry_fill_diff_bps_mean_abs)}; "
           f"exit mean {_f(r.exit_fill_diff_bps_mean)} / abs {_f(r.exit_fill_diff_bps_mean_abs)}",

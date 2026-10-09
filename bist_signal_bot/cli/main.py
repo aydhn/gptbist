@@ -174,6 +174,9 @@ def run_cli(argv: list[str] | None = None) -> int:
     if first == 'intraday':
         from bist_signal_bot.cli.intraday_cli import main as intraday_main
         return intraday_main(args_list[1:])
+    if first == 'daily':
+        from bist_signal_bot.cli.daily_cli import main as daily_main
+        return daily_main(args_list[1:])
     if first == 'edge':
         from bist_signal_bot.cli.edge_cli import main as edge_main
         return edge_main(args_list[1:])

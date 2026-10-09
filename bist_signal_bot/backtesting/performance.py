@@ -62,7 +62,8 @@ class BacktestPerformanceAnalyzer:
         return_metrics = self.calculate_return_metrics(
              result.equity_curve,
              result.config.initial_capital,
-             result.final_equity()
+             result.final_equity(),
+             cash_benchmark_return_pct=(result.cash_benchmark_return_pct if result.metadata.get("cash_interest_enabled") else None),
         )
 
         cost_metrics = self.calculate_cost_metrics(result.fills, result.config.initial_capital)
@@ -178,7 +179,7 @@ class BacktestPerformanceAnalyzer:
             max_open_positions=max_open
         )
 
-    def calculate_return_metrics(self, equity_curve: pd.DataFrame, initial_capital: float, final_equity: float) -> ReturnMetrics:
+    def calculate_return_metrics(self, equity_curve: pd.DataFrame, initial_capital: float, final_equity: float, cash_benchmark_return_pct: float | None = None) -> ReturnMetrics:
         returns = calculate_returns(equity_curve)
         total_return_decimal = calculate_total_return(initial_capital, final_equity)
         total_return_pct = total_return_decimal * 100.0
@@ -197,7 +198,9 @@ class BacktestPerformanceAnalyzer:
             cumulative_return_pct=total_return_pct,
             average_daily_return_pct=avg_daily,
             best_day_return_pct=best_day,
-            worst_day_return_pct=worst_day
+            worst_day_return_pct=worst_day,
+            cash_benchmark_return_pct=cash_benchmark_return_pct,
+            excess_over_cash_pct=(total_return_pct - cash_benchmark_return_pct) if cash_benchmark_return_pct is not None else None,
         )
 
     def calculate_risk_metrics(self, equity_curve: pd.DataFrame, drawdown_curve: pd.DataFrame) -> RiskMetrics:

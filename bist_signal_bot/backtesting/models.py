@@ -146,6 +146,12 @@ class BacktestResult:
     metadata: dict[str, Any] = field(default_factory=dict)
     breadth_regime_subset_metrics: dict[str, Any] = field(default_factory=dict)
     disclaimer: str = "Backtest research output only. Past performance does not guarantee future results. Not investment advice. No order was sent."
+    # Idle-cash interest (backtesting/cash.py); zero/empty when interest is off.
+    cash_interest_total: float = 0.0
+    equity_curve_ex_cash: pd.Series = field(default_factory=lambda: pd.Series(dtype=float))
+    cash_benchmark_curve: pd.Series = field(default_factory=lambda: pd.Series(dtype=float))
+    cash_benchmark_return_pct: float = 0.0
+    excess_over_cash: float = 0.0  # strategy total return % minus cash-only compounding % (pp)
 
     def trade_count(self) -> int:
         return len(self.trades)
@@ -212,6 +218,8 @@ class ReturnMetrics:
     average_daily_return_pct: float | None
     best_day_return_pct: float | None
     worst_day_return_pct: float | None
+    cash_benchmark_return_pct: float | None = None
+    excess_over_cash_pct: float | None = None
 
 @dataclass
 class RiskMetrics:

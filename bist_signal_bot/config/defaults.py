@@ -328,6 +328,9 @@ DEFAULTS: dict[str, Any] = {
     "PAPER_INITIAL_CASH": 100000.0,
     "PAPER_CASH_INTEREST_ANNUAL": 0.30,  # PLACEHOLDER idle-cash yield (TL deposit/repo); unverified - set to your real rate
     "PAPER_CASH_INTEREST_WITHHOLDING": 0.15,  # PLACEHOLDER stopaj on interest; unverified
+    "BACKTEST_CASH_INTEREST_ENABLED": True,  # idle cash earns interest in backtests (same formula as paper ledger)
+    "BACKTEST_CASH_INTEREST_ANNUAL": 0.30,  # keep equal to PAPER_CASH_INTEREST_ANNUAL (placeholder, unverified)
+    "BACKTEST_CASH_INTEREST_WITHHOLDING": 0.15,  # keep equal to PAPER_CASH_INTEREST_WITHHOLDING (placeholder)
     "ERROR_NOTIFICATION_MIN_LEVEL": "ERROR",
     "SECURITY_REDACT_AUDIT": True,  # redact secrets from audit metadata (security)
     "ENABLE_PERFORMANCE_PROFILING": False,  # opt-in; profiler is heavy and off by default
@@ -718,6 +721,10 @@ DEFAULTS: dict[str, Any] = {
     "WHATIF_SENSITIVITY_DELTA_FAIL_PCT": 30.0,
     "WHATIF_SENSITIVITY_DELTA_WARN_PCT": 15.0,
     "INTRADAY_FETCH_BATCH_SIZE": 20,
+    "DAILY_HISTORY_PERIOD": "10y",
+    "DAILY_FETCH_BATCH_SIZE": 20,
+    "DAILY_MIN_REQUEST_INTERVAL_SECONDS": 1.0,
+    "DAILY_STALE_DAYS": 5,
     "INTRADAY_MIN_REQUEST_INTERVAL_SECONDS": 1.0,
     "INTRADAY_BACKOFF_BASE_SECONDS": 2.0,
     "INTRADAY_MAX_RETRIES": 4,
@@ -734,7 +741,20 @@ DEFAULTS: dict[str, Any] = {
     "INTRADAY_EXCHANGE_FEE_BPS": 0.3,
     "INTRADAY_SLIPPAGE_IMPACT_COEF": 0.1,
     "INTRADAY_MAX_PARTICIPATION": 0.05,
+    "CASH_BENCHMARK_ANNUAL_RATE": 0.37,  # policy rate proxy (TCMB 37%, 2026-09); separate from PAPER_CASH_INTEREST_ANNUAL deposit placeholder
+    "CASH_BENCHMARK_WITHHOLDING": 0.0,  # benchmark gross by default; set 0.15 to see after-stopaj (unverified)
+    "DAILY_COST_COMMISSION_PLACEHOLDER_BPS": 5.0,  # placeholder-commission scenario per leg; zero_commission scenario uses 0
+    "DAILY_COST_EXCHANGE_FEE_BPS": 0.3,  # exchange+takas share per leg (placeholder, verify)
+    "DAILY_COST_BSMV_RATE": 0.05,  # BSMV on commission only (0 cost when commission is 0)
+    "DAILY_COST_IMPACT_COEF": 0.5,  # sqrt impact coef for daily events: bps = coef*100*sqrt(order/ADV)
+    "DAILY_COST_MAX_PARTICIPATION": 0.05,  # max share of ADV per order; above -> NaN (disallowed)
     "INTRADAY_ALLOW_SHORT": False,
+    "DAILY_CAPITAL_TRY": 100000.0,  # cross-sectional daily research: capital (order_value = capital/top_n)
+    "DAILY_TOP_N": 8,  # long-only max positions
+    "DAILY_MIN_ADV_TRY": 5000000.0,  # point-in-time universe: ADV20 floor (TRY)
+    "DAILY_ADV_WINDOW": 20,
+    "DAILY_MIN_HISTORY_DAYS": 60,  # min bars of history before a symbol is eligible
+    "DAILY_MIN_PRICE_TRY": 1.0,
     "EDGE_GATE_MIN_EVENTS": 300,
     "EDGE_GATE_MIN_ACTIVE_DAYS": 60,
     "EDGE_GATE_DSR_MIN": 0.95,

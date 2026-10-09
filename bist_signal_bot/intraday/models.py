@@ -1,11 +1,11 @@
 """Intraday interval helpers and Yahoo lookback limits."""
 from __future__ import annotations
 
-_ALIASES = {"60m": "1h", "1h": "1h", "1m": "1m", "5m": "5m", "15m": "15m", "30m": "30m"}
-_MINUTES = {"1m": 1, "5m": 5, "15m": 15, "30m": 30, "1h": 60}
+_ALIASES = {"60m": "1h", "1h": "1h", "1m": "1m", "5m": "5m", "15m": "15m", "30m": "30m", "1d": "1d", "1day": "1d"}
+_MINUTES = {"1m": 1, "5m": 5, "15m": 15, "30m": 30, "1h": 60, "1d": 1440}
 
 # Yahoo limits (1h value unverified).
-MAX_LOOKBACK_DAYS = {"1m": 7, "5m": 60, "15m": 60, "30m": 60, "1h": 730}
+MAX_LOOKBACK_DAYS = {"1m": 7, "5m": 60, "15m": 60, "30m": 60, "1h": 730, "1d": 36500}
 
 
 def normalize_interval(s: str) -> str:
