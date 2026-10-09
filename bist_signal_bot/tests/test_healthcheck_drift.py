@@ -6,9 +6,9 @@ def test_healthcheck_includes_drift():
     s = Settings()
     s.ENABLE_DRIFT_MONITORING = True
     res = run_healthcheck(s)
-    assert res["status"] == "OK"
-    assert res["components"]["drift_monitoring"] == "OK"
+    assert res["drift_monitoring"]["enabled"] is True
+    assert res["drift_monitoring"]["engine_importable"] is True
 
     s.ENABLE_DRIFT_MONITORING = False
     res2 = run_healthcheck(s)
-    assert res2["components"]["drift_monitoring"] == "DISABLED"
+    assert res2["drift_monitoring"]["enabled"] is False

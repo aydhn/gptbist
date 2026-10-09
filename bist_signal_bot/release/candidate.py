@@ -10,7 +10,7 @@ from bist_signal_bot.release.models import (
 from bist_signal_bot.release.readiness import ReleaseReadinessEvaluator
 from bist_signal_bot.release.rehearsal import SafeLaunchRehearsalRunner
 from bist_signal_bot.core.exceptions import ReleaseCandidateError
-from bist_signal_bot.core.audit import AuditLogger, AuditEventType
+from bist_signal_bot.core.audit import AuditLogger, AuditEventType, AuditEvent
 
 class ReleaseCandidateBuilder:
     def __init__(self,
@@ -40,7 +40,7 @@ class ReleaseCandidateBuilder:
         ver = version or getattr(self.settings, "RELEASE_VERSION", "0.1.0")
         candidate_id = str(uuid.uuid4())
 
-        self.audit.log_event(AuditEventType.RELEASE_CANDIDATE_STARTED)
+        self.audit.log_event(AuditEvent(event_type=AuditEventType.RELEASE_CANDIDATE_STARTED, message="RELEASE_CANDIDATE_STARTED"))
 
         try:
             # 1. Run Readiness Evaluation
@@ -48,7 +48,7 @@ class ReleaseCandidateBuilder:
 
             if readiness_report.status not in [ReleaseStatus.READY, ReleaseStatus.PARTIAL_READY]:
                 err = f"Cannot build candidate. Readiness is {readiness_report.status.value}"
-                self.audit.log_event(AuditEventType.RELEASE_CANDIDATE_FAILED)
+                self.audit.log_event(AuditEvent(event_type=AuditEventType.RELEASE_CANDIDATE_FAILED, message="RELEASE_CANDIDATE_FAILED"))
                 # For testing and MVP, we might still return a failed manifest instead of raising, or raise
                 raise ReleaseCandidateError(err)
 
@@ -78,12 +78,12 @@ class ReleaseCandidateBuilder:
             if self.storage and confirm:
                 self.storage.save_candidate_manifest(manifest)
 
-            self.audit.log_event(AuditEventType.RELEASE_CANDIDATE_CREATED)
+            self.audit.log_event(AuditEvent(event_type=AuditEventType.RELEASE_CANDIDATE_CREATED, message="RELEASE_CANDIDATE_CREATED"))
             return manifest
 
         except Exception as e:
             self.logger.exception("Failed to build release candidate")
-            self.audit.log_event(AuditEventType.RELEASE_CANDIDATE_FAILED)
+            self.audit.log_event(AuditEvent(event_type=AuditEventType.RELEASE_CANDIDATE_FAILED, message="RELEASE_CANDIDATE_FAILED"))
             raise
 
     def validate_candidate(self, manifest: ReleaseCandidateManifest) -> list[ReleaseBlocker]:

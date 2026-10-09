@@ -112,6 +112,16 @@ def dispatch_benchmarks(args, ctx) -> int:
     return 1
 
 
+def _dispatch_leaderboard(args) -> int:
+    import json as _json
+    env = args.func(args)
+    if getattr(args, "json", False) and env.payload:
+        print(_json.dumps(env.payload, indent=2, default=str))
+    else:
+        print((env.metadata or {}).get("message") or "; ".join(env.errors or []))
+    return int(env.exit_code or 0)
+
+
 def dispatch_risk(args, ctx) -> int:
     from bist_signal_bot.cli.commands import handle_risk_commands
     ctx.logger = logger
@@ -343,6 +353,14 @@ def run_cli(argv: list[str] | None = None) -> int:
 
                 "qa": lambda a, c: __import__("bist_signal_bot.cli.commands", fromlist=["handle_qa_command"]).handle_qa_command(a, c.settings),
         "research": lambda a, c: __import__("bist_signal_bot.cli.commands_research", fromlist=["handle_research_commands"]).handle_research_commands(a, c.settings),
+        "stress": lambda a, c: __import__("bist_signal_bot.cli.stress_cmd", fromlist=["handle_stress_command"]).handle_stress_command(a, c.settings) or 0,
+        "ml-filter": lambda a, c: __import__("bist_signal_bot.cli.commands", fromlist=["handle_ml_filter_command"]).handle_ml_filter_command(a, c.settings),
+        "monte-carlo": lambda a, c: __import__("bist_signal_bot.cli.commands", fromlist=["handle_monte_carlo"]).handle_monte_carlo(a, c),
+        "market-registry": lambda a, c: __import__("bist_signal_bot.cli.markets_cli", fromlist=["handle_market_registry"]).handle_market_registry(a) or 0,
+        "paper": lambda a, c: __import__("bist_signal_bot.cli.commands_paper", fromlist=["handle_paper_command"]).handle_paper_command(a, c) or 0,
+        "leaderboard": lambda a, c: _dispatch_leaderboard(a),
+        "report-templates": lambda a, c: __import__("bist_signal_bot.cli.commands", fromlist=["cmd_report_templates"]).cmd_report_templates(a, c),
+        "plugins": lambda a, c: __import__("bist_signal_bot.cli_ux.plugins_cli", fromlist=["handle"]).handle(a) or 0,
         "breadth": lambda a, c: __import__("bist_signal_bot.cli.commands_breadth", fromlist=["handle_breadth_commands"]).handle_breadth_commands(a, c.settings),
     }
 

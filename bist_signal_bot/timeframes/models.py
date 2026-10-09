@@ -17,6 +17,13 @@ class AlignmentMode(str, Enum):
     EXACT_TIMESTAMP = "EXACT_TIMESTAMP"
     ASOF_BACKWARD = "ASOF_BACKWARD"
 
+    @classmethod
+    def _missing_(cls, value):
+        # Legacy alias: "STRICT" == no-lookahead, closed higher-TF bars only.
+        if isinstance(value, str) and value.upper() == "STRICT":
+            return cls.CLOSED_BAR_ONLY
+        return None
+
 class ResampleRule(str, Enum):
     DAILY = "1D"
     WEEKLY = "W-FRI"

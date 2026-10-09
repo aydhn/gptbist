@@ -13,7 +13,11 @@ class DecisionTraceBuilder:
     def __init__(self, settings: Any = None):
         self.settings = settings
 
-    def build_trace(self, object_type: ExplanationObjectType, object_id: str, steps: list[dict[str, Any]], symbol: str | None = None, as_of: datetime | None = None) -> DecisionTrace:
+    def build_trace(self, object_type: Any, object_id: Any = None, steps: list[dict[str, Any]] | None = None, symbol: str | None = None, as_of: datetime | None = None) -> DecisionTrace:
+        # Legacy (Phase 74) form: build_trace(signal_payload: dict, stage_payloads: dict | None)
+        if isinstance(object_type, dict):
+            return self.build_stage_trace(object_type, object_id)
+        steps = steps or []
         trace_steps = []
         for i, s in enumerate(steps):
             trace_steps.append(self.step_from_mapping(s, i))
@@ -31,6 +35,32 @@ class DecisionTraceBuilder:
             final_output=final_output,
             status=status
         )
+
+    def build_stage_trace(self, signal_payload: dict[str, Any], stage_payloads: dict[str, Any] | None = None) -> DecisionTrace:
+        stages = []
+        for name, payload in (stage_payloads or {}).items():
+            stages.append(self.add_stage(name, payload.get("status", "UNKNOWN"), payload.get("message", ""), {}))
+        decision, blocked, reasons = self.final_decision_from_stages(stages)
+        return DecisionTrace(
+            trace_id=str(uuid.uuid4()),
+            symbol=signal_payload.get("symbol", "UNKNOWN"),
+            strategy_name=signal_payload.get("strategy_name"),
+            signal_id=signal_payload.get("id"),
+            created_at=datetime.utcnow(),
+            stages=stages,
+            final_decision=decision,
+            blocked=blocked,
+            blocked_reasons=reasons,
+        )
+
+    def add_stage(self, name: str, status: str, message: str, metadata: dict[str, Any]) -> dict[str, Any]:
+        return {"name": name, "status": status, "message": message, "metadata": metadata,
+                "timestamp": datetime.utcnow().isoformat()}
+
+    def final_decision_from_stages(self, stages: list[dict[str, Any]]) -> tuple[str, bool, list[str]]:
+        reasons = [s.get("message", "Stage failed.") for s in stages if s.get("status") == "FAIL"]
+        blocked = bool(reasons)
+        return ("BLOCKED" if blocked else "PROCEED"), blocked, reasons
 
     def step_from_mapping(self, mapping: dict[str, Any], index: int) -> DecisionTraceStep:
         return DecisionTraceStep(

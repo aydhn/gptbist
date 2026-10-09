@@ -4,24 +4,25 @@ import logging
 import sys
 
 from bist_signal_bot.config.settings import settings
-from bist_signal_bot.paper.engine import PaperTradingEngine
+from bist_signal_bot.paper.engine import PaperTradingEngine, PaperTradingDependencies
 from bist_signal_bot.paper.ledger import PaperLedgerStore
 from bist_signal_bot.paper.reporting import format_paper_status_text, format_paper_run_text
 from bist_signal_bot.strategies.engine import StrategyEngine
-from bist_signal_bot.data.market_data import MarketDataService
 from bist_signal_bot.paper.models import PaperRunRequest, PaperExecutionMode
+
+
+_DATA_SERVICE = None
 
 
 def get_engine() -> PaperTradingEngine:
     ledger = PaperLedgerStore(settings)
     strat = StrategyEngine(settings)
-    data = MarketDataService(settings)
-    return PaperTradingEngine(
+    return PaperTradingEngine(PaperTradingDependencies(
         ledger_store=ledger,
         strategy_engine=strat,
-        data_service=data,
-        settings=settings
-    )
+        data_service=_DATA_SERVICE,
+        settings=settings,
+    ))
 
 def handle_paper_init(args: argparse.Namespace) -> None:
     engine = get_engine()
@@ -215,7 +216,9 @@ def handle_paper_config(args: argparse.Namespace) -> None:
          for k, v in config.items():
               print(f"{k}: {v}")
 
-def handle_paper_command(args: argparse.Namespace) -> None:
+def handle_paper_command(args: argparse.Namespace, app_context=None) -> None:
+    global _DATA_SERVICE
+    _DATA_SERVICE = getattr(app_context, "data_service", None)
     if args.paper_command == "init":
         handle_paper_init(args)
     elif args.paper_command == "status":

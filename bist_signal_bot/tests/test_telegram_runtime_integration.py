@@ -2,7 +2,8 @@ import pytest
 from bist_signal_bot.runtime.pipelines import RuntimePipelineConfig
 
 def test_runtime_pipeline_config_fields():
-    config = RuntimePipelineConfig()
+    config = RuntimePipelineConfig(strategy_name="moving_average_trend")
     assert hasattr(config, 'telegram_digest_after_run')
     assert hasattr(config, 'telegram_send_runtime_summary')
     assert hasattr(config, 'telegram_dry_run')
+    assert config.telegram_dry_run is True

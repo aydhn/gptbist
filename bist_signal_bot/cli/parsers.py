@@ -876,6 +876,8 @@ def build_parser() -> argparse.ArgumentParser:
     config_parser.add_argument("--json", action="store_true", help="Output JSON")
 
     healthcheck_parser = subparsers.add_parser("healthcheck", help="Check system components health")
+    healthcheck_parser.add_argument("--plugins", action="store_true", help="Include local plugin discovery health")
+    healthcheck_parser.add_argument("--explainability", action="store_true", help="Include explainability module health")
     config_parser = subparsers.add_parser("config", help="View current configuration")
     config_parser.add_argument("--hide-secrets", action="store_true", default=True, help="Mask sensitive fields")
     config_parser.add_argument("--show-secrets", action="store_false", dest="hide_secrets", help="Show sensitive fields")
@@ -939,19 +941,31 @@ def build_parser() -> argparse.ArgumentParser:
     ca_export_parser.add_argument("--format", type=str, choices=["json", "csv"], default="json", help="Export format")
     ca_export_parser.add_argument("--output", type=str, required=True, help="Output file path")
 
-    ind_calc_parser = subparsers.add_parser("indicators", help="Calculate technical indicators for a symbol")
-    ind_calc_parser.add_argument("symbol", type=str, help="Symbol to calculate indicators for")
+    indicators_parser = subparsers.add_parser("indicators", help="Manage indicators")
+    indicators_subparsers = indicators_parser.add_subparsers(dest="indicators_command", help="Indicators commands")
+
+    ind_list_parser = indicators_subparsers.add_parser("list", help="List registered indicators")
+    ind_list_parser.add_argument("--category", type=str, help="Filter by category")
+    ind_list_parser.add_argument("--json", action="store_true", help="Output in JSON format")
+
+    ind_calc_parser = indicators_subparsers.add_parser("calc", help="Calculate indicators")
+    ind_calc_parser.add_argument("symbol", type=str, help="Symbol to calculate for")
     ind_calc_parser.add_argument("--source", type=str, choices=["local", "mock"], default="mock", help="Data source")
     ind_calc_parser.add_argument("--timeframe", type=str, default="1d", help="Timeframe")
-    ind_calc_parser.add_argument("--indicators", type=str, help="Comma-separated list of indicators to calculate (e.g. sma_20,rsi_14)")
+    ind_calc_parser.add_argument("--indicator", action="append", help="Indicator format: name:param=value")
     ind_calc_parser.add_argument("--default-set", action="store_true", help="Calculate default indicator set")
     ind_calc_parser.add_argument("--rows", type=int, default=500, help="Number of rows for mock data")
+    ind_calc_parser.add_argument("--save-output", action="store_true", help="Save output to reports folder")
+    ind_calc_parser.add_argument("--json", action="store_true", help="Output in JSON format")
 
     momentum_features_parser = subparsers.add_parser("momentum-features", help="Calculate comprehensive momentum features for a symbol")
     momentum_features_parser.add_argument("symbol", type=str, help="Symbol")
     momentum_features_parser.add_argument("--source", type=str, choices=["local", "mock"], default="local", help="Data source")
     momentum_features_parser.add_argument("--timeframe", type=str, default="1d", help="Timeframe (e.g. 1d)")
     momentum_features_parser.add_argument("--level", type=str, choices=["basic", "advanced", "full"], default="basic", help="Feature level")
+    momentum_features_parser.add_argument("--rows", type=int, default=500, help="Number of rows for mock data")
+    momentum_features_parser.add_argument("--save-output", action="store_true", help="Save output to reports folder")
+    momentum_features_parser.add_argument("--json", action="store_true", help="Output in JSON format")
 
     trend_parser = subparsers.add_parser("trend-features", help="Calculate trend features for a symbol")
     trend_parser.add_argument("symbol", type=str, help="Symbol")
@@ -1011,6 +1025,8 @@ def build_parser() -> argparse.ArgumentParser:
     patterns_subparsers = patterns_parser.add_subparsers(dest="patterns_command", required=True)
 
     p_list_parser = patterns_subparsers.add_parser("list", help="List registered pattern detectors")
+    p_list_parser.add_argument("--category", type=str, help="Filter by pattern category")
+    p_list_parser.add_argument("--json", action="store_true", help="Output in JSON format")
 
     p_detect_parser = patterns_subparsers.add_parser("detect", help="Run pattern detection on a symbol")
     p_detect_parser.add_argument("symbol", type=str, help="Symbol to detect patterns for")
@@ -1018,24 +1034,37 @@ def build_parser() -> argparse.ArgumentParser:
     p_detect_parser.add_argument("--timeframe", type=str, default="1d", help="Timeframe (e.g. 1d)")
     p_detect_parser.add_argument("--patterns", type=str, help="Comma-separated list of patterns to detect")
     p_detect_parser.add_argument("--default-set", action="store_true", help="Run default pattern set")
+    p_detect_parser.add_argument("--pattern", action="append", help="Pattern format: name:param=value")
+    p_detect_parser.add_argument("--rows", type=int, default=500, help="Number of rows for mock data")
+    p_detect_parser.add_argument("--save-output", action="store_true", help="Save output")
+    p_detect_parser.add_argument("--json", action="store_true", help="Output in JSON format")
 
     pattern_features_parser = subparsers.add_parser("pattern-features", help="Calculate comprehensive pattern features for a symbol")
     pattern_features_parser.add_argument("symbol", type=str, help="Symbol")
     pattern_features_parser.add_argument("--source", type=str, choices=["local", "mock"], default="local", help="Data source")
     pattern_features_parser.add_argument("--timeframe", type=str, default="1d", help="Timeframe (e.g. 1d)")
     pattern_features_parser.add_argument("--level", type=str, choices=["basic", "advanced", "full"], default="basic", help="Feature level")
+    pattern_features_parser.add_argument("--rows", type=int, default=500, help="Number of rows for mock data")
+    pattern_features_parser.add_argument("--save-output", action="store_true", help="Save output to reports folder")
+    pattern_features_parser.add_argument("--json", action="store_true", help="Output in JSON format")
 
     volume_features_parser = subparsers.add_parser("volume-features", help="Calculate volume features for a symbol")
     volume_features_parser.add_argument("symbol", type=str, help="Symbol")
     volume_features_parser.add_argument("--source", type=str, choices=["local", "mock"], default="local", help="Data source")
     volume_features_parser.add_argument("--timeframe", type=str, default="1d", help="Timeframe (e.g. 1d)")
     volume_features_parser.add_argument("--level", type=str, choices=["basic", "advanced", "full"], default="basic", help="Feature level")
+    volume_features_parser.add_argument("--rows", type=int, default=500, help="Number of rows for mock data")
+    volume_features_parser.add_argument("--save-output", action="store_true", help="Save output to reports folder")
+    volume_features_parser.add_argument("--json", action="store_true", help="Output in JSON format")
 
     volatility_features_parser = subparsers.add_parser("volatility-features", help="Calculate volatility features for a symbol")
     volatility_features_parser.add_argument("symbol", type=str, help="Symbol")
     volatility_features_parser.add_argument("--source", type=str, choices=["local", "mock"], default="local", help="Data source")
     volatility_features_parser.add_argument("--timeframe", type=str, default="1d", help="Timeframe (e.g. 1d)")
     volatility_features_parser.add_argument("--level", type=str, choices=["basic", "advanced", "full"], default="basic", help="Feature level")
+    volatility_features_parser.add_argument("--rows", type=int, default=500, help="Number of rows for mock data")
+    volatility_features_parser.add_argument("--save-output", action="store_true", help="Save output to reports folder")
+    volatility_features_parser.add_argument("--json", action="store_true", help="Output in JSON format")
 
     divergence_parser = subparsers.add_parser("divergence", help="Divergence detection operations")
     divergence_subparsers = divergence_parser.add_subparsers(dest="subcommand", required=True)
@@ -1044,18 +1073,26 @@ def build_parser() -> argparse.ArgumentParser:
     div_detect_parser.add_argument("symbol", help="Symbol to check")
     div_detect_parser.add_argument("--source", choices=["local", "mock"], default="local", help="Data source")
     div_detect_parser.add_argument("--timeframe", default="1d", help="Timeframe (e.g. 1d, 1h)")
-    div_detect_parser.add_argument("--indicators", help="Comma separated indicators (e.g. rsi,macd_hist,obv)")
+    div_detect_parser.add_argument("--indicators", nargs="+", help="Comma separated indicators (e.g. rsi,macd_hist,obv)")
     div_detect_parser.add_argument("--pivot-mode", choices=["LOOKBACK_ONLY", "CONFIRMED_LAGGED"], default="LOOKBACK_ONLY", help="Pivot detection mode")
     div_detect_parser.add_argument("--lookback", type=int, help="Lookback window for pivots")
     div_detect_parser.add_argument("--min-distance", type=int, dest="min_pivot_distance", help="Min distance between pivots")
     div_detect_parser.add_argument("--max-distance", type=int, dest="max_pivot_distance", help="Max distance between pivots")
+    div_detect_parser.add_argument("--rows", type=int, default=500, help="Number of rows for mock data")
+    div_detect_parser.add_argument("--level", choices=["basic", "advanced", "full"], default="basic", help="Feature level")
+    div_detect_parser.add_argument("--confirmation-bars", type=int, default=None, help="Pivot confirmation bars")
+    div_detect_parser.add_argument("--base-timeframe", default=None, help="Base timeframe")
+    div_detect_parser.add_argument("--save-output", action="store_true", help="Save output")
+    div_detect_parser.add_argument("--json", action="store_true", help="Output in JSON format")
     div_detect_parser.set_defaults(include_hidden=True, include_regular=True)
 
     strategies_parser = subparsers.add_parser("strategies", help="Strategy engine operations")
     strategies_subparsers = strategies_parser.add_subparsers(dest="strategies_cmd", required=True)
 
     # strategies list
-    strategies_subparsers.add_parser("list", help="List registered strategies")
+    strat_list_parser = strategies_subparsers.add_parser("list", help="List registered strategies")
+    strat_list_parser.add_argument("--category", type=str, help="Filter by strategy category")
+    strat_list_parser.add_argument("--json", action="store_true", help="Output in JSON format")
 
     # strategies run
     run_strat_parser = strategies_subparsers.add_parser("run", help="Run a strategy on a single symbol")
@@ -1094,8 +1131,8 @@ def build_parser() -> argparse.ArgumentParser:
 
     # benchmarks run
     run_bench_parser = benchmarks_subparsers.add_parser("run", help="Run a benchmark on a single symbol")
-    run_bench_parser.add_argument("benchmark", type=str, help="Benchmark name")
     run_bench_parser.add_argument("symbol", type=str, help="Symbol to run benchmark for")
+    run_bench_parser.add_argument("--benchmark", type=str, required=True, help="Benchmark name")
     run_bench_parser.add_argument("--source", type=str, choices=["mock", "local"], default="local", help="Data source")
     run_bench_parser.add_argument("--timeframe", type=str, default="1d", help="Timeframe (e.g., 1d)")
     run_bench_parser.add_argument("--period", type=str, help="History period")
@@ -1106,7 +1143,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     # benchmarks batch
     batch_bench_parser = benchmarks_subparsers.add_parser("batch", help="Run a benchmark on multiple symbols")
-    batch_bench_parser.add_argument("benchmark", type=str, help="Benchmark name")
+    batch_bench_parser.add_argument("--benchmark", type=str, required=True, help="Benchmark name")
 
     group = batch_bench_parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--symbols", type=str, nargs="+", help="List of symbols")
@@ -1532,6 +1569,37 @@ def build_parser() -> argparse.ArgumentParser:
         p_dq.add_argument("dummy", nargs="*")
 
     add_review_workflow_parser(subparsers)
+
+    from bist_signal_bot.cli.markets_cli import add_market_registry_parser
+    from bist_signal_bot.cli.leaderboard_commands import add_leaderboard_parser
+    from bist_signal_bot.cli_ux.plugins_cli import setup_parser as _setup_plugins_parser
+    def _add_monte_carlo_parser(sp):
+        mc = sp.add_parser("monte-carlo", help="Monte Carlo robustness simulation (research-only)")
+        mcs = mc.add_subparsers(dest="monte_carlo_command", required=True)
+        run = mcs.add_parser("run", help="Run trade-resampling Monte Carlo for a strategy/symbol")
+        run.add_argument("--strategy", required=True)
+        run.add_argument("--symbol", required=True)
+        run.add_argument("--method", default="TRADE_SHUFFLE")
+        run.add_argument("--simulations", type=int, default=1000)
+        run.add_argument("--include-cost-randomization", action="store_true")
+        run.add_argument("--json", action="store_true")
+
+    def _add_ml_filter_parser(sp):
+        mf = sp.add_parser("ml-filter", help="ML signal filter configuration (research-only)")
+        mfs = mf.add_subparsers(dest="ml_filter_command", required=True)
+        cfg = mfs.add_parser("config", help="Show ML filter configuration")
+        cfg.add_argument("--json", action="store_true")
+
+    for _adder in (
+        _add_monte_carlo_parser,
+        _add_ml_filter_parser,
+        add_market_registry_parser,
+        add_leaderboard_parser,
+        add_report_templates_parser,
+        add_paper_parser,
+        _setup_plugins_parser,
+    ):
+        _adder(subparsers)
     return parser
 
 

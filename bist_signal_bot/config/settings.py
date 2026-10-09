@@ -55,6 +55,12 @@ _EXPLICIT_DEFAULTS: dict[str, Any] = {
     "APP_ENV": "development",
     "RUN_MODE": "research",
     "DRY_RUN": True,
+    # FORBIDDEN capabilities must never fall through to the "unknown flag -> True" default.
+    "BROKER_ENABLED": False,
+    "REAL_ORDER_ENABLED": False,
+    "ENABLE_LIVE_TRADING": False,
+    "ALLOW_HTML_SCRAPING": False,
+    "ENABLE_PAID_APIS": False,
     "DEFAULT_TIMEZONE": "Europe/Istanbul",
     "LOG_LEVEL": "INFO",
     "LOG_MAX_BYTES": 1_000_000,
@@ -115,6 +121,8 @@ def _coerce(key: str, raw: str) -> Any:
             return int(s)
         except ValueError:
             logger.warning("Failed to coerce %s=%r to int", key, s)
+    if up.endswith("_VERSION"):  # "3.10" must not collapse to float 3.1
+        return s
     if re.fullmatch(r"[+-]?(?:\d+\.\d*|\.\d+|\d+(?:\.\d*)?[eE][+-]?\d+)", s):
         try:
             return float(s)

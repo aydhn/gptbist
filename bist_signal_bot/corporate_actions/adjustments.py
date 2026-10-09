@@ -1,3 +1,12 @@
+"""Factor-based (CorporateActionRecord / PriceAdjustmentFactor) adjustment helper for the instruments app.
+
+NOT the canonical engine. The canonical, policy-driven engine used by the data pipeline is
+``bist_signal_bot.data.adjustments.PriceAdjustmentEngine`` (operates on ``data.models.CorporateAction``,
+lower-case OHLCV columns, in-place adjusted columns). This class uses a different action model
+(``corporate_actions.models``), Title-case ``Open/High/...`` input and adds ``adj_*`` columns, and its
+split factor semantics differ (1/(1+ratio)), so the two are intentionally NOT interchangeable.
+Do not use it for market data adjustment.
+"""
 import pandas as pd
 from typing import List, Optional
 import uuid

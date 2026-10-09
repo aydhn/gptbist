@@ -166,3 +166,50 @@ class MonitoringReport(BaseModel):
     warnings: List[str] = Field(default_factory=list)
     disclaimer: str = "Monitoring report is local research monitoring output only. It is not investment advice, portfolio advice, or a trading instruction. No real order was sent."
     metadata: Dict[str, Any] = Field(default_factory=dict)
+
+
+# --- Operational heartbeat models (used by monitoring/heartbeat.py) ---
+from pydantic import model_validator
+
+class HealthLevel(Enum):
+    HEALTHY = "HEALTHY"
+    DEGRADED = "DEGRADED"
+    UNHEALTHY = "UNHEALTHY"
+    CRITICAL = "CRITICAL"
+    UNKNOWN = "UNKNOWN"
+
+class MonitoringComponent(Enum):
+    RUNTIME = "RUNTIME"
+    SCHEDULER = "SCHEDULER"
+    DATA = "DATA"
+    SCANNER = "SCANNER"
+    STRATEGY = "STRATEGY"
+    RISK = "RISK"
+    PORTFOLIO_RISK = "PORTFOLIO_RISK"
+    REGIME = "REGIME"
+    ML = "ML"
+    PAPER = "PAPER"
+    TELEGRAM = "TELEGRAM"
+    STORAGE = "STORAGE"
+    LOCK = "LOCK"
+    CONFIG = "CONFIG"
+    HEALTHCHECK = "HEALTHCHECK"
+    UNKNOWN = "UNKNOWN"
+
+class HeartbeatRecord(BaseModel):
+    heartbeat_id: str = Field(...)
+    timestamp: datetime = Field(...)
+    component: MonitoringComponent = Field(...)
+    status: HealthLevel = Field(...)
+    message: str = Field(...)
+    runtime_run_id: str | None = Field(default=None)
+    scheduler_active: bool = Field(default=False)
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def validate_heartbeat(self):
+        if not self.heartbeat_id:
+            raise ValueError("heartbeat_id cannot be empty")
+        if self.message is None:
+            raise ValueError("message cannot be None")
+        return self

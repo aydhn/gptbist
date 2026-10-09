@@ -55,6 +55,10 @@ class TimingMeasurement(BaseModel):
     warnings: list[str] = Field(default_factory=list)
     metadata: dict[str, Any] = Field(default_factory=dict)
 
+    @property
+    def span_id(self) -> str:
+        return self.timing_id
+
 class ResourceMeasurement(BaseModel):
     measurement_id: str
     resource_kind: ResourceKind

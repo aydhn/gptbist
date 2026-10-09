@@ -41,6 +41,17 @@ class PerformanceTimer:
             self.finish(measurement, status=PerformanceStatus.FAIL)
             raise
 
+    def start_span(self, name: str) -> TimingMeasurement:
+        """Start a named span that can later be closed with ``finish_span(span_id)``."""
+        span = self.start(name)
+        self._spans = getattr(self, "_spans", {})
+        self._spans[span.timing_id] = span
+        return span
+
+    def finish_span(self, span_id: str, status: PerformanceStatus = PerformanceStatus.PASS) -> TimingMeasurement | None:
+        span = getattr(self, "_spans", {}).pop(span_id, None)
+        return self.finish(span, status=status) if span else None
+
     def elapsed(self, started_at: datetime.datetime, finished_at: datetime.datetime | None = None) -> float:
         end = finished_at or datetime.datetime.now(datetime.timezone.utc)
         return max(0.0, (end - started_at).total_seconds())

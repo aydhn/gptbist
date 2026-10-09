@@ -44,7 +44,7 @@ non-negotiables.
 No `.venv` is checked in; create it first (see Setup).
 
 Per-package entry points, test layout (shared `tests/conftest.py`: seed, `tmp_data_dir`, `settings_factory`), CLI framework split and
-remaining verified duplicates (`PriceAdjustmentEngine` x2, `markets/calendar.py` vs `calendar/`) live in `docs/claude-context/module-map.md` — read it
+remaining verified duplicates (`PriceAdjustmentEngine` x2 = intentionally kept, canonical `data/adjustments.py`; 4 calendars, real BIST holidays = `intraday/sessions.py`, not merged) live in `docs/claude-context/module-map.md` — read it
 only when touching those packages; it is not auto-loaded.
 
 ## Intraday data layer (`intraday/`)
@@ -53,7 +53,7 @@ SQLite bar archive (`archive.py`, raw bars, idempotent upsert, split actions, un
 fetcher + `ArchiveUpdater` (`fetcher.py`), BIST sessions/holidays/ticks/price limits (`sessions.py`, `bist_holidays.json` —
 religious holidays unverified, confirm with Borsa Istanbul), gap/halt detection (`gaps.py`), freshness gate (`freshness.py`).
 CLI: `python -m bist_signal_bot intraday archive-update|gaps|status`. Full BIST universe is synced dynamically from Yahoo's official screener (`universe_sync.py`, `universe sync [--dry-run]`;
-`intraday archive-update --all-active` auto-syncs when `INTRADAY_UNIVERSE_AUTO_SYNC` and last sync >1 day; fail-closed if listing <
+`intraday archive-update --all-active` auto-syncs when `INTRADAY_UNIVERSE_AUTO_SYNC` and last sync >1 day (runtime DATA_REFRESH never syncs unless `RUNTIME_UNIVERSE_AUTO_SYNC`, default False; listing also drops warrants/ETF/fund/index/rights names, seeds exempt; seeds missing from the listing, e.g. KOZAL, stay active -> active count can exceed listed count by that many); fail-closed if listing <
 `INTRADAY_UNIVERSE_MIN_LISTING`; missing symbols deactivated only after `INTRADAY_UNIVERSE_DELIST_MISSES` syncs, seeds never dropped). Findings: `docs/claude-context/00-research-intraday.md`.
 
 ## Edge validation (`edge_validation/`)
@@ -75,7 +75,7 @@ Tests that touch the real registry/data dir can change with local training state
 ## Decision layer (`risk/`)
 
 `sizing_intraday.py` (fractional Kelly w/ shrinkage + cap, vol targeting, risk budget, ADV/participation, lots, price-limit
-awareness; `SizingDecision.method` = binding constraint), `portfolio_limits.py` (positions, gross, single-name, sector,
+awareness; `SizingDecision.method` = binding constraint), `portfolio_limits.py` (positions [default max 8], gross, single-name, sector,
 correlation cluster, daily turnover), `daily_loss.py` (`DailyLossGuard`: daily loss / consecutive losses / trailing drawdown
 -> HALTED_FOR_DAY + PAPER kill switch + audit; drawdown/corrupt-state need `reset(confirm=True)`; fails closed),
 `decision.py` (`DecisionLayer`: guard -> session/auction -> sizing -> limits -> edge-vs-cost; reduce-only exits bypass).

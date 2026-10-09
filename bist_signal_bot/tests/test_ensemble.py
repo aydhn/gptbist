@@ -88,7 +88,6 @@ def test_conflict_resolver():
 
 def test_ensemble_scorer():
     s = Settings(_env_file=None)
-    s.model_config["extra"] = "allow"
     sc = EnsembleScorer(s)
 
     v1 = SignalVote(vote_id="1", source_type=SignalSourceType.STRATEGY, source_name="T", symbol="ASELS", direction=SignalVoteDirection.LONG_BIAS, score=80, confidence=70)

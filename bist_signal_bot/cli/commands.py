@@ -60,6 +60,20 @@ def cmd_healthcheck(args, app_context: ApplicationContext) -> int:
     if not args.verbose and "storage" in summary:
         # Simplify output if not verbose
         summary["storage"] = {"market_data_dir_path": summary["storage"]["market_data_dir_path"]}
+    if getattr(args, "plugins", False):
+        try:
+            from bist_signal_bot.app.plugins_app import create_plugin_discovery_engine
+            found = create_plugin_discovery_engine().discover()
+            summary["plugins"] = {"status": "OK", "discovered": len(found) if hasattr(found, "__len__") else 0}
+        except Exception as e:
+            summary["plugins"] = {"status": "ERROR", "error": str(e)}
+    if getattr(args, "explainability", False):
+        try:
+            import importlib
+            importlib.import_module("bist_signal_bot.explainability")
+            summary["explainability"] = {"status": "OK"}
+        except Exception as e:
+            summary["explainability"] = {"status": "ERROR", "error": str(e)}
     print_output(summary, as_json=args.json)
     return 0
 
@@ -295,7 +309,7 @@ def _normalize_download_args(args) -> None:
                           ("telegram_summary", False)):
         if not hasattr(args, name):
             setattr(args, name, default)
-    if getattr(args, "all_active", False):
+    if getattr(args, "all_active", False) is True:
         args.all = True
 
 
@@ -1946,7 +1960,6 @@ def cmd_divergence_detect(args, ctx) -> int:
     from bist_signal_bot.features.divergence_features import DivergenceFeatureBuilder
     from bist_signal_bot.data.mock_provider import MockMarketDataProvider
     from bist_signal_bot.data.data_service import MarketDataService
-    from bist_signal_bot.cli.formatting import print_output
     from bist_signal_bot.core.audit import AuditEventType
     import logging
 
@@ -2026,8 +2039,9 @@ def cmd_divergence_detect(args, ctx) -> int:
         if args.json:
             print_output(result.summary(), as_json=True)
         else:
-            print(
-                f"Symbol: {symbol}\\nTimeframe: {args.timeframe}\\nPivot Mode: {result.pivot_mode.value}\\nRows: {len(df)}\\n"
+            print_output(
+                f"Symbol: {symbol}\nTimeframe: {args.timeframe}\nPivot Mode: {result.pivot_mode.value}\nRows: {len(df)}\n",
+                as_json=False,
             )
 
             lines = [
@@ -2041,13 +2055,13 @@ def cmd_divergence_detect(args, ctx) -> int:
             ]
 
             if result.events:
-                lines.append("\\nLast 5 events:")
+                lines.append("\nLast 5 events:")
                 for e in result.events[-5:]:
                     lines.append(
                         f"  {e.divergence_type.value} on {e.indicator} (Strength: {e.strength.value})"
                     )
 
-            print("\\n".join(lines))
+            print_output("\n".join(lines), as_json=False)
 
         return 0
 
@@ -2594,7 +2608,7 @@ def handle_costs_command(args, settings):
     from bist_signal_bot.costs.engine import TransactionCostEngine
     from bist_signal_bot.costs.models import CostScenario, TradeCostInput, OrderSide, OrderType
     from bist_signal_bot.costs.scenarios import list_cost_scenarios, scenario_description
-    from bist_signal_bot.formatting.formatter import (
+    from bist_signal_bot.notifications.formatter import (
         format_transaction_cost_breakdown,
         format_round_trip_cost_breakdown,
     )
@@ -3184,9 +3198,9 @@ def handle_risk_commands(args, ctx):
 def handle_validate_backtest(args):
     import json
     import pandas as pd
-    from bist_signal_bot.validation.walk_forward import WalkForwardAnalyzer
-    from bist_signal_bot.validation.robustness import RobustnessAnalyzer
-    from bist_signal_bot.validation.models import (
+    from bist_signal_bot.backtest_validation.walk_forward import WalkForwardAnalyzer
+    from bist_signal_bot.backtest_validation.robustness import RobustnessAnalyzer
+    from bist_signal_bot.backtest_validation.models import (
         ValidationConfig,
         ValidationMode,
         RobustnessParameterRange,
@@ -4720,32 +4734,51 @@ def docs_config(json: bool = typer.Option(False, "--json")):
 
 
 def handle_performance_command(args, settings) -> None:
-    from bist_signal_bot.app.performance_app import (
-        create_resource_sampler,
-        create_performance_store,
-        create_benchmark_runner,
-        create_baseline_manager,
-        create_regression_checker,
-        create_bottleneck_analyzer,
-        create_local_profiler,
-    )
-    from bist_signal_bot.performance.models import BenchmarkRequest, BenchmarkType
-    from bist_signal_bot.performance.reporting import (
-        benchmark_result_to_dict,
-        baseline_to_dict,
-        regression_result_to_dict,
-        bottleneck_to_dict,
-        format_benchmark_text,
-        format_regression_text,
-        format_bottlenecks_text,
-    )
     import json
+    from bist_signal_bot.app.performance_app import create_resource_sampler
+
+    if args.perf_command == "config":
+        cfg = {k: v for k, v in settings.model_dump().items() if "PERFORMANCE" in k}
+        if getattr(args, "json", False):
+            print(json.dumps(cfg, indent=2, default=str))
+        else:
+            for k, v in sorted(cfg.items()):
+                print(f"{k}: {v}")
+        return
+
+    if args.perf_command != "resources":
+        # Legacy sub-commands depend on APIs that may not exist in the current performance package.
+        try:
+            from bist_signal_bot.app.performance_app import (
+                create_performance_store,
+                create_benchmark_runner,
+                create_baseline_manager,
+                create_regression_checker,
+                create_bottleneck_analyzer,
+                create_local_profiler,
+            )
+            from bist_signal_bot.performance.models import BenchmarkRequest, BenchmarkType
+            from bist_signal_bot.performance.reporting import (
+                benchmark_result_to_dict,
+                baseline_to_dict,
+                regression_result_to_dict,
+                bottleneck_to_dict,
+                format_benchmark_text,
+                format_regression_text,
+                format_bottlenecks_text,
+            )
+        except ImportError as e:
+            print(f"Performance command '{args.perf_command}' is unavailable: {e}")
+            return
 
     if args.perf_command == "resources":
         sampler = create_resource_sampler(settings)
         snap = sampler.snapshot()
         if getattr(args, "json", False):
-            print(snap.model_dump_json(indent=2))
+            import uuid as _uuid
+            data = snap.model_dump(mode="json")
+            data = {"snapshot_id": f"snap_{_uuid.uuid4().hex[:8]}", **data}
+            print(json.dumps(data, indent=2, default=str))
         else:
             print("=== Resource Snapshot ===")
             print(f"Captured At: {snap.captured_at}")
@@ -8570,3 +8603,78 @@ def execute_maintenance_auto_cmd(args):
             print_json({"status": "PASS", "settings": "hidden"})
         else:
             print("Config settings loaded successfully.")
+
+
+def _monte_carlo_trades(args, settings) -> list:
+    """Collect trade records for Monte Carlo from a (mock/local) single-symbol backtest. Returns [] on failure."""
+    try:
+        from bist_signal_bot.backtesting.engine import BacktestEngine
+        from bist_signal_bot.costs.engine import TransactionCostEngine
+        from bist_signal_bot.strategies.engine import StrategyEngine
+        from bist_signal_bot.data.mock_provider import MockMarketDataProvider
+        from bist_signal_bot.monte_carlo.trade_simulation import TradeSimulator
+
+        symbol = str(args.symbol).upper()
+        strategy_engine = StrategyEngine(settings=settings)
+        engine = BacktestEngine(strategy_engine, TransactionCostEngine.from_settings(settings), settings=settings)
+        mdf = MockMarketDataProvider(rows=getattr(args, "rows", 500) or 500).fetch_one(symbol, "1d")
+        result = engine.run_single_symbol(
+            strategy_name=args.strategy, symbol=symbol, data=mdf, params={}, config=engine.build_default_config()
+        )
+        return TradeSimulator().trades_from_backtest_result(result)
+    except Exception as e:  # research helper must not crash the CLI
+        import logging
+        logging.getLogger(__name__).warning("Monte Carlo trade collection failed: %s", e)
+        return []
+
+
+def create_monte_carlo_engine(settings=None, base_dir=None):
+    from bist_signal_bot.app.monte_carlo_app import create_monte_carlo_engine as _create
+    return _create(settings, base_dir)
+
+
+def handle_monte_carlo(args, ctx=None) -> int:
+    """`monte-carlo run`: bootstrap/shuffle simulated trade outcomes (research-only, no orders)."""
+    import uuid
+    import json as _json
+    from bist_signal_bot.config.settings import get_settings
+    from bist_signal_bot.monte_carlo.models import MonteCarloRequest, MonteCarloTarget, ResamplingMethod
+    from bist_signal_bot.monte_carlo.reporting import format_monte_carlo_result_text, monte_carlo_result_to_dict
+
+    settings = getattr(ctx, "settings", None) or get_settings()
+    if getattr(args, "monte_carlo_command", None) != "run":
+        print_output({"error": "Unknown monte-carlo command"}, as_json=getattr(args, "json", False))
+        return 1
+
+    request = MonteCarloRequest(
+        request_id=f"mc_{uuid.uuid4().hex[:8]}",
+        target=MonteCarloTarget.TRADES,
+        method=ResamplingMethod(args.method),
+        simulations=int(args.simulations),
+        seed=42,
+        initial_equity=100000.0,
+        ruin_threshold_pct=30.0,
+        strategy_name=args.strategy,
+        symbol=args.symbol,
+        include_cost_randomization=bool(getattr(args, "include_cost_randomization", False)),
+    )
+    trades = _monte_carlo_trades(args, settings)
+    result = create_monte_carlo_engine(settings).run_from_trades(trades, request)
+    if getattr(args, "json", False):
+        print(_json.dumps(monte_carlo_result_to_dict(result), indent=2, default=str))
+    else:
+        print_output(format_monte_carlo_result_text(result), as_json=False)
+    return 0
+
+
+def handle_ml_filter_command(args, settings) -> int:
+    """`ml-filter config`: show the effective ML signal-filter settings."""
+    import json as _json
+    cfg = {k: v for k, v in settings.model_dump().items() if "ML_FILTER" in k or k in ("RUNTIME_ML_MODEL_ID", "ML_MIN_CONFIDENCE")}
+    if getattr(args, "json", False):
+        print(_json.dumps(cfg, indent=2, default=str))
+    else:
+        print("ML Filter Configuration")
+        for k, v in sorted(cfg.items()):
+            print(f"  {k}: {v}")
+    return 0

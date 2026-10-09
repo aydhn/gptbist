@@ -5,6 +5,7 @@ The listing is NOT verified against the official Borsa Istanbul list.
 """
 
 import json
+import re
 import time
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
@@ -78,8 +79,38 @@ def _default_fetch(sleep: Callable[[float], None] = time.sleep, max_retries: int
     return quotes
 
 
+_NON_EQUITY_NAME_RE = re.compile(
+    r"\b(warrants?|varant|e\.?t\.?f|exchange traded fund|borsa yat[iı]r[iı]m fonu|"
+    r"yat[iı]r[iı]m fonu|mutual fund|fund of funds|rights?|r[uü]chan|"
+    r"index|endeks|sertifika|certificate|gayrimenkul sertifikas[iı])\b",
+    re.IGNORECASE,
+)
+# Name tokens too ambiguous for real companies ("Index"/"Rights"/"Fund" appear in legit names such as
+# "... Yatirim Holding"), so only unambiguous instrument words above are matched, on word boundaries.
+
+
+def is_non_equity_listing(sym: str, name: str | None, quote: dict | None = None) -> bool:
+    """Conservative non-common-stock detector (warrants, ETFs, funds, index-like, rights).
+
+    Seed symbols are never classified as non-equity. Symbols with '^' / '=' / '-' are already
+    dropped by the alphanumeric check; here we match on explicit Yahoo type hints and unambiguous names.
+    """
+    if sym in DEFAULT_SEED_SYMBOLS_STR:
+        return False
+    q = quote or {}
+    for key in ("typeDisp", "quoteSourceName", "instrumentType"):
+        v = str(q.get(key, "") or "").lower()
+        if any(t in v for t in ("etf", "fund", "warrant", "index", "right")):
+            return True
+    return bool(name and _NON_EQUITY_NAME_RE.search(name))
+
+
 def fetch_ist_listing(fetch: Callable[[], list[dict]] | None = None) -> list[dict]:
-    """Return normalized listing rows: symbol, name, first_trade_date (ISO or None)."""
+    """Return normalized listing rows: symbol, name, first_trade_date (ISO or None).
+
+    Keeps quoteType == EQUITY only, then drops warrants/ETFs/funds/index-like/rights
+    (see ``is_non_equity_listing``). Seed symbols are never dropped.
+    """
     raw = (fetch or _default_fetch)()
     out: dict[str, dict] = {}
     for q in raw or []:
@@ -89,6 +120,8 @@ def fetch_ist_listing(fetch: Callable[[], list[dict]] | None = None) -> list[dic
         if sym.endswith(".IS"):
             sym = sym[:-3]
         if not sym or not (sym.isascii() and sym.isalnum()):
+            continue
+        if is_non_equity_listing(sym, q.get("longName") or q.get("shortName"), q):
             continue
         ftd = None
         ms = q.get("firstTradeDateMilliseconds")

@@ -57,7 +57,7 @@ def test_build_basic(builder, sample_data):
     res = builder.build_basic_momentum_features(sample_data)
     assert res.failed_count == 0
     assert "rsi_14" in res.output_data.columns
-    assert "roc_pct_10" in res.output_data.columns
+    assert "roc_pct_12" in res.output_data.columns
 
 def test_build_advanced(builder, sample_data):
     res = builder.build_advanced_momentum_features(sample_data)

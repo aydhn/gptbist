@@ -1,7 +1,7 @@
 from unittest.mock import MagicMock, patch
 
 
-@patch("bist_signal_bot.validation.walk_forward.WalkForwardAnalyzer")
+@patch("bist_signal_bot.backtest_validation.walk_forward.WalkForwardAnalyzer")
 def test_cli_train_test(mock_analyzer_cls):
     from bist_signal_bot.cli.commands import handle_validate_backtest
 
@@ -38,7 +38,7 @@ def test_cli_train_test(mock_analyzer_cls):
     mock_analyzer.run_train_test.assert_called_once()
 
 
-@patch("bist_signal_bot.validation.robustness.RobustnessAnalyzer")
+@patch("bist_signal_bot.backtest_validation.robustness.RobustnessAnalyzer")
 def test_cli_robustness(mock_analyzer_cls):
     from bist_signal_bot.cli.commands import handle_validate_backtest
 

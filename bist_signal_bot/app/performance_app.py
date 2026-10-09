@@ -9,6 +9,11 @@ from bist_signal_bot.performance.benchmark import PerformanceBenchmarkRunner
 from bist_signal_bot.performance.bottlenecks import BottleneckAnalyzer
 from bist_signal_bot.performance.regression import PerformanceRegressionDetector
 
+from bist_signal_bot.performance.resources import ResourceSampler
+
+def create_resource_sampler(settings: Settings | None = None) -> ResourceSampler:
+    return ResourceSampler(settings=settings)
+
 def create_performance_store(settings: Settings | None = None, base_dir: Path | None = None) -> PerformanceStore:
     return PerformanceStore(settings=settings, base_dir=base_dir)
 

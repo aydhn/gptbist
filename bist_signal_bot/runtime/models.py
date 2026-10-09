@@ -91,6 +91,9 @@ class RuntimePipelineConfig(BaseModel):
     use_regime_filter: bool = False
     use_paper: bool = False
     send_telegram: bool = False
+    telegram_digest_after_run: bool = False
+    telegram_send_runtime_summary: bool = False
+    telegram_dry_run: bool = True
     save_reports: bool = True
     dry_run: bool = False
     session_policy: SessionPolicy = SessionPolicy.ONLY_DURING_SESSION

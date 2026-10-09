@@ -27,6 +27,15 @@ def test_max_open_positions():
     assert _chk({"symbol": "A", "notional": 1000.0}, pos, {"RISK_MAX_OPEN_POSITIONS": 4}).allowed
 
 
+def test_default_max_open_positions_is_8():
+    from bist_signal_bot.config.defaults import DEFAULTS
+
+    assert DEFAULTS["RISK_MAX_OPEN_POSITIONS"] == 8 and DEFAULTS["PORTFOLIO_MAX_OPEN_POSITIONS"] == 8
+    pos = [{"symbol": f"S{i}", "notional": 1000.0} for i in range(8)]
+    assert _chk({"symbol": "A", "notional": 1000.0}, pos).reasons == ["max_open_positions"]
+    assert _chk({"symbol": "A", "notional": 1000.0}, pos[:7]).allowed
+
+
 def test_gross_exposure():
     pos = [{"symbol": f"S{i}", "notional": 90_000.0} for i in range(10)]  # 900k
     r = _chk({"symbol": "A", "notional": 100_001.0}, pos, {"RISK_MAX_OPEN_POSITIONS": 20})

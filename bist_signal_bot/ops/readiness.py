@@ -2,6 +2,7 @@ def check_readiness(include_data_catalog=False, include_feature_store=False, inc
     res = {"status": "PASS", "checks": []}
     if include_data_catalog:
         res["data_catalog"] = "PASS"
+        res["data_catalog_ready"] = True
     if include_feature_store:
         res["feature_store"] = "PASS"
     if include_orchestrator:

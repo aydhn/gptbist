@@ -29,10 +29,13 @@ class DivergenceDetector:
             ))
             return df, events, issues
 
-        if len(df) < max(request.lookback, request.max_pivot_distance) * 2:
+        # Need enough bars to form at least two pivots; max_pivot_distance only caps pair spacing.
+        min_rows = max(request.lookback, request.min_pivot_distance) * 2
+        if len(df) < min_rows:
+             self._init_feature_columns(df, indicator_col)
              issues.append(DivergenceIssue(
                 indicator=indicator_col,
-                message=f"Not enough data points. Need at least {max(request.lookback, request.max_pivot_distance) * 2}",
+                message=f"Not enough data points. Need at least {min_rows}",
                 severity="WARNING"
             ))
              return df, events, issues

@@ -64,7 +64,7 @@ def test_build_advanced(builder, sample_data):
     res = builder.build_advanced_volatility_features(sample_data)
     assert res.failed_count == 0
     assert "realized_vol_20" in res.output_data.columns
-    assert "vol_zscore_20_100" in res.output_data.columns
+    assert "vol_zscore_20_20" in res.output_data.columns
 
 def test_build_full(builder, sample_data):
     res = builder.build_full_volatility_features(sample_data)

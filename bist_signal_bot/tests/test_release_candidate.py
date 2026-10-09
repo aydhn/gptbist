@@ -34,3 +34,6 @@ def test_candidate_builder_manifest_created(monkeypatch):
     builder = ReleaseCandidateBuilder(settings=Settings(), readiness_evaluator=MockEvaluator())
     m = builder.build_candidate()
     assert m.no_real_order_sent is True
+
+    from bist_signal_bot.core.audit import AuditEventType
+    assert AuditEventType.RELEASE_CANDIDATE_CREATED.value == "RELEASE_CANDIDATE_CREATED"

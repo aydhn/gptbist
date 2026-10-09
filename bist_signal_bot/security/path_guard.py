@@ -39,6 +39,17 @@ class PathGuard:
             # reject absolute paths as potentially unsafe when no base_dir is given
             raise PathSecurityError("Absolute paths not allowed without base_dir")
 
+    def redact_path(self, path) -> str:
+        """Return a display-safe path: the user's home directory is masked as ``~``."""
+        text = str(path)
+        try:
+            home = str(Path.home())
+        except Exception:
+            return text
+        if home and text.startswith(home):
+            return "~" + text[len(home):]
+        return text
+
     def assert_no_path_traversal(self, path) -> None:
         """Reject any path containing a ``..`` component."""
         if ".." in Path(path).parts:

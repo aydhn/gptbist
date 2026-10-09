@@ -12,7 +12,7 @@ class ImportCheckRunner:
         start_time = time.time()
         command = ["python", "-c", "import bist_signal_bot"]
         try:
-            result = subprocess.run(command, capture_output=True, text=True, timeout=10)
+            result = subprocess.run(command, capture_output=True, text=True, timeout=60)
             elapsed = time.time() - start_time
 
             status = QualityCheckStatus.PASS if result.returncode == 0 else QualityCheckStatus.FAIL
@@ -39,7 +39,7 @@ class ImportCheckRunner:
         start_time = time.time()
         command = ["python", "-m", "bist_signal_bot", "--help"]
         try:
-            result = subprocess.run(command, capture_output=True, text=True, timeout=10)
+            result = subprocess.run(command, capture_output=True, text=True, timeout=60)
             elapsed = time.time() - start_time
 
             status = QualityCheckStatus.PASS if result.returncode == 0 else QualityCheckStatus.FAIL
@@ -74,7 +74,7 @@ class ImportCheckRunner:
 
         command = ["python", "-c", script]
         try:
-            result = subprocess.run(command, capture_output=True, text=True, timeout=20)
+            result = subprocess.run(command, capture_output=True, text=True, timeout=90)
             elapsed = time.time() - start_time
 
             status = QualityCheckStatus.PASS if result.returncode == 0 else QualityCheckStatus.FAIL

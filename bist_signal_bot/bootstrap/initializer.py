@@ -43,15 +43,16 @@ class BootstrapInitializer:
         created = []
         for d in dirs:
             p = base_dir / d
-            if PathGuard.ensure_safe_path(base_dir, p):
-                p.mkdir(parents=True, exist_ok=True)
-                created.append(p)
+            PathGuard.ensure_safe_path(p, base_dir)  # raises PathSecurityError if unsafe
+            p.mkdir(parents=True, exist_ok=True)
+            created.append(p)
         return created
 
     def write_env_template(self, base_dir: Path, profile: RunProfile, confirm: bool = False) -> list[Path]:
         if not confirm: return []
         env_path = base_dir / ".env.example"
-        if not env_path.exists() and PathGuard.ensure_safe_path(base_dir, env_path):
+        PathGuard.ensure_safe_path(env_path, base_dir)
+        if not env_path.exists():
             env_path.write_text("# Bootstrap env template\nNO_REAL_ORDER=true\nNO_EXTERNAL_CALLS=true\n")
             return [env_path]
         return []
@@ -62,7 +63,8 @@ class BootstrapInitializer:
     def write_local_readme(self, base_dir: Path, profile: RunProfile, confirm: bool = False) -> Path | None:
         if not confirm: return None
         readme = base_dir / "README.md"
-        if not readme.exists() and PathGuard.ensure_safe_path(base_dir, readme):
+        PathGuard.ensure_safe_path(readme, base_dir)
+        if not readme.exists():
             readme.write_text(f"# BIST Signal Bot - Local MVP\nProfile: {profile.name}\nResearch Only.\n")
             return readme
         return None

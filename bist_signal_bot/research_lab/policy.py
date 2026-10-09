@@ -18,7 +18,7 @@ class ResearchLabPolicyManager:
 
             # Using defaults/overrides from registry if present
             max_jobs = registry.get_record("RESEARCH_LAB_MAX_JOBS")
-            if max_jobs:
+            if max_jobs and getattr(max_jobs, "value", None) is not None:
                 setattr(s, "RESEARCH_LAB_MAX_JOBS_PER_BATCH", max_jobs.value)
         except Exception:
             pass

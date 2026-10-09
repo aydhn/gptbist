@@ -21,7 +21,7 @@ class ReleaseCandidateBuilder:
         latest = self.collect_latest_statuses()
 
         checksums = {}
-        if self.settings and getattr(self.settings, "FINAL_RELEASE_INCLUDE_CHECKSUMS", True):
+        if self.settings is None or getattr(self.settings, "FINAL_RELEASE_INCLUDE_CHECKSUMS", True):
             checksums = self.build_checksum_manifest()
 
         manifest = ReleaseCandidateManifest(
@@ -83,11 +83,11 @@ class ReleaseCandidateBuilder:
         for p in target_paths:
             if p.exists() and p.is_file():
                 content = p.read_bytes()
-                checksums[str(p.relative_to(self.base_dir))] = hashlib.sha256(content).hexdigest()
+                checksums[p.relative_to(self.base_dir).as_posix()] = hashlib.sha256(content).hexdigest()
             elif p.exists() and p.is_dir():
                 for f in p.rglob("*.py"):
                     content = f.read_bytes()
-                    checksums[str(f.relative_to(self.base_dir))] = hashlib.sha256(content).hexdigest()
+                    checksums[f.relative_to(self.base_dir).as_posix()] = hashlib.sha256(content).hexdigest()
         return checksums
 
     def known_limitations(self) -> list[str]:

@@ -89,7 +89,7 @@ class CleanupManager:
                 continue
 
             if age_days > policy.keep_days:
-                rel_path = str(file_path.relative_to(self.base_dir))
+                rel_path = file_path.relative_to(self.base_dir).as_posix()
                 is_safe, warnings = self.is_safe_to_delete(file_path, policy.target)
 
                 candidates.append(CleanupCandidate(

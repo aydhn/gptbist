@@ -10,6 +10,6 @@ def test_telegram_client_dry_run():
     assert res["dry_run"] is True
 
 def test_telegram_client_no_token_log():
-    settings = Settings(TELEGRAM_BOT_TOKEN="secret_token")
+    settings = Settings(TELEGRAM_BOT_TOKEN="secret_token", ENABLE_TELEGRAM_CENTER=False)
     client = TelegramClient(settings)
-    assert client.is_configured() is False # ENABLE_TELEGRAM_CENTER defaults false without args
+    assert client.is_configured() is False  # disabled center -> not configured even with token

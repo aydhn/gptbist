@@ -79,18 +79,22 @@ class RegressionSmokeRunner:
 
 
         # Integration with scenario runner
-        if getattr(self.settings, "QUALITY_RUN_SCENARIOS", False):
-            import subprocess
+        if getattr(getattr(self, "settings", None), "QUALITY_RUN_SCENARIOS", False):
             try:
                 proc = subprocess.run(
                     ["python", "-m", "bist_signal_bot", "scenario", "run", "smoke", "--json"],
-                    capture_output=True, text=True
+                    capture_output=True, text=True, timeout=60
                 )
-                if proc.returncode == 0:
-                     results["scenario_smoke"] = "SUCCESS"
-                else:
-                     results["scenario_smoke"] = "FAILED"
+                status = QualityCheckStatus.PASS if proc.returncode == 0 else QualityCheckStatus.FAIL
+                message = f"Scenario smoke exited with {proc.returncode}"
             except Exception as e:
-                results["scenario_smoke"] = f"ERROR: {str(e)}"
+                status = QualityCheckStatus.ERROR
+                message = f"Scenario smoke failed: {str(e)}"
+            results.append(QualityCheckResult(
+                check_name="smoke_scenario",
+                tool=QualityTool.REGRESSION_SMOKE,
+                status=status,
+                message=message
+            ))
 
         return results

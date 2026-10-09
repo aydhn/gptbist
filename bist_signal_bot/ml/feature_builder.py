@@ -46,6 +46,8 @@ class MLFeatureBuilder:
         if getattr(self.settings, 'ENABLE_PERFORMANCE_PROFILING', False):
             from bist_signal_bot.app.performance_app import create_local_profiler
             profiler = create_local_profiler(self.settings)
+            if not hasattr(profiler, 'timer'):
+                profiler = None  # profiler without span timer: skip instrumentation
 
         # Add returns first
         if config.include_returns:

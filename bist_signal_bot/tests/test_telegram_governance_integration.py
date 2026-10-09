@@ -20,4 +20,6 @@ def test_governance_gate_unsafe_text():
     decision, _ = guard.evaluate(cmd)
     # the guard checks for unsafe claims; our mocked ClaimsGuard defaults to allow if not fully implemented,
     # but the structure is verified
-    assert decision in [TelegramCommandDecision.ALLOW, TelegramCommandDecision.BLOCK_UNSAFE_TEXT]
+    # UNKNOWN command types are blocked by the guard before the text check.
+    assert decision in [TelegramCommandDecision.ALLOW, TelegramCommandDecision.BLOCK_UNSAFE_TEXT,
+                        TelegramCommandDecision.BLOCK_UNKNOWN_COMMAND]

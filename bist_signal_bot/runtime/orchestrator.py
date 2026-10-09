@@ -81,11 +81,11 @@ class RuntimeOrchestrator:
     ) -> RuntimePipelineResult:
         if config.profile_runtime and getattr(self.settings, "ENABLE_PERFORMANCE_PROFILING", False):
             from bist_signal_bot.app.performance_app import create_local_profiler
-            from bist_signal_bot.performance.models import BenchmarkType
+            from bist_signal_bot.performance.models import BenchmarkScenario
 
             profiler = create_local_profiler(self.settings)
             with profiler.profile_context(
-                "runtime_run_once", BenchmarkType.RUNTIME_RUN_ONCE
+                "runtime_run_once", BenchmarkScenario.CUSTOM
             ) as perf_ctx:
                 result = self._run_once_impl(config, trigger)
                 # Attach performance to result after execution completes, but before yielding context
@@ -97,11 +97,12 @@ class RuntimeOrchestrator:
                 profile = perf_ctx["profile"]
                 result.performance_profile_id = profile.profile_id
                 peak = next(
-                    (m.value for m in profile.metrics if m.name == "Peak Memory Usage"), None
+                    (m.value for m in profile.resources if m.value is not None), None
                 )
                 result.memory_peak_mb = peak
-                if profile.spans:
-                    slowest = max(profile.spans, key=lambda s: s.elapsed_seconds)
+                timed = [t for t in profile.timings if t.elapsed_seconds is not None]
+                if timed:
+                    slowest = max(timed, key=lambda t: t.elapsed_seconds)
                     result.slowest_stage = slowest.name
             return result
         else:
@@ -195,7 +196,8 @@ class RuntimeOrchestrator:
     def _execute_data_refresh(
         self, config: RuntimePipelineConfig, result: RuntimePipelineResult, fetched_data: dict
     ) -> None:
-        if getattr(self.settings, "INTRADAY_UNIVERSE_AUTO_SYNC", False) and not getattr(
+        # Runtime must not hit the network for universe sync unless RUNTIME_UNIVERSE_AUTO_SYNC (default False).
+        if getattr(self.settings, "RUNTIME_UNIVERSE_AUTO_SYNC", False) is True and not getattr(
             config, "dry_run", False
         ):
             try:  # best-effort; never fails the pipeline

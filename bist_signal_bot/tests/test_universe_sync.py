@@ -80,6 +80,33 @@ def test_non_equity_and_bad_symbols_filtered():
     assert rows[0]["first_trade_date"]
 
 
+def test_warrant_etf_fund_rights_index_names_filtered():
+    def n(sym, name, **kw):
+        q = _q(sym)
+        q["longName"] = name
+        q.update(kw)
+        return q
+
+    rows = fetch_ist_listing(lambda: [
+        n("REAL1", "Real Sanayi A.S."),
+        n("WARR1", "Foo Bank Warrant"),
+        n("ETF1", "Bar BIST30 Borsa Yatirim Fonu"),
+        n("FND1", "Baz Yatirim Fonu"),
+        n("RGT1", "Qux Rights"),
+        n("IDX1", "BIST 100 Index"),
+        n("TYP1", "Plain Name", typeDisp="ETF"),
+    ])
+    assert [r["symbol"] for r in rows] == ["REAL1"]
+
+
+def test_seed_symbols_never_filtered_as_non_equity():
+    seed = DEFAULT_SEED_SYMBOLS_STR[0]
+    q = _q(seed)
+    q["longName"] = "Some Index Fund Warrant"
+    q["typeDisp"] = "ETF"
+    assert [r["symbol"] for r in fetch_ist_listing(lambda: [q])] == [seed]
+
+
 def test_auto_sync_throttled(settings):
     sync_universe(settings, fetch=lambda: _base(), now=datetime.now(UTC))
     assert sync_if_stale(settings, fetch=lambda: _base()) is None

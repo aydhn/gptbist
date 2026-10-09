@@ -1,3 +1,9 @@
+"""Multi-market research calendar fixture (weekends only, NO holiday data, crypto = 24/7).
+
+Not a source of BIST holidays. For BIST trading days/holidays use ``intraday/sessions.py``
+(``bist_holidays.json``, the verified-in-use source), ``calendar/`` (settings BIST_MANUAL_HOLIDAYS) or
+``scheduler/calendar.py`` (CSV). See docs/claude-context/module-map.md (calendar duplicates).
+"""
 from datetime import datetime, timedelta
 from typing import List
 from bist_signal_bot.markets.models import MarketCalendarDay, MarketSessionStatus

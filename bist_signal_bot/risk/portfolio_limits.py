@@ -55,7 +55,7 @@ class PortfolioLimits:
         if sym in by_symbol:
             reasons.append("duplicate_symbol")
 
-        max_open = int(_cfg(s, "RISK_MAX_OPEN_POSITIONS", 10))
+        max_open = int(_cfg(s, "RISK_MAX_OPEN_POSITIONS", 8))
         if sym not in by_symbol and len(by_symbol) + 1 > max_open:
             reasons.append("max_open_positions")
 

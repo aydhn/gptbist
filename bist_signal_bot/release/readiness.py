@@ -11,7 +11,7 @@ from bist_signal_bot.release.models import (
     ReleaseCheckCategory, ReleaseCheckStatus, ReleaseBlockerSeverity, ReleaseStatus, ReleaseStage, ReleaseProfile
 )
 from bist_signal_bot.release.checks import ReleaseCheckRunner
-from bist_signal_bot.core.audit import AuditLogger, AuditEventType
+from bist_signal_bot.core.audit import AuditLogger, AuditEventType, AuditEvent
 from bist_signal_bot.core.exceptions import ReleaseReadinessError
 
 class ReleaseReadinessEvaluator:
@@ -67,7 +67,7 @@ class ReleaseReadinessEvaluator:
             config = self.default_config()
 
         readiness_id = str(uuid.uuid4())
-        self.audit.log_event(AuditEventType.RELEASE_READINESS_STARTED)
+        self.audit.log_event(AuditEvent(event_type=AuditEventType.RELEASE_READINESS_STARTED, message="RELEASE_READINESS_STARTED"))
 
         start_time = time.time()
         report = ReleaseReadinessReport(
@@ -152,15 +152,15 @@ class ReleaseReadinessEvaluator:
                 report.output_files = {k: str(v) for k, v in paths.items()}
 
             if report.status in [ReleaseStatus.READY, ReleaseStatus.PARTIAL_READY]:
-                self.audit.log_event(AuditEventType.RELEASE_READINESS_COMPLETED)
+                self.audit.log_event(AuditEvent(event_type=AuditEventType.RELEASE_READINESS_COMPLETED, message="RELEASE_READINESS_COMPLETED"))
             else:
-                 self.audit.log_event(AuditEventType.RELEASE_READINESS_FAILED)
+                 self.audit.log_event(AuditEvent(event_type=AuditEventType.RELEASE_READINESS_FAILED, message="RELEASE_READINESS_FAILED"))
 
             return report
 
         except Exception as e:
             self.logger.exception("Failed during release readiness evaluation")
-            self.audit.log_event(AuditEventType.RELEASE_READINESS_FAILED)
+            self.audit.log_event(AuditEvent(event_type=AuditEventType.RELEASE_READINESS_FAILED, message="RELEASE_READINESS_FAILED"))
             report.status = ReleaseStatus.FAILED
             report.finished_at = datetime.utcnow()
             report.elapsed_seconds = time.time() - start_time
