@@ -130,6 +130,10 @@ def _default_for(name: str) -> Any:
     if name in _EXPLICIT_DEFAULTS:
         return _EXPLICIT_DEFAULTS[name]
     up = name.upper()
+    # Storage folder names: derive from the key minus the suffix (never the key itself,
+    # which used to create stray folders such as ``data/market_data_dir_name``).
+    if up.endswith("_DIR_NAME"):
+        return name.lower()[: -len("_dir_name")]
     if up.endswith("_VERSION"):
         return "1.0.0"
     # Unknown feature flags default to enabled — preserves prior behaviour and is
@@ -143,7 +147,7 @@ def _default_for(name: str) -> Any:
     # Path / directory / file / name-like keys: derive a lowercase token so that
     # Path(value) and `some_dir / value` never crash on None. Real values should
     # come from .env or DEFAULTS; this is only a never-crash safety net.
-    if up.endswith(("_DIR", "_PATH", "_DIR_NAME", "_FILE", "_FILE_NAME", "_NAME")):
+    if up.endswith(("_DIR", "_PATH", "_FILE", "_FILE_NAME", "_NAME")):
         return name.lower()
     return None
 
