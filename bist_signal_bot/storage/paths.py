@@ -673,3 +673,10 @@ def get_edge_validation_dir(settings: Settings | None = None) -> Path:
     d = get_data_dir(settings) / "edge_validation"
     d.mkdir(parents=True, exist_ok=True)
     return d
+
+
+def get_risk_state_dir(settings: Settings | None = None) -> Path:
+    """<DATA_DIR>/risk (created): daily-loss guard state."""
+    d = get_data_dir(settings) / "risk"
+    d.mkdir(parents=True, exist_ok=True)
+    return d

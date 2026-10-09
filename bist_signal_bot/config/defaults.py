@@ -136,6 +136,11 @@ DEFAULTS: dict[str, Any] = {
     "RISK_MAX_ATR_PCT": 0.10,
     "RISK_MAX_COST_BPS": 50.0,
     "RISK_MAX_DAILY_SIGNALS": 20,
+    "RISK_MAX_DAILY_LOSS_PCT": 2.0,          # daily-loss guard: halt new entries at -2% of start-of-day equity
+    "RISK_MAX_CONSECUTIVE_LOSSES": 6,
+    "RISK_MAX_DRAWDOWN_PCT": 8.0,            # trailing drawdown from rolling equity peak; needs explicit reset
+    "RISK_BLOCK_AUCTION_ENTRIES": True,
+    "RISK_MIN_EDGE_TO_COST_RATIO": 1.5,
     "RISK_MAX_OPEN_POSITIONS": 10,
     "RISK_MAX_PORTFOLIO_RISK_PCT": 0.20,
     "RISK_MAX_POSITION_SIZE_PCT": 0.20,
@@ -145,6 +150,24 @@ DEFAULTS: dict[str, Any] = {
     "RISK_MIN_RISK_REWARD": 1.5,
     "RISK_MIN_SIGNAL_SCORE": 0.50,
     "RISK_MIN_TRADE_NOTIONAL": 1_000.0,
+    # ---- Intraday sizing / portfolio limits (risk/sizing_intraday.py, portfolio_limits.py) ----
+    "RISK_TARGET_VOL_ANNUAL": 0.15,
+    "RISK_KELLY_FRACTION": 0.25,
+    "RISK_KELLY_CAP": 0.10,
+    "RISK_KELLY_PRIOR_STRENGTH": 200,
+    "RISK_MAX_RISK_PER_TRADE_BPS": 25.0,
+    "RISK_MAX_POSITION_PCT": 0.10,
+    "RISK_MAX_GROSS_EXPOSURE_PCT": 1.0,
+    "RISK_MAX_SECTOR_PCT": 0.30,
+    "RISK_CORR_THRESHOLD": 0.8,
+    "RISK_MAX_CLUSTER_PCT": 0.25,
+    "RISK_MAX_DAILY_TURNOVER_PCT": 2.0,
+    "RISK_MIN_ADV_TRY": 5_000_000.0,
+    "RISK_MAX_SPREAD_BPS": 40.0,
+    "RISK_LOT_SIZE": 1,
+    "RISK_MAX_PARTICIPATION": 0.05,
+    "RISK_KELLY_REQUIRED": False,
+    "RISK_MAX_LEVERAGE": 1.0,
 
     # ---- Portfolio construction ----
     "PORTFOLIO_DEFAULT_NOTIONAL": 100_000.0,
@@ -216,6 +239,7 @@ DEFAULTS: dict[str, Any] = {
     "RUNTIME_USE_TRADE_RISK": True,
     "RUNTIME_USE_PORTFOLIO_RISK": True,
     "RUNTIME_USE_ML_FILTER": False,       # enable once a model is trained/registered
+    "RUNTIME_USE_DECISION_LAYER": False,  # consult risk guard (daily loss/kill switch) before PAPER_RUN; off = legacy behaviour
     "RUNTIME_USE_REGIME_FILTER": True,
     "RUNTIME_RUN_DRIFT_CHECK": False,     # enable once a baseline model exists
     "RUNTIME_JOB_MAX_RETRIES": 2,

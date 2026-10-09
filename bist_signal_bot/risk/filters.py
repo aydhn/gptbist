@@ -77,6 +77,9 @@ class LiquidityFilter:
 
         if turnover is not None and turnover < settings.RISK_MIN_AVG_TURNOVER_TRY:
             rejects.append(RiskRejectReason.LIQUIDITY_TOO_LOW)
+        spread_bps = signal.feature_snapshot.get("spread_bps")
+        if spread_bps is not None and spread_bps > settings.RISK_MAX_SPREAD_BPS:
+            rejects.append(RiskRejectReason.LIQUIDITY_TOO_LOW)
         return rejects, []
 
 class VolatilityFilter:

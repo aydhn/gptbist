@@ -4,6 +4,7 @@ from bist_signal_bot.config.settings import Settings
 from bist_signal_bot.signals.models import SignalCandidate
 from bist_signal_bot.costs.engine import TransactionCostEngine
 from bist_signal_bot.costs.models import OrderSide
+from .sizing_intraday import fractional_kelly
 from .models import (
     PositionSizingMethod, RiskContext, StopTargetReference, PositionSizeResult, RiskSide
 )
@@ -102,7 +103,7 @@ class PositionSizer:
         elif method == PositionSizingMethod.VOLATILITY_TARGET:
             if "hist_vol_20" in signal.feature_snapshot and signal.feature_snapshot["hist_vol_20"]:
                 vol = signal.feature_snapshot["hist_vol_20"]
-                target_vol = 0.20 # 20% annualized
+                target_vol = float(self.settings.RISK_TARGET_VOL_ANNUAL)
                 scalar = target_vol / max(vol, 0.01)
                 base_notional = context.equity * self.settings.RISK_EQUITY_POSITION_PCT
                 raw_notional = base_notional * scalar
@@ -111,8 +112,21 @@ class PositionSizer:
                 raw_notional = context.equity * self.settings.RISK_EQUITY_POSITION_PCT
 
         elif method == PositionSizingMethod.KELLY_FRACTIONAL:
-            issues.append("Kelly fractional not fully supported yet (needs win prob/payoff). Falling back.")
-            raw_notional = context.equity * self.settings.RISK_EQUITY_POSITION_PCT
+            snap = signal.feature_snapshot or {}
+            kf = 0.0
+            if all(snap.get(k) for k in ("kelly_p_win", "kelly_avg_win", "kelly_avg_loss")):
+                kf = fractional_kelly(
+                    snap["kelly_p_win"], snap["kelly_avg_win"], snap["kelly_avg_loss"],
+                    fraction=float(self.settings.RISK_KELLY_FRACTION),
+                    cap=float(self.settings.RISK_KELLY_CAP),
+                    n_obs=snap.get("kelly_n_obs"),
+                    prior_strength=float(self.settings.RISK_KELLY_PRIOR_STRENGTH))
+                if kf <= 0:
+                    issues.append("Kelly: no positive edge; size set to 0.")
+                raw_notional = context.equity * kf
+            else:
+                issues.append("Kelly sizing needs kelly_p_win/kelly_avg_win/kelly_avg_loss in feature_snapshot. Falling back.")
+                raw_notional = context.equity * self.settings.RISK_EQUITY_POSITION_PCT
 
         elif method == PositionSizingMethod.SCORE_WEIGHTED:
             base_notional = context.equity * max_pos_pct

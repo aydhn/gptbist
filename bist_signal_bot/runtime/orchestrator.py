@@ -356,6 +356,17 @@ class RuntimeOrchestrator:
             and getattr(config, "use_paper", False)
             and not getattr(config, "dry_run", False)
         ):
+            guard = self._get_decision_guard()
+            if guard is not None:
+                allowed, why = guard.can_open_new_position()
+                if not allowed:
+                    result.metadata.setdefault("skipped_steps", []).append(
+                        {
+                            "step": RuntimeJobType.PAPER_RUN.value,
+                            "reason": f"Risk guard blocked new entries: {why}. No real order sent.",
+                        }
+                    )
+                    return
             job_res = self.job_runner.run_job(
                 RuntimeJobType.PAPER_RUN,
                 lambda: (
@@ -366,6 +377,35 @@ class RuntimeOrchestrator:
             )
             result.job_results.append(job_res)
             result.paper_result_summary = job_res.summary
+            if guard is not None:
+                self._feed_decision_guard(guard, job_res.summary)
+
+    def _get_decision_guard(self):
+        """Lazy DailyLossGuard, only when RUNTIME_USE_DECISION_LAYER is True (default False)."""
+        if not getattr(self.settings, "RUNTIME_USE_DECISION_LAYER", False):
+            return None
+        if getattr(self, "_decision_guard", None) is None:
+            from bist_signal_bot.risk.daily_loss import DailyLossGuard
+
+            self._decision_guard = DailyLossGuard(self.settings)
+        return self._decision_guard
+
+    @staticmethod
+    def _feed_decision_guard(guard, summary) -> None:
+        """Best-effort: feed equity/realized PnL from the paper summary to the guard."""
+        try:
+            data = summary if isinstance(summary, dict) else getattr(summary, "__dict__", {})
+            account = data.get("account") or {}
+            get = lambda o, k: o.get(k) if isinstance(o, dict) else getattr(o, k, None)  # noqa: E731
+            equity = data.get("equity")
+            if equity is None:
+                equity = get(account, "equity")
+            if equity is None:
+                return
+            realized = data.get("realized_pnl_today")
+            guard.update(float(equity), float(realized or 0.0))
+        except Exception:
+            pass
 
     def _execute_telegram_summary(
         self, config: RuntimePipelineConfig, result: RuntimePipelineResult

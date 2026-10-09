@@ -71,6 +71,16 @@ A strategy is a candidate only if the gate says CANDIDATE. Results so far: `docs
 additionally needs `RUNTIME_ML_MODEL_ID`). CLI: `python -m bist_signal_bot model-loop train|models|evaluate|promote|rollback|status`.
 Tests that touch the real registry/data dir can change with local training state — prefer `tmp_data_dir`/`settings_factory`.
 
+## Decision layer (`risk/`)
+
+`sizing_intraday.py` (fractional Kelly w/ shrinkage + cap, vol targeting, risk budget, ADV/participation, lots, price-limit
+awareness; `SizingDecision.method` = binding constraint), `portfolio_limits.py` (positions, gross, single-name, sector,
+correlation cluster, daily turnover), `daily_loss.py` (`DailyLossGuard`: daily loss / consecutive losses / trailing drawdown
+-> HALTED_FOR_DAY + PAPER kill switch + audit; drawdown/corrupt-state need `reset(confirm=True)`; fails closed),
+`decision.py` (`DecisionLayer`: guard -> session/auction -> sizing -> limits -> edge-vs-cost; reduce-only exits bypass).
+CLI: `python -m bist_signal_bot risk status|reset --confirm|simulate-day`. `RUNTIME_USE_DECISION_LAYER` (default False)
+only wires the guard into PAPER_RUN; per-order `DecisionLayer` hooking in `PaperTradingEngine._execute_orders` is still TODO.
+
 ## Setup & tests
 
 ```bash
