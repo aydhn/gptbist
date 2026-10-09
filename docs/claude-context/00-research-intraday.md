@@ -60,3 +60,10 @@ Kısa özet; kaynaklar bağlantılı. Doğrulanamayan maddeler "?" ile işaretli
 | Kelly | Taslak; vol-hedefleme sabit %20 | `risk/position_sizing.py` |
 | Günlük azami zarar | **Yok** (yalnız sinyal sayısı sınırı) | `risk/filters.py` |
 | Yinelenen takvim | `markets/calendar.py` ↔ `calendar/` (Adım 1c'de incele) | — |
+
+## Canlı doğrulama (2026-10-09, THYAO.IS, yfinance 1.7.0)
+- **1h derinliği ≈ 730 gün doğrulandı** (4368 bar/sembol, 2024-10 → bugün). 15m: 60 gün (1419 bar). K1 yanıtı güçlendi.
+- **Bar hizası (İstanbul saati):** 1h → 09:30, 10:30 … 17:30 (9 bar/gün); 15m → 09:45 (açılış seansı baskısı), 10:00 … 17:45 (33); 5m → 09:55, 10:00 … 17:55 (97).
+  `intraday/sessions.py` varsayılanı bu "yahoo" ızgarasıdır; son 4 haftada 1h/15m kapsama 1.000, 5m ≈ 0.998-0.999.
+- Kapanış seansı (18:00-18:10) Yahoo barlarında görünmüyor; `closing_auction_window()` ayrı sunar.
+- Yahoo tarafında 429/oran sınırı bu denemelerde tetiklenmedi; geniş evrende yine de `RateLimitedFetcher` (parti + aralık + backoff + devre kesici) kullanılır.

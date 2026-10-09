@@ -661,3 +661,8 @@ def get_release_policy_dir(settings=None) -> Path:
     if isinstance(data_dir, str):
         data_dir = Path(data_dir)
     return data_dir / getattr(s, 'RELEASE_POLICY_DIR_NAME', 'release_policy')
+
+
+def get_intraday_archive_path(settings: Settings | None = None) -> Path:
+    """SQLite intraday bar archive path: <DATA_DIR>/intraday/bars.sqlite (dir not created)."""
+    return get_data_dir(settings) / "intraday" / "bars.sqlite"

@@ -1,0 +1,11 @@
+{
+  "verified": false,
+  "source_note": "Religious holiday / half-day dates are NOT verified. Must be confirmed against the official Borsa Istanbul announcement before use. Fixed-date national holidays are built into sessions.py.",
+  "comment_2027": "2027 intentionally absent: dates not provided/verified. Add a '2027' entry once the official Borsa Istanbul calendar is published.",
+  "years": {
+    "2026": {
+      "holidays": ["2026-03-20", "2026-03-21", "2026-03-22", "2026-05-27", "2026-05-28", "2026-05-29", "2026-05-30"],
+      "half_days": ["2026-03-19", "2026-05-26"]
+    }
+  }
+}

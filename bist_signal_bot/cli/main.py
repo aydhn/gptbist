@@ -149,6 +149,9 @@ def run_cli(argv: list[str] | None = None) -> int:
         return 0
     if first == 'bootstrap':
         return _run_bootstrap_command(args_list[1:])
+    if first == 'intraday':
+        from bist_signal_bot.cli.intraday_cli import main as intraday_main
+        return intraday_main(args_list[1:])
 
     import sys
     args_to_parse = args_list

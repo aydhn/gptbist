@@ -47,6 +47,14 @@ Per-package entry points, test layout (shared `tests/conftest.py`: seed, `tmp_da
 remaining verified duplicates (`PriceAdjustmentEngine` x2, `markets/calendar.py` vs `calendar/`) live in `docs/claude-context/module-map.md` — read it
 only when touching those packages; it is not auto-loaded.
 
+## Intraday data layer (`intraday/`)
+
+SQLite bar archive (`archive.py`, raw bars, idempotent upsert, split actions, universe survivorship), rate-limited yfinance
+fetcher + `ArchiveUpdater` (`fetcher.py`), BIST sessions/holidays/ticks/price limits (`sessions.py`, `bist_holidays.json` —
+religious holidays unverified, confirm with Borsa Istanbul), gap/halt detection (`gaps.py`), freshness gate (`freshness.py`).
+CLI: `python -m bist_signal_bot intraday archive-update|gaps|status`. Full BIST universe must be imported into the universe
+store from a local file (`universe import`); the built-in seed has only 20 symbols. Findings: `docs/claude-context/00-research-intraday.md`.
+
 ## Setup & tests
 
 ```bash
