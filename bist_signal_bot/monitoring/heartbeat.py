@@ -54,6 +54,22 @@ class HeartbeatManager:
         age_seconds = (datetime.utcnow() - record.timestamp).total_seconds()
         return age_seconds > max_age_seconds
 
+    def max_age_seconds(self) -> int:
+        try:
+            return int(getattr(self.settings, "MONITORING_HEARTBEAT_MAX_AGE_SECONDS", 1800))
+        except (TypeError, ValueError):
+            return 1800
+
+    def check_stale(self, component: MonitoringComponent | None = None, max_age_seconds: int | None = None) -> dict[str, Any]:
+        """Fail-closed staleness check: no beat, or storage unreadable, counts as stale."""
+        mx = self.max_age_seconds() if max_age_seconds is None else max_age_seconds
+        rec = self.latest(component)
+        if rec is None:
+            return {"stale": True, "reason": "no_heartbeat", "max_age_seconds": mx, "last": None}
+        age = (datetime.utcnow() - rec.timestamp).total_seconds()
+        return {"stale": age > mx, "reason": "too_old" if age > mx else "fresh", "age_seconds": age,
+                "max_age_seconds": mx, "last": rec.timestamp.isoformat(), "last_status": rec.status.value}
+
     def component_health_from_heartbeat(self, component: MonitoringComponent, max_age_seconds: int) -> HealthLevel:
         latest_record = self.latest(component)
         if not latest_record:

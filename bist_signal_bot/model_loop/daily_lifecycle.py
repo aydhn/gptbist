@@ -30,7 +30,10 @@ DEFAULT_PARAMS = {"logit": {"C": 0.1, "retrain_every": 20}, "hgb": {"max_depth":
 
 def ctx_as_of(ctx: DailyContext, as_of) -> DailyContext:
     """Context with only the sessions <= as_of (a causal view; used so a model can never see later data)."""
-    n = int(np.searchsorted(ctx.index.values, np.datetime64(pd.Timestamp(as_of).normalize()), side="right"))
+    ts = pd.Timestamp(as_of)
+    if ts.tzinfo is not None:  # lifecycle passes UTC-aware datetimes; the session index is tz-naive
+        ts = ts.tz_convert("UTC").tz_localize(None)
+    n = int(np.searchsorted(ctx.index.values, np.datetime64(ts.normalize()), side="right"))
     return ctx if n >= len(ctx.index) else ctx.truncate(n)
 
 

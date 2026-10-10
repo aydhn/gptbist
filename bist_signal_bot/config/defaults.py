@@ -833,6 +833,7 @@ DEFAULTS: dict[str, Any] = {
     "FORWARD_RECEIPT_AFTER_RUN": False,  # write receipts after every run-daily (CLI --receipt forces it)
     "FORWARD_MAX_LAG_SESSIONS": 0,  # decision gate: newest bar may lag the expected session by at most N sessions
     "FORWARD_ALERT_STALE_SESSIONS": 1,  # monitoring alert when data lags more than N sessions
+    "FORWARD_HEARTBEAT_MAX_AGE_MINUTES": 4500,  # STALE_HEARTBEAT alert when the newest forward beat is older (75h covers a weekend)
     "FORWARD_SESSION_READY_TIME": "18:30",  # Istanbul time after which today's daily bar counts as complete (close 18:00 + 15 min delay)
     "FORWARD_MIN_LIVE_DAYS": 60,  # no verdict before this many live trading days (INSUFFICIENT)
     "FORWARD_MIN_CALENDAR_DAYS": 90,  # planned minimum observation window (3 months)
@@ -847,6 +848,7 @@ DEFAULTS: dict[str, Any] = {
     "FORWARD_DD_ALERT_LEVELS": "0.10,0.15,0.20",
     "FORWARD_RUN_HOUR": 19,  # scheduler: Europe/Istanbul, trading days
     "FORWARD_RUN_MINUTE": 30,
+    "FORWARD_BACKUP_KEEP": 14,  # forward backup zips kept (only zips made by the backup tool are ever pruned)
     "FORWARD_CATCHUP_HOUR": 8,
     "FORWARD_CATCHUP_MINUTE": 30,
 }

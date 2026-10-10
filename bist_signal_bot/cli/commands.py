@@ -4331,6 +4331,16 @@ def handle_security_command(args, settings):
             state = ks.deactivate(confirm=True)
             print_output(format_success("Kill switch deactivated."))
 
+    elif cmd == "kill-switch-drill":
+        from bist_signal_bot.security.kill_switch_drill import run_kill_switch_drill
+        res = run_kill_switch_drill(settings)
+        if getattr(args, "json", False):
+            print_output({k: v for k, v in res.items() if k != "report_tr"}, as_json=True)
+        else:
+            print_output(res["report_tr"])
+        if not res["ok"]:
+            sys.exit(1)
+
     elif cmd == "scan-source":
         path = Path(args.path)
         if not path.exists():

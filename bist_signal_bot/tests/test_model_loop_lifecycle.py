@@ -237,3 +237,56 @@ def test_runtime_guard():
     assert not ml_filter_effective(auto, reg2)[0]
     reg2.register_model(rec("x", ModelRegistryStatus.FAILED_VALIDATION), confirm=True)
     assert not ml_filter_effective(on, reg2)[0]
+
+
+import pytest
+
+
+@pytest.mark.parametrize("verdict", ["WATCH", "INSUFFICIENT_DATA", "REJECTED", "", "candidate"])
+@pytest.mark.parametrize("with_champion", [True, False])
+def test_non_candidate_never_promoted_even_with_confirm_and_all_guards_ok(verdict, with_champion):
+    """Gate-failing / non-CANDIDATE challenger ends non-champion (WATCH/FAILED_VALIDATION) and promote(confirm=True)
+    is BLOCKED although preflight and kill switch are fine and its Sharpe is far better than the champion's."""
+    pre = Pre(ok=True)
+    lc, reg, audit = make(Trainer(verdict, 9.0), pre=pre, champion_sharpe=1.0 if with_champion else None)
+    champ_before = lc.champion().model_id if with_champion else None
+    rep = lc.evaluate("2024-03-01", perf_stream=BAD_PERF)
+    assert rep.trained and not rep.promotion_recommended
+    st = reg.get_model(rep.challenger_id).status
+    assert st in (ModelRegistryStatus.WATCH, ModelRegistryStatus.FAILED_VALIDATION)
+    for confirm in (False, True):
+        res = lc.promote(rep.challenger_id, confirm=confirm)
+        assert res.status == "BLOCKED"
+        assert any("CANDIDATE required" in r for r in res.reasons)
+    assert (lc.champion().model_id if with_champion else lc.champion()) == (champ_before if with_champion else None)
+    assert reg.get_model(rep.challenger_id).status == st
+    assert AuditEventType.MODEL_LOOP_PROMOTED not in audit.types()
+
+
+def test_tampered_gate_verdict_metadata_still_needs_preflight_killswitch_and_confirm():
+    """Even a genuine CANDIDATE is only promoted when preflight, kill switch AND confirm all hold."""
+    lc, reg, audit = make(Trainer("CANDIDATE", 9.0), pre=Pre(ok=False))
+    rep = lc.evaluate("2024-03-01", perf_stream=BAD_PERF)
+    assert lc.promote(rep.challenger_id, confirm=True).status == "BLOCKED"
+    lc.preflight.ok = True
+    lc.kill_switch.active = True
+    assert lc.promote(rep.challenger_id, confirm=True).status == "BLOCKED"
+    lc.kill_switch.active = False
+    assert lc.promote(rep.challenger_id, confirm=False).status == "DRY_RUN"
+    assert lc.champion().model_id == "champ"
+    assert AuditEventType.MODEL_LOOP_PROMOTED not in audit.types()
+
+
+def test_ctx_as_of_accepts_tz_aware_datetime_without_warning():
+    import warnings
+    from bist_signal_bot.model_loop.daily_lifecycle import ctx_as_of
+
+    class Ctx:
+        index = pd.bdate_range("2024-01-01", periods=10)
+
+        def truncate(self, n):
+            return n
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        assert ctx_as_of(Ctx(), pd.Timestamp("2024-01-05", tz="UTC").to_pydatetime()) == 5

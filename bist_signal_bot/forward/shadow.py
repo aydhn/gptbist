@@ -272,6 +272,7 @@ def run_daily(cfg: ForwardConfig, now: Optional[datetime] = None, fetch: bool = 
     from bist_signal_bot.forward import health as H
     from bist_signal_bot.intraday.archive import BarArchive
     cfg.ensure()
+    H.record_heartbeat(cfg, "START", "forward run start", {})
     t0 = time.time()
     res: dict = {"started_at": utcnow_iso(), "disclaimer": NO_ORDER, "decisions_written": 0, "entries_written": 0,
                  "exits_written": 0, "errors": [], "status": "OK", "decisions": [], "skipped": []}

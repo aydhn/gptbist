@@ -76,6 +76,33 @@ class RuntimeOrchestrator:
             self.settings, kill_switch=self.kill_switch
         )
 
+    def _beat(self, status, message: str, run_id: str, metadata: Optional[dict] = None) -> None:
+        """Runtime heartbeat (append-only data/monitoring/heartbeats.jsonl). Gated by MONITORING_HEARTBEAT_ENABLED;
+        never raises into the pipeline."""
+        if getattr(self.settings, "MONITORING_HEARTBEAT_ENABLED", False) is not True:
+            return
+        try:
+            from bist_signal_bot.monitoring.heartbeat import HeartbeatManager
+            from bist_signal_bot.monitoring.models import MonitoringComponent
+            from bist_signal_bot.monitoring.storage import MonitoringStore
+
+            HeartbeatManager(MonitoringStore(self.settings), self.settings, self.logger).record(
+                MonitoringComponent.RUNTIME, status, message, runtime_run_id=run_id, metadata=metadata or {}
+            )
+        except Exception as e:  # noqa: BLE001
+            self.logger.warning(f"Heartbeat failed: {e}")
+
+    def _paper_blocked_reason(self) -> Optional[str]:
+        """Fail closed: kill switch active OR lookup failure => no paper entries."""
+        try:
+            from bist_signal_bot.security.models import KillSwitchScope
+
+            if self.kill_switch.is_active(KillSwitchScope.PAPER):
+                return "PAPER kill switch active"
+            return None
+        except Exception as e:  # noqa: BLE001
+            return f"kill switch lookup failed ({type(e).__name__}: {e})"
+
     def run_once(
         self, config: RuntimePipelineConfig, trigger: RuntimeTrigger = RuntimeTrigger.CLI
     ) -> RuntimePipelineResult:
@@ -367,6 +394,18 @@ class RuntimeOrchestrator:
             and getattr(config, "use_paper", False)
             and not getattr(config, "dry_run", False)
         ):
+            blocked = self._paper_blocked_reason()
+            if blocked:
+                result.metadata.setdefault("skipped_steps", []).append(
+                    {
+                        "step": RuntimeJobType.PAPER_RUN.value,
+                        "reason": f"{blocked}: no paper entries. No real order sent.",
+                    }
+                )
+                result.metadata.setdefault("alerts", []).append(
+                    {"kind": "PAPER_BLOCKED", "severity": "HIGH", "message": blocked}
+                )
+                return
             guard = self._get_decision_guard()
             if guard is not None:
                 allowed, why = guard.can_open_new_position()
@@ -401,6 +440,10 @@ class RuntimeOrchestrator:
             )
             result.job_results.append(job_res)
             result.paper_result_summary = job_res.summary
+            if str((job_res.summary or {}).get("status", "")).upper() == "ERROR":  # engine swallowed an error: surface it
+                result.metadata.setdefault("alerts", []).append(
+                    {"kind": "PAPER_ERROR", "severity": "HIGH", "message": str(job_res.summary.get("error"))[:200]}
+                )
             if guard is not None:
                 self._feed_decision_guard(guard, job_res.summary)
 
@@ -562,6 +605,9 @@ class RuntimeOrchestrator:
             return result
 
         self.state_store.mark_running(run_id, lock_id)
+        from bist_signal_bot.monitoring.models import HealthLevel
+
+        self._beat(HealthLevel.UNKNOWN, "runtime run start", run_id, {"phase": "start"})
 
         try:
             in_session, session_msg = self.job_runner.should_run_in_session(
@@ -590,10 +636,30 @@ class RuntimeOrchestrator:
 
             self._integrate_portfolio_research(config, result)
 
+            self._finish_beat(result)
             self.state_store.mark_finished(result)
             self.lock_manager.release(lock_id)
 
         return result
+
+    def _finish_beat(self, result: RuntimePipelineResult) -> None:
+        from bist_signal_bot.monitoring.models import HealthLevel
+
+        reasons = [
+            f"{j.job_type.value}: {'; '.join(j.issues)[:160]}"
+            for j in result.job_results
+            if j.status == RuntimeJobStatus.FAILED
+        ]
+        if result.metadata.get("unexpected_error"):
+            reasons.append(f"unexpected: {result.metadata['unexpected_error'][:160]}")
+        reasons += [s.get("reason", "")[:160] for s in result.metadata.get("skipped_steps", [])]
+        ok = result.status in (RuntimePipelineStatus.SUCCESS, RuntimePipelineStatus.SKIPPED)
+        self._beat(
+            HealthLevel.HEALTHY if ok else HealthLevel.UNHEALTHY,
+            f"runtime run {result.status.value}",
+            result.run_id,
+            {"phase": "ok" if ok else "fail", "reasons": reasons[:8]},
+        )
 
     def dry_run(self, config: RuntimePipelineConfig) -> RuntimePipelineResult:
         config.dry_run = True

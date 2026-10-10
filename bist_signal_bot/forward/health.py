@@ -13,36 +13,44 @@ import pandas as pd
 from bist_signal_bot.forward import NO_ORDER
 from bist_signal_bot.forward.chain import HashChain
 from bist_signal_bot.forward.config import PRIMARY, ForwardConfig, utcnow_iso
+from bist_signal_bot.monitoring.storage import HeartbeatFileStore
 
 
 # ---------------- heartbeat (monitoring.heartbeat, file-backed store) ----------------
-class ForwardHeartbeatStore:
-    """Implements the append/load API HeartbeatManager expects, persisted to data/forward/heartbeats.jsonl."""
-
-    def __init__(self, path: Path):
-        self.path = Path(path)
-
-    def append_heartbeat(self, record) -> Path:
-        self.path.parent.mkdir(parents=True, exist_ok=True)
-        with open(self.path, "a", encoding="utf-8") as f:
-            f.write(record.model_dump_json() + "\n")
-        return self.path
-
-    def load_recent_heartbeats(self, limit: int = 100) -> list:
-        from bist_signal_bot.monitoring.models import HeartbeatRecord
-        if not self.path.exists():
-            return []
-        lines = self.path.read_text(encoding="utf-8").splitlines()[-limit:]
-        return [HeartbeatRecord.model_validate_json(x) for x in reversed(lines) if x.strip()]
+class ForwardHeartbeatStore(HeartbeatFileStore):
+    """Heartbeat store persisted to data/forward/heartbeats.jsonl (shared append-only JSONL implementation)."""
 
 
 def record_heartbeat(cfg: ForwardConfig, status: str, message: str, meta: dict) -> None:
+    """Append one heartbeat. status: START | OK | KILL_SWITCH | STALE | FAILED. Never raises (HeartbeatManager logs)."""
     from bist_signal_bot.monitoring.heartbeat import HeartbeatManager
     from bist_signal_bot.monitoring.models import HealthLevel, MonitoringComponent
     lvl = {"OK": HealthLevel.HEALTHY, "KILL_SWITCH": HealthLevel.DEGRADED, "STALE": HealthLevel.DEGRADED,
            "FAILED": HealthLevel.UNHEALTHY}.get(status, HealthLevel.UNKNOWN)
+    meta = dict(meta or {}, phase={"START": "start", "OK": "ok"}.get(status, "fail"), run_status=status)
     HeartbeatManager(storage=ForwardHeartbeatStore(cfg.heartbeat_path), settings=cfg.settings).record(
         MonitoringComponent.PAPER, lvl, message, metadata=meta)
+
+
+def heartbeat_alerts(cfg: ForwardConfig, now: Optional[datetime] = None) -> list:
+    """STALE_HEARTBEAT alert (same dict structure/dedupe as evaluate_alerts) when the newest beat is older than
+    FORWARD_HEARTBEAT_MAX_AGE_MINUTES. No beat at all counts as stale only once the job has ever run (fail closed)."""
+    from bist_signal_bot.monitoring.models import MonitoringComponent
+    mx = cfg.i("FORWARD_HEARTBEAT_MAX_AGE_MINUTES", 4500)
+    st = ForwardHeartbeatStore(cfg.heartbeat_path)
+    last = st.last_heartbeat(MonitoringComponent.PAPER)
+    if last is None:
+        if not cfg.runs_path.exists():
+            return []
+        return [{"key": "stale_heartbeat|none", "kind": "STALE_HEARTBEAT", "severity": "HIGH",
+                 "title": "Forward: no heartbeat recorded", "message": f"runs exist but no heartbeat. {NO_ORDER}"}]
+    age_min = ((now or datetime.utcnow()) - last.timestamp).total_seconds() / 60.0
+    if age_min <= mx:
+        return []
+    return [{"key": f"stale_heartbeat|{last.timestamp.isoformat()}", "kind": "STALE_HEARTBEAT", "severity": "HIGH",
+             "title": "Forward: stale heartbeat",
+             "message": f"last beat {last.timestamp.isoformat()} ({last.status.value}: {last.message[:120]}) is "
+                        f"{age_min:.0f} min old > {mx} min. {NO_ORDER}"}]
 
 
 # ---------------- alerts ----------------
@@ -140,8 +148,14 @@ def after_run(cfg: ForwardConfig, res: dict, now: Optional[datetime] = None) -> 
     if res["status"] == "OK":
         st["last_ok_at"] = res.get("finished_at")
     write_state(cfg, st)
+    reasons = list(res.get("errors", []))[:5]
+    if res["status"] == "STALE":
+        reasons.append(f"freshness_gate=STALE lag={(res.get('freshness') or {}).get('panel_lag_sessions')}")
+    elif res["status"] == "KILL_SWITCH":
+        reasons.append(f"kill_switch_active: {(res.get('kill_switch') or {}).get('reason')}")
     record_heartbeat(cfg, res["status"], f"forward run {res['status']} as_of={res.get('as_of')} "
-                     f"decisions={res.get('decisions_written', 0)}", {"errors": len(res.get("errors", []))})
+                     f"decisions={res.get('decisions_written', 0)}",
+                     {"errors": len(res.get("errors", [])), "reasons": [str(x)[:200] for x in reasons]})
 
 
 # ---------------- health report ----------------
@@ -187,7 +201,10 @@ def build_health(cfg: ForwardConfig, now: Optional[datetime] = None, archive=Non
          "max_drawdown": max((s["drawdown"] for s in navs.values()), default=0.0)}
     bad = (not h["chain_ok"]) or h["kill_switch"]["active"] or fr["panel_lag_sessions"] > cfg.i("FORWARD_ALERT_STALE_SESSIONS", 1) \
         or st.get("last_run_status") in ("FAILED", None)
-    h["overall"] = "ATTENTION" if bad else "OK"
+    hb = heartbeat_alerts(cfg)
+    h["heartbeat_stale"] = bool(hb)
+    h["alerts_new"] = [a["kind"] for a in emit_alerts(cfg, hb)] if hb else []
+    h["overall"] = "ATTENTION" if (bad or hb) else "OK"
     return h
 
 
@@ -203,6 +220,7 @@ def format_health(h: dict) -> str:
              f"hash chain decisions={'OK' if h['chain']['decisions']['ok'] else 'BROKEN'} "
              f"outcomes={'OK' if h['chain']['outcomes']['ok'] else 'BROKEN'}",
              f"kill switch active={h['kill_switch']['active']} | max shadow drawdown {h['max_drawdown']:.1%}",
+             f"heartbeat {'STALE' if h.get('heartbeat_stale') else 'ok'}",
              f"disk forward={h['disk']['forward_dir_bytes'] / 1e6:.1f}MB free={h['disk']['disk_free_bytes'] / 1e9:.1f}GB"]
     if h["recent_errors"]:
         lines.append("errors: " + " | ".join(str(e)[:120] for e in h["recent_errors"]))

@@ -1920,6 +1920,9 @@ def add_security_parser(subparsers):
     deactivate_parser = ks_sub.add_parser("deactivate", help="Deactivate the kill switch.")
     deactivate_parser.add_argument("--confirm", action="store_true", help="Confirm deactivation.")
 
+    drill_parser = security_subparsers.add_parser("kill-switch-drill", help="Run the automated kill-switch drill in an isolated temp dir.")
+    drill_parser.add_argument("--json", action="store_true", help="Output as JSON.")
+
     scan_parser = security_subparsers.add_parser("scan-source", help="Scan source files for forbidden actions.")
     scan_parser.add_argument("--path", type=str, required=True, help="Path to scan.")
     scan_parser.add_argument("--json", action="store_true", help="Output as JSON.")

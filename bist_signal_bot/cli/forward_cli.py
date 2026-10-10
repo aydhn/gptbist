@@ -30,6 +30,16 @@ def build_parser() -> argparse.ArgumentParser:
         h.add_argument("--notify", action="store_true", help="send via the Telegram notifier (respects its dry-run)")
         h.add_argument("--dry-run", action="store_true", help="only print the Telegram text")
         h.add_argument("--json", action="store_true")
+    ig = sub.add_parser("integrity", help="Verify hash chains, frozen portfolios, trial ledger (PASS/FAIL, fail-closed)")
+    ig.add_argument("--no-checkpoint", action="store_true", help="do not update integrity_checkpoint.json")
+    ig.add_argument("--json", action="store_true")
+    bk = sub.add_parser("backup", help="Timestamped zip backup (forward dir + ledger snapshot + configs, no secrets)")
+    bk.add_argument("--dest", default=None, help="backup directory (default data/backups/forward)")
+    bk.add_argument("--keep", type=int, default=None, help="backups to keep (default FORWARD_BACKUP_KEEP)")
+    rs = sub.add_parser("restore", help="Verify (and optionally extract) a backup zip")
+    rs.add_argument("zip")
+    rs.add_argument("--verify", action="store_true", help="recompute sha256 hashes against the manifest")
+    rs.add_argument("--to", default=None, help="extract into this EMPTY directory (after verification)")
     return p
 
 
@@ -72,6 +82,28 @@ def main(argv: list[str]) -> int:
         rep = R.build_report(cfg)
         R.save_report(cfg, rep)
         print(json.dumps(rep, indent=2, default=str) if args.json else R.format_report(rep))
+    elif cmd == "integrity":
+        from bist_signal_bot.forward import integrity as IG
+        res = IG.verify_integrity(cfg, update_checkpoint=not args.no_checkpoint)
+        print(json.dumps(res, indent=2, default=str) if args.json else IG.format_integrity(res))
+        rc = 0 if res["status"] == "PASS" else 1
+    elif cmd == "backup":
+        from pathlib import Path
+        from bist_signal_bot.forward import backup as BK
+        res = BK.create_backup(cfg, Path(args.dest) if args.dest else None, args.keep)
+        print(f"backup: {res['path']} files={res['n_files']} pruned={res['pruned']} skipped={res['skipped']}")
+    elif cmd == "restore":
+        from pathlib import Path
+        from bist_signal_bot.forward import backup as BK
+        if args.to:
+            res = BK.restore_backup(Path(args.zip), Path(args.to))
+        elif args.verify:
+            res = BK.verify_backup(Path(args.zip))
+        else:
+            print("restore: --verify veya --to gerekli")
+            return 2
+        print(f"restore: {res['status']} files={res['n_files']} reasons={res['reasons']}")
+        rc = 0 if res["status"] == "PASS" else 1
     else:
         h = H.build_health(cfg)
         path = H.save_health(cfg, h)
