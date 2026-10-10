@@ -16,7 +16,9 @@ def build_parser() -> argparse.ArgumentParser:
     r = sub.add_parser("run-daily", help="Refresh data, decide, settle, mark-to-market (idempotent)")
     r.add_argument("--no-fetch", action="store_true", help="skip the yfinance refresh (use the archive as is)")
     r.add_argument("--now", default=None, help="ISO Istanbul time override for the freshness gate (testing)")
-    sub.add_parser("freeze", help="Create data/forward/portfolios.json once (never re-selected)")
+    fz = sub.add_parser("freeze", help="Create data/forward/portfolios.json once (never re-selected)")
+    fz.add_argument("--force-new-version", action="store_true",
+                    help="write the NEXT frozen version (portfolios.v2.json ...); older versions stay untouched")
     sub.add_parser("report", help="Per-portfolio forward stats and verdicts").add_argument("--json", action="store_true")
     for name in ("status", "health"):
         h = sub.add_parser(name, help="Daily health report (saved under data/forward/health/)")
@@ -36,16 +38,19 @@ def main(argv: list[str]) -> int:
     cmd = args.forward_command
     rc = 0
     if cmd == "freeze":
-        doc = freeze_portfolios(cfg)
-        print(f"portfolios frozen: {doc['n_portfolios']} (source {doc['source']}) hash={doc['content_hash'][:12]}")
+        doc = freeze_portfolios(cfg, force_new_version=args.force_new_version)
+        print(f"portfolios frozen: v{doc.get('freeze_version')} n={doc['n_portfolios']} "
+              f"candidates={doc.get('n_candidates')} watch={doc.get('n_watch')} (source {doc['source']}) hash={doc['content_hash'][:12]}")
         for p in doc["portfolios"]:
-            print(f"  {p['id']} sharpe={p['ledger_sharpe']}")
+            print(f"  [{p.get('tier')}/{p.get('role')}] {p['id']} sharpe={p['ledger_sharpe']} "
+                  f"v2={p.get('v2_verdict')} robust={p.get('v2_robust')}")
     elif cmd == "run-daily":
         now = datetime.fromisoformat(args.now) if args.now else None
         res = S.run_daily(cfg, now=now, fetch=not args.no_fetch, now_override=bool(args.now))
         print(f"status={res['status']} as_of={res.get('as_of')} gate={res.get('freshness_gate')} "
               f"decisions={res['decisions_written']} entries={res['entries_written']} exits={res['exits_written']} "
-              f"portfolios={res.get('portfolios_frozen')} alerts={res.get('alerts_new')}")
+              f"portfolios={res.get('portfolios_frozen')} alerts={res.get('alerts_new')} "
+              f"elapsed_s={res.get('elapsed_s')} timings_s={res.get('timings_s')}")
         for e in res["errors"][:5]:
             print(f"error: {e}")
         rc = 0 if res["status"] in ("OK", "STALE", "KILL_SWITCH") else 1

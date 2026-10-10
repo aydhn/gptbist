@@ -10,7 +10,8 @@ import pandas as pd
 
 from bist_signal_bot.forward import NO_ORDER
 from bist_signal_bot.forward.chain import HashChain
-from bist_signal_bot.forward.config import PRIMARY, SCENARIOS, ForwardConfig, load_portfolios, utcnow_iso
+from bist_signal_bot.forward.config import (PRIMARY, ROLE_PLACEBO, SCENARIOS, TIER_CANDIDATE, TIER_WATCH, ForwardConfig,
+                                            load_portfolios, portfolio_tier, utcnow_iso)
 
 
 def nw_tstat(x, lag: int) -> dict:
@@ -38,9 +39,29 @@ def crit_z(k: int, alpha: float = 0.05) -> float:
     return NormalDist().inv_cdf(1.0 - alpha / max(1, k))
 
 
-def portfolio_stats(cfg: ForwardConfig, p: dict, K: int, exits: list) -> dict:
+def _nav(cfg: ForwardConfig, pid: str):
+    f = cfg.nav_dir / f"{pid}.csv"
+    return pd.read_csv(f, index_col=0, parse_dates=True) if f.exists() else None
+
+
+def vs_placebo(df: pd.DataFrame, plc: pd.DataFrame, lag: int) -> dict:
+    """Cumulative excess of the portfolio over a placebo shadow (same dates) + NW t of the daily return difference."""
+    a = df[f"nav_{PRIMARY}"]
+    b = plc[f"nav_{PRIMARY}"].reindex(a.index).ffill()
+    ok = b.notna()
+    a, b = a[ok], b[ok]
+    if len(a) < 4:
+        return {"n": int(len(a)), "cum_excess": None, "t": float("nan")}
+    d = (a.pct_change() - b.pct_change()).iloc[1:]
+    return {"n": int(len(d)), "cum_excess": float(a.iloc[-1] / a.iloc[0] - b.iloc[-1] / b.iloc[0]),
+            "t": nw_tstat(d, lag)["t"]}
+
+
+def portfolio_stats(cfg: ForwardConfig, p: dict, K: int, exits: list, placebo_nav: pd.DataFrame = None) -> dict:
     f = cfg.nav_dir / f"{p['id']}.csv"
-    out = {"id": p["id"], "family": p["family"], "horizon": p["horizon"], "params": p["params"]}
+    tier = portfolio_tier(p)
+    out = {"id": p["id"], "family": p["family"], "horizon": p["horizon"], "params": p["params"], "tier": tier,
+           "role": p.get("role"), "v2_verdict": p.get("v2_verdict"), "v2_robust": p.get("v2_robust")}
     if not f.exists():
         return {**out, "days_live": 0, "verdict": "INSUFFICIENT", "reason": "no NAV yet"}
     df = pd.read_csv(f, index_col=0, parse_dates=True)
@@ -101,31 +122,66 @@ def portfolio_stats(cfg: ForwardConfig, p: dict, K: int, exits: list) -> dict:
             f"nw_t>={tcrit:.2f}": bool(nw["t"] >= tcrit),
             "baskets>=min_and_hit>=50%": nb >= cfg.i("FORWARD_MIN_BASKETS", 6) and (wins / max(nb, 1)) >= 0.5,
             "maxdd<limit": res[PRIMARY]["max_drawdown"] < cfg.f("FORWARD_MAX_DD_PASS", 0.20)}
+    if tier in (TIER_CANDIDATE, TIER_WATCH):  # criterion 6 (watch: informational): must beat the same-horizon placebo shadow
+        if placebo_nav is None:
+            crit["beats_placebo"] = False
+            out["vs_placebo"] = {"note": "no placebo portfolio frozen"}
+        else:
+            vp = vs_placebo(df, placebo_nav, lag)
+            out["vs_placebo"] = vp
+            mt = cfg.f("FORWARD_MIN_TSTAT", 2.0)
+            crit["beats_placebo"] = bool(vp["cum_excess"] is not None and vp["cum_excess"] > 0 and vp["t"] >= mt)
     out["criteria"] = crit
-    out["verdict"] = "PASS" if all(crit.values()) else "FAIL"
+    ok = "PASS" if all(crit.values()) else "FAIL"
+    if tier == TIER_CANDIDATE:
+        out["verdict"] = ok
+    else:  # watch / controls are informational: they never carry a PASS/FAIL weight
+        out["verdict"], out["informational_verdict"] = ("WATCH" if tier == TIER_WATCH else "CONTROL"), ok
+        if p.get("role") == ROLE_PLACEBO:
+            out["placebo_edge"] = bool(nw["t"] >= cfg.f("FORWARD_MIN_TSTAT", 2.0))
     return out
 
 
 def build_report(cfg: ForwardConfig) -> dict:
     doc = load_portfolios(cfg)
     exits = list(HashChain(cfg.outcomes_path).iter_type("exit"))
-    K = doc["n_portfolios"]
-    rows = [portfolio_stats(cfg, p, K, exits) for p in doc["portfolios"]]
-    return {"generated_at": utcnow_iso(), "n_portfolios": K, "plan": cfg.plan(), "portfolios": rows,
-            "n_pass": sum(r["verdict"] == "PASS" for r in rows),
-            "n_insufficient": sum(r["verdict"] == "INSUFFICIENT" for r in rows),
-            "disclaimer": NO_ORDER, "note": "Shadow simulation; survivorship-free forward evidence only."}
+    pfs = doc["portfolios"]
+    K = max(1, sum(portfolio_tier(p) == TIER_CANDIDATE for p in pfs))  # Bonferroni over candidate-tier only
+    plc = {p["horizon"]: _nav(cfg, p["id"]) for p in pfs if p.get("role") == ROLE_PLACEBO}
+    anyplc = next((v for v in plc.values() if v is not None), None)
+    rows = [portfolio_stats(cfg, p, K, exits, plc.get(p["horizon"]) if plc.get(p["horizon"]) is not None else anyplc)
+            for p in pfs]
+    cand = [r for r in rows if r["tier"] == TIER_CANDIDATE]
+    plcr = [r for r in rows if r.get("role") == ROLE_PLACEBO]
+    placebo_edge = any(r.get("placebo_edge") for r in plcr)
+    n_pass = sum(r["verdict"] == "PASS" for r in cand)
+    if n_pass and not placebo_edge and all(r.get("days_live") for r in plcr):
+        overall = "SUCCESS"
+    elif n_pass and placebo_edge:
+        overall = "INCONCLUSIVE_PLACEBO_EDGE"
+    elif not cand:
+        overall = "NO_CANDIDATE"  # only watch/control/placebo tracked until an explicit new freeze version
+    elif cand and all(r["verdict"] == "FAIL" for r in cand):
+        overall = "FAIL"
+    else:
+        overall = "INSUFFICIENT"
+    return {"generated_at": utcnow_iso(), "n_portfolios": doc["n_portfolios"], "n_candidates": len(cand), "n_watch": sum(r["tier"] == TIER_WATCH for r in rows),
+            "freeze_version": doc.get("freeze_version"), "plan": cfg.plan(), "portfolios": rows,
+            "n_pass": n_pass, "n_insufficient": sum(r["verdict"] == "INSUFFICIENT" for r in cand),
+            "placebo_edge": placebo_edge, "overall": overall, "disclaimer": NO_ORDER,
+            "note": "Shadow simulation; forward testing has no survivorship bias (real test)."}
 
 
 def format_report(rep: dict) -> str:
-    L = [f"FORWARD REPORT {rep['generated_at']}  portfolios={rep['n_portfolios']} pass={rep['n_pass']} "
-         f"insufficient={rep['n_insufficient']}", f"rule: {rep['plan']['decision_rule']}"]
+    L = [f"FORWARD REPORT {rep['generated_at']}  portfolios={rep['n_portfolios']} candidates={rep['n_candidates']} "
+         f"pass={rep['n_pass']} insufficient={rep['n_insufficient']} placebo_edge={rep['placebo_edge']} "
+         f"OVERALL={rep['overall']}", f"rule: {rep['plan']['decision_rule']}"]
     for r in rep["portfolios"]:
         if not r.get("days_live"):
-            L.append(f"- {r['id']}: no data yet [{r['verdict']}]")
+            L.append(f"- [{r['tier']}] {r['id']}: no data yet [{r['verdict']}]")
             continue
         sc, ex = r["scenarios"][PRIMARY], r["excess"]
-        L.append(f"- {r['id']}: days={r['days_live']} NAV={sc['nav']:.0f} ret={sc['total_return']:+.2%} "
+        L.append(f"- [{r['tier']}/{r.get('role')} v2={r.get('v2_verdict')}] {r['id']}: days={r['days_live']} NAV={sc['nav']:.0f} ret={sc['total_return']:+.2%} "
                  f"dd={sc['max_drawdown']:.1%} exEW={ex['ew_nav']['cum_excess']:+.2%} "
                  f"exXU100={ex['xu100_nav']['cum_excess']:+.2%}" if "xu100_nav" in ex else f"- {r['id']}")
         L.append(f"    exCash={ex['cash_nav']['cum_excess']:+.2%} hit={ex['ew_nav']['hit_rate_days']:.0%} "

@@ -71,6 +71,23 @@ class _MLBase:
             raise ValueError(f"invalid params for {self.name}: {params}")
         return self.wf(ctx, params).scores
 
+    # ---- forward (live shadow) path: score ONLY the newest row from a persisted per-block model cache ----
+    def _forward_inputs(self, ctx: DailyContext, params: dict):
+        """(WFConfig, primary scores or None, top_k, extra) - identical to what ``wf`` feeds walk_forward."""
+        return _cfg(self.kind, params, self._model_params(params), "top"), None, 30, {}
+
+    def forward_score_row(self, ctx: DailyContext, params: dict, models_dir, tier=None):
+        """(Series over ctx.symbols, info) = walk-forward score of the LAST context row (see model_loop.forward_cache).
+        Equal to ``score(ctx, params).iloc[-1]``; only retrains when a block is due, otherwise loads cached models."""
+        from bist_signal_bot.model_loop.forward_cache import ForwardModelCache
+        if not self.valid(params):
+            raise ValueError(f"invalid params for {self.name}: {params}")
+        cfg, primary, top_k, extra = self._forward_inputs(ctx, params)
+        c = ForwardModelCache(models_dir, ctx, cfg, primary, top_k, family=self.name, extra=extra,
+                              tiers=[tier] if tier else None)
+        row, info = c.score_last()
+        return pd.Series(row, index=ctx.symbols), info
+
 
 class MLXSLogit(_MLBase):
     """Walk-forward logistic regression on rank-normalised causal features; target = top tercile of excess return
@@ -122,6 +139,11 @@ class MLXSMeta(_MLBase):
         pp = PRIMARY_DEFAULT_PARAMS[name]
         return _cached(ctx, f"primary|{name}|{json.dumps(pp, sort_keys=True)}",
                        lambda: DAILY_FAMILIES[name].score(ctx, pp))
+
+    def _forward_inputs(self, ctx: DailyContext, params: dict):
+        return (_cfg(self.kind, params, self._model_params(params), "pos"), self.primary_scores(ctx, params),
+                int(params.get("K", 30)), {"primary": params["primary"],
+                                           "primary_params": PRIMARY_DEFAULT_PARAMS[params["primary"]]})
 
     def wf(self, ctx: DailyContext, params: dict, fit_final: bool = False):
         from bist_signal_bot.model_loop.daily_training import walk_forward

@@ -19,7 +19,7 @@ import pandas as pd
 from bist_signal_bot.forward import NO_ORDER
 from bist_signal_bot.forward.chain import HashChain
 from bist_signal_bot.forward.config import (PRIMARY, SCENARIOS, ForwardConfig, freeze_portfolios,
-                                            load_portfolios, utcnow_iso)
+                                            load_portfolios, portfolio_tier, utcnow_iso)
 
 SURVIVORSHIP = "Survivorship bias in the research universe; forward results are the unbiased test."
 
@@ -112,27 +112,58 @@ def ctx_from_panel(panel, bm, fx, settings, as_of=None):
                                    usdtry=fx["close"] if fx is not None and len(fx) else None)
 
 
-def compute_decision(ctx, family, params: dict, top_n: int, as_of, capital: float, score_cache: dict = None) -> dict:
-    """Top-N picks at the close of ``as_of`` using only data <= as_of (ctx must not hold later rows)."""
+def compute_decision(ctx, family, params: dict, top_n: int, as_of, capital: float, score_cache: dict = None,
+                     horizon: Optional[int] = None, models_dir=None, tier: Optional[str] = None,
+                     timings: Optional[dict] = None) -> dict:
+    """Top-N picks at the close of ``as_of`` using only data <= as_of (ctx must not hold later rows).
+
+    Families with ``needs_horizon`` (ML) get ``label_h = horizon``. ML families exposing ``forward_score_row`` score
+    ONLY the newest row from the persisted model cache (``models_dir``); other families score the full frame."""
     a = pd.Timestamp(as_of)
     if a not in ctx.index:
         raise ValueError(f"as_of {a.date()} not a session of the context")
-    key = (family.name, json.dumps(params, sort_keys=True))
-    if score_cache is not None and key in score_cache:
-        S = score_cache[key]
-    else:
-        S = family.score(ctx, params).reindex(index=ctx.index, columns=ctx.symbols)
-        if score_cache is not None:
-            score_cache[key] = S
+    eff = dict(params)
+    if getattr(family, "needs_horizon", False) and horizon is not None:
+        eff["label_h"] = int(horizon)
+    key = (family.name, json.dumps(eff, sort_keys=True))
     i = ctx.index.get_loc(a)
-    row, mask = S.iloc[i].to_numpy(float), ctx.universe_mask.iloc[i].to_numpy(bool)
+    model_info = None
+    t0 = time.time()
+    fwd = getattr(family, "forward_score_row", None)
+    if callable(fwd) and models_dir is not None:
+        if a != ctx.index[-1]:
+            raise ValueError("cached ML scoring is only defined for the newest session of the context")
+        rk = ("row",) + key
+        if score_cache is not None and rk in score_cache:
+            row, model_info = score_cache[rk]
+        else:
+            ser, model_info = fwd(ctx, eff, models_dir, tier)
+            row = ser.reindex(ctx.symbols).to_numpy(float)
+            if score_cache is not None:
+                score_cache[rk] = (row, model_info)
+        if timings is not None:
+            timings["ml_" + family.name] = timings.get("ml_" + family.name, 0.0) + time.time() - t0
+    else:
+        if score_cache is not None and key in score_cache:
+            S = score_cache[key]
+        else:
+            S = family.score(ctx, eff).reindex(index=ctx.index, columns=ctx.symbols)
+            if score_cache is not None:
+                score_cache[key] = S
+        row = S.iloc[i].to_numpy(float)
+        if timings is not None:
+            timings["rule_scoring"] = timings.get("rule_scoring", 0.0) + time.time() - t0
+    mask = ctx.universe_mask.iloc[i].to_numpy(bool)
     cand = np.flatnonzero(mask & np.isfinite(row))
     order = np.lexsort((cand, -row[cand]))
     pick = cand[order][:top_n]
     adv = ctx.adv.iloc[i].to_numpy(float)
     picks = [{"symbol": ctx.symbols[j], "rank": r, "score": float(row[j]), "price": float(ctx.close.iloc[i, j]),
               "adv": float(adv[j]), "order_value": capital / top_n} for r, j in enumerate(pick, 1)]
-    return {"as_of": str(a.date()), "picks": picks, "eligible_n": int(len(cand)), "n_symbols": len(ctx.symbols)}
+    out = {"as_of": str(a.date()), "picks": picks, "eligible_n": int(len(cand)), "n_symbols": len(ctx.symbols)}
+    if model_info is not None:
+        out["model"] = {**model_info, "tier": tier}
+    return out
 
 
 def is_due(prev_as_of: Optional[str], as_of, horizon: int, index: pd.DatetimeIndex) -> bool:
@@ -206,6 +237,13 @@ def ensure_chains(cfg: ForwardConfig, doc: dict):
                                  "portfolios_hash": doc["content_hash"], "n_portfolios": doc["n_portfolios"],
                                  "planned_start_date": str(_ist(None).date()), "survivorship": SURVIVORSHIP,
                                  "disclaimer": NO_ORDER})
+    for ch in (dec, out):  # a NEW frozen version (never silent): record it in both chains
+        known = {r.get("portfolios_hash") for r in ch.records() if r.get("type") in ("header", "freeze")}
+        if doc["content_hash"] not in known:
+            ch.append("freeze", {"portfolios_hash": doc["content_hash"], "freeze_version": doc.get("freeze_version"),
+                                 "previous_content_hash": doc.get("previous_content_hash"),
+                                 "n_portfolios": doc["n_portfolios"], "recorded_at": utcnow_iso(),
+                                 "disclaimer": NO_ORDER})
     return dec, out
 
 
@@ -230,7 +268,7 @@ def refresh_archive(cfg: ForwardConfig, archive, fetch_fn=None) -> dict:
 def run_daily(cfg: ForwardConfig, now: Optional[datetime] = None, fetch: bool = True, fetch_fn=None,
               archive=None, now_override: bool = False) -> dict:
     """One idempotent pass. Returns a summary dict (also appended to runs.jsonl)."""
-    from bist_signal_bot.edge_validation.families_daily import DAILY_FAMILIES
+    from bist_signal_bot.forward.placebo import all_families
     from bist_signal_bot.forward import health as H
     from bist_signal_bot.intraday.archive import BarArchive
     cfg.ensure()
@@ -263,14 +301,16 @@ def run_daily(cfg: ForwardConfig, now: Optional[datetime] = None, fetch: bool = 
                 fr = series_freshness(archive, exp, cfg.f("FORWARD_MIN_COVERAGE", 0.8))
                 res["freshness"] = fr
                 cut = pd.Timestamp(fr["panel_last"] or exp)
+                tb = time.time()
                 ctx_full = build_ctx(archive, cfg.settings, cut)
+                res.setdefault("timings_s", {})["load_ctx"] = round(time.time() - tb, 2)
                 L = ctx_full.index[-1]
                 gate_ok = (fr["panel_lag_sessions"] <= cfg.i("FORWARD_MAX_LAG_SESSIONS", 0)
                            and fr["coverage"] >= cfg.f("FORWARD_MIN_COVERAGE", 0.8))
                 res["as_of"] = str(L.date())
                 res["freshness_gate"] = "PASS" if gate_ok else "STALE"
                 _process(cfg, doc, ctx_full, L, gate_ok, ks, dec_ch, out_ch, res, now, now_override,
-                         DAILY_FAMILIES)
+                         all_families())
             finally:
                 if own_archive:
                     archive.close()
@@ -299,6 +339,9 @@ def _process(cfg, doc, ctx, L, gate_ok, ks, dec_ch, out_ch, res, now, now_overri
     for d in dec_recs:
         by_pf.setdefault(d["portfolio_id"], []).append(d)
     score_cache: dict = {}
+    tim = res.setdefault("timings_s", {})
+    t_proc = time.time()
+    _REPLAY_T[0] = 0.0
     for p in doc["portfolios"]:
         pid = p["id"]
         decs = sorted(by_pf.get(pid, []), key=lambda r: r["as_of"])
@@ -323,10 +366,13 @@ def _process(cfg, doc, ctx, L, gate_ok, ks, dec_ch, out_ch, res, now, now_overri
                 res["skipped"].append([pid, "not_due"])
             else:
                 try:
-                    body = compute_decision(ctx, fam, p["params"], p["top_n"], L, capital, score_cache)
+                    body = compute_decision(ctx, fam, p["params"], p["top_n"], L, capital, score_cache,
+                                            horizon=p["horizon"], models_dir=cfg.models_dir,
+                                            tier=portfolio_tier(p), timings=tim)
                     rec = out = dec_ch.append("decision", {
                         "portfolio_id": pid, "family": p["family"], "params": p["params"],
                         "horizon": p["horizon"], "top_n": p["top_n"], "decided_at": utcnow_iso(),
+                        "tier": portfolio_tier(p), "role": p.get("role"),
                         "now_override": bool(now_override),
                         "data_last_dates": {"panel": res["freshness"].get("panel_last"),
                                             "XU100": res["freshness"].get("XU100", {}).get("last"),
@@ -350,11 +396,22 @@ def _process(cfg, doc, ctx, L, gate_ok, ks, dec_ch, out_ch, res, now, now_overri
             if nav is not None:
                 nav.index.name = "date"
                 nav.to_csv(cfg.nav_dir / f"{pid}.csv", float_format="%.6f")
+    tim["replay_nav"] = round(_REPLAY_T[0], 2)
+    tim["process_total"] = round(time.time() - t_proc, 2)
+    for k in list(tim):
+        tim[k] = round(tim[k], 2)
+
+
+_REPLAY_T = [0.0]
 
 
 def _replay_safe(ctx, decs, entries, exits, cms, capital, blocked):
     from bist_signal_bot.forward.sim import replay
-    return replay(ctx, decs, entries, exits, cms, capital, blocked)
+    t0 = time.time()
+    try:
+        return replay(ctx, decs, entries, exits, cms, capital, blocked)
+    finally:
+        _REPLAY_T[0] += time.time() - t0
 
 
 def _mask_ok(fam, ctx, params, L, cache) -> bool:

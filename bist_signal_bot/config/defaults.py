@@ -821,6 +821,9 @@ DEFAULTS: dict[str, Any] = {
     "FORWARD_PORTFOLIOS": "",  # "" = auto-freeze best-by-ledger per family; else JSON list of {family, params, horizon, top_n}
     "FORWARD_HORIZONS": "5,10",  # horizons frozen per family at registration time
     "FORWARD_TOP_N": 8,
+    "FORWARD_TIER_OVERRIDES": '{"ml_xs_hgb|5": "watch"}',  # audit: ml_xs_hgb h5 CANDIDATE is a batch-order artefact (global pool n=26->310, global_dsr 0.17) -> tier watch
+    "FORWARD_N_CONTROLS": 6,  # control-tier rule/ML portfolios (best v2 excess Sharpe per family, not CANDIDATE)
+    "FORWARD_PLACEBO_SEED": 20261010,  # seed of the random-score placebo shadow portfolios (frozen in portfolios file)
     "FORWARD_CAPITAL_TRY": 100000.0,  # simulated NAV per portfolio (integer-share lots)
     "FORWARD_MAX_LAG_SESSIONS": 0,  # decision gate: newest bar may lag the expected session by at most N sessions
     "FORWARD_ALERT_STALE_SESSIONS": 1,  # monitoring alert when data lags more than N sessions
