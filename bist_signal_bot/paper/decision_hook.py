@@ -34,6 +34,10 @@ def decision_layer_enabled(settings: Any) -> bool:
     return bool(_cfg(settings, "RUNTIME_USE_DECISION_LAYER", False))
 
 
+def overlay_enabled(settings: Any) -> bool:
+    return bool(_cfg(settings, "RUNTIME_USE_DAILY_OVERLAY", False))
+
+
 def _bars_per_day(timeframe: str) -> float:
     tf = str(timeframe or "1d").strip().lower()
     try:
@@ -81,6 +85,7 @@ class PaperDecisionHook:
         self.clock = clock
         self._log_path = log_path
         self._layer = None
+        self._overlay = None
         self._fed: Optional[set] = None  # closed-trade ids already fed to the guard
 
     # ------------------------------------------------------------ wiring
@@ -204,6 +209,8 @@ class PaperDecisionHook:
                 if qty <= 0:
                     rec["reasons"].append("no_cash_or_legacy_qty_zero")
                     qty = 0.0
+            if qty > 0 and overlay_enabled(self.settings):
+                qty = self._apply_overlay(qty, state, now, rec)
             rec["allowed"] = qty > 0 and dec.allowed
             rec["qty"] = qty
             rec["notional"] = qty * ctx["price"]
@@ -215,6 +222,42 @@ class PaperDecisionHook:
             qty = 0.0
         self.log(rec)
         return qty, rec
+
+    @property
+    def overlay(self):
+        if self._overlay is None:
+            from pathlib import Path
+            from bist_signal_bot.risk.overlay_gate import OverlayGate
+            path = None
+            try:
+                if self._log_path is not None:
+                    path = Path(self._log_path).parent / "overlay_nav.json"
+                else:
+                    from bist_signal_bot.storage.paths import get_data_dir
+                    path = get_data_dir(self.settings) / "paper" / "overlay_nav.json"
+            except Exception:
+                path = None
+            self._overlay = OverlayGate(self.settings, path=path)
+        return self._overlay
+
+    def _apply_overlay(self, qty: float, state: Any, now: datetime, rec: dict) -> float:
+        """Entries only: scale qty by the daily overlay, rounded DOWN to whole shares, never up."""
+        try:
+            gate = self.overlay
+            gate.record(now, float(state.account.equity))
+            res = gate.current_scale(now)
+        except Exception as e:  # fail closed to the conservative scale
+            logger.error("overlay hook error for %s: %s", rec.get("symbol"), e)
+            from bist_signal_bot.risk.overlay_gate import ERROR_SCALE, OverlayGateResult
+            res = OverlayGateResult(ERROR_SCALE, [f"overlay_error:{e}"])
+        scale = max(0.0, min(1.0, float(res.scale)))
+        new_qty = float(min(qty, math.floor(qty * scale + 1e-9)))
+        rec["overlay"] = {**res.to_dict(), "qty_before": qty, "qty_after": new_qty}
+        if new_qty < qty:
+            rec["reasons"].append(f"overlay_scale:{scale:.3f}")
+            if new_qty <= 0:
+                rec["reasons"].append("overlay_scale")
+        return new_qty
 
     def log(self, rec: dict) -> None:
         try:

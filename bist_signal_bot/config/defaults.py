@@ -288,6 +288,7 @@ DEFAULTS: dict[str, Any] = {
     "RUNTIME_USE_ML_FILTER": False,       # enable once a model is trained/registered
     "SURVIVORSHIP_AGE_FULL_WEIGHT_DAYS": 750,  # edge_validation/survivorship.py: listing age (days) at which a symbol gets full weight in the age-weight sensitivity
     "RUNTIME_USE_DECISION_LAYER": False,  # consult risk guard (daily loss/kill switch) before PAPER_RUN; off = legacy behaviour
+    "RUNTIME_USE_DAILY_OVERLAY": False,  # paper entries: scale allowed qty by the daily drawdown/vol overlay (risk/overlay_gate.py); needs RUNTIME_USE_DECISION_LAYER; off = unchanged
     "RUNTIME_USE_REGIME_FILTER": True,
     "RUNTIME_RUN_DRIFT_CHECK": False,     # enable once a baseline model exists
     "RUNTIME_JOB_MAX_RETRIES": 2,
@@ -827,6 +828,9 @@ DEFAULTS: dict[str, Any] = {
     "FORWARD_N_CONTROLS": 6,  # control-tier rule/ML portfolios (best v2 excess Sharpe per family, not CANDIDATE)
     "FORWARD_PLACEBO_SEED": 20261010,  # seed of the random-score placebo shadow portfolios (frozen in portfolios file)
     "FORWARD_CAPITAL_TRY": 100000.0,  # simulated NAV per portfolio (integer-share lots)
+    "FORWARD_RECEIPT_TIERS": "watch",  # tiers that get a daily Turkish paper trade receipt (comma list)
+    "FORWARD_RECEIPT_PRICE_BUFFER": 0.005,  # limit/lot-plan price buffer so the whole-share plan never exceeds capital
+    "FORWARD_RECEIPT_AFTER_RUN": False,  # write receipts after every run-daily (CLI --receipt forces it)
     "FORWARD_MAX_LAG_SESSIONS": 0,  # decision gate: newest bar may lag the expected session by at most N sessions
     "FORWARD_ALERT_STALE_SESSIONS": 1,  # monitoring alert when data lags more than N sessions
     "FORWARD_SESSION_READY_TIME": "18:30",  # Istanbul time after which today's daily bar counts as complete (close 18:00 + 15 min delay)
@@ -836,6 +840,10 @@ DEFAULTS: dict[str, Any] = {
     "FORWARD_MIN_COVERAGE": 0.8,  # decision gate: share of symbols that must have the newest bar
     "FORWARD_MIN_BASKETS": 6,  # closed baskets needed for a verdict
     "FORWARD_MAX_DD_PASS": 0.20,
+    "FORWARD_DIV_MAX_FILL_GAP_BPS": 30.0,  # frozen invalidation: live open fill worse than model by more than this (bps)
+    "FORWARD_DIV_MAX_UNFILLED_PCT": 0.08,  # frozen invalidation: unfilled entries share
+    "FORWARD_DIV_SESSIONS": 120,  # frozen invalidation: sessions for the cumulative-excess<0 AND maxDD check
+    "FORWARD_DIV_MAX_DD": 0.35,  # frozen invalidation: max drawdown for that check (never re-tune)
     "FORWARD_DD_ALERT_LEVELS": "0.10,0.15,0.20",
     "FORWARD_RUN_HOUR": 19,  # scheduler: Europe/Istanbul, trading days
     "FORWARD_RUN_MINUTE": 30,

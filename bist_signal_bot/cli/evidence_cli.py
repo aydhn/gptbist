@@ -20,6 +20,10 @@ def build_parser() -> argparse.ArgumentParser:
         s.add_argument("--use-risk", action="store_true", help="enable trade/portfolio risk engines in paper")
         s.add_argument("--execution-mode", default="LATEST_CLOSE_RESEARCH",
                        choices=["LATEST_CLOSE_RESEARCH", "NEXT_OPEN_SIMULATED", "NEXT_CLOSE_SIMULATED"])
+    cd = sub.add_parser("candidate-divergence", help="Forward shadow portfolios: live vs backtest-replay divergence")
+    g = cd.add_mutually_exclusive_group()
+    g.add_argument("--portfolio", default=None, help="portfolio id")
+    g.add_argument("--all", action="store_true", help="all frozen portfolios (default)")
     return p
 
 
@@ -46,6 +50,16 @@ def _universe_and_window(settings, symbols, days):
 def main(argv=None) -> int:
     args = build_parser().parse_args(argv)
     settings = get_settings()
+    if args.evidence_command == "candidate-divergence":
+        from bist_signal_bot.evidence.candidate_divergence import run_all
+        from bist_signal_bot.forward.config import ForwardConfig
+        for r in run_all(ForwardConfig.from_settings(settings), args.portfolio):
+            print(f"{r['portfolio_id']}  {r['family']} h{r['horizon']} [{r['tier']}]  status={r['status']}  "
+                  f"live_days={r['live_days']}  breach={r['any_breach']}")
+            if r.get("md_path"):
+                print(f"  report: {r['md_path']}")
+        print("Gerçek emir gönderilmedi. " + NO_ORDER)
+        return 0
     frames, start, end = _universe_and_window(settings, [s.upper() for s in (args.symbols or [])], args.days)
     if not frames or start is None:
         print(f"No local daily data found. {NO_ORDER}")

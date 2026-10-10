@@ -16,6 +16,11 @@ def build_parser() -> argparse.ArgumentParser:
     r = sub.add_parser("run-daily", help="Refresh data, decide, settle, mark-to-market (idempotent)")
     r.add_argument("--no-fetch", action="store_true", help="skip the yfinance refresh (use the archive as is)")
     r.add_argument("--now", default=None, help="ISO Istanbul time override for the freshness gate (testing)")
+    r.add_argument("--receipt", action="store_true", help="after run-daily also write the Turkish paper receipts")
+    rc_ = sub.add_parser("receipt", help="Daily Turkish paper trade receipt + order-intent journal (paper only)")
+    rc_.add_argument("--date", default=None, help="as_of session YYYY-MM-DD (default: last run)")
+    rc_.add_argument("--portfolio", default=None, help="portfolio id (default: all configured tiers)")
+    rc_.add_argument("--no-journal", action="store_true", help="do not append intents to the journal")
     fz = sub.add_parser("freeze", help="Create data/forward/portfolios.json once (never re-selected)")
     fz.add_argument("--force-new-version", action="store_true",
                     help="write the NEXT frozen version (portfolios.v2.json ...); older versions stay untouched")
@@ -54,6 +59,15 @@ def main(argv: list[str]) -> int:
         for e in res["errors"][:5]:
             print(f"error: {e}")
         rc = 0 if res["status"] in ("OK", "STALE", "KILL_SWITCH") else 1
+        if args.receipt or cfg.i("FORWARD_RECEIPT_AFTER_RUN", 0):
+            from bist_signal_bot.forward import receipt as RC
+            for rec, path in RC.run_receipts(cfg):
+                print(f"receipt: {rec['portfolio_id']} {rec['status']} -> {path}")
+    elif cmd == "receipt":
+        from bist_signal_bot.forward import receipt as RC
+        for rec, path in RC.run_receipts(cfg, args.date, args.portfolio, journal=not args.no_journal):
+            print(RC.render_receipt_tr(rec))
+            print(f"saved: {path}")
     elif cmd == "report":
         rep = R.build_report(cfg)
         R.save_report(cfg, rep)
