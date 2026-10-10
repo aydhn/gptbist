@@ -214,7 +214,7 @@ def test_noise_and_placebo_rejected(noise_ctx, tmp_path):
     assert real.reports["placeholder_commission"].verdict != "CANDIDATE"
     for sd in (0, 1):
         pl = _run("xs_momentum", noise_ctx, tmp_path / f"p{sd}", placebo=True, seed=sd)
-        assert pl.ledger_family.endswith("__placebo")
+        assert pl.ledger_family.endswith("_xs_ew__placebo")
         assert pl.reports["placeholder_commission"].verdict == "REJECTED"
     # placebo on a panel WITH planted momentum is still rejected (scores are random)
     mc = DailyContext.from_panel(make_panel(2, momentum=0.004), min_adv=5e6)
@@ -226,7 +226,7 @@ def test_trials_all_recorded_including_failed(noise_ctx, tmp_path):
     led = TrialLedger(tmp_path / "t.sqlite")
     run_family_daily("xs_momentum", noise_ctx, (5, 10), {"lookback": [20, 250], "skip": [0]}, 8, led, _gate(),
                      save_report=False)
-    assert led.n_trials("xs_momentum_daily") == 4
+    assert led.n_trials("xs_momentum_daily_xs_ew") == 4
 
 
 # ---------------------------------------------------------------- CLI

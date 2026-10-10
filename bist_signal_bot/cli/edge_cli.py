@@ -34,6 +34,9 @@ def build_parser() -> argparse.ArgumentParser:
     d.add_argument("--symbols", nargs="+", default=None)
     d.add_argument("--max-symbols", type=int, default=None, help="smoke runs: most liquid N symbols only")
     d.add_argument("--seed", type=int, default=0)
+    d.add_argument("--benchmark", choices=["ew_universe", "cash", "none"], default="ew_universe",
+                   help="evaluated stream: excess over EW universe (default, primary), over cash, or absolute")
+    d.add_argument("--survivor-check", action="store_true", help="append survivorship sensitivity diagnostic")
     d.add_argument("--ledger-path", default=None,
                    help="trial ledger sqlite (default: the REAL ledger; use a temp path for smoke runs)")
     d.add_argument("--report-dir", default=None, help="report output dir (default data/edge_validation/reports)")
@@ -48,6 +51,8 @@ def build_parser() -> argparse.ArgumentParser:
     a.add_argument("--symbols", nargs="+", default=None)
     a.add_argument("--max-symbols", type=int, default=None)
     a.add_argument("--seed", type=int, default=0)
+    a.add_argument("--benchmark", choices=["ew_universe", "cash", "none"], default="ew_universe")
+    a.add_argument("--survivor-check", action="store_true", help="append survivorship sensitivity diagnostic")
     a.add_argument("--ledger-path", default=None)
     a.add_argument("--report-dir", default=None)
     sub.add_parser("list-daily-families", help="Registered daily cross-sectional families")
@@ -138,7 +143,8 @@ def _run_daily_all(args, settings) -> int:
                   f"{r.get('error') or r['verdicts']} ({r['seconds']}s)", flush=True)
 
         rows = run_all_daily(ctx, fams, horizons, top_n, ledger, scenarios=_scen(args), regime_scale=rs,
-                             settings=settings, report_dir=rdir, seed=args.seed, progress=_progress)
+                             settings=settings, report_dir=rdir, seed=args.seed, progress=_progress,
+                             benchmark=args.benchmark, survivor_check=args.survivor_check)
         n_sym = len(ctx.symbols)
     finally:
         archive.close()
@@ -146,7 +152,7 @@ def _run_daily_all(args, settings) -> int:
     ts = datetime.now().strftime("%Y%m%dT%H%M%S")
     rdir.mkdir(parents=True, exist_ok=True)
     meta = {"generated": ts, "n_symbols": n_sym, "horizons": horizons, "top_n": top_n,
-            "regime_scale": bool(args.regime_scale), "ledger_path": str(ledger.path), "no_order": NO_ORDER}
+            "regime_scale": bool(args.regime_scale), "benchmark": args.benchmark, "ledger_path": str(ledger.path), "no_order": NO_ORDER}
     jp = rdir / f"daily_all_{ts}.json"
     jp.write_text(json.dumps({"meta": meta, "rows": rows}, ensure_ascii=False, indent=2, default=str),
                   encoding="utf-8")
@@ -185,19 +191,29 @@ def _run_daily(args, settings) -> int:
         res = run_family_daily(args.family, ctx, horizons, grid, top_n,
                                TrialLedger(path=args.ledger_path, settings=settings),
                                scenarios=scen, placebo=args.placebo, seed=args.seed, settings=settings,
-                               regime_scale=rs, report_dir=args.report_dir)
+                               regime_scale=rs, report_dir=args.report_dir, benchmark=args.benchmark,
+                               survivor_check=args.survivor_check)
     finally:
         archive.close()
     r = res.report
+    print(f"benchmark={r['benchmark']} (candidacy stream = {'excess over EW universe' if r['benchmark'] == 'ew_universe' else r['benchmark']})")
     print(f"family={r['family']} symbols={r['n_symbols']} window={r['window']} trials_ledger={r['n_trials_ledger']}")
     print(f"selected={res.selected_trial_id}")
     for s, d in r["scenarios"].items():
         tag = "CANDIDACY" if s == r["candidacy_scenario"] else "upside-only"
         f = lambda x, n=3: "n/a" if x is None else f"{x:.{n}f}"  # noqa: E731
         print(f"[{s}] ({tag}) verdict={d['verdict']} failed={','.join(d['failed_criteria']) or '-'}")
+        print(f"   excessSR_vs_EW={f(d.get('excess_sharpe_vs_ew'), 2)} excessCAGR_vs_EW={f(d.get('excess_cagr_vs_ew'))} "
+              f"alpha_vs_cash_CAGR={f(d.get('alpha_vs_cash_cagr'))} cash_alpha_ok={d.get('cash_alpha_ok')}")
         print(f"   gate netSR={f(d.get('gate_net_sharpe_annual'), 2)} NAV netSR={f(d.get('nav_net_sharpe_annual'), 2)} "
               f"CAGR={f(d.get('net_cagr'))} maxDD={f(d.get('max_drawdown'))} "
               f"cost_drag_bps/yr={f(d.get('cost_drag_bps_per_year'), 0)} turnover/yr={f(d.get('turnover_two_way_per_year'), 1)}")
+    sv = r.get("survivor_robustness")
+    if sv and "full" in sv:
+        for k in ("full", "old_survivors", "ex_top_k_winners"):
+            x = sv.get(k, {})
+            print(f"   survivor[{k}] n_sym={x.get('n_symbols')} excessCAGR={x.get('excess_cagr_vs_ew')} "
+                  f"kept={x.get('excess_cagr_remaining_fraction')}")
     print(r["survivorship_warning"])
     if res.report_path:
         print(f"report: {res.report_path}")

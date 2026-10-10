@@ -44,12 +44,16 @@ def _row(item: dict, res, secs: float) -> dict:
             "nav_net_sharpe": prim.get("nav_net_sharpe_annual"), "net_cagr": prim.get("net_cagr"),
             "max_drawdown": prim.get("max_drawdown"), "alpha_vs_cash": (prim.get("nav_net") or {}).get("alpha_vs_cash_cagr"),  # CAGR minus cash CAGR
             "alpha_vs_cash_detail": prim.get("alpha_vs_cash"),
+            "benchmark": r.get("benchmark"),
+            "excess_sharpe_vs_ew": prim.get("excess_sharpe_vs_ew"), "excess_cagr_vs_ew": prim.get("excess_cagr_vs_ew"),
+            "alpha_vs_cash_cagr": prim.get("alpha_vs_cash_cagr"), "cash_alpha_ok": prim.get("cash_alpha_ok"),
+            "survivor_robustness": r.get("survivor_robustness"),
             "failed_criteria": prim.get("failed_criteria"), "report_path": res.report_path}
 
 
 def run_all_daily(ctx, families: Sequence[str], horizons: Sequence[int], top_n: int, ledger, *, scenarios=None,
                   regime_scale=None, settings=None, report_dir=None, seed: int = 0, param_grids: Optional[Dict] = None,
-                  progress=None) -> List[dict]:
+                  progress=None, benchmark: str = "ew_universe", survivor_check: bool = False) -> List[dict]:
     from bist_signal_bot.edge_validation.runner_daily import run_family_daily
     scenarios = tuple(scenarios or ("placeholder_commission", "zero_commission"))
     rows: List[dict] = []
@@ -58,7 +62,8 @@ def run_all_daily(ctx, families: Sequence[str], horizons: Sequence[int], top_n: 
         try:
             res = run_family_daily(item["family"], ctx, [item["horizon"]], (param_grids or {}).get(item["family"]),
                                    top_n, ledger, scenarios=scenarios, placebo=item["placebo"], seed=seed,
-                                   settings=settings, regime_scale=regime_scale, report_dir=report_dir)
+                                   settings=settings, regime_scale=regime_scale, report_dir=report_dir,
+                                   benchmark=benchmark, survivor_check=survivor_check)
             row = _row(item, res, time.perf_counter() - t0)
         except Exception as exc:  # recorded, batch continues
             row = {**item, "error": f"{type(exc).__name__}: {exc}", "seconds": round(time.perf_counter() - t0, 2),
@@ -81,7 +86,7 @@ def _vtag(v: Optional[dict]) -> str:
 
 def format_table(rows: List[dict]) -> str:
     head = (f"{'family':<26}{'h':>3} {'plc':<3} {'verdicts':<40}{'navSR':>7}{'CAGR':>8}{'maxDD':>8}{'aCash':>8}"
-            f"{'trials':>7}{'sec':>7}")
+            f"{'xsSRew':>8}{'xsCAGRew':>9}{'trials':>7}{'sec':>7}")
     out = [head, "-" * len(head)]
     for r in rows:
         if r.get("error"):
@@ -91,6 +96,7 @@ def format_table(rows: List[dict]) -> str:
         out.append(f"{r['family']:<26}{r['horizon']:>3} {'P' if r['placebo'] else '':<3} "
                    f"{_vtag(r['verdicts']):<40}{_f(r['nav_net_sharpe']):>7}{_f(r['net_cagr'], 3):>8}"
                    f"{_f(r['max_drawdown'], 3):>8}{_f(r['alpha_vs_cash'], 3):>8}"
+                   f"{_f(r.get('excess_sharpe_vs_ew')):>8}{_f(r.get('excess_cagr_vs_ew'), 3):>9}"
                    f"{str(r['n_trials_ledger']):>7}{r['seconds']:>7.1f}")
     return "\n".join(out)
 
@@ -101,11 +107,30 @@ def format_markdown(rows: List[dict], meta: dict) -> str:
          f"- ledger: {meta.get('ledger_path')}",
          "- note: cal_turn_of_month always runs at horizon 5; placebo once per family at the middle horizon (P rows).",
          f"- {NO_ORDER}", "",
-         "| family | h | placebo | verdicts | NAV net Sharpe | CAGR | maxDD | alpha vs cash | trials | error |",
-         "|---|---|---|---|---|---|---|---|---|---|"]
+         f"- benchmark mode: {meta.get('benchmark')} (candidacy = excess over EW universe AND positive NAV alpha vs cash)",
+         "| family | h | placebo | verdicts | NAV net Sharpe | CAGR | maxDD | alpha vs cash (CAGR) | "
+         "excess Sharpe vs EW | excess CAGR vs EW | cash alpha NAV ok | trials | error |",
+         "|---|---|---|---|---|---|---|---|---|---|---|---|---|"]
     for r in rows:
         L.append(f"| {r['family']} | {r['horizon']} | {'yes' if r['placebo'] else ''} | {_vtag(r.get('verdicts'))} | "
                  f"{_f(r.get('nav_net_sharpe'))} | {_f(r.get('net_cagr'), 3)} | {_f(r.get('max_drawdown'), 3)} | "
-                 f"{_f(r.get('alpha_vs_cash'), 3)} | {r.get('n_trials_ledger', '')} | {r.get('error') or ''} |")
+                 f"{_f(r.get('alpha_vs_cash'), 3)} | {_f(r.get('excess_sharpe_vs_ew'))} | "
+                 f"{_f(r.get('excess_cagr_vs_ew'), 3)} | {r.get('cash_alpha_ok')} | "
+                 f"{r.get('n_trials_ledger', '')} | {r.get('error') or ''} |")
+    sv = [r for r in rows if r.get("survivor_robustness")]
+    if sv:
+        L += ["", "## Survivorship sensitivity (diagnostic)", "",
+              "WARNING: universe = currently listed names (delisted missing); all results are optimistic.", "",
+              "| family | h | placebo | full xs CAGR vs EW | old survivors | frac kept | ex top-K winners | frac kept |",
+              "|---|---|---|---|---|---|---|---|"]
+        for r in sv:
+            s = r["survivor_robustness"]
+            if "full" not in s:
+                continue
+            o, t = s.get("old_survivors", {}), s.get("ex_top_k_winners", {})
+            L.append(f"| {r['family']} | {r['horizon']} | {'yes' if r['placebo'] else ''} | "
+                     f"{_f(s['full'].get('excess_cagr_vs_ew'), 3)} | {_f(o.get('excess_cagr_vs_ew'), 3)} | "
+                     f"{_f(o.get('excess_cagr_remaining_fraction'))} | {_f(t.get('excess_cagr_vs_ew'), 3)} | "
+                     f"{_f(t.get('excess_cagr_remaining_fraction'))} |")
     L += ["", "Survivorship: universe = currently active symbols; results are optimistic."]
     return "\n".join(L)

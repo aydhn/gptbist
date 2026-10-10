@@ -260,6 +260,80 @@ def build_portfolio_events(ctx: DailyContext, scores: pd.DataFrame, horizon: int
     return res
 
 
+BENCHMARK_MODES = ("ew_universe", "cash", "none")
+LEDGER_SUFFIX = {"ew_universe": "_xs_ew", "cash": "_xs_cash", "none": ""}
+
+
+def check_benchmark_mode(mode: str) -> str:
+    if mode not in BENCHMARK_MODES:
+        raise ValueError(f"benchmark must be in {BENCHMARK_MODES}, got {mode!r}")
+    return mode
+
+
+def benchmark_event_returns(ctx: DailyContext, events: pd.DataFrame, mode: str) -> np.ndarray:
+    """Per-event benchmark return over the IDENTICAL window t_entry(open) .. t1(close), on the slot capital.
+
+    * 'ew_universe': ``scale*ew_raw + (1-scale)*cash_hold`` where ``ew_raw`` is the mean of close[t1]/open[t_entry]-1
+      over the point-in-time eligible universe at t0 (``universe_mask[t0]``) restricted to names that could be bought
+      at the entry open and have an exit close (same tradability rule as the strategy). The same exposure scale as the
+      event is used, so with regime scaling the excess = scale*(raw - ew_raw).
+    * 'cash': cash compounded over the same window (calendar-day accrual of ``ctx.cash_ret``).
+    The benchmark leg is frictionless (no costs): conservative for the strategy.
+    """
+    check_benchmark_mode(mode)
+    out = np.zeros(len(events))
+    if mode == "none" or len(events) == 0:
+        return out
+    pos = pd.Series(np.arange(len(ctx.index)), index=ctx.index)
+    cash = ctx.cash_ret.to_numpy(float)
+    OP, CL, VOL = ctx.open.to_numpy(float), ctx.close.to_numpy(float), ctx.volume.to_numpy(float)
+    M = ctx.universe_mask.to_numpy(bool)
+    scale = events["exposure_scale"].to_numpy(float)
+    keys = events[["t0", "t_entry", "t1"]].astype("datetime64[ns]").to_numpy().astype("int64")
+    cache: Dict[tuple, tuple] = {}
+    for k in range(len(events)):
+        key = tuple(keys[k])
+        if key not in cache:
+            i, e, x = (int(pos[events["t0"].iloc[k]]), int(pos[events["t_entry"].iloc[k]]),
+                       int(pos[events["t1"].iloc[k]]))
+            cash_hold = float(np.prod(1.0 + cash[e:x + 1]) - 1.0)
+            ew = 0.0
+            if mode == "ew_universe":
+                with np.errstate(invalid="ignore", divide="ignore"):
+                    r = CL[x] / OP[e] - 1.0
+                ok = M[i] & np.isfinite(OP[e]) & (OP[e] > 0) & np.isfinite(CL[x]) & (VOL[e] > 0) & np.isfinite(r)
+                ew = float(r[ok].mean()) if ok.any() else 0.0
+            cache[key] = (ew, cash_hold)
+        ew, cash_hold = cache[key]
+        s = scale[k]
+        out[k] = (s * ew + (1.0 - s) * cash_hold) if mode == "ew_universe" else cash_hold
+    return out
+
+
+def apply_benchmark(ctx: DailyContext, events: pd.DataFrame, mode: str,
+                    bench_ctx: Optional[DailyContext] = None) -> pd.DataFrame:
+    """Events whose ``gross_ret`` is the EXCESS over the benchmark (costs are applied on top by the gate, on the
+    strategy leg only). Keeps ``abs_gross_ret`` and ``bench_ret``. mode 'none' returns the events unchanged."""
+    check_benchmark_mode(mode)
+    if mode == "none" or len(events) == 0:
+        return events
+    b = benchmark_event_returns(bench_ctx or ctx, events, mode)
+    ev = events.copy()
+    ev["abs_gross_ret"] = ev["gross_ret"]
+    ev["bench_ret"] = b
+    ev["gross_ret"] = ev["gross_ret"].to_numpy(float) - b
+    return ev
+
+
+def subset_ctx(ctx: DailyContext, symbols: Sequence[str]) -> DailyContext:
+    """Same sessions/params, restricted to ``symbols`` (diagnostics)."""
+    cols = [s for s in ctx.symbols if s in set(symbols)]
+    return DailyContext(ctx.open[cols], ctx.close[cols], ctx.volume[cols], ctx.benchmark, ctx.cash_ret,
+                        min_adv=ctx.min_adv, adv_window=ctx.adv_window, min_history=ctx.min_history,
+                        min_price=ctx.min_price, capital=ctx.capital, cash_rate=ctx.cash_rate,
+                        cash_withholding=ctx.cash_withholding, usdtry=ctx.usdtry)
+
+
 def nav_returns(ctx: DailyContext, events: pd.DataFrame, cost_model=None) -> pd.DataFrame:
     """Daily portfolio returns (all sessions) from non-overlapping baskets; remainder in cash at cash_ret.
 
