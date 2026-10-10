@@ -755,6 +755,23 @@ DEFAULTS: dict[str, Any] = {
     "DAILY_ADV_WINDOW": 20,
     "DAILY_MIN_HISTORY_DAYS": 60,  # min bars of history before a symbol is eligible
     "DAILY_MIN_PRICE_TRY": 1.0,
+    "DAILY_OVERLAY_MAX_DD": 0.2,  # psychological max drawdown (fraction); overlay is fully in cash at this DD. NOTE: DailyLossGuard uses RISK_MAX_DRAWDOWN_PCT (percent, intraday paper guard, 8.0) - set it >= 100*this for the multi-day book
+    "DAILY_OVERLAY_DERISK_START_FRAC": 0.5,  # start de-risking at this fraction of max DD
+    "DAILY_OVERLAY_FLOOR_FRAC": 0.75,  # exposure = DAILY_OVERLAY_FLOOR_EXPOSURE at this fraction of max DD
+    "DAILY_OVERLAY_FLOOR_EXPOSURE": 0.25,  # exposure at the floor fraction of max DD (linear to 0 at max DD)
+    "DAILY_OVERLAY_HYSTERESIS": 0.02,  # DD must improve by this (absolute) before exposure is raised again
+    "DAILY_OVERLAY_RECOVER_REBOUND_FRAC": 0.5,  # re-entry after halt: shadow strategy rebounded by this fraction of max DD from its trough
+    "DAILY_OVERLAY_MIN_HALT_DAYS": 10,  # min sessions in cash after a halt
+    "DAILY_OVERLAY_MAX_HALT_DAYS": 60,  # force re-entry (ramped) after this many sessions in cash
+    "DAILY_OVERLAY_RAMP_DAYS": 10,  # sessions to ramp exposure back after re-entry
+    "DAILY_OVERLAY_TARGET_VOL": 0.25,  # annualised vol target of the strategy sleeve (scale=min(1,target/realised))
+    "DAILY_OVERLAY_VOL_WINDOW": 20,  # sessions for realised vol (uses data up to t-1)
+    "DAILY_OVERLAY_MISSING_REGIME_SCALE": 1.0,  # regime scale before the first valid regime value (warm-up); same as runner regime_fill
+    "DAILY_PER_NAME_CAP": 0.25,  # max weight per name when sizing lots
+    "DAILY_MIN_ORDER_VALUE_TRY": 500.0,  # orders below this TRY value are dropped to cash (placeholder)
+    "REAL_REPORT_TARGET_REAL_CAGR": 0.75,  # user target: real (CPI-adjusted) CAGR
+    "REAL_REPORT_DEPOSIT_WITHHOLDING": 0.15,  # stopaj on deposit interest for the cash comparator in real reports (unverified placeholder)
+    "REAL_REPORT_CPI_LAG_MONTHS": 1,  # CPI publication lag (months) used in causal mode
     "EDGE_GATE_MIN_EVENTS": 300,
     "EDGE_GATE_MIN_ACTIVE_DAYS": 60,
     "EDGE_GATE_DSR_MIN": 0.95,
@@ -779,4 +796,23 @@ DEFAULTS: dict[str, Any] = {
     "MODEL_LOOP_MIN_CHALLENGER_IMPROVEMENT": 0.0,
     "MODEL_LOOP_FEATURE_ALERT_FRAC": 0.2,
     "MODEL_LOOP_AUTO_ENABLE_RUNTIME": True,
+    # --- forward shadow paper trading (forward/); simulation only, no real order is ever sent ---
+    "FORWARD_PORTFOLIOS": "",  # "" = auto-freeze best-by-ledger per family; else JSON list of {family, params, horizon, top_n}
+    "FORWARD_HORIZONS": "5,10",  # horizons frozen per family at registration time
+    "FORWARD_TOP_N": 8,
+    "FORWARD_CAPITAL_TRY": 100000.0,  # simulated NAV per portfolio (integer-share lots)
+    "FORWARD_MAX_LAG_SESSIONS": 0,  # decision gate: newest bar may lag the expected session by at most N sessions
+    "FORWARD_ALERT_STALE_SESSIONS": 1,  # monitoring alert when data lags more than N sessions
+    "FORWARD_SESSION_READY_TIME": "18:30",  # Istanbul time after which today's daily bar counts as complete (close 18:00 + 15 min delay)
+    "FORWARD_MIN_LIVE_DAYS": 60,  # no verdict before this many live trading days (INSUFFICIENT)
+    "FORWARD_MIN_CALENDAR_DAYS": 90,  # planned minimum observation window (3 months)
+    "FORWARD_MIN_TSTAT": 2.0,  # floor for the Newey-West excess t-stat (multiplicity-adjusted critical value is also required)
+    "FORWARD_MIN_COVERAGE": 0.8,  # decision gate: share of symbols that must have the newest bar
+    "FORWARD_MIN_BASKETS": 6,  # closed baskets needed for a verdict
+    "FORWARD_MAX_DD_PASS": 0.20,
+    "FORWARD_DD_ALERT_LEVELS": "0.10,0.15,0.20",
+    "FORWARD_RUN_HOUR": 19,  # scheduler: Europe/Istanbul, trading days
+    "FORWARD_RUN_MINUTE": 30,
+    "FORWARD_CATCHUP_HOUR": 8,
+    "FORWARD_CATCHUP_MINUTE": 30,
 }

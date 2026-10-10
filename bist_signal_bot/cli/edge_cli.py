@@ -55,6 +55,8 @@ def build_parser() -> argparse.ArgumentParser:
     a.add_argument("--survivor-check", action="store_true", help="append survivorship sensitivity diagnostic")
     a.add_argument("--ledger-path", default=None)
     a.add_argument("--report-dir", default=None)
+    from bist_signal_bot.cli import real_report_cli  # edge real-report
+    real_report_cli.add_parser(sub)
     sub.add_parser("list-daily-families", help="Registered daily cross-sectional families")
     rp = sub.add_parser("report", help="Show a saved gate report")
     rp.add_argument("--latest", action="store_true", default=True)
@@ -241,6 +243,9 @@ def main(argv: list[str]) -> int:
             print(f"{n}: grid={f.default_grid}")
         print(NO_ORDER)
         return 0
+    if args.edge_command == "real-report":
+        from bist_signal_bot.cli import real_report_cli
+        return real_report_cli.run(args, settings)
     if args.edge_command == "run-daily":
         return _run_daily(args, settings)
     if args.edge_command == "run-daily-all":

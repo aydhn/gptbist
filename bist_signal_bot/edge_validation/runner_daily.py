@@ -149,18 +149,20 @@ def run_family_daily(family, ctx: DailyContext, horizons: Sequence[int], param_g
                    f"{json.dumps(p, sort_keys=True)}|s{seed if placebo else 0}")
             info = {"trial_id": tid, "params": p, "horizon": int(h), "events": None, "n_events": 0, "error": None}
             try:
-                if pi not in score_cache:
-                    sc = fam.score(ctx, p).reindex(index=ctx.index, columns=ctx.symbols)
+                skey = (pi, int(h)) if getattr(fam, "needs_horizon", False) else pi  # ML families label at h
+                if skey not in score_cache:
+                    sp = {**p, "label_h": int(h)} if getattr(fam, "needs_horizon", False) else p
+                    sc = fam.score(ctx, sp).reindex(index=ctx.index, columns=ctx.symbols)
                     if placebo:  # random scores, same eligibility pattern as the real family
                         rng = np.random.default_rng([int(seed), pi])
                         S = sc.to_numpy(float)
                         sc = pd.DataFrame(np.where(np.isfinite(S), rng.random(S.shape), np.nan),
                                           index=sc.index, columns=sc.columns)
-                    score_cache[pi] = sc
+                    score_cache[skey] = sc
                     mfn = getattr(fam, "rebalance_mask", None)  # optional timing mask (calendar families)
-                    mask_cache[pi] = mfn(ctx, p) if callable(mfn) else None
-                pr = build_portfolio_events(ctx, score_cache[pi], int(h), top_n, regime_scale=regime_scale,
-                                            rebalance_mask=mask_cache[pi])
+                    mask_cache[skey] = mfn(ctx, p) if callable(mfn) else None
+                pr = build_portfolio_events(ctx, score_cache[skey], int(h), top_n, regime_scale=regime_scale,
+                                            rebalance_mask=mask_cache[skey])
                 ev0 = apply_benchmark(ctx, pr.events, benchmark)
                 info["events"], info["n_events"] = ev0, len(ev0)
             except Exception as exc:  # recorded as a failed trial, still counts toward N

@@ -284,4 +284,31 @@ class LocalSchedulerOrchestrator:
             )
         )
 
+        # 4-5. Forward shadow paper trading (simulation only): after the close + 15 min data delay, plus catch-up
+        for jid, nm, hk, mk, dh, dm in (
+                ("job_default_forward_daily", "Forward Shadow Daily", "FORWARD_RUN_HOUR", "FORWARD_RUN_MINUTE", 19, 30),
+                ("job_default_forward_catchup", "Forward Shadow Catch-up", "FORWARD_CATCHUP_HOUR",
+                 "FORWARD_CATCHUP_MINUTE", 8, 30)):
+            jobs.append(
+                ScheduledJob(
+                    job_id=jid,
+                    name=nm,
+                    job_type=ScheduledJobType.FORWARD_SHADOW_DAILY,
+                    status=ScheduledJobStatus.ENABLED,
+                    trigger=ScheduleTrigger(
+                        trigger_id="trg_" + jid[len("job_default_"):],
+                        trigger_type=ScheduleTriggerType.DAILY,
+                        timezone="Europe/Istanbul",
+                        hour=int(getattr(self.settings, hk, dh) if getattr(self.settings, hk, None) is not None else dh),
+                        minute=int(getattr(self.settings, mk, dm) if getattr(self.settings, mk, None) is not None else dm),
+                        only_trading_days=True,
+                    ),
+                    dry_run=False,
+                    cooldown_minutes=60,
+                    created_at=now,
+                    updated_at=now,
+                    metadata={"command": "python -m bist_signal_bot forward run-daily", "no_real_order": True},
+                )
+            )
+
         return jobs

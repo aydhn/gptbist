@@ -165,6 +165,23 @@ class ScheduledJobExecutor:
             raise ValueError("review_followup not provided")
         return {"action": "review_followups_checked"}
 
+    def _dispatch_forward_shadow_daily(self) -> dict[str, Any]:
+        from bist_signal_bot.forward.config import ForwardConfig
+        from bist_signal_bot.forward.shadow import run_daily
+        res = run_daily(ForwardConfig.from_settings(None))
+        if res["status"] == "FAILED":
+            raise RuntimeError("; ".join(res["errors"]) or "forward run failed")
+        return {"action": "forward_shadow_daily", "status": res["status"], "as_of": res.get("as_of"),
+                "decisions_written": res["decisions_written"], "note": "No real order sent."}
+
+    def _dispatch_forward_shadow_health(self) -> dict[str, Any]:
+        from bist_signal_bot.forward import health as H
+        from bist_signal_bot.forward.config import ForwardConfig
+        cfg = ForwardConfig.from_settings(None)
+        h = H.build_health(cfg)
+        H.save_health(cfg, h)
+        return {"action": "forward_shadow_health", "overall": h["overall"], "note": "No real order sent."}
+
     def dispatch(self, job: ScheduledJob, dry_run: bool = False) -> dict[str, Any]:
         """Dispatches the job to the appropriate engine. Returns metadata dict."""
 
@@ -174,6 +191,8 @@ class ScheduledJobExecutor:
 
         dispatch_map = {
             ScheduledJobType.HEALTHCHECK: self._dispatch_healthcheck,
+            ScheduledJobType.FORWARD_SHADOW_DAILY: self._dispatch_forward_shadow_daily,
+            ScheduledJobType.FORWARD_SHADOW_HEALTH: self._dispatch_forward_shadow_health,
             ScheduledJobType.RUNTIME_RUN_ONCE: self._dispatch_runtime_run_once,
             ScheduledJobType.DAILY_REPORT: self._dispatch_daily_report,
             ScheduledJobType.TELEGRAM_DIGEST: self._dispatch_telegram_digest,

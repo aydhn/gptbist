@@ -177,6 +177,9 @@ def run_cli(argv: list[str] | None = None) -> int:
     if first == 'daily':
         from bist_signal_bot.cli.daily_cli import main as daily_main
         return daily_main(args_list[1:])
+    if first == 'forward':
+        from bist_signal_bot.cli.forward_cli import main as forward_main
+        return forward_main(args_list[1:])
     if first == 'edge':
         from bist_signal_bot.cli.edge_cli import main as edge_main
         return edge_main(args_list[1:])
