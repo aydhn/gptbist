@@ -1,5 +1,8 @@
 # Windows Gorev Zamanlayici (schtasks) - SADECE DOKUMANTASYON
 
+> **ISTEGE BAGLI - KULLANICI ISTEMIYOR.** Kullanici otomatik calistirma istemiyor; tum gunluk/haftalik isler ELLE komutla
+> kosulur (bkz. daily_forward_runbook.md). Bu belge yalnizca referanstir; hicbir sey otomatiklestirilmez ve gorev olusturulmaz.
+
 Bu proje arastirma ve paper simulation amaclidir. Yatirim tavsiyesi degildir. Gercek emir gondermez. (No real order sent.)
 
 > UYARI: Bu belgedeki komutlar METIN olarak verilmistir; hicbiri otomatik calistirilmaz ve bu repo isletim sistemi

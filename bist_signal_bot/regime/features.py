@@ -221,4 +221,20 @@ class RegimeFeatureBuilder:
                 'regime_composite_score']
         df[cols] = df[cols].fillna(50.0)
 
-        return df
+        return self.add_global_macro_columns(df)
+
+    def add_global_macro_columns(self, df: pd.DataFrame, macro_series: dict | None = None) -> pd.DataFrame:
+        """Optional causal FRED-based global regime columns (REGIME_USE_GLOBAL_MACRO, default False).
+        Reads the local FRED cache only (no network). Missing data -> columns not added."""
+        from bist_signal_bot.regime.global_macro import build_global_macro_features, global_macro_enabled
+
+        if not global_macro_enabled(self.settings) or not isinstance(df.index, pd.DatetimeIndex):
+            return df
+        if macro_series is None:
+            from bist_signal_bot.data_sources.fred_client import load_cached_series
+            macro_series = load_cached_series(self.settings)
+        if not macro_series:
+            self.logger.warning("Global macro enabled but FRED cache is empty; run `macro fred-sync`")
+            return df
+        feats = build_global_macro_features(df.index, macro_series)
+        return df.join(feats)

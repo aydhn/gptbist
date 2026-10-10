@@ -22,6 +22,33 @@ def daily_cash_returns(index, annual_rate: float, withholding: float = 0.0, day_
     return pd.Series(gross * (1.0 - w), index=idx, name="cash_ret")
 
 
+def daily_cash_returns_series(index, rate_series: pd.Series, withholding: float = 0.0, day_count: int = 365,
+                              fallback_rate: Optional[float] = None) -> pd.Series:
+    """Like ``daily_cash_returns`` but with a TIME-VARYING annual rate (fraction), e.g. TLREF.
+
+    Causal: the rate accrued over (previous bar, bar] is the last one known at the previous bar (as-of, no look-
+    ahead). Bars before the series starts use ``fallback_rate``; without one they raise (never assumed)."""
+    idx = pd.DatetimeIndex(index)
+    if len(idx) == 0:
+        return pd.Series([], index=idx, dtype=float, name="cash_ret")
+    rs = pd.Series(rate_series).astype(float).dropna().sort_index()
+    rs.index = pd.DatetimeIndex(rs.index).normalize()
+    rs = rs[~rs.index.duplicated(keep="last")]
+    norm = idx.normalize()
+    days = np.concatenate([[1.0], np.diff(norm.values).astype("timedelta64[D]").astype(float)])
+    known_at = np.concatenate([[norm[0]], norm[:-1]]) if len(norm) > 1 else np.array([norm[0]])
+    pos = np.searchsorted(rs.index.values, pd.DatetimeIndex(known_at).values, side="right") - 1
+    vals = rs.to_numpy(float)
+    r = np.where(pos >= 0, vals[np.clip(pos, 0, None)], np.nan)
+    if np.isnan(r).any():
+        if fallback_rate is None:
+            raise ValueError("cash rate series does not cover the start of the index and no fallback rate given")
+        r = np.where(np.isnan(r), float(fallback_rate), r)
+    w = min(max(withholding, 0.0), 1.0)
+    gross = (1.0 + r) ** (days / day_count) - 1.0
+    return pd.Series(gross * (1.0 - w), index=idx, name="cash_ret")
+
+
 def cash_equity_curve(index, annual_rate: float, withholding: float = 0.0, day_count: int = 365,
                       initial: float = 1.0) -> pd.Series:
     r = daily_cash_returns(index, annual_rate, withholding, day_count)

@@ -14,7 +14,8 @@ parameters and retrain its own models. ~2100 Python modules, ~960 test files, ~5
 - **No real orders, ever.** No broker API connection, no order routing. `BROKER_ENABLED`,
   `REAL_ORDER_ENABLED`, `ENABLE_LIVE_TRADING` are `FORBIDDEN` in `config_registry/schema.py`.
   Every runtime result must carry "No real order sent." Trading is **paper/simulation only**.
-- **Local files only.** No cloud services, no paid APIs, no LLM calls, no HTML scraping.
+- **Free data only; local storage.** No cloud services, no paid APIs, no LLM calls. Allowed sources: yfinance, local files, free open-source/official APIs (TCMB EVDS3, FRED) and FREE third-party libraries (borsapy, isyatirimhisse, pykap...; user decision 2026-10-10, may rely on undocumented endpoints): pin the version, keep request rate low, cache locally, tag every dataset with source + fetch date, flag non-point-in-time data (e.g. current fundamentals) as look-ahead and keep it OUT of the gate. Do NOT write own HTML scrapers. Check library licences (borsapy = personal use).
+- **No automation.** No OS scheduler/auto-run; all daily/weekly jobs are run by hand (`docs/runbooks/scheduler_windows.md` is optional docs only).
 - Secrets live in `.env` (git-ignored). Never commit real secrets; `.env.example` is the template.
 
 ## Run commands

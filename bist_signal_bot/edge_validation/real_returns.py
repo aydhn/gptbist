@@ -20,7 +20,7 @@ from typing import Any, Dict, Optional
 import numpy as np
 import pandas as pd
 
-from bist_signal_bot.edge_validation.cash_benchmark import daily_cash_returns
+from bist_signal_bot.edge_validation.cash_benchmark import daily_cash_returns, daily_cash_returns_series
 
 logger = logging.getLogger(__name__)
 NO_ORDER = "No real order sent."
@@ -126,7 +126,7 @@ def build_real_report(returns: pd.Series, ctx, cpi: Optional[pd.Series] = None, 
         from bist_signal_bot.config.settings import get_settings
         settings = get_settings()
     target = float(_get(settings, "REAL_REPORT_TARGET_REAL_CAGR", 0.75))
-    stopaj = float(_get(settings, "REAL_REPORT_DEPOSIT_WITHHOLDING", 0.15))
+    stopaj = float(_get(settings, "REAL_REPORT_DEPOSIT_WITHHOLDING", 0.175))
     lag = int(_get(settings, "REAL_REPORT_CPI_LAG_MONTHS", 1)) if lag_months is None else int(lag_months)
     r = pd.Series(returns).astype(float).dropna()
     warns = []
@@ -166,8 +166,14 @@ def build_real_report(returns: pd.Series, ctx, cpi: Optional[pd.Series] = None, 
         add("xu100", ctx.benchmark.pct_change(fill_method=None))
     else:
         warns.append("XU100 missing in context: no index comparison.")
-    add("cash_gross", daily_cash_returns(idx, ctx.cash_rate, 0.0))
-    add("deposit_net_stopaj", daily_cash_returns(idx, ctx.cash_rate, stopaj))
+    # optional time-varying cash rate (ctx.cash_rate_series, e.g. TLREF); default = constant ctx.cash_rate
+    crs = getattr(ctx, "cash_rate_series", None)
+    if isinstance(crs, pd.Series) and len(crs):
+        cash_fn = lambda w: daily_cash_returns_series(idx, crs, w, fallback_rate=ctx.cash_rate)  # noqa: E731
+    else:
+        cash_fn = lambda w: daily_cash_returns(idx, ctx.cash_rate, w)  # noqa: E731
+    add("cash_gross", cash_fn(0.0))
+    add("deposit_net_stopaj", cash_fn(stopaj))
     comp["deposit_net_stopaj"]["withholding"] = stopaj
     if ctx.usdtry is not None:
         fx = ctx.usdtry.pct_change(fill_method=None).reindex(idx).fillna(0.0)

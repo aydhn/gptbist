@@ -21,6 +21,46 @@ class SecretRedactor:
     # Though 32+ chars pattern avoids this anyway. Just adding safety.
     SAFE_WORDS = {"ASELS", "THYAO", "GARAN", "AKBNK", "YKBNK"}
 
+    _NON_SECRET_WORDS = {
+        "true", "false", "yes", "no", "on", "off", "none", "null", "nil",
+        "[]", "{}", "()", "changeme", "change_me", "your_token_here",
+    }
+    # Whole-value placeholders only (no broad prefixes such as dummy.* / example.*).
+    _PLACEHOLDER_PATTERN = re.compile(
+        r'(?:<[^<>\s]*>|x{3,}|\.{3,}|1234567890?|123456789|987654321|0+|'
+        r'[a-z0-9_-]*_here|your[_-](?:token|key|secret|api[_-]?key|password)(?:[_-]?here)?|changeme|change[_-]me)',
+        re.IGNORECASE,
+    )
+    _MASKED_PATTERN = re.compile(r'\*{3,}|\*\*\*REDACTED\*\*\*')
+    _SHORT_NUMBER = re.compile(r'-?\d{1,6}(?:\.\d{1,6})?')
+    _CHAT_KEY = re.compile(r'chat', re.IGNORECASE)
+
+    @classmethod
+    def is_non_secret_value(cls, value: Any, key: str | None = None) -> bool:
+        """True for values that cannot be a secret: None/bool/typed number/empty containers/flags/placeholders.
+
+        Numbers are exempt only as Python bool/int/float TYPES (a long int under a chat key is still reported);
+        numeric STRINGS are exempt only when short (<=6 digits) and the key is not a chat id."""
+        chat = bool(key and cls._CHAT_KEY.search(str(key)))
+        if value is None or isinstance(value, bool):
+            return True
+        if isinstance(value, (int, float)):
+            if chat and isinstance(value, int) and len(str(abs(value))) > 6:
+                return False
+            return True
+        if isinstance(value, (list, tuple, set, dict)):
+            return all(cls.is_non_secret_value(v, key) for v in (value.values() if isinstance(value, dict) else value))
+        text = str(value).strip()
+        if not text or cls._MASKED_PATTERN.fullmatch(text):
+            return True
+        if "," in text and "://" not in text:
+            return all(cls.is_non_secret_value(p, key) for p in text.split(","))
+        if text.lower() in cls._NON_SECRET_WORDS or cls._PLACEHOLDER_PATTERN.fullmatch(text):
+            return True
+        if not chat and cls._SHORT_NUMBER.fullmatch(text):
+            return True
+        return False
+
     @classmethod
     def mask_value(cls, value: str, visible_prefix: int = 3, visible_suffix: int = 2) -> str:
         """Masks a secret string, revealing only prefix and suffix if possible."""
@@ -128,10 +168,7 @@ class SecretRedactor:
             return False
         elif isinstance(text_or_obj, dict):
             for k, v in text_or_obj.items():
-                if cls.is_secret_key(str(k)) and v is not None and str(v).strip() != "":
-                    # Allow already masked strings like ***
-                    if isinstance(v, str) and "***" in v:
-                        continue
+                if cls.is_secret_key(str(k)) and not cls.is_non_secret_value(v, k):
                     return True
                 if cls.contains_secret(v):
                     return True
@@ -148,7 +185,7 @@ class SecretRedactor:
         findings = []
         if isinstance(data, dict):
             for k, v in data.items():
-                if cls.is_secret_key(str(k)) and v is not None and str(v).strip() != "" and "***" not in str(v):
+                if cls.is_secret_key(str(k)) and not cls.is_non_secret_value(v, k):
                     classification = SecretClassification.TOKEN
                     if "password" in str(k).lower(): classification = SecretClassification.PASSWORD
                     elif "chat" in str(k).lower(): classification = SecretClassification.CHAT_ID

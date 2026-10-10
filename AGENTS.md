@@ -8,7 +8,7 @@ Operating guide for autonomous agents in this repository. The full reference is
 1. **Research / paper only. No real orders, ever.** No broker connection, no order routing, no
    live trading. `BROKER_ENABLED` / `REAL_ORDER_ENABLED` / `ENABLE_LIVE_TRADING` are FORBIDDEN.
    Every execution path must preserve the "No real order sent." invariant.
-2. **Local only.** No cloud APIs, paid services, LLM calls, or HTML scraping. Data and artifacts
+2. **Free data, local storage.** No cloud APIs, paid services, or LLM calls; free libraries/official APIs allowed (pin, rate-limit, cache, source+date tag, flag non-PIT data; no own HTML scrapers). No OS-scheduler automation. Data and artifacts
    stay on local disk.
 3. **Secrets stay in `.env`** (git-ignored). Never commit secrets; update `.env.example` (template).
 

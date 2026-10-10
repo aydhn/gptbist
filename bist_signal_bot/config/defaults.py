@@ -328,11 +328,11 @@ DEFAULTS: dict[str, Any] = {
     "PAPER_EXECUTION_MODE": "CLOSE",
     "PAPER_DEFAULT_ACCOUNT_ID": "default",
     "PAPER_INITIAL_CASH": 100000.0,
-    "PAPER_CASH_INTEREST_ANNUAL": 0.30,  # PLACEHOLDER idle-cash yield (TL deposit/repo); unverified - set to your real rate
-    "PAPER_CASH_INTEREST_WITHHOLDING": 0.15,  # PLACEHOLDER stopaj on interest; unverified
+    "PAPER_CASH_INTEREST_ANNUAL": 0.37,  # PLACEHOLDER idle-cash yield (TLREF/policy ~37%, 2026-10); user to confirm instrument
+    "PAPER_CASH_INTEREST_WITHHOLDING": 0.175,  # PLACEHOLDER stopaj (TL deposit up to 6m 17.5%); NOT verified vs Resmi Gazete 2025/66
     "BACKTEST_CASH_INTEREST_ENABLED": True,  # idle cash earns interest in backtests (same formula as paper ledger)
-    "BACKTEST_CASH_INTEREST_ANNUAL": 0.30,  # keep equal to PAPER_CASH_INTEREST_ANNUAL (placeholder, unverified)
-    "BACKTEST_CASH_INTEREST_WITHHOLDING": 0.15,  # keep equal to PAPER_CASH_INTEREST_WITHHOLDING (placeholder)
+    "BACKTEST_CASH_INTEREST_ANNUAL": 0.37,  # keep equal to PAPER_CASH_INTEREST_ANNUAL (placeholder, unverified)
+    "BACKTEST_CASH_INTEREST_WITHHOLDING": 0.175,  # keep equal to PAPER_CASH_INTEREST_WITHHOLDING (placeholder)
     "ERROR_NOTIFICATION_MIN_LEVEL": "ERROR",
     "SECURITY_REDACT_AUDIT": True,  # redact secrets from audit metadata (security)
     "ENABLE_PERFORMANCE_PROFILING": False,  # opt-in; profiler is heavy and off by default
@@ -740,13 +740,15 @@ DEFAULTS: dict[str, Any] = {
     "INTRADAY_MAX_LAG_BARS": 2,
     "INTRADAY_COMMISSION_BPS": 5.0,
     "INTRADAY_BSMV_RATE": 0.05,
-    "INTRADAY_EXCHANGE_FEE_BPS": 0.3,
+    "INTRADAY_EXCHANGE_FEE_BPS": 0.29,
     "INTRADAY_SLIPPAGE_IMPACT_COEF": 0.1,
     "INTRADAY_MAX_PARTICIPATION": 0.05,
+    "DAILY_MEASURE_RULE_ENABLED": False,  # tedbirli hisse (brut takas/tek fiyat/emir paketi) kurali: giris dolmaz, cikis ertelenir; data/measures/measures.csv gerekir
+    "REGIME_USE_GLOBAL_MACRO": False,  # add causal FRED global-macro columns (VIX/DGS10/USD/HY) to regime features; local cache only
     "CASH_BENCHMARK_ANNUAL_RATE": 0.37,  # policy rate proxy (TCMB 37%, 2026-09); separate from PAPER_CASH_INTEREST_ANNUAL deposit placeholder
-    "CASH_BENCHMARK_WITHHOLDING": 0.0,  # benchmark gross by default; set 0.15 to see after-stopaj (unverified)
+    "CASH_BENCHMARK_WITHHOLDING": 0.0,  # benchmark gross by default; set 0.175 to see after-stopaj (unverified)
     "DAILY_COST_COMMISSION_PLACEHOLDER_BPS": 5.0,  # placeholder-commission scenario per leg; zero_commission scenario uses 0
-    "DAILY_COST_EXCHANGE_FEE_BPS": 0.3,  # exchange+takas share per leg (placeholder, verify)
+    "DAILY_COST_EXCHANGE_FEE_BPS": 0.29,  # borsa payi 0.000025 + takas payi 0.000004 per leg (GCM tariff, BSMV excluded; confirm with own broker)
     "DAILY_COST_BSMV_RATE": 0.05,  # BSMV on commission only (0 cost when commission is 0)
     "DAILY_COST_IMPACT_COEF": 0.5,  # sqrt impact coef for daily events: bps = coef*100*sqrt(order/ADV)
     "DAILY_COST_MAX_PARTICIPATION": 0.05,  # max share of ADV per order; above -> NaN (disallowed)
@@ -782,7 +784,7 @@ DEFAULTS: dict[str, Any] = {
     "DAILY_PER_NAME_CAP": 0.25,  # max weight per name when sizing lots
     "DAILY_MIN_ORDER_VALUE_TRY": 500.0,  # orders below this TRY value are dropped to cash (placeholder)
     "REAL_REPORT_TARGET_REAL_CAGR": 0.75,  # user target: real (CPI-adjusted) CAGR
-    "REAL_REPORT_DEPOSIT_WITHHOLDING": 0.15,  # stopaj on deposit interest for the cash comparator in real reports (unverified placeholder)
+    "REAL_REPORT_DEPOSIT_WITHHOLDING": 0.175,  # stopaj on deposit interest for the cash comparator in real reports (unverified placeholder)
     "REAL_REPORT_CPI_LAG_MONTHS": 1,  # CPI publication lag (months) used in causal mode
     # Robustness layer (v2 candidacy; stacked ON TOP of the gate, tightening only). Fixed a priori, NOT tuned to results.
     "EDGE_ROBUST_TRIM_EVENT_FRAC": 0.05,  # (a) drop the best 5% of events by net excess return: mean must stay > 0

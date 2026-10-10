@@ -65,7 +65,7 @@ class CostBreakdown:
 
 class IntradayCostModel:
     def __init__(self, commission_bps: float = 5.0, bsmv_rate: float = 0.05,
-                 exchange_fee_bps: float = 0.3, impact_coef: float = 0.1,
+                 exchange_fee_bps: float = 0.29, impact_coef: float = 0.1,
                  max_participation: float = 0.05, allow_short: bool = False,
                  spread_proxy_bps: float = 0.0):
         self.commission_bps = commission_bps

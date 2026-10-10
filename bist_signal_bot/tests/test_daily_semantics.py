@@ -62,7 +62,7 @@ def test_price_limit_schedule_is_date_dependent_and_backward_compatible():
     assert S.daily_price_limits(15.37, False) == (13.83, 16.91)  # legacy positional tick_table
     sched = S.parse_price_limit_schedule("1900-01-01:0.10")
     assert S.daily_price_limits(10.0, date(2019, 5, 3), schedule=sched) == (9.0, 11.0)
-    assert S.PRICE_LIMIT_TRANSITION_DATE == date(2020, 3, 1)  # documented as unverified in sessions.py
+    assert S.PRICE_LIMIT_TRANSITION_DATE == date(2020, 3, 13)  # verified vs official BIST notice (2020-03-13)
 
 
 def test_vectorised_limits_match_scalar():

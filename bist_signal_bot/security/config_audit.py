@@ -42,6 +42,12 @@ class ConfigSecurityAuditor:
 
         # 2. Secret Hygiene Check
         secret_findings = SecretHygieneScanner.scan_settings(settings)
+        # Tracked template (.env.example) / DEFAULTS must not contain filled-in secrets.
+        seen = {f.key for f in secret_findings}
+        for f in SecretHygieneScanner.scan_template_file():
+            if f.key not in seen:
+                secret_findings.append(f)
+                seen.add(f.key)
         if secret_findings:
             checks.append(SecurityCheckResult(
                 check_name="secret_hygiene",

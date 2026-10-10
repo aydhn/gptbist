@@ -53,6 +53,10 @@ class DailySemantics:
     health_tol: float = 0.005
     spike_pct: float = 0.08
     schedule: Optional[tuple] = None  # None -> sessions.PRICE_LIMIT_SCHEDULE
+    # VBTS measure rule (default OFF => results identical to before): entries are NOT fillable and exits are deferred
+    # while GROSS_SETTLEMENT / SINGLE_PRICE / ORDER_PACKAGE is active (table: data/measures/measures.csv).
+    measure_rule: bool = False
+    measure_dir: Optional[str] = None  # None -> <data dir>/measures
 
     def __post_init__(self):
         if self.entry_policy not in ENTRY_POLICIES:
@@ -68,11 +72,13 @@ class DailySemantics:
         if bool(_g(settings, "DAILY_LEGACY_SEMANTICS", False)):
             return cls.legacy_semantics()
         sched = _g(settings, "PRICE_LIMIT_SCHEDULE", "")
+        mr = _g(settings, "DAILY_MEASURE_RULE_ENABLED", False)
+        mr = mr is True or (isinstance(mr, str) and mr.strip().lower() in ("1", "true", "yes", "on"))
         return cls(False, str(_g(settings, "DAILY_ENTRY_FILL_POLICY", "cash")),
                    bool(_g(settings, "DAILY_EXIT_LOCK_DEFER", True)), bool(_g(settings, "DAILY_NAN_EXIT_CARRY", True)),
                    bool(_g(settings, "DAILY_BAR_HEALTH", True)), float(_g(settings, "DAILY_BAR_HEALTH_TOL", 0.005)),
                    float(_g(settings, "DAILY_BAR_SPIKE_PCT", 0.08)),
-                   _ses.parse_price_limit_schedule(sched) if sched else None)
+                   _ses.parse_price_limit_schedule(sched) if sched else None, mr)
 
 
 # ----------------------------------------------------------------------------- limit matrices
@@ -167,6 +173,47 @@ class Fills:
     entry_ok: np.ndarray      # base_ok and not limit-up open / locked bar (per semantics)
     exit_next: np.ndarray     # exit row for a nominal exit at row x (>= x), -1 if never
     locked_down: np.ndarray
+    measure_blocked: Optional[np.ndarray] = None  # date x symbol, True = VBTS measure active (reason 'measure')
+    measure_report: Optional[dict] = None
+
+
+def _measure_symbol(sym) -> str:
+    s = str(sym).strip().upper()
+    for suf in (".IS", ".E"):
+        if s.endswith(suf):
+            s = s[: -len(suf)]
+    return s
+
+
+def measure_blocked_matrix(ctx):
+    """(bool matrix date x symbol, report). Rule inactive -> all False. A missing/empty table or dates outside the
+    announcement history (2018-02+) are NOT restricted by this rule and the report says so."""
+    sem: DailySemantics = ctx.semantics
+    shape = (len(ctx.index), len(ctx.symbols))
+    rep = {"enabled": bool(sem.measure_rule and not sem.legacy), "applied": False, "reason": "disabled"}
+    if not rep["enabled"]:
+        return np.zeros(shape, dtype=bool), rep
+    from bist_signal_bot.measures.store import MeasureStore
+    store = MeasureStore(directory=sem.measure_dir)
+    cov = store.coverage() if store.exists() else {"rows": 0}
+    if not cov["rows"]:
+        rep["reason"] = "no_table"
+        return np.zeros(shape, dtype=bool), rep
+    # measures.csv uses bare symbols (THYAO); ctx may carry Yahoo style (THYAO.IS) -> normalise for the lookup only
+    base = [_measure_symbol(x) for x in ctx.symbols]
+    mask = store.restricted_mask(base, ctx.index).to_numpy(bool)
+    lo, hi = pd.Timestamp(cov["oldest_publish"]), pd.Timestamp(cov["newest_publish"])
+    inside = (ctx.index >= lo) & (ctx.index <= hi)
+    rep.update(applied=True, reason="ok", oldest_publish=cov["oldest_publish"], newest_publish=cov["newest_publish"],
+               share_dates_covered=float(inside.mean()) if len(inside) else 0.0,
+               n_blocked_cells=int(mask.sum()))
+    if not inside.all():
+        rep["warning"] = "some sessions are outside announcement coverage; the rule is not applied there"
+    return mask, rep
+
+
+def measure_report(ctx) -> dict:
+    return dict(get_fills(ctx).measure_report or measure_blocked_matrix(ctx)[1])
 
 
 def get_fills(ctx) -> Fills:
@@ -191,6 +238,10 @@ def get_fills(ctx) -> Fills:
     entry_ok = base if (sem.legacy or sem.entry_policy == "off") else (base & ~up_open & ~flat)
     good = np.isfinite(CL)
     pick = good & ~locked_dn if sem.exit_lock_defer else good
+    meas, mrep = measure_blocked_matrix(ctx)
+    if mrep["applied"]:
+        entry_ok = entry_ok & ~meas  # reason 'measure': entry not fillable under gross settlement / single price
+        pick = pick & ~meas          # exit deferred to the first session without an active measure
     nxt = np.full(m, -1, dtype=np.int64)
     last_fin = np.full(m, -1, dtype=np.int64)
     ex = np.full((n, m), -1, dtype=np.int64)
@@ -201,7 +252,7 @@ def get_fills(ctx) -> Fills:
         if not sem.nan_exit_carry:
             e_ = np.where(good[y], e_, -1)
         ex[y] = e_
-    f = Fills(base, entry_ok, ex, locked_dn)
+    f = Fills(base, entry_ok, ex, locked_dn, meas if mrep["applied"] else None, mrep)
     try:
         ctx._fills_cache = f
     except AttributeError:  # pragma: no cover

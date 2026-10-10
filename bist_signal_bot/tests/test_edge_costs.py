@@ -18,11 +18,11 @@ def test_cost_hand_computed():
     b = m.breakdown(50.0, 10_000, 1_000_000, "buy")
     assert b.commission_bps == 5.0
     assert b.bsmv_bps == pytest.approx(0.25)          # BSMV on commission only
-    assert b.exchange_bps == 0.3
+    assert b.exchange_bps == 0.29
     assert b.half_spread_bps == pytest.approx(5.0)    # 0.5*0.05/50*1e4
     assert b.impact_bps == pytest.approx(1.0)         # 0.1*sqrt(0.01)*100
-    assert m.cost_bps(50.0, 10_000, 1_000_000) == pytest.approx(11.55)
-    assert m.round_trip_bps(50.0, 10_000, 1_000_000) == pytest.approx(23.1)
+    assert m.cost_bps(50.0, 10_000, 1_000_000) == pytest.approx(11.54)
+    assert m.round_trip_bps(50.0, 10_000, 1_000_000) == pytest.approx(23.08)
 
 
 def test_participation_cap_and_short():
@@ -39,7 +39,7 @@ def test_apply_costs_vectorized():
     g = pd.Series([0.01, 0.02, 0.03], index=list("abc"))
     net = m.apply_costs(g, 50.0, [10_000, 10_000, 100_000], 1_000_000)
     assert isinstance(net, pd.Series)
-    assert net["a"] == pytest.approx(0.01 - 23.1e-4)
+    assert net["a"] == pytest.approx(0.01 - 23.08e-4)
     assert math.isnan(net["c"])
 
 

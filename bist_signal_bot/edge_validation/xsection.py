@@ -18,7 +18,7 @@ from typing import Dict, List, Optional, Protocol, Sequence, runtime_checkable
 import numpy as np
 import pandas as pd
 
-from bist_signal_bot.edge_validation.cash_benchmark import daily_cash_returns
+from bist_signal_bot.edge_validation.cash_benchmark import daily_cash_returns, daily_cash_returns_series
 from bist_signal_bot.edge_validation.fills_daily import (DailySemantics, bar_health, limit_matrices, limit_pct_series,
                                                          resolve_window)
 
@@ -55,7 +55,8 @@ class DailyContext:
                  min_adv: float = 5e6, adv_window: int = 20, min_history: int = 60, min_price: float = 1.0,
                  capital: float = 100_000.0, cash_rate: float = 0.37, cash_withholding: float = 0.0,
                  usdtry: Optional[pd.Series] = None, high: Optional[pd.DataFrame] = None,
-                 low: Optional[pd.DataFrame] = None, semantics: Optional[DailySemantics] = None):
+                 low: Optional[pd.DataFrame] = None, semantics: Optional[DailySemantics] = None,
+                 cash_rate_series: Optional[pd.Series] = None):
         idx = close.index
         self.semantics: DailySemantics = semantics or DailySemantics()
         self.has_hl = high is not None and low is not None
@@ -72,8 +73,15 @@ class DailyContext:
         self.min_adv, self.adv_window, self.min_history = float(min_adv), int(adv_window), int(min_history)
         self.min_price, self.capital = float(min_price), float(capital)
         self.cash_rate, self.cash_withholding = float(cash_rate), float(cash_withholding)
-        self.cash_ret = (cash_ret.reindex(self.index).fillna(0.0) if cash_ret is not None else
-                         daily_cash_returns(self.index, self.cash_rate, self.cash_withholding))
+        # optional time-varying annual rate (e.g. TLREF); default = constant ``cash_rate`` (unchanged behaviour)
+        self.cash_rate_series = cash_rate_series
+        if cash_ret is not None:
+            self.cash_ret = cash_ret.reindex(self.index).fillna(0.0)
+        elif cash_rate_series is not None and len(cash_rate_series):
+            self.cash_ret = daily_cash_returns_series(self.index, cash_rate_series, self.cash_withholding,
+                                                      fallback_rate=self.cash_rate)
+        else:
+            self.cash_ret = daily_cash_returns(self.index, self.cash_rate, self.cash_withholding)
         self._adv = self._mask = self._limits = self._healthy = None
 
     @staticmethod

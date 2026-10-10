@@ -29,7 +29,7 @@ SCENARIOS = ("zero_commission", "placeholder_commission")
 
 
 class DailyCostModel:
-    def __init__(self, commission_bps: float = 0.0, bsmv_rate: float = 0.05, exchange_fee_bps: float = 0.3,
+    def __init__(self, commission_bps: float = 0.0, bsmv_rate: float = 0.05, exchange_fee_bps: float = 0.29,
                  impact_coef: float = 0.5, max_participation: float = 0.05, spread_proxy_bps: float = 0.0,
                  cash_annual_rate: float = 0.37, cash_withholding: float = 0.0, scenario: str = "custom",
                  spread_base_bps: float = 0.0, spread_k_bps: float = 0.0):

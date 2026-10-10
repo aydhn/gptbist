@@ -36,11 +36,12 @@ MIDDAY_SINGLE_PRICE = (time(13, 0), time(14, 0))  # unverified; opt-in only
 PRICE_LIMIT_PCT = Decimal("0.10")  # CURRENT limit (used when no date is given)
 
 # Date-dependent limit schedule: ((first_session_date, limit_pct), ...) ascending.
-# UNVERIFIED, confirm with Borsa Istanbul: a forensic audit of the daily framework reports a +-20% band before
-# March 2020 and +-10% afterwards. The exact transition date (assumed 2020-03-01 here) and the pre-2020 band are NOT
-# confirmed from an official source; override with settings key PRICE_LIMIT_SCHEDULE
-# ("1900-01-01:0.20,2020-03-01:0.10") or use ``DAILY_LEGACY_SEMANTICS`` to reproduce the old flat 10% behaviour.
-PRICE_LIMIT_TRANSITION_DATE = date(2020, 3, 1)  # UNVERIFIED
+# Transition date VERIFIED (2026-10-10) from the official Borsa Istanbul 'Daily Price Limits' notice
+# (borsaistanbul.com/files/2020-20-Daily-Price-Limits.pdf): Star/Main market share band cut to +-10% effective
+# 13/03/2020 (announced 12/03/2020). The pre-2020 band (+-20% here; some sources say 15% for some share groups) is
+# still UNVERIFIED; override with settings key PRICE_LIMIT_SCHEDULE
+# ("1900-01-01:0.20,2020-03-13:0.10") or use ``DAILY_LEGACY_SEMANTICS`` to reproduce the old flat 10% behaviour.
+PRICE_LIMIT_TRANSITION_DATE = date(2020, 3, 13)  # verified; pre-2020 band unverified
 PRICE_LIMIT_SCHEDULE = ((date(1900, 1, 1), Decimal("0.20")), (PRICE_LIMIT_TRANSITION_DATE, Decimal("0.10")))
 
 # (upper bound exclusive, tick)
