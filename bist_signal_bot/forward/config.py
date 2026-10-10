@@ -152,7 +152,8 @@ def _content_hash(doc: dict) -> str:
 
 def load_v2_verdicts(reports_dir) -> dict:
     """{(family, horizon): {verdict, robust, selected_params, report}} from the NEWEST v2 ``daily_all_*.json`` that
-    contains the (family, horizon). v1 (non-robust / old-suffix) reports are ignored. Placebo rows are skipped."""
+    contains the (family, horizon). v1 (non-robust / old-suffix) reports are ignored, as are smoke reports and
+    reports without a global-multiplicity ``snapshot_rowid``. Placebo rows are skipped."""
     from bist_signal_bot.edge_validation.xsection import LEDGER_SUFFIX_V2
     out: dict = {}
     d = Path(reports_dir) if reports_dir else None
@@ -165,6 +166,8 @@ def load_v2_verdicts(reports_dir) -> dict:
             continue
         meta = doc.get("meta") or {}
         if not meta.get("robust") or meta.get("ledger_suffix") != LEDGER_SUFFIX_V2:
+            continue
+        if meta.get("smoke") or meta.get("snapshot_rowid") is None:  # smoke run / batch never finalized by a snapshot
             continue
         for r in doc.get("rows") or []:
             if r.get("placebo") or r.get("error"):

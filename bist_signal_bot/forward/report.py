@@ -8,6 +8,7 @@ from statistics import NormalDist
 import numpy as np
 import pandas as pd
 
+from bist_signal_bot.edge_validation.survivorship import HONESTY_STATEMENT
 from bist_signal_bot.forward import NO_ORDER
 from bist_signal_bot.forward.chain import HashChain
 from bist_signal_bot.forward.config import (PRIMARY, ROLE_PLACEBO, SCENARIOS, TIER_CANDIDATE, TIER_WATCH, ForwardConfig,
@@ -169,6 +170,8 @@ def build_report(cfg: ForwardConfig) -> dict:
             "freeze_version": doc.get("freeze_version"), "plan": cfg.plan(), "portfolios": rows,
             "n_pass": n_pass, "n_insufficient": sum(r["verdict"] == "INSUFFICIENT" for r in cand),
             "placebo_edge": placebo_edge, "overall": overall, "disclaimer": NO_ORDER,
+            "survivorship_header": ("İYİMSERLİK SINIRI: " + HONESTY_STATEMENT + ". Applies to the backtest evidence "
+                                    "that selected these portfolios; forward returns themselves are out-of-sample."),
             "note": "Shadow simulation; forward testing has no survivorship bias (real test)."}
 
 
@@ -187,6 +190,7 @@ def format_report(rep: dict) -> str:
         L.append(f"    exCash={ex['cash_nav']['cum_excess']:+.2%} hit={ex['ew_nav']['hit_rate_days']:.0%} "
                  f"NW t={r['nw_excess_vs_ew']['t']:.2f} baskets={r['baskets_closed']} [{r['verdict']}] "
                  f"{r.get('reason', '')}")
+    L.append(rep.get("survivorship_header") or "")
     L.append(NO_ORDER)
     return "\n".join(L)
 

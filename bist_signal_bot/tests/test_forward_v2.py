@@ -47,9 +47,22 @@ def _ledger(path):
     con.close()
 
 
-def _report(path, name, rows, robust=True, suffix=LEDGER_SUFFIX_V2):
+def _report(path, name, rows, robust=True, suffix=LEDGER_SUFFIX_V2, snapshot_rowid=1, smoke=False):
     path.mkdir(parents=True, exist_ok=True)
-    (path / name).write_text(json.dumps({"meta": {"robust": robust, "ledger_suffix": suffix, "top_n": 8}, "rows": rows}))
+    meta = {"robust": robust, "ledger_suffix": suffix, "top_n": 8, "smoke": smoke}
+    if snapshot_rowid is not None:
+        meta["snapshot_rowid"] = snapshot_rowid
+    (path / name).write_text(json.dumps({"meta": meta, "rows": rows}))
+
+
+def test_load_v2_verdicts_skips_smoke_and_unsnapshotted_reports(tmp_path):
+    from bist_signal_bot.forward.config import load_v2_verdicts
+    rows = [_row("xs_momentum", 5, "CANDIDATE", True, {"lookback": 60, "skip": 0})]
+    _report(tmp_path, "daily_all_20260103T000000.json", rows, smoke=True)
+    _report(tmp_path, "daily_all_20260102T000000.json", rows, snapshot_rowid=None)
+    assert load_v2_verdicts(tmp_path) == {}
+    _report(tmp_path, "daily_all_20260101T000000.json", rows)
+    assert load_v2_verdicts(tmp_path)[("xs_momentum", 5)]["report"] == "daily_all_20260101T000000.json"
 
 
 def _row(fam, h, verdict, robust, params, placebo=False):

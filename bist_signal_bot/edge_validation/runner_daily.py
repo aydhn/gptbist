@@ -44,6 +44,7 @@ from typing import Dict, List, Optional, Sequence
 import numpy as np
 import pandas as pd
 
+from bist_signal_bot.core.logging_setup import get_logger
 from bist_signal_bot.edge_validation import stats as st
 from bist_signal_bot.edge_validation import xsection as _xs
 from bist_signal_bot.edge_validation.cash_benchmark import alpha_over_cash
@@ -55,6 +56,7 @@ from bist_signal_bot.edge_validation.xsection import (LEDGER_SUFFIX, NO_ORDER, S
                                                       apply_benchmark, build_portfolio_events,
                                                       check_benchmark_mode, nav_returns, subset_ctx)
 
+logger = get_logger(__name__)
 LEDGER_SUFFIX_V2 = getattr(_xs, "LEDGER_SUFFIX_V2", "_daily_xs_ew2")  # new ledger family of the robust statistic
 INTERVAL_LABEL = "1d"
 PRIMARY = "placeholder_commission"
@@ -126,7 +128,8 @@ def run_family_daily(family, ctx: DailyContext, horizons: Sequence[int], param_g
                      regime_scale: Optional[pd.Series] = None, save_report: bool = True,
                      report_dir=None, cost_models: Optional[Dict[str, DailyCostModel]] = None,
                      benchmark: str = "ew_universe", survivor_check: bool = False,
-                     robust: bool = True, robust_config=None) -> DailyRunResult:
+                     robust: bool = True, robust_config=None, global_gate: str = "live",
+                     snapshot_rowid: Optional[int] = None) -> DailyRunResult:
     fam = DAILY_FAMILIES[family] if isinstance(family, str) else family
     if isinstance(family, str) and family not in DAILY_FAMILIES:
         raise ValueError(f"unknown daily family {family!r}; choose from {sorted(DAILY_FAMILIES)}")
@@ -144,6 +147,9 @@ def run_family_daily(family, ctx: DailyContext, horizons: Sequence[int], param_g
     primary = PRIMARY if PRIMARY in scenarios else scenarios[0]
     cms = {s: (cost_models or {}).get(s) or DailyCostModel.from_settings(settings, scenario=s) for s in scenarios}
     gates = {s: CandidateGate(cfg, settings=settings, cost_model=cms[s], save=False) for s in scenarios}
+    if global_gate not in ("live", "deferred"):
+        raise ValueError("global_gate must be 'live' or 'deferred'")
+    min_univ = int(_setting(settings, "GLOBAL_POOL_MIN_UNIVERSE", 100) or 0)
     robust_on = bool(robust) and benchmark == "ew_universe"  # robustness is defined for the excess-vs-EW statistic
     lfam = (fam.name + (LEDGER_SUFFIX_V2 if robust_on else "_daily" + LEDGER_SUFFIX[benchmark])
             + ("__placebo" if placebo else ""))
@@ -154,6 +160,13 @@ def run_family_daily(family, ctx: DailyContext, horizons: Sequence[int], param_g
     rs_tag = "rs" if regime_scale is not None else "nors"
     grid_params = [p for p in expand_grid(param_grid if param_grid is not None else fam.default_grid)
                    if fam.valid(p)]
+
+    n_sym = len(ctx.symbols)
+    univ_tag = f"daily_panel[{n_sym}]"
+    if n_sym < min_univ and not getattr(ledger, "smoke", False):
+        univ_tag += "|SMALL_UNIVERSE"  # excluded from the global pool; marked so it can be audited
+        logger.warning("writing %d-symbol trials (< GLOBAL_POOL_MIN_UNIVERSE=%d) to the non-smoke ledger %s; "
+                       "use the smoke ledger for dev runs", n_sym, min_univ, getattr(ledger, "path", "?"))
 
     # 1) build every trial's events (nothing is skipped silently: all combos go to the ledger)
     trials: List[dict] = []
@@ -219,7 +232,7 @@ def run_family_daily(family, ctx: DailyContext, horizons: Sequence[int], param_g
         ok = daily is not None and not too_few and t["error"] is None
         t["status"] = "ok" if ok else "failed"
         ledger.record_trial(t["trial_id"], fam.name, t["params"], INTERVAL_LABEL,
-                            f"daily_panel[{len(ctx.symbols)}]|h{t['horizon']}|top{top_n}|{rs_tag}",
+                            f"{univ_tag}|h{t['horizon']}|top{top_n}|{rs_tag}",
                             daily if ok else None, lfam, t["status"])
         if ok and t.get("net_sharpe_period") is not None and t["net_sharpe_period"] > best_sr:
             best, best_sr = t["trial_id"], t["net_sharpe_period"]
@@ -291,8 +304,12 @@ def run_family_daily(family, ctx: DailyContext, horizons: Sequence[int], param_g
         gdsr = None
         if sel is not None and sel["n_events"]:
             try:
-                gdsr = global_dsr_robust(ledger, lfam, LEDGER_SUFFIX_V2, trial_id=selected, dsr_min=cfg.dsr_min,
-                                         mad_k=rob_cfg.global_mad_k)
+                if global_gate == "deferred":  # batch driver re-evaluates against the final snapshot
+                    gdsr = {"dsr_global": 1.0, "n_global": None, "deferred": True}
+                else:
+                    gdsr = global_dsr_robust(ledger, lfam, LEDGER_SUFFIX_V2, trial_id=selected, dsr_min=cfg.dsr_min,
+                                             mad_k=rob_cfg.global_mad_k, snapshot_rowid=snapshot_rowid,
+                                             min_universe=min_univ)
             except Exception as exc:  # fail closed (criterion g -> fail)
                 gdsr = {"dsr_global": None, "error": f"{type(exc).__name__}: {exc}"}
         breadth_cache: Dict[str, Optional[dict]] = {}
@@ -321,14 +338,28 @@ def run_family_daily(family, ctx: DailyContext, horizons: Sequence[int], param_g
                     breadth = {"top_k": int(rob_cfg.breadth_top_k), "error": f"{type(exc).__name__}: {exc}"}
             rr = robustness_report(netev, nav_ex, grid=gdays, cfg=rob_cfg, global_dsr=gdsr or {"dsr_global": None},
                                    family_dsr=reports[s].dsr, breadth=breadth, dsr_min=cfg.dsr_min)
+            if gdsr and gdsr.get("deferred"):
+                rr["criteria"]["global_dsr"]["deferred"] = True
+            elif gdsr:
+                d["global_dsr_detail"] = {k: gdsr.get(k) for k in (
+                    "n_global", "n_effective", "small_universe_count", "dsr_global", "dsr_global_neff",
+                    "snapshot_rowid", "min_universe", "variance_trimmed", "error")}
             d["robustness"] = rr
             d["robust"] = bool(rr["robust"])
             if reports[s].verdict == "CANDIDATE" and not rr["robust"]:
                 reports[s].failed_criteria = list(reports[s].failed_criteria) + [f"robust:{k}" for k in rr["failed"]]
                 reports[s].verdict = "REJECTED"
                 d["verdict"], d["failed_criteria"] = "REJECTED", reports[s].failed_criteria
+    deferred = bool(robust_on and global_gate == "deferred")
+    if deferred:  # global-multiplicity criterion is applied later by the batch driver against one final snapshot
+        for d in scen_out.values():
+            if d["verdict"] == "CANDIDATE":
+                d["verdict"] = "PENDING_GLOBAL"
     cand = scen_out[primary]
     report = reports[primary].model_dump(mode="json")
+    if deferred and report.get("verdict") == "CANDIDATE":
+        report["verdict"] = "PENDING_GLOBAL"
+    report["provisional"] = deferred
     report.update({
         "family": lfam, "interval": INTERVAL_LABEL,
         "candidacy_scenario": primary, "scenarios": scen_out,
@@ -343,6 +374,7 @@ def run_family_daily(family, ctx: DailyContext, horizons: Sequence[int], param_g
         "benchmark_note": ("Gate stream = event return minus benchmark over the identical window; costs on the "
                            "strategy leg only, benchmark leg frictionless (conservative). 'excess_*_vs_ew' NAV fields "
                            "compare against an exposure-matched EW (cash when flat)."),
+        "selected_trial_id": selected, "global_gate": global_gate, "global_pool_min_universe": min_univ,
         "placebo": placebo, "seed": seed, "n_trials_ledger": ledger.n_trials(lfam),
         "window": [str(win[0].date()), str(win[-1].date())] if len(win) else None,
         "n_symbols": len(ctx.symbols),
@@ -364,6 +396,18 @@ def run_family_daily(family, ctx: DailyContext, horizons: Sequence[int], param_g
         except Exception as exc:  # diagnostic only
             report["survivor_robustness"] = {"error": f"{type(exc).__name__}: {exc}",
                                              "warning": SURVIVORSHIP_WARNING}
+    try:  # always present; cheap sensitivity only (no refits); NOT a survivorship correction
+        from bist_signal_bot.edge_validation import survivorship as _sv
+        _ev = None
+        if sel is not None and sel["n_events"]:
+            _ev = gates[primary]._net(sel["events"])
+        report["survivorship"] = _sv.optimism_bound(
+            ctx, _ev, full_weight_days=int(_setting(settings, "SURVIVORSHIP_AGE_FULL_WEIGHT_DAYS",
+                                                    _sv.AGE_FULL_WEIGHT_DAYS_DEFAULT)),
+            horizon=None if sel is None else int(sel["horizon"]))
+    except Exception as exc:
+        report["survivorship"] = {"statement": _sv.HONESTY_STATEMENT if "_sv" in dir() else None,
+                                  "error": f"{type(exc).__name__}: {exc}"}
     report = _clean(report)
     path = None
     if save_report:

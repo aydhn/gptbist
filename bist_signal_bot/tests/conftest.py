@@ -31,3 +31,15 @@ def settings_factory(tmp_data_dir):
         return Settings(DATA_DIR=str(tmp_data_dir), **overrides)
 
     return make
+
+
+@pytest.fixture(autouse=True)
+def _global_pool_small_universe_ok():
+    """Test panels are small; production default GLOBAL_POOL_MIN_UNIVERSE=100 would exclude them from the global-DSR
+    pool. Tests that exercise the filter pass min_universe / set the attribute explicitly."""
+    from bist_signal_bot.config.settings import get_settings
+    s = get_settings()
+    old = getattr(s, "GLOBAL_POOL_MIN_UNIVERSE", 100)
+    s.GLOBAL_POOL_MIN_UNIVERSE = 0
+    yield
+    s.GLOBAL_POOL_MIN_UNIVERSE = old

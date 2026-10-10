@@ -41,6 +41,8 @@ def build_parser() -> argparse.ArgumentParser:
                    help="LEGACY mode: skip the v2 robustness layer (old ledger families); default is robust v2")
     d.add_argument("--ledger-path", default=None,
                    help="trial ledger sqlite (default: the REAL ledger; use a temp path for smoke runs)")
+    d.add_argument("--smoke", action="store_true",
+                   help="dev/smoke run: use trials_smoke.sqlite (never the real ledger); also EDGE_SMOKE=1")
     d.add_argument("--report-dir", default=None, help="report output dir (default data/edge_validation/reports)")
     d.add_argument("--grid-json", default=None,
                    help="override grid as JSON object of lists (creates NEW ledger trials!)")
@@ -58,6 +60,8 @@ def build_parser() -> argparse.ArgumentParser:
     a.add_argument("--no-robust", dest="robust", action="store_false",
                    help="LEGACY mode: skip the v2 robustness layer (old ledger families); default is robust v2")
     a.add_argument("--ledger-path", default=None)
+    a.add_argument("--smoke", action="store_true",
+                   help="dev/smoke run: use trials_smoke.sqlite (never the real ledger); also EDGE_SMOKE=1")
     a.add_argument("--report-dir", default=None)
     from bist_signal_bot.cli import real_report_cli  # edge real-report
     real_report_cli.add_parser(sub)
@@ -72,6 +76,8 @@ def _print_report(d: dict) -> None:
         return "n/a" if x is None else (f"{x:.{n}f}" if isinstance(x, float) else str(x))
 
     print(f"family={d['family']} interval={d['interval']} verdict={d['verdict']}")
+    if d.get("provisional"):
+        print("*** PROVISIONAL: global-multiplicity check pending (batch not finalized); verdict is NOT final ***")
     print(f"selected={d.get('selected_trial_id')}")
     print(f"{'metric':<26}{'value':>14}")
     rows = [("events / active_days", f"{d['n_events']} / {d['active_days']}"),
@@ -114,6 +120,11 @@ def _scen(args):
             "zero": ("zero_commission",)}[args.scenarios]
 
 
+def _smoke(args) -> bool:
+    import os
+    return bool(getattr(args, "smoke", False)) or os.environ.get("EDGE_SMOKE", "").strip().lower() in ("1", "true", "yes")
+
+
 def _ledger_suffix_v2() -> str:
     from bist_signal_bot.edge_validation.runner_daily import LEDGER_SUFFIX_V2
     return LEDGER_SUFFIX_V2
@@ -140,7 +151,7 @@ def _run_daily_all(args, settings) -> int:
     else:
         from bist_signal_bot.storage.paths import get_edge_validation_dir
         rdir = get_edge_validation_dir(settings) / "reports"
-    ledger = TrialLedger(path=args.ledger_path, settings=settings)
+    ledger = TrialLedger(path=args.ledger_path, settings=settings, smoke=_smoke(args))
     archive = BarArchive(settings=settings)
     try:
         ctx, rs = _build_ctx(args, settings, archive)
@@ -153,10 +164,11 @@ def _run_daily_all(args, settings) -> int:
             print(f"  done {r['family']} h={r['horizon']}{' placebo' if r['placebo'] else ''} "
                   f"{r.get('error') or r['verdicts']} ({r['seconds']}s)", flush=True)
 
+        run_meta: dict = {}
         rows = run_all_daily(ctx, fams, horizons, top_n, ledger, scenarios=_scen(args), regime_scale=rs,
                              settings=settings, report_dir=rdir, seed=args.seed, progress=_progress,
                              benchmark=args.benchmark, survivor_check=args.survivor_check,
-                             robust=args.robust)
+                             robust=args.robust, meta=run_meta)
         n_sym = len(ctx.symbols)
     finally:
         archive.close()
@@ -165,7 +177,9 @@ def _run_daily_all(args, settings) -> int:
     rdir.mkdir(parents=True, exist_ok=True)
     meta = {"generated": ts, "n_symbols": n_sym, "horizons": horizons, "top_n": top_n,
             "regime_scale": bool(args.regime_scale), "benchmark": args.benchmark, "robust": bool(args.robust),
-            "ledger_suffix": (_ledger_suffix_v2() if args.robust else "legacy"), "ledger_path": str(ledger.path), "no_order": NO_ORDER}
+            "ledger_suffix": (_ledger_suffix_v2() if args.robust else "legacy"), "ledger_path": str(ledger.path), "no_order": NO_ORDER,
+            "smoke": bool(ledger.smoke), "snapshot_rowid": run_meta.get("snapshot_rowid"),
+            "global_pool_min_universe": int(getattr(settings, "GLOBAL_POOL_MIN_UNIVERSE", 100) or 0)}
     jp = rdir / f"daily_all_{ts}.json"
     jp.write_text(json.dumps({"meta": meta, "rows": rows}, ensure_ascii=False, indent=2, default=str),
                   encoding="utf-8")
@@ -202,7 +216,7 @@ def _run_daily(args, settings) -> int:
         if ctx is None:
             return 1
         res = run_family_daily(args.family, ctx, horizons, grid, top_n,
-                               TrialLedger(path=args.ledger_path, settings=settings),
+                               TrialLedger(path=args.ledger_path, settings=settings, smoke=_smoke(args)),
                                scenarios=scen, placebo=args.placebo, seed=args.seed, settings=settings,
                                regime_scale=rs, report_dir=args.report_dir, benchmark=args.benchmark,
                                survivor_check=args.survivor_check, robust=args.robust)

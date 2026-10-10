@@ -286,6 +286,7 @@ DEFAULTS: dict[str, Any] = {
     "RUNTIME_USE_TRADE_RISK": True,
     "RUNTIME_USE_PORTFOLIO_RISK": True,
     "RUNTIME_USE_ML_FILTER": False,       # enable once a model is trained/registered
+    "SURVIVORSHIP_AGE_FULL_WEIGHT_DAYS": 750,  # edge_validation/survivorship.py: listing age (days) at which a symbol gets full weight in the age-weight sensitivity
     "RUNTIME_USE_DECISION_LAYER": False,  # consult risk guard (daily loss/kill switch) before PAPER_RUN; off = legacy behaviour
     "RUNTIME_USE_REGIME_FILTER": True,
     "RUNTIME_RUN_DRIFT_CHECK": False,     # enable once a baseline model exists
@@ -792,6 +793,7 @@ DEFAULTS: dict[str, Any] = {
     "EDGE_ROBUST_COST_STRESS_MULT": 2.0,  # (d) excess Sharpe must stay > 0 with trading costs multiplied by this
     "EDGE_ROBUST_EVENT_CAP": 0.20,  # (e) winsorise event net excess at +20%: mean must stay > 0
     "EDGE_ROBUST_BREADTH_TOP_K": 20,  # (f) informational breadth check (top-20 basket), non-gating
+    "GLOBAL_POOL_MIN_UNIVERSE": 100,  # global-DSR pool only counts ledger trials recorded with universe size >= this (smoke/dev runs excluded)
     "EDGE_ROBUST_GLOBAL_MAD_K": 3.5,  # (g) MAD trimming constant for the global-DSR Sharpe-dispersion pool
     "EDGE_GATE_MIN_EVENTS": 300,
     "EDGE_GATE_MIN_ACTIVE_DAYS": 60,

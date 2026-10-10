@@ -70,7 +70,7 @@ def build_labels(ctx: DailyContext, horizon: int, fp: Optional[FeaturePanel] = N
     fp = fp or get_feature_panel(ctx)
     n = len(ctx.index)
     M = ctx.universe_mask.to_numpy(bool)
-    P, J, E, EW, W, YT = [], [], [], [], [], []
+    P, J, E, EW, W, YT, T1 = [], [], [], [], [], [], []
     for i in range(0, n - h):
         e, x = i + 1, i + h
         # SAME entry/exit semantics as xsection.build_portfolio_events / benchmark_event_returns (fills_daily):
@@ -90,13 +90,15 @@ def build_labels(ctx: DailyContext, horizon: int, fp: Optional[FeaturePanel] = N
         yt = (rk >= int(math.floor(len(el) * (1.0 - top_frac)))).astype(np.int8)
         P.append(np.full(len(el), i)); J.append(el); E.append(ex); EW.append(np.full(len(el), ew))
         W.append(np.clip(ex, lo, hi)); YT.append(yt)
+        # purge/embargo end = REALIZED exit row (deferred by locked-limit/halt), never earlier than nominal x
+        T1.append(np.maximum(w.exit_pos[el].astype(np.int64), x))
     if not P:
         z = np.array([], dtype=float)
         zi = np.array([], dtype=int)
         return LabelPanel(h, zi, zi, zi, z, z, zi.astype(np.int8), zi.astype(np.int8), z, ctx.index)
     pos = np.concatenate(P).astype(int)
     ex = np.concatenate(E)
-    return LabelPanel(h, pos, np.concatenate(J).astype(int), pos + h, ex, np.concatenate(W), np.concatenate(YT),
+    return LabelPanel(h, pos, np.concatenate(J).astype(int), np.concatenate(T1).astype(int), ex, np.concatenate(W), np.concatenate(YT),
                       (ex > 0).astype(np.int8), np.concatenate(EW), ctx.index)
 
 

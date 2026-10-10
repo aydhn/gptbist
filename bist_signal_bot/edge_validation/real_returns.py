@@ -198,7 +198,10 @@ def build_real_report(returns: pd.Series, ctx, cpi: Optional[pd.Series] = None, 
                                    "optimistic (survivorship, in-sample).")
     else:
         rep["target_statement"] = f"Target real CAGR >= {target:.0%} NOT REACHED, best measured {rep['real_cagr']:.1%}."
-    warns.extend([SURVIVORSHIP_NOTE, STOPAJ_NOTE])
+    from bist_signal_bot.edge_validation.survivorship import HONESTY_STATEMENT, count_young_symbols
+    rep["survivorship"] = {"statement": HONESTY_STATEMENT, "measurable": False,
+                           "n_symbols_lt_2y_history": count_young_symbols(ctx)}
+    warns.extend([SURVIVORSHIP_NOTE, HONESTY_STATEMENT, STOPAJ_NOTE])
     rep["no_real_order"] = NO_ORDER
     return rep
 

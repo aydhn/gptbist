@@ -11,11 +11,14 @@ No real order is sent. Handling rules (documented, deterministic):
 """
 from __future__ import annotations
 
+import json
 import time
 import traceback
+from pathlib import Path
 from typing import Dict, List, Optional, Sequence
 
 NO_ORDER = "No real order sent."
+PENDING = "PENDING_GLOBAL"
 FIXED_HORIZON = {"cal_turn_of_month": 5}
 
 
@@ -47,18 +50,22 @@ def _row(item: dict, res, secs: float) -> dict:
             "benchmark": r.get("benchmark"),
             "excess_sharpe_vs_ew": prim.get("excess_sharpe_vs_ew"), "excess_cagr_vs_ew": prim.get("excess_cagr_vs_ew"),
             "alpha_vs_cash_cagr": prim.get("alpha_vs_cash_cagr"), "cash_alpha_ok": prim.get("cash_alpha_ok"),
-            "survivor_robustness": r.get("survivor_robustness"),
+            "survivor_robustness": r.get("survivor_robustness"), "survivorship": r.get("survivorship"),
             "failed_criteria": prim.get("failed_criteria"), "report_path": res.report_path,
             "robust_mode": r.get("robust_mode"), "robust": prim.get("robust"),
             "robust_failed": ((prim.get("robustness") or {}).get("failed")),
             "robust_criteria": {k: v.get("pass") for k, v in ((prim.get("robustness") or {}).get("criteria") or {}).items()},
-            "ledger_family": r.get("family")}
+            "ledger_family": r.get("family"), "selected_trial_id": r.get("selected_trial_id")}
 
 
 def run_all_daily(ctx, families: Sequence[str], horizons: Sequence[int], top_n: int, ledger, *, scenarios=None,
                   regime_scale=None, settings=None, report_dir=None, seed: int = 0, param_grids: Optional[Dict] = None,
                   progress=None, benchmark: str = "ew_universe", survivor_check: bool = False,
-                  robust: bool = True) -> List[dict]:
+                  robust: bool = True, meta: Optional[dict] = None) -> List[dict]:
+    """Batch driver. With the robust (v2) layer the global-multiplicity criterion is DEFERRED during the run (every
+    family's trials are recorded first) and re-evaluated for every CANDIDATE against ONE final ledger snapshot
+    (``relabel_with_snapshot``), so verdicts do not depend on family order. ``meta`` (optional dict) receives the
+    snapshot rowid."""
     from bist_signal_bot.edge_validation.runner_daily import run_family_daily
     scenarios = tuple(scenarios or ("placeholder_commission", "zero_commission"))
     rows: List[dict] = []
@@ -68,7 +75,8 @@ def run_all_daily(ctx, families: Sequence[str], horizons: Sequence[int], top_n: 
             res = run_family_daily(item["family"], ctx, [item["horizon"]], (param_grids or {}).get(item["family"]),
                                    top_n, ledger, scenarios=scenarios, placebo=item["placebo"], seed=seed,
                                    settings=settings, regime_scale=regime_scale, report_dir=report_dir,
-                                   benchmark=benchmark, survivor_check=survivor_check, robust=robust)
+                                   benchmark=benchmark, survivor_check=survivor_check, robust=robust,
+                                   global_gate="deferred" if robust else "live")
             row = _row(item, res, time.perf_counter() - t0)
         except Exception as exc:  # recorded, batch continues
             row = {**item, "error": f"{type(exc).__name__}: {exc}", "seconds": round(time.perf_counter() - t0, 2),
@@ -76,7 +84,81 @@ def run_all_daily(ctx, families: Sequence[str], horizons: Sequence[int], top_n: 
         rows.append(row)
         if progress:
             progress(row)
+    if robust:
+        snap = ledger.snapshot_rowid()
+        relabel_with_snapshot(rows, ledger, snap, settings=settings)
+        if meta is not None:
+            meta["snapshot_rowid"] = snap
     return rows
+
+
+def relabel_with_snapshot(rows: List[dict], ledger, snapshot_rowid: int, settings=None) -> List[dict]:
+    """Re-evaluate the global-multiplicity criterion of every CANDIDATE row against the frozen ``snapshot_rowid`` pool.
+    Tightening only: a failing/unavailable check turns CANDIDATE into REJECTED (+ ``robust:global_dsr``); a row is
+    never upgraded. Result depends only on the snapshot, not on the order the families were evaluated in."""
+    from bist_signal_bot.edge_validation.gate import GateConfig
+    from bist_signal_bot.edge_validation.global_multiplicity import global_dsr_robust
+    from bist_signal_bot.edge_validation.robustness import RobustnessConfig
+    from bist_signal_bot.edge_validation.runner_daily import LEDGER_SUFFIX_V2, _setting
+    if settings is None:
+        from bist_signal_bot.config.settings import get_settings
+        settings = get_settings()
+    dsr_min = GateConfig.from_settings(settings).dsr_min
+    mad_k = RobustnessConfig.from_settings(settings).global_mad_k
+    min_univ = int(_setting(settings, "GLOBAL_POOL_MIN_UNIVERSE", 100) or 0)
+    for r in rows:
+        r["global_snapshot_rowid"] = snapshot_rowid
+        if r.get("error") or r.get("placebo") or not r.get("robust_mode"):
+            continue
+        if not any(v in ("CANDIDATE", PENDING) for v in (r.get("verdicts") or {}).values()):
+            _finalize_report_file(r, snapshot_rowid, None)
+            continue
+        try:
+            g = global_dsr_robust(ledger, r["ledger_family"], LEDGER_SUFFIX_V2, trial_id=r.get("selected_trial_id"),
+                                  dsr_min=dsr_min, mad_k=mad_k, snapshot_rowid=snapshot_rowid, min_universe=min_univ)
+        except Exception as exc:  # fail closed
+            g = {"passes": None, "error": f"{type(exc).__name__}: {exc}"}
+        r["global_dsr"] = {k: g.get(k) for k in ("n_global", "n_effective", "small_universe_count", "dsr_global",
+                                                 "dsr_global_neff", "snapshot_rowid", "min_universe", "passes",
+                                                 "error")}
+        ok = g.get("passes") is True
+        if ok:  # pending -> candidate only when the frozen-pool check passes
+            r["verdicts"] = {s: ("CANDIDATE" if v == PENDING else v) for s, v in r["verdicts"].items()}
+        else:
+            r["verdicts"] = {s: ("REJECTED" if v in ("CANDIDATE", PENDING) else v) for s, v in r["verdicts"].items()}
+            r["robust"] = False
+            r["robust_failed"] = list(r.get("robust_failed") or []) + ["global_dsr"]
+            r["failed_criteria"] = list(r.get("failed_criteria") or []) + ["robust:global_dsr"]
+            rc = dict(r.get("robust_criteria") or {})
+            rc["global_dsr"] = False
+            r["robust_criteria"] = rc
+        _finalize_report_file(r, snapshot_rowid, r["global_dsr"])
+    return rows
+
+
+def _finalize_report_file(row: dict, snapshot_rowid: int, gdsr: Optional[dict]) -> None:
+    """Rewrite the family report written in deferred mode: provisional=False + final verdicts (best effort)."""
+    path = row.get("report_path")
+    if not path or not row.get("robust_mode"):
+        return
+    try:
+        p = Path(path)
+        doc = json.loads(p.read_text(encoding="utf-8"))
+        if not doc.get("provisional"):
+            return
+        doc["provisional"], doc["global_snapshot_rowid"], doc["global_dsr_final"] = False, snapshot_rowid, gdsr
+        for s, d in (doc.get("scenarios") or {}).items():
+            if d.get("verdict") == PENDING:
+                d["verdict"] = (row.get("verdicts") or {}).get(s, "REJECTED")
+                if d["verdict"] == "REJECTED":
+                    d["failed_criteria"] = list(d.get("failed_criteria") or []) + ["robust:global_dsr"]
+        if doc.get("verdict") == PENDING:
+            doc["verdict"] = (row.get("verdicts") or {}).get(doc.get("candidacy_scenario"), "REJECTED")
+            if doc["verdict"] == "REJECTED":
+                doc["failed_criteria"] = list(doc.get("failed_criteria") or []) + ["robust:global_dsr"]
+        p.write_text(json.dumps(doc, ensure_ascii=False, indent=2), encoding="utf-8")
+    except (OSError, ValueError):
+        pass
 
 
 def _f(x, n=2):
@@ -117,14 +199,22 @@ def format_table(rows: List[dict]) -> str:
     return "\n".join(out)
 
 
+def _sv_header(svs: list) -> str:
+    from bist_signal_bot.edge_validation.survivorship import header_line
+    return header_line(svs[0] if svs else None)
+
+
 def format_markdown(rows: List[dict], meta: dict) -> str:
     L = ["# Daily all-family run", "", f"- generated: {meta.get('generated')}", f"- symbols: {meta.get('n_symbols')}",
          f"- horizons: {meta.get('horizons')} top_n={meta.get('top_n')} regime_scale={meta.get('regime_scale')}",
          f"- ledger: {meta.get('ledger_path')}",
          "- note: cal_turn_of_month always runs at horizon 5; placebo once per family at the middle horizon (P rows).",
          f"- {NO_ORDER}", "",
+         f"- global-multiplicity snapshot rowid: {meta.get('snapshot_rowid')} (pool frozen; verdicts independent of "
+         f"family order); min universe for pool: {meta.get('global_pool_min_universe')}",
          f"- robust (v2) mode: {meta.get('robust')} (candidacy additionally needs the robustness layer; ledger suffix "
          f"{meta.get('ledger_suffix')})",
+         "- " + _sv_header([r.get("survivorship") for r in rows if r.get("survivorship")]),
          f"- benchmark mode: {meta.get('benchmark')} (candidacy = excess over EW universe AND positive NAV alpha vs cash)",
          "| family | h | placebo | verdicts | NAV net Sharpe | CAGR | maxDD | alpha vs cash (CAGR) | "
          "excess Sharpe vs EW | excess CAGR vs EW | cash alpha NAV ok | robust | failed robustness criteria | "
