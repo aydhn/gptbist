@@ -126,6 +126,7 @@ def run_family_daily(family, ctx: DailyContext, horizons: Sequence[int], param_g
     # 1) build every trial's events (nothing is skipped silently: all combos go to the ledger)
     trials: List[dict] = []
     score_cache: Dict[int, pd.DataFrame] = {}
+    mask_cache: Dict[int, Optional[pd.Series]] = {}
     for pi, p in enumerate(grid_params):
         for h in horizons:
             tid = (f"{lfam}|{INTERVAL_LABEL}|u{len(ctx.symbols)}|h{int(h)}|top{int(top_n)}|{rs_tag}|"
@@ -140,7 +141,10 @@ def run_family_daily(family, ctx: DailyContext, horizons: Sequence[int], param_g
                         sc = pd.DataFrame(np.where(np.isfinite(S), rng.random(S.shape), np.nan),
                                           index=sc.index, columns=sc.columns)
                     score_cache[pi] = sc
-                pr = build_portfolio_events(ctx, score_cache[pi], int(h), top_n, regime_scale=regime_scale)
+                    mfn = getattr(fam, "rebalance_mask", None)  # optional timing mask (calendar families)
+                    mask_cache[pi] = mfn(ctx, p) if callable(mfn) else None
+                pr = build_portfolio_events(ctx, score_cache[pi], int(h), top_n, regime_scale=regime_scale,
+                                            rebalance_mask=mask_cache[pi])
                 info["events"], info["n_events"] = pr.events, len(pr.events)
             except Exception as exc:  # recorded as a failed trial, still counts toward N
                 info["error"] = f"{type(exc).__name__}: {exc}"

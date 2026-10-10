@@ -34,6 +34,22 @@ def build_parser() -> argparse.ArgumentParser:
     d.add_argument("--symbols", nargs="+", default=None)
     d.add_argument("--max-symbols", type=int, default=None, help="smoke runs: most liquid N symbols only")
     d.add_argument("--seed", type=int, default=0)
+    d.add_argument("--ledger-path", default=None,
+                   help="trial ledger sqlite (default: the REAL ledger; use a temp path for smoke runs)")
+    d.add_argument("--report-dir", default=None, help="report output dir (default data/edge_validation/reports)")
+    d.add_argument("--grid-json", default=None,
+                   help="override grid as JSON object of lists (creates NEW ledger trials!)")
+    a = sub.add_parser("run-daily-all", help="Every registered daily family x horizons (placebo once per family)")
+    a.add_argument("--horizons", default="3,5,10,15")
+    a.add_argument("--families", default="all", help="comma-separated names or 'all'")
+    a.add_argument("--top-n", type=int, default=None)
+    a.add_argument("--regime-scale", action="store_true")
+    a.add_argument("--scenarios", choices=["both", "placeholder", "zero"], default="both")
+    a.add_argument("--symbols", nargs="+", default=None)
+    a.add_argument("--max-symbols", type=int, default=None)
+    a.add_argument("--seed", type=int, default=0)
+    a.add_argument("--ledger-path", default=None)
+    a.add_argument("--report-dir", default=None)
     sub.add_parser("list-daily-families", help="Registered daily cross-sectional families")
     rp = sub.add_parser("report", help="Show a saved gate report")
     rp.add_argument("--latest", action="store_true", default=True)
@@ -64,38 +80,112 @@ def _print_report(d: dict) -> None:
     print(d["disclaimer"])
 
 
+def _build_ctx(args, settings, archive):
+    """(ctx, regime_scale) from the daily archive (USDTRY/XU100 included); (None, None) + message on failure."""
+    from bist_signal_bot.edge_validation.xsection import DailyContext
+    ctx = DailyContext.from_archive(archive, args.symbols, settings)
+    if args.max_symbols and args.max_symbols < len(ctx.symbols):
+        keep = ctx.value.tail(250).mean().nlargest(args.max_symbols).index.tolist()
+        ctx = DailyContext.from_archive(archive, sorted(keep), settings)
+    rs = None
+    if args.regime_scale:
+        from bist_signal_bot.edge_validation.regime_labels import label_regimes
+        base = ctx.benchmark.dropna() if ctx.benchmark is not None else None
+        if base is None or len(base) == 0:
+            print("regime scale needs XU100 in the daily archive (daily archive-update).")
+            return None, None
+        rs = label_regimes(base).set_index("date")["exposure_scale"]
+    return ctx, rs
+
+
+def _scen(args):
+    return {"both": ("placeholder_commission", "zero_commission"), "placeholder": ("placeholder_commission",),
+            "zero": ("zero_commission",)}[args.scenarios]
+
+
+def _run_daily_all(args, settings) -> int:
+    from datetime import datetime
+    from pathlib import Path
+
+    from bist_signal_bot.edge_validation.families_daily import DAILY_FAMILIES
+    from bist_signal_bot.edge_validation.ledger import TrialLedger
+    from bist_signal_bot.edge_validation.run_all_daily import format_markdown, format_table, run_all_daily
+
+    fams = (sorted(DAILY_FAMILIES) if args.families.strip().lower() == "all"
+            else [x.strip() for x in args.families.split(",") if x.strip()])
+    bad = [f for f in fams if f not in DAILY_FAMILIES]
+    if bad:
+        print(f"unknown daily families {bad}; see: edge list-daily-families")
+        return 1
+    horizons = [int(x) for x in args.horizons.split(",") if x.strip()]
+    top_n = args.top_n or int(getattr(settings, "DAILY_TOP_N", 8))
+    if args.report_dir:
+        rdir = Path(args.report_dir)
+    else:
+        from bist_signal_bot.storage.paths import get_edge_validation_dir
+        rdir = get_edge_validation_dir(settings) / "reports"
+    ledger = TrialLedger(path=args.ledger_path, settings=settings)
+    archive = BarArchive(settings=settings)
+    try:
+        ctx, rs = _build_ctx(args, settings, archive)
+        if ctx is None:
+            return 1
+        print(f"run-daily-all: {len(fams)} families, horizons={horizons}, symbols={len(ctx.symbols)}, "
+              f"ledger={ledger.path}", flush=True)
+
+        def _progress(r):
+            print(f"  done {r['family']} h={r['horizon']}{' placebo' if r['placebo'] else ''} "
+                  f"{r.get('error') or r['verdicts']} ({r['seconds']}s)", flush=True)
+
+        rows = run_all_daily(ctx, fams, horizons, top_n, ledger, scenarios=_scen(args), regime_scale=rs,
+                             settings=settings, report_dir=rdir, seed=args.seed, progress=_progress)
+        n_sym = len(ctx.symbols)
+    finally:
+        archive.close()
+    print(format_table(rows))
+    ts = datetime.now().strftime("%Y%m%dT%H%M%S")
+    rdir.mkdir(parents=True, exist_ok=True)
+    meta = {"generated": ts, "n_symbols": n_sym, "horizons": horizons, "top_n": top_n,
+            "regime_scale": bool(args.regime_scale), "ledger_path": str(ledger.path), "no_order": NO_ORDER}
+    jp = rdir / f"daily_all_{ts}.json"
+    jp.write_text(json.dumps({"meta": meta, "rows": rows}, ensure_ascii=False, indent=2, default=str),
+                  encoding="utf-8")
+    (rdir / f"daily_all_{ts}.md").write_text(format_markdown(rows, meta), encoding="utf-8")
+    print(f"report: {jp}")
+    print(NO_ORDER)
+    return 0 if not any(r.get("error") for r in rows) else 2
+
+
 def _run_daily(args, settings) -> int:
     from bist_signal_bot.edge_validation.families_daily import DAILY_FAMILIES
     from bist_signal_bot.edge_validation.ledger import TrialLedger
     from bist_signal_bot.edge_validation.runner_daily import run_family_daily
-    from bist_signal_bot.edge_validation.xsection import DailyContext
 
     if args.family not in DAILY_FAMILIES:
         print(f"unknown daily family {args.family!r}; see: edge list-daily-families")
         return 1
+    grid = None
+    if args.grid_json:
+        try:
+            grid = json.loads(args.grid_json)
+            assert isinstance(grid, dict) and all(isinstance(v, list) for v in grid.values())
+        except Exception:
+            print("--grid-json must be a JSON object of lists, e.g. {\"lookback\":[60,120]}")
+            return 1
+        print("WARNING: --grid-json overrides the default grid; every combination x horizon is a NEW ledger trial "
+              f"(ledger: {args.ledger_path or 'REAL ledger'}).")
     horizons = [int(x) for x in args.horizons.split(",") if x.strip()]
     top_n = args.top_n or int(getattr(settings, "DAILY_TOP_N", 8))
-    scen = {"both": ("placeholder_commission", "zero_commission"), "placeholder": ("placeholder_commission",),
-            "zero": ("zero_commission",)}[args.scenarios]
+    scen = _scen(args)
     archive = BarArchive(settings=settings)
     try:
-        ctx = DailyContext.from_archive(archive, args.symbols, settings)
-        if args.max_symbols and args.max_symbols < len(ctx.symbols):
-            keep = ctx.value.tail(250).mean().nlargest(args.max_symbols).index.tolist()
-            panel_syms = sorted(keep)
-            ctx = DailyContext.from_archive(archive, panel_syms, settings)
-        rs = None
-        if args.regime_scale:
-            from bist_signal_bot.edge_validation.regime_labels import label_regimes
-            base = ctx.benchmark.dropna() if ctx.benchmark is not None else None
-            if base is None or len(base) == 0:
-                print("regime scale needs XU100 in the daily archive (daily archive-update).")
-                return 1
-            lab = label_regimes(base)
-            rs = lab.set_index("date")["exposure_scale"]
-        res = run_family_daily(args.family, ctx, horizons, None, top_n, TrialLedger(settings=settings),
+        ctx, rs = _build_ctx(args, settings, archive)
+        if ctx is None:
+            return 1
+        res = run_family_daily(args.family, ctx, horizons, grid, top_n,
+                               TrialLedger(path=args.ledger_path, settings=settings),
                                scenarios=scen, placebo=args.placebo, seed=args.seed, settings=settings,
-                               regime_scale=rs)
+                               regime_scale=rs, report_dir=args.report_dir)
     finally:
         archive.close()
     r = res.report
@@ -137,6 +227,8 @@ def main(argv: list[str]) -> int:
         return 0
     if args.edge_command == "run-daily":
         return _run_daily(args, settings)
+    if args.edge_command == "run-daily-all":
+        return _run_daily_all(args, settings)
     from bist_signal_bot.edge_validation.ledger import TrialLedger
     from bist_signal_bot.edge_validation.runner import run_family
 

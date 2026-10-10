@@ -39,3 +39,12 @@ def register_family(fam: ScoreFamily, overwrite: bool = False) -> ScoreFamily:
 
 
 register_family(XSMomentum())
+
+
+# Additional families live in their own modules and self-register on import.
+for _mod in ("families_daily_price", "families_daily_macro"):
+    try:
+        __import__(f"bist_signal_bot.edge_validation.{_mod}")
+    except ModuleNotFoundError as _exc:  # module not present yet
+        if _mod not in str(_exc):
+            raise

@@ -46,7 +46,8 @@ class DailyContext:
     def __init__(self, open_: pd.DataFrame, close: pd.DataFrame, volume: pd.DataFrame,
                  benchmark: Optional[pd.Series] = None, cash_ret: Optional[pd.Series] = None, *,
                  min_adv: float = 5e6, adv_window: int = 20, min_history: int = 60, min_price: float = 1.0,
-                 capital: float = 100_000.0, cash_rate: float = 0.37, cash_withholding: float = 0.0):
+                 capital: float = 100_000.0, cash_rate: float = 0.37, cash_withholding: float = 0.0,
+                 usdtry: Optional[pd.Series] = None):
         idx = close.index
         self.open = open_.reindex(index=idx, columns=close.columns).astype(float)
         self.close = close.astype(float)
@@ -55,6 +56,7 @@ class DailyContext:
         self.symbols: List[str] = list(close.columns)
         self.index: pd.DatetimeIndex = pd.DatetimeIndex(idx)
         self.benchmark = None if benchmark is None else benchmark.reindex(self.index).astype(float)
+        self.usdtry = self._align_series(usdtry, self.index)
         self.min_adv, self.adv_window, self.min_history = float(min_adv), int(adv_window), int(min_history)
         self.min_price, self.capital = float(min_price), float(capital)
         self.cash_rate, self.cash_withholding = float(cash_rate), float(cash_withholding)
@@ -62,10 +64,19 @@ class DailyContext:
                          daily_cash_returns(self.index, self.cash_rate, self.cash_withholding))
         self._adv = self._mask = None
 
+    @staticmethod
+    def _align_series(s: Optional[pd.Series], index) -> Optional[pd.Series]:
+        """Causal alignment of an external daily series (last known value carried forward onto the sessions)."""
+        if s is None or len(s) == 0:
+            return None
+        s = s.astype(float).sort_index()
+        s = s[~s.index.duplicated(keep="last")]
+        return s.reindex(s.index.union(index)).ffill().reindex(index)
+
     # ---- construction ----
     @classmethod
     def from_panel(cls, panel: Dict[str, pd.DataFrame], benchmark: Optional[pd.Series] = None,
-                   settings=None, **overrides) -> "DailyContext":
+                   settings=None, usdtry: Optional[pd.Series] = None, **overrides) -> "DailyContext":
         syms = sorted(panel)
         if not syms:
             raise ValueError("empty panel")
@@ -79,14 +90,16 @@ class DailyContext:
                   cash_rate=float(_setting(settings, "CASH_BENCHMARK_ANNUAL_RATE", 0.37)),
                   cash_withholding=float(_setting(settings, "CASH_BENCHMARK_WITHHOLDING", 0.0)))
         kw.update(overrides)
-        return cls(mk("open"), mk("close"), mk("volume"), benchmark, None, **kw)
+        return cls(mk("open"), mk("close"), mk("volume"), benchmark, None, usdtry=usdtry, **kw)
 
     @classmethod
     def from_archive(cls, archive, symbols=None, settings=None, **overrides) -> "DailyContext":
         from bist_signal_bot.daily.panel import load_benchmark, load_daily_panel
         panel = load_daily_panel(archive, symbols)
         bm = load_benchmark(archive, "XU100")
-        return cls.from_panel(panel, bm["close"] if len(bm) else None, settings, **overrides)
+        fx = load_benchmark(archive, "USDTRY")
+        return cls.from_panel(panel, bm["close"] if len(bm) else None, settings,
+                              usdtry=fx["close"] if len(fx) else None, **overrides)
 
     # ---- causal derived data ----
     @property
@@ -118,7 +131,8 @@ class DailyContext:
                             None if self.benchmark is None else self.benchmark.iloc[sl], self.cash_ret.iloc[sl],
                             min_adv=self.min_adv, adv_window=self.adv_window, min_history=self.min_history,
                             min_price=self.min_price, capital=self.capital, cash_rate=self.cash_rate,
-                            cash_withholding=self.cash_withholding)
+                            cash_withholding=self.cash_withholding,
+                            usdtry=None if self.usdtry is None else self.usdtry.iloc[sl])
 
     def benchmarks(self) -> pd.DataFrame:
         """Daily returns: cash, xu100 (if available), ew_universe (equal weight of the point-in-time universe
@@ -177,7 +191,8 @@ class PortfolioResult:
 
 def build_portfolio_events(ctx: DailyContext, scores: pd.DataFrame, horizon: int, top_n: int = 8,
                            rebalance_every: Optional[int] = None, entry: str = "next_open",
-                           regime_scale: Optional[pd.Series] = None, regime_fill: float = 1.0) -> PortfolioResult:
+                           regime_scale: Optional[pd.Series] = None, regime_fill: float = 1.0,
+                           rebalance_mask: Optional[pd.Series] = None) -> PortfolioResult:
     """Top-N long-only equal-weight baskets at each rebalance.
 
     Events columns: EVENT_COLS. ``gross_ret`` is the return on the SLOT capital: raw position return when
@@ -187,6 +202,9 @@ def build_portfolio_events(ctx: DailyContext, scores: pd.DataFrame, horizon: int
     values (warm-up) use ``regime_fill`` (1.0 = fully exposed; documented, not guessed from data).
     Eligible = point-in-time universe mask at t0 AND finite score. Names that cannot be bought at the next open
     (no open price / zero volume that day) or have no exit close are dropped (stay in cash), not replaced.
+    ``rebalance_mask`` (optional bool Series over dates, causal: value at t known at close t): a basket is only
+    started on a decision date where the mask is True (first True date at/after the previous exit); all other
+    days stay in cash (earning the cash rate in ``nav_returns``). None => unchanged behaviour.
     """
     if horizon < 1 or top_n < 1:
         raise ValueError("horizon and top_n must be >= 1")
@@ -208,11 +226,16 @@ def build_portfolio_events(ctx: DailyContext, scores: pd.DataFrame, horizon: int
     else:
         sc = np.ones(n)
     elig = M & np.isfinite(S)
+    RM = None if rebalance_mask is None else (
+        rebalance_mask.reindex(idx).fillna(False).astype(bool).to_numpy())
     anyrow = np.flatnonzero(elig.any(axis=1))
     rows, dropped, n_reb = [], 0, 0
     if len(anyrow):
         i = int(anyrow[0])
         while i + horizon <= n - 1:
+            if RM is not None and not RM[i]:
+                i += 1
+                continue
             e, x = i + 1, i + horizon
             cand = np.flatnonzero(elig[i])
             if len(cand):
