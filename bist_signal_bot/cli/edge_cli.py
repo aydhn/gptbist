@@ -37,6 +37,8 @@ def build_parser() -> argparse.ArgumentParser:
     d.add_argument("--benchmark", choices=["ew_universe", "cash", "none"], default="ew_universe",
                    help="evaluated stream: excess over EW universe (default, primary), over cash, or absolute")
     d.add_argument("--survivor-check", action="store_true", help="append survivorship sensitivity diagnostic")
+    d.add_argument("--no-robust", dest="robust", action="store_false",
+                   help="LEGACY mode: skip the v2 robustness layer (old ledger families); default is robust v2")
     d.add_argument("--ledger-path", default=None,
                    help="trial ledger sqlite (default: the REAL ledger; use a temp path for smoke runs)")
     d.add_argument("--report-dir", default=None, help="report output dir (default data/edge_validation/reports)")
@@ -53,6 +55,8 @@ def build_parser() -> argparse.ArgumentParser:
     a.add_argument("--seed", type=int, default=0)
     a.add_argument("--benchmark", choices=["ew_universe", "cash", "none"], default="ew_universe")
     a.add_argument("--survivor-check", action="store_true", help="append survivorship sensitivity diagnostic")
+    a.add_argument("--no-robust", dest="robust", action="store_false",
+                   help="LEGACY mode: skip the v2 robustness layer (old ledger families); default is robust v2")
     a.add_argument("--ledger-path", default=None)
     a.add_argument("--report-dir", default=None)
     from bist_signal_bot.cli import real_report_cli  # edge real-report
@@ -110,6 +114,11 @@ def _scen(args):
             "zero": ("zero_commission",)}[args.scenarios]
 
 
+def _ledger_suffix_v2() -> str:
+    from bist_signal_bot.edge_validation.runner_daily import LEDGER_SUFFIX_V2
+    return LEDGER_SUFFIX_V2
+
+
 def _run_daily_all(args, settings) -> int:
     from datetime import datetime
     from pathlib import Path
@@ -146,7 +155,8 @@ def _run_daily_all(args, settings) -> int:
 
         rows = run_all_daily(ctx, fams, horizons, top_n, ledger, scenarios=_scen(args), regime_scale=rs,
                              settings=settings, report_dir=rdir, seed=args.seed, progress=_progress,
-                             benchmark=args.benchmark, survivor_check=args.survivor_check)
+                             benchmark=args.benchmark, survivor_check=args.survivor_check,
+                             robust=args.robust)
         n_sym = len(ctx.symbols)
     finally:
         archive.close()
@@ -154,7 +164,8 @@ def _run_daily_all(args, settings) -> int:
     ts = datetime.now().strftime("%Y%m%dT%H%M%S")
     rdir.mkdir(parents=True, exist_ok=True)
     meta = {"generated": ts, "n_symbols": n_sym, "horizons": horizons, "top_n": top_n,
-            "regime_scale": bool(args.regime_scale), "benchmark": args.benchmark, "ledger_path": str(ledger.path), "no_order": NO_ORDER}
+            "regime_scale": bool(args.regime_scale), "benchmark": args.benchmark, "robust": bool(args.robust),
+            "ledger_suffix": (_ledger_suffix_v2() if args.robust else "legacy"), "ledger_path": str(ledger.path), "no_order": NO_ORDER}
     jp = rdir / f"daily_all_{ts}.json"
     jp.write_text(json.dumps({"meta": meta, "rows": rows}, ensure_ascii=False, indent=2, default=str),
                   encoding="utf-8")
@@ -194,7 +205,7 @@ def _run_daily(args, settings) -> int:
                                TrialLedger(path=args.ledger_path, settings=settings),
                                scenarios=scen, placebo=args.placebo, seed=args.seed, settings=settings,
                                regime_scale=rs, report_dir=args.report_dir, benchmark=args.benchmark,
-                               survivor_check=args.survivor_check)
+                               survivor_check=args.survivor_check, robust=args.robust)
     finally:
         archive.close()
     r = res.report
@@ -210,6 +221,11 @@ def _run_daily(args, settings) -> int:
         print(f"   gate netSR={f(d.get('gate_net_sharpe_annual'), 2)} NAV netSR={f(d.get('nav_net_sharpe_annual'), 2)} "
               f"CAGR={f(d.get('net_cagr'))} maxDD={f(d.get('max_drawdown'))} "
               f"cost_drag_bps/yr={f(d.get('cost_drag_bps_per_year'), 0)} turnover/yr={f(d.get('turnover_two_way_per_year'), 1)}")
+    rob = (r["scenarios"].get(r["candidacy_scenario"]) or {}).get("robustness")
+    if rob:
+        print(f"robust(v2)={rob['robust']} failed={','.join(rob['failed']) or '-'} "
+              + " ".join(f"{k}={'n/a' if v['pass'] is None else ('Y' if v['pass'] else 'N')}"
+                         for k, v in rob["criteria"].items()))
     sv = r.get("survivor_robustness")
     if sv and "full" in sv:
         for k in ("full", "old_survivors", "ex_top_k_winners"):

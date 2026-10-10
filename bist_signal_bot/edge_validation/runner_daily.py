@@ -25,6 +25,13 @@ Benchmark modes (``benchmark=``), the statistic the gate evaluates:
   conservative for the strategy. Excess trials are recorded under a separate ledger family
   (``<fam>_daily_xs_ew`` / ``_xs_cash``) with the excess daily series as trial returns, so DSR/PBO/N refer to the same
   statistic that is evaluated. Existing ledger rows are never touched.
+
+Robust (v2) mode (``robust=True``, DEFAULT, only with benchmark 'ew_universe'): the selected trial must ALSO pass
+``robustness.robustness_report`` (top-event trim, top-symbol drop, calendar-year stability, 2x cost stress, event cap,
+gating global-multiplicity DSR; top-20 breadth informational) under each cost scenario, else verdict REJECTED with
+failed criteria ``robust:<name>``. v2 trials go to a NEW ledger family (``<fam>`` + ``LEDGER_SUFFIX_V2``,
+``_daily_xs_ew2``) so rows of the old statistic are never conflated; ML trial ids carry FEATURES_VERSION.
+``robust=False`` reproduces the legacy behaviour exactly. The gate itself is never loosened.
 """
 from __future__ import annotations
 
@@ -38,6 +45,7 @@ import numpy as np
 import pandas as pd
 
 from bist_signal_bot.edge_validation import stats as st
+from bist_signal_bot.edge_validation import xsection as _xs
 from bist_signal_bot.edge_validation.cash_benchmark import alpha_over_cash
 from bist_signal_bot.edge_validation.costs_daily import SCENARIOS, DailyCostModel
 from bist_signal_bot.edge_validation.families_daily import DAILY_FAMILIES
@@ -47,6 +55,7 @@ from bist_signal_bot.edge_validation.xsection import (LEDGER_SUFFIX, NO_ORDER, S
                                                       apply_benchmark, build_portfolio_events,
                                                       check_benchmark_mode, nav_returns, subset_ctx)
 
+LEDGER_SUFFIX_V2 = getattr(_xs, "LEDGER_SUFFIX_V2", "_daily_xs_ew2")  # new ledger family of the robust statistic
 INTERVAL_LABEL = "1d"
 PRIMARY = "placeholder_commission"
 ANN = 252.0
@@ -116,7 +125,8 @@ def run_family_daily(family, ctx: DailyContext, horizons: Sequence[int], param_g
                      placebo: bool = False, seed: int = 0, settings=None,
                      regime_scale: Optional[pd.Series] = None, save_report: bool = True,
                      report_dir=None, cost_models: Optional[Dict[str, DailyCostModel]] = None,
-                     benchmark: str = "ew_universe", survivor_check: bool = False) -> DailyRunResult:
+                     benchmark: str = "ew_universe", survivor_check: bool = False,
+                     robust: bool = True, robust_config=None) -> DailyRunResult:
     fam = DAILY_FAMILIES[family] if isinstance(family, str) else family
     if isinstance(family, str) and family not in DAILY_FAMILIES:
         raise ValueError(f"unknown daily family {family!r}; choose from {sorted(DAILY_FAMILIES)}")
@@ -134,7 +144,13 @@ def run_family_daily(family, ctx: DailyContext, horizons: Sequence[int], param_g
     primary = PRIMARY if PRIMARY in scenarios else scenarios[0]
     cms = {s: (cost_models or {}).get(s) or DailyCostModel.from_settings(settings, scenario=s) for s in scenarios}
     gates = {s: CandidateGate(cfg, settings=settings, cost_model=cms[s], save=False) for s in scenarios}
-    lfam = fam.name + "_daily" + LEDGER_SUFFIX[benchmark] + ("__placebo" if placebo else "")
+    robust_on = bool(robust) and benchmark == "ew_universe"  # robustness is defined for the excess-vs-EW statistic
+    lfam = (fam.name + (LEDGER_SUFFIX_V2 if robust_on else "_daily" + LEDGER_SUFFIX[benchmark])
+            + ("__placebo" if placebo else ""))
+    fv_tag = ""
+    if getattr(fam, "needs_horizon", False):  # ML families depend on the feature set: keep ledger rows apart
+        from bist_signal_bot.model_loop.daily_features import FEATURES_VERSION
+        fv_tag = f"|fv{FEATURES_VERSION}"
     rs_tag = "rs" if regime_scale is not None else "nors"
     grid_params = [p for p in expand_grid(param_grid if param_grid is not None else fam.default_grid)
                    if fam.valid(p)]
@@ -146,10 +162,12 @@ def run_family_daily(family, ctx: DailyContext, horizons: Sequence[int], param_g
     for pi, p in enumerate(grid_params):
         for h in horizons:
             tid = (f"{lfam}|{INTERVAL_LABEL}|u{len(ctx.symbols)}|h{int(h)}|top{int(top_n)}|{rs_tag}|"
-                   f"{json.dumps(p, sort_keys=True)}|s{seed if placebo else 0}")
-            info = {"trial_id": tid, "params": p, "horizon": int(h), "events": None, "n_events": 0, "error": None}
+                   f"{json.dumps(p, sort_keys=True)}|s{seed if placebo else 0}{fv_tag}")
+            info = {"trial_id": tid, "params": p, "horizon": int(h), "events": None, "n_events": 0, "error": None,
+                    "skey": None}
             try:
                 skey = (pi, int(h)) if getattr(fam, "needs_horizon", False) else pi  # ML families label at h
+                info["skey"] = skey
                 if skey not in score_cache:
                     sp = {**p, "label_h": int(h)} if getattr(fam, "needs_horizon", False) else p
                     sc = fam.score(ctx, sp).reindex(index=ctx.index, columns=ctx.symbols)
@@ -264,6 +282,51 @@ def run_family_daily(family, ctx: DailyContext, horizons: Sequence[int], param_g
                 reports[s].failed_criteria = list(reports[s].failed_criteria) + ["cash_alpha_nav"]
                 reports[s].verdict = "REJECTED"
                 d["verdict"], d["failed_criteria"] = "REJECTED", reports[s].failed_criteria
+    # robust (v2) layer: stacked on top of the gate, tightening only
+    rob_cfg = None
+    if robust_on:
+        from bist_signal_bot.edge_validation.global_multiplicity import global_dsr_robust
+        from bist_signal_bot.edge_validation.robustness import RobustnessConfig, robustness_report
+        rob_cfg = robust_config or RobustnessConfig.from_settings(settings)
+        gdsr = None
+        if sel is not None and sel["n_events"]:
+            try:
+                gdsr = global_dsr_robust(ledger, lfam, LEDGER_SUFFIX_V2, trial_id=selected, dsr_min=cfg.dsr_min,
+                                         mad_k=rob_cfg.global_mad_k)
+            except Exception as exc:  # fail closed (criterion g -> fail)
+                gdsr = {"dsr_global": None, "error": f"{type(exc).__name__}: {exc}"}
+        breadth_cache: Dict[str, Optional[dict]] = {}
+        for s in scenarios:
+            d = scen_out[s]
+            if sel is None or not sel["n_events"]:
+                continue
+            netev = gates[s]._net(sel["events"])
+            navn = nav_returns(ctx, sel["events"], cms[s]).reindex(win)
+            matched = _matched_ew(navn, bench, win)
+            nav_ex = None if matched is None else (navn["ret"] - matched)
+            breadth = None
+            if top_n < rob_cfg.breadth_top_k:
+                try:
+                    pr20 = build_portfolio_events(ctx, score_cache[sel["skey"]], int(sel["horizon"]),
+                                                  rob_cfg.breadth_top_k, regime_scale=regime_scale,
+                                                  rebalance_mask=mask_cache.get(sel["skey"]))
+                    e20 = apply_benchmark(ctx, pr20.events, benchmark)
+                    e20 = e20[e20["t0"] >= win[0]] if len(win) and len(e20) else e20
+                    n20 = gates[s]._net(e20).dropna(subset=["net_ret"]) if len(e20) else e20
+                    from bist_signal_bot.edge_validation.robustness import _ann_sharpe_daily
+                    breadth = {"top_k": int(rob_cfg.breadth_top_k), "n_events": int(len(n20)),
+                               "mean_net_bps": float(n20["net_ret"].mean() * 1e4) if len(n20) else None,
+                               "sharpe_annual": _ann_sharpe_daily(n20, "net_ret", gdays) if len(n20) else None}
+                except Exception as exc:  # informational only
+                    breadth = {"top_k": int(rob_cfg.breadth_top_k), "error": f"{type(exc).__name__}: {exc}"}
+            rr = robustness_report(netev, nav_ex, grid=gdays, cfg=rob_cfg, global_dsr=gdsr or {"dsr_global": None},
+                                   family_dsr=reports[s].dsr, breadth=breadth, dsr_min=cfg.dsr_min)
+            d["robustness"] = rr
+            d["robust"] = bool(rr["robust"])
+            if reports[s].verdict == "CANDIDATE" and not rr["robust"]:
+                reports[s].failed_criteria = list(reports[s].failed_criteria) + [f"robust:{k}" for k in rr["failed"]]
+                reports[s].verdict = "REJECTED"
+                d["verdict"], d["failed_criteria"] = "REJECTED", reports[s].failed_criteria
     cand = scen_out[primary]
     report = reports[primary].model_dump(mode="json")
     report.update({
@@ -272,7 +335,11 @@ def run_family_daily(family, ctx: DailyContext, horizons: Sequence[int], param_g
         "zero_commission_is_upside_only": True,
         "selected_params": sel["params"] if sel else None, "selected_horizon": sel["horizon"] if sel else None,
         "top_n": top_n, "capital_try": ctx.capital, "long_only": True, "regime_scale": regime_scale is not None,
-        "benchmark": benchmark,
+        "benchmark": benchmark, "robust_mode": robust_on,
+        "robust_config": None if rob_cfg is None else rob_cfg.model_dump(),
+        "robust_note": ("v2 candidacy requires the robustness layer on top of the gate (ledger family "
+                        f"{lfam}); legacy (robust=False) rows live in separate ledger families." if robust_on
+                        else "robust layer OFF (legacy/diagnostic mode)."),
         "benchmark_note": ("Gate stream = event return minus benchmark over the identical window; costs on the "
                            "strategy leg only, benchmark leg frictionless (conservative). 'excess_*_vs_ew' NAV fields "
                            "compare against an exposure-matched EW (cash when flat)."),
@@ -310,6 +377,7 @@ def run_family_daily(family, ctx: DailyContext, horizons: Sequence[int], param_g
         path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
     for t in trials:
         t.pop("events", None)
+        t.pop("skey", None)
     return DailyRunResult(fam.name, lfam, selected, reports, trials, report, str(path) if path else None, placebo)
 
 

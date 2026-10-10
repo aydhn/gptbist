@@ -83,7 +83,7 @@ def test_event_benchmark_is_window_matched_and_scaled(beta_ctx):
 def test_placebo_rejected_in_excess_mode_but_wins_in_absolute_mode(beta_ctx, tmp_path):
     for sd in (0, 1, 2):
         pl = _run("xs_momentum", beta_ctx, tmp_path / f"p{sd}", placebo=True, seed=sd)
-        assert pl.ledger_family == "xs_momentum_daily_xs_ew__placebo"
+        assert pl.ledger_family == "xs_momentum_daily_xs_ew2__placebo"
         assert pl.reports["placeholder_commission"].verdict == "REJECTED", sd
         assert pl.verdict == "REJECTED"
     ab = _run("xs_momentum", beta_ctx, tmp_path / "abs", bm="none", placebo=True, seed=0)
@@ -120,7 +120,7 @@ def test_candidate_requires_positive_cash_alpha_invariant(tmp_path):
 
 def test_ledger_family_separation_and_excess_returns(alpha_ctx, tmp_path):
     led = TrialLedger(tmp_path / "t.sqlite")
-    kw = dict(gate=CandidateGate(GateConfig(), save=False), save_report=False)
+    kw = dict(gate=CandidateGate(GateConfig(), save=False), save_report=False, robust=False)  # legacy families
     run_family_daily("xs_momentum", alpha_ctx, (5,), GRID, 8, led, benchmark="none", **kw)
     run_family_daily("xs_momentum", alpha_ctx, (5,), GRID, 8, led, benchmark="ew_universe", **kw)
     run_family_daily("xs_momentum", alpha_ctx, (5,), GRID, 8, led, benchmark="cash", **kw)

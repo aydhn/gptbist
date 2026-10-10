@@ -19,12 +19,19 @@ import numpy as np
 import pandas as pd
 
 from bist_signal_bot.edge_validation.cash_benchmark import daily_cash_returns
+from bist_signal_bot.edge_validation.fills_daily import (DailySemantics, bar_health, limit_matrices, limit_pct_series,
+                                                         resolve_window)
 
 NO_ORDER = "No real order sent."
 SURVIVORSHIP_WARNING = ("Survivorship bias: universe = currently active symbols; delisted names are absent, "
                         "so results are optimistic.")
-EVENT_COLS = ["t0", "t_entry", "t1", "symbol", "gross_ret", "raw_ret", "price", "order_value",
-              "bar_value_try", "rebalance_date", "rank", "score", "exposure_scale"]
+EVENT_COLS_V1 = ["t0", "t_entry", "t1", "symbol", "gross_ret", "raw_ret", "price", "order_value",
+                 "bar_value_try", "rebalance_date", "rank", "score", "exposure_scale"]
+# V2 adds realised-exit / capacity / price-limit columns (consumers must tolerate their absence in old frames)
+EVENT_COLS = EVENT_COLS_V1 + ["t_exit", "exit_price", "exit_deferred", "entry_value_try", "price_limit_flag"]
+# New statistic (fill/lock/health semantics + spread proxy) => NEW ledger family, old '_daily_xs_ew' rows stay untouched.
+LEDGER_SUFFIX_V2 = "_daily_xs_ew2"
+LEDGER_SUFFIX_BY_MODE_V2 = {"ew_universe": "_xs_ew2", "cash": "_xs_cash2", "none": ""}
 
 
 def _setting(settings, key, default):
@@ -47,11 +54,16 @@ class DailyContext:
                  benchmark: Optional[pd.Series] = None, cash_ret: Optional[pd.Series] = None, *,
                  min_adv: float = 5e6, adv_window: int = 20, min_history: int = 60, min_price: float = 1.0,
                  capital: float = 100_000.0, cash_rate: float = 0.37, cash_withholding: float = 0.0,
-                 usdtry: Optional[pd.Series] = None):
+                 usdtry: Optional[pd.Series] = None, high: Optional[pd.DataFrame] = None,
+                 low: Optional[pd.DataFrame] = None, semantics: Optional[DailySemantics] = None):
         idx = close.index
+        self.semantics: DailySemantics = semantics or DailySemantics()
+        self.has_hl = high is not None and low is not None
         self.open = open_.reindex(index=idx, columns=close.columns).astype(float)
         self.close = close.astype(float)
         self.volume = volume.reindex(index=idx, columns=close.columns).astype(float)
+        self.high = (high.reindex(index=idx, columns=close.columns).astype(float) if self.has_hl else self.open)
+        self.low = (low.reindex(index=idx, columns=close.columns).astype(float) if self.has_hl else self.open)
         self.value = self.close * self.volume  # traded value TRY
         self.symbols: List[str] = list(close.columns)
         self.index: pd.DatetimeIndex = pd.DatetimeIndex(idx)
@@ -62,7 +74,7 @@ class DailyContext:
         self.cash_rate, self.cash_withholding = float(cash_rate), float(cash_withholding)
         self.cash_ret = (cash_ret.reindex(self.index).fillna(0.0) if cash_ret is not None else
                          daily_cash_returns(self.index, self.cash_rate, self.cash_withholding))
-        self._adv = self._mask = None
+        self._adv = self._mask = self._limits = self._healthy = None
 
     @staticmethod
     def _align_series(s: Optional[pd.Series], index) -> Optional[pd.Series]:
@@ -82,6 +94,7 @@ class DailyContext:
             raise ValueError("empty panel")
         idx = pd.DatetimeIndex(sorted(set().union(*[set(d.index) for d in panel.values()])))
         mk = lambda c: pd.DataFrame({s: panel[s][c] for s in syms}).reindex(idx)  # noqa: E731
+        has_hl = all(("high" in panel[s].columns and "low" in panel[s].columns) for s in syms)
         kw = dict(min_adv=float(_setting(settings, "DAILY_MIN_ADV_TRY", 5e6)),
                   adv_window=int(_setting(settings, "DAILY_ADV_WINDOW", 20)),
                   min_history=int(_setting(settings, "DAILY_MIN_HISTORY_DAYS", 60)),
@@ -89,7 +102,11 @@ class DailyContext:
                   capital=float(_setting(settings, "DAILY_CAPITAL_TRY", 100_000.0)),
                   cash_rate=float(_setting(settings, "CASH_BENCHMARK_ANNUAL_RATE", 0.37)),
                   cash_withholding=float(_setting(settings, "CASH_BENCHMARK_WITHHOLDING", 0.0)))
+        kw.setdefault("semantics", DailySemantics.from_settings(settings))
         kw.update(overrides)
+        if has_hl:
+            kw.setdefault("high", mk("high"))
+            kw.setdefault("low", mk("low"))
         return cls(mk("open"), mk("close"), mk("volume"), benchmark, None, usdtry=usdtry, **kw)
 
     @classmethod
@@ -110,12 +127,44 @@ class DailyContext:
         return self._adv
 
     @property
+    def limit_pct(self) -> pd.Series:
+        """Daily price-limit fraction per session (date dependent; history UNVERIFIED, see sessions)."""
+        return self._limit_tables()[0]
+
+    @property
+    def limit_down(self) -> pd.DataFrame:
+        return self._limit_tables()[1]
+
+    @property
+    def limit_up(self) -> pd.DataFrame:
+        """Limit-up price per session from the previous (forward-filled) close, tick-floored."""
+        return self._limit_tables()[2]
+
+    def _limit_tables(self):
+        if self._limits is None:
+            pct = limit_pct_series(self.index, self.semantics)
+            lo, hi = limit_matrices(self.close, pct)
+            self._limits = (pct, lo, hi)
+        return self._limits
+
+    @property
+    def healthy(self) -> pd.DataFrame:
+        """Causal bar-health mask (True = usable bar); see ``fills_daily.bar_health``."""
+        if self._healthy is None:
+            self._healthy = bar_health(self)
+        return self._healthy
+
+    @property
     def universe_mask(self) -> pd.DataFrame:
-        """Point-in-time eligibility at the close of t: ADV>=min, enough history, price>=min, traded today."""
+        """Point-in-time eligibility at the close of t: ADV>=min, enough history, price>=min, traded today and
+        (unless legacy) a healthy bar."""
         if self._mask is None:
             hist = self.close.notna().cumsum()
-            self._mask = ((self.adv >= self.min_adv) & (hist >= self.min_history) &
-                          (self.close >= self.min_price) & (self.volume > 0) & self.close.notna())
+            m = ((self.adv >= self.min_adv) & (hist >= self.min_history) &
+                 (self.close >= self.min_price) & (self.volume > 0) & self.close.notna())
+            if self.semantics.bar_health:
+                m = m & self.healthy
+            self._mask = m
         return self._mask
 
     def lag(self, df: pd.DataFrame, k: int = 1) -> pd.DataFrame:
@@ -132,7 +181,9 @@ class DailyContext:
                             min_adv=self.min_adv, adv_window=self.adv_window, min_history=self.min_history,
                             min_price=self.min_price, capital=self.capital, cash_rate=self.cash_rate,
                             cash_withholding=self.cash_withholding,
-                            usdtry=None if self.usdtry is None else self.usdtry.iloc[sl])
+                            usdtry=None if self.usdtry is None else self.usdtry.iloc[sl],
+                            high=self.high.iloc[sl] if self.has_hl else None,
+                            low=self.low.iloc[sl] if self.has_hl else None, semantics=self.semantics)
 
     def benchmarks(self) -> pd.DataFrame:
         """Daily returns: cash, xu100 (if available), ew_universe (equal weight of the point-in-time universe
@@ -184,6 +235,9 @@ class PortfolioResult:
     nav_gross: Optional[pd.DataFrame] = None
     benchmarks: Optional[pd.DataFrame] = None
     notes: List[str] = field(default_factory=list)
+    n_unfillable_entry: int = 0   # entries blocked by limit-up open / locked bar (policy cash|next_ranked|flag)
+    n_exit_deferred: int = 0      # exits postponed (locked limit-down close or NaN exit close)
+    n_exit_carried: int = 0       # subset of the above where the nominal exit close was NaN
 
     def nav_net(self, cost_model) -> pd.DataFrame:
         return nav_returns(self.ctx, self.events, cost_model)
@@ -200,8 +254,12 @@ def build_portfolio_events(ctx: DailyContext, scores: pd.DataFrame, horizon: int
     part of the slot earns cash). ``raw_ret`` = close[t1]/open[t_entry]-1 (same as
     ``labels_daily.forward_return_labels_daily``). ``order_value = capital/top_n*scale``. Missing regime
     values (warm-up) use ``regime_fill`` (1.0 = fully exposed; documented, not guessed from data).
-    Eligible = point-in-time universe mask at t0 AND finite score. Names that cannot be bought at the next open
-    (no open price / zero volume that day) or have no exit close are dropped (stay in cash), not replaced.
+    Eligible = point-in-time universe mask at t0 AND finite score. Execution semantics come from
+    ``ctx.semantics`` (``fills_daily``): entries that are unfillable (zero volume, open at/above limit-up, H==L lock)
+    follow the entry policy ('cash' default = slot stays in cash, 'next_ranked', 'flag'); an exit on a locked
+    limit-down close is deferred to the first unlocked session and a NaN exit close is carried to the next close
+    (legacy semantics: names without an open price/volume or exit close are simply dropped). Events carry
+    ``t_exit``/``exit_price``/``exit_deferred``/``entry_value_try``/``price_limit_flag``.
     ``rebalance_mask`` (optional bool Series over dates, causal: value at t known at close t): a basket is only
     started on a decision date where the mask is True (first True date at/after the previous exit); all other
     days stay in cash (earning the cash rate in ``nav_returns``). None => unchanged behaviour.
@@ -217,7 +275,8 @@ def build_portfolio_events(ctx: DailyContext, scores: pd.DataFrame, horizon: int
     S = scores.reindex(index=idx, columns=ctx.symbols).to_numpy(float)
     M = ctx.universe_mask.to_numpy(bool)
     OP, CL = ctx.open.to_numpy(float), ctx.close.to_numpy(float)
-    VOL, ADV = ctx.volume.to_numpy(float), ctx.adv.to_numpy(float)
+    ADV, VAL = ctx.adv.to_numpy(float), ctx.value.to_numpy(float)
+    policy = ctx.semantics.entry_policy
     syms = np.array(ctx.symbols, dtype=object)
     cash = ctx.cash_ret.to_numpy(float)
     if regime_scale is not None:
@@ -229,7 +288,7 @@ def build_portfolio_events(ctx: DailyContext, scores: pd.DataFrame, horizon: int
     RM = None if rebalance_mask is None else (
         rebalance_mask.reindex(idx).fillna(False).astype(bool).to_numpy())
     anyrow = np.flatnonzero(elig.any(axis=1))
-    rows, dropped, n_reb = [], 0, 0
+    rows, dropped, n_reb, n_unfill, n_defer, n_carry = [], 0, 0, 0, 0, 0
     if len(anyrow):
         i = int(anyrow[0])
         while i + horizon <= n - 1:
@@ -241,27 +300,53 @@ def build_portfolio_events(ctx: DailyContext, scores: pd.DataFrame, horizon: int
             if len(cand):
                 n_reb += 1
                 order = np.lexsort((cand, -S[i, cand]))  # score desc, ties by column (symbol) order
-                pick = cand[order][:top_n]
+                ranked = cand[order]
                 scale = float(sc[i])
                 cash_hold = float(np.prod(1.0 + cash[e:x + 1]) - 1.0)
-                for rank, j in enumerate(pick, 1):
-                    px, ex = OP[e, j], CL[x, j]
-                    if not (np.isfinite(px) and px > 0 and np.isfinite(ex) and VOL[e, j] > 0):
+                w = resolve_window(ctx, i, e, x)
+                taken = 0
+                for rank, j in enumerate(ranked, 1):
+                    if taken >= top_n or (policy != "next_ranked" and rank > top_n):
+                        break
+                    flag = False
+                    if not w.price_ok[j] or w.exit_pos[j] < 0 or not np.isfinite(w.raw[j]):
                         dropped += 1
                         continue
-                    raw = ex / px - 1.0
+                    if not w.entry_ok[j]:
+                        n_unfill += 1
+                        if policy == "flag":
+                            flag = True
+                        else:  # cash: slot stays in cash; next_ranked: try the next name
+                            continue
+                    px, xr = OP[e, j], int(w.exit_pos[j])
+                    if xr > x:
+                        n_defer += 1
+                        n_carry += int(not np.isfinite(CL[x, j]))
+                    taken += 1
+                    raw = float(w.raw[j])
                     rows.append((idx[i], idx[e], idx[x], syms[j], scale * raw + (1.0 - scale) * cash_hold,
-                                 raw, px, ctx.capital / top_n * scale, ADV[i, j], idx[i], rank, S[i, j], scale))
+                                 raw, px, ctx.capital / top_n * scale, ADV[i, j], idx[i], rank, S[i, j], scale,
+                                 idx[xr], float(w.exit_px[j]), xr - x, VAL[e, j], flag))
             i += every
     ev = pd.DataFrame(rows, columns=EVENT_COLS)
-    res = PortfolioResult(ev, ctx, horizon, top_n, every, n_reb, dropped)
+    res = PortfolioResult(ev, ctx, horizon, top_n, every, n_reb, dropped, n_unfillable_entry=n_unfill,
+                          n_exit_deferred=n_defer, n_exit_carried=n_carry)
     res.nav_gross = nav_returns(ctx, ev, None)
     res.benchmarks = ctx.benchmarks()
     return res
 
 
+from bist_signal_bot.edge_validation.capacity_daily import capacity_report  # noqa: E402,F401  (re-export)
+
 BENCHMARK_MODES = ("ew_universe", "cash", "none")
 LEDGER_SUFFIX = {"ew_universe": "_xs_ew", "cash": "_xs_cash", "none": ""}
+
+
+def ledger_family_name(family: str, benchmark: str, v2: bool = True, placebo: bool = False) -> str:
+    """Ledger family for a daily trial stream. v2 (default) = ``LEDGER_SUFFIX_BY_MODE_V2`` (new fill/lock/health/spread
+    semantics => new statistic => new family); v2=False reproduces the legacy name (``LEDGER_SUFFIX``)."""
+    suf = (LEDGER_SUFFIX_BY_MODE_V2 if v2 else LEDGER_SUFFIX)[benchmark]
+    return family + "_daily" + suf + ("__placebo" if placebo else "")
 
 
 def check_benchmark_mode(mode: str) -> str:
@@ -275,7 +360,8 @@ def benchmark_event_returns(ctx: DailyContext, events: pd.DataFrame, mode: str) 
 
     * 'ew_universe': ``scale*ew_raw + (1-scale)*cash_hold`` where ``ew_raw`` is the mean of close[t1]/open[t_entry]-1
       over the point-in-time eligible universe at t0 (``universe_mask[t0]``) restricted to names that could be bought
-      at the entry open and have an exit close (same tradability rule as the strategy). The same exposure scale as the
+      at the entry open and have an exit close (same fill / lock-deferral / carry rule as the strategy:
+      ``fills_daily.resolve_window``). The same exposure scale as the
       event is used, so with regime scaling the excess = scale*(raw - ew_raw).
     * 'cash': cash compounded over the same window (calendar-day accrual of ``ctx.cash_ret``).
     The benchmark leg is frictionless (no costs): conservative for the strategy.
@@ -286,7 +372,6 @@ def benchmark_event_returns(ctx: DailyContext, events: pd.DataFrame, mode: str) 
         return out
     pos = pd.Series(np.arange(len(ctx.index)), index=ctx.index)
     cash = ctx.cash_ret.to_numpy(float)
-    OP, CL, VOL = ctx.open.to_numpy(float), ctx.close.to_numpy(float), ctx.volume.to_numpy(float)
     M = ctx.universe_mask.to_numpy(bool)
     scale = events["exposure_scale"].to_numpy(float)
     keys = events[["t0", "t_entry", "t1"]].astype("datetime64[ns]").to_numpy().astype("int64")
@@ -299,10 +384,9 @@ def benchmark_event_returns(ctx: DailyContext, events: pd.DataFrame, mode: str) 
             cash_hold = float(np.prod(1.0 + cash[e:x + 1]) - 1.0)
             ew = 0.0
             if mode == "ew_universe":
-                with np.errstate(invalid="ignore", divide="ignore"):
-                    r = CL[x] / OP[e] - 1.0
-                ok = M[i] & np.isfinite(OP[e]) & (OP[e] > 0) & np.isfinite(CL[x]) & (VOL[e] > 0) & np.isfinite(r)
-                ew = float(r[ok].mean()) if ok.any() else 0.0
+                w = resolve_window(ctx, i, e, x)  # IDENTICAL entry/exit semantics as events and labels
+                ok = M[i] & w.ok
+                ew = float(w.raw[ok].mean()) if ok.any() else 0.0
             cache[key] = (ew, cash_hold)
         ew, cash_hold = cache[key]
         s = scale[k]
@@ -331,7 +415,9 @@ def subset_ctx(ctx: DailyContext, symbols: Sequence[str]) -> DailyContext:
     return DailyContext(ctx.open[cols], ctx.close[cols], ctx.volume[cols], ctx.benchmark, ctx.cash_ret,
                         min_adv=ctx.min_adv, adv_window=ctx.adv_window, min_history=ctx.min_history,
                         min_price=ctx.min_price, capital=ctx.capital, cash_rate=ctx.cash_rate,
-                        cash_withholding=ctx.cash_withholding, usdtry=ctx.usdtry)
+                        cash_withholding=ctx.cash_withholding, usdtry=ctx.usdtry,
+                        high=ctx.high[cols] if ctx.has_hl else None, low=ctx.low[cols] if ctx.has_hl else None,
+                        semantics=ctx.semantics)
 
 
 def nav_returns(ctx: DailyContext, events: pd.DataFrame, cost_model=None) -> pd.DataFrame:
@@ -349,9 +435,12 @@ def nav_returns(ctx: DailyContext, events: pd.DataFrame, cost_model=None) -> pd.
     hold_n, invested = np.zeros(n), np.zeros(n)
     ev = events
     if cost_model is not None and len(ev):
+        kw = {}
+        if "price_limit_flag" in ev.columns and getattr(cost_model, "supports_price_limit_flags", False):
+            kw["price_limit_flags"] = ev["price_limit_flag"].to_numpy(bool)
         cf = -np.asarray(cost_model.apply_costs(np.zeros(len(ev)), ev["price"].to_numpy(float),
                                                 ev["order_value"].to_numpy(float),
-                                                ev["bar_value_try"].to_numpy(float)), dtype=float)
+                                                ev["bar_value_try"].to_numpy(float), **kw), dtype=float)
         ev = ev.assign(cost_frac=cf)
         ev = ev[np.isfinite(ev["cost_frac"])]
     else:
@@ -365,7 +454,11 @@ def nav_returns(ctx: DailyContext, events: pd.DataFrame, cost_model=None) -> pd.
             j = col[g["symbol"]].to_numpy()
             w = g["order_value"].to_numpy(float) / ctx.capital
             W = float(w.sum())
-            rel = ((CLf[e:x + 1][:, j] / OP[e, j]) * w).sum(axis=1) + (1.0 - W) * np.cumprod(1.0 + cash[e:x + 1])
+            P = CLf[e:x + 1][:, j].copy()
+            if "exit_price" in g.columns:  # realised exit (deferred / carried exits are booked at t1 at the real price)
+                xpx = g["exit_price"].to_numpy(float)
+                P[-1] = np.where(np.isfinite(xpx), xpx, P[-1])
+            rel = ((P / OP[e, j]) * w).sum(axis=1) + (1.0 - W) * np.cumprod(1.0 + cash[e:x + 1])
             rel[-1] -= float((w * g["cost_frac"].to_numpy(float)).sum())
             prev = np.concatenate([[1.0], rel[:-1]])
             ret[e:x + 1] = rel / prev - 1.0

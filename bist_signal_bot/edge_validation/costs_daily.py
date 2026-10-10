@@ -10,6 +10,11 @@ so it is 0 when commission is 0) + exchange fee + half spread (tick floor) + sqr
 Two scenarios are always meant to be reported: ``zero_commission`` (broker commission 0) and
 ``placeholder_commission`` (DAILY_COST_COMMISSION_PLACEHOLDER_BPS per leg). Rates are unverified placeholders.
 Holding cost = interest forgone on cash while invested (see ``holding_cost_bps``).
+
+Spread proxy (price/ADV dependent, UNVERIFIED placeholder): half spread = max(tick floor, spread_proxy_bps,
+``spread_base_bps + spread_k_bps / sqrt(ADV / 1e6 TRY)``). ``from_settings`` reads DAILY_COST_SPREAD_PROXY_BPS_BASE /
+DAILY_COST_SPREAD_PROXY_K_BPS (defaults 1.0 / 3.0; 0 / 0 or DAILY_LEGACY_SEMANTICS reproduces the old behaviour; the
+plain constructor keeps 0 / 0). ``price_limit_flags`` (events column ``price_limit_flag``) disallow the entry (NaN).
 """
 from __future__ import annotations
 
@@ -26,7 +31,8 @@ SCENARIOS = ("zero_commission", "placeholder_commission")
 class DailyCostModel:
     def __init__(self, commission_bps: float = 0.0, bsmv_rate: float = 0.05, exchange_fee_bps: float = 0.3,
                  impact_coef: float = 0.5, max_participation: float = 0.05, spread_proxy_bps: float = 0.0,
-                 cash_annual_rate: float = 0.37, cash_withholding: float = 0.0, scenario: str = "custom"):
+                 cash_annual_rate: float = 0.37, cash_withholding: float = 0.0, scenario: str = "custom",
+                 spread_base_bps: float = 0.0, spread_k_bps: float = 0.0):
         self.commission_bps = commission_bps
         self.bsmv_rate = bsmv_rate
         self.exchange_fee_bps = exchange_fee_bps
@@ -36,6 +42,9 @@ class DailyCostModel:
         self.cash_annual_rate = cash_annual_rate
         self.cash_withholding = cash_withholding
         self.scenario = scenario
+        self.spread_base_bps = float(spread_base_bps)
+        self.spread_k_bps = float(spread_k_bps)
+        self.supports_price_limit_flags = True  # CandidateGate/nav_returns feed the events' price_limit_flag column
         self.allow_short = False  # long-only, no leverage
         # reuse the intraday semantics for spread/impact/participation, with the daily impact coef
         self._core = IntradayCostModel(commission_bps, bsmv_rate, exchange_fee_bps, impact_coef,
@@ -49,14 +58,25 @@ class DailyCostModel:
             from bist_signal_bot.config.settings import get_settings
             settings = get_settings()
         g = lambda k: getattr(settings, k)  # noqa: E731
+        legacy = bool(getattr(settings, "DAILY_LEGACY_SEMANTICS", False))
+        sb = 0.0 if legacy else float(getattr(settings, "DAILY_COST_SPREAD_PROXY_BPS_BASE", 1.0))
+        sk = 0.0 if legacy else float(getattr(settings, "DAILY_COST_SPREAD_PROXY_K_BPS", 3.0))
         comm = 0.0 if scenario == "zero_commission" else float(g("DAILY_COST_COMMISSION_PLACEHOLDER_BPS"))
         return cls(comm, float(g("DAILY_COST_BSMV_RATE")), float(g("DAILY_COST_EXCHANGE_FEE_BPS")),
                    float(g("DAILY_COST_IMPACT_COEF")), float(g("DAILY_COST_MAX_PARTICIPATION")), 0.0,
-                   float(g("CASH_BENCHMARK_ANNUAL_RATE")), float(g("CASH_BENCHMARK_WITHHOLDING")), scenario)
+                   float(g("CASH_BENCHMARK_ANNUAL_RATE")), float(g("CASH_BENCHMARK_WITHHOLDING")), scenario, sb, sk)
+
+    def spread_proxy_for(self, bar_value_try: float) -> float:
+        """Half-spread proxy (bps) for an ADV (TRY): max(constant, base + k/sqrt(ADV/1e6)); constant if no ADV."""
+        sp = self.spread_proxy_bps
+        if (self.spread_base_bps > 0 or self.spread_k_bps > 0) and np.isfinite(bar_value_try) and bar_value_try > 0:
+            sp = max(sp, self.spread_base_bps + self.spread_k_bps / float(np.sqrt(bar_value_try / 1e6)))
+        return sp
 
     # ---- per leg ----
     def breakdown(self, price: float, order_value: float, bar_value_try: float, side: str = "buy",
                   at_price_limit: bool = False) -> CostBreakdown:
+        self._core.spread_proxy_bps = self.spread_proxy_for(bar_value_try)
         b = self._core.breakdown(price, order_value, bar_value_try, side)
         if b.allowed and at_price_limit:
             return CostBreakdown(b.commission_bps, b.bsmv_bps, b.exchange_bps, b.half_spread_bps,

@@ -3,7 +3,7 @@
 Research/paper only. No real order is ever sent. Nothing here promotes a model; the CandidateGate decides.
 
 Label (same window as ``xsection.benchmark_event_returns``): decision at the close of row i; entry at the OPEN of
-row i+1; exit at the CLOSE of row i+h. ``excess = raw_ret - EW`` where EW is the mean raw return of the
+row i+1; exit at the CLOSE of row i+h (deferred to the next unlocked / available close, see ``fills_daily``). ``excess = raw_ret - EW`` where EW is the mean raw return of the
 point-in-time eligible universe (``universe_mask[i]``) over names that can be bought at the entry open and have an
 exit close. Binary targets:
   * ``top``: excess is in the top tercile of the eligible cross-section at that date (primary; base rate 1/3);
@@ -34,6 +34,7 @@ import pandas as pd
 
 from bist_signal_bot.edge_validation.cv import CombinatorialPurgedCV
 from bist_signal_bot.edge_validation.sample_weights import average_uniqueness, time_decay_weights
+from bist_signal_bot.edge_validation.fills_daily import resolve_window
 from bist_signal_bot.edge_validation.xsection import DailyContext
 from bist_signal_bot.model_loop.daily_features import (FEATURE_COLUMNS, FeaturePanel, get_feature_panel,
                                                        rank_normalize_rows)
@@ -68,15 +69,15 @@ def build_labels(ctx: DailyContext, horizon: int, fp: Optional[FeaturePanel] = N
         raise ValueError("horizon must be >= 1")
     fp = fp or get_feature_panel(ctx)
     n = len(ctx.index)
-    OP, CL, VOL = ctx.open.to_numpy(float), ctx.close.to_numpy(float), ctx.volume.to_numpy(float)
     M = ctx.universe_mask.to_numpy(bool)
     P, J, E, EW, W, YT = [], [], [], [], [], []
     for i in range(0, n - h):
         e, x = i + 1, i + h
-        with np.errstate(invalid="ignore", divide="ignore"):
-            r = CL[x] / OP[e] - 1.0
-        tradable = np.isfinite(OP[e]) & (OP[e] > 0) & np.isfinite(CL[x]) & (VOL[e] > 0) & np.isfinite(r)
-        ok = M[i] & tradable
+        # SAME entry/exit semantics as xsection.build_portfolio_events / benchmark_event_returns (fills_daily):
+        # unfillable entries (limit-up open, locked bar, zero volume) excluded; locked limit-down / NaN exits deferred.
+        w = resolve_window(ctx, i, e, x)
+        r = w.raw
+        ok = M[i] & w.ok
         if not ok.any():
             continue
         ew = float(r[ok].mean())

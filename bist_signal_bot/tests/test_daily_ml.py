@@ -194,7 +194,7 @@ def test_runner_passes_horizon_and_uses_temp_ledger(ctx, tmp_path):
     grid = {"C": [0.1, 1.0], "retrain_every": [60], **{k: [v] for k, v in SMALL.items()}}
     res = run_family_daily("ml_xs_logit", ctx, (5, 10), grid, 8, led, CandidateGate(GateConfig(), save=False),
                            save_report=False, benchmark="ew_universe")
-    assert led.n_trials("ml_xs_logit_daily_xs_ew") == 4  # 2 params x 2 horizons, every combo counted
+    assert led.n_trials("ml_xs_logit_daily_xs_ew2") == 4  # 2 params x 2 horizons, every combo counted
     assert res.verdict in ("CANDIDATE", "REJECTED", "INSUFFICIENT_DATA")
     assert res.verdict != "CANDIDATE"  # pure noise panel: no edge may be reported
     fam = DAILY_FAMILIES["ml_xs_logit"]

@@ -226,6 +226,55 @@ class XSVolumeShock:
         return _clean(-s if int(params.get("invert", 0)) else s)
 
 
+class XSRet20Raw(_Mom):
+    """UN-SKIPPED short-term momentum: plain return over the last ``lookback`` days (skip fixed at 0).
+
+    Registered explicitly because the audited ML result (ml_xs_logit h=5) turned out to rest on one factor, extreme
+    1-month momentum in the top tail (limit-up streak continuation). The skip-1-month rule families (12-1, 1-6)
+    cannot see it and ``xs_momentum`` mixes skip values, so this family measures the raw effect on its own ledger
+    line. Grid: lookback {10,20,40} x skip {0} x vol_scaled {0} -> 3 combos.
+    """
+    name = "xs_ret20_raw"
+    default_grid = {"lookback": [10, 20, 40], "skip": [0], "vol_scaled": [0]}
+
+    def valid(self, params: dict) -> bool:
+        return int(params.get("skip", 0)) == 0 and params.get("lookback", 0) >= 5
+
+
+class XSTailMomentumGuard:
+    """Same score as ``xs_ret20_raw`` but names in the limit-up tail are EXCLUDED (score NaN): ret over the last 5
+    days >= ``ret5_cap`` (default 25%) OR >= ``streak`` consecutive limit-up sessions (daily return >= 9.5%, BIST
+    +-10% price limit) inside the last 5 sessions. A VBTS-like proxy (Borsa Istanbul's volatility-based measures
+    target exactly these names; the real VBTS list is NOT available here). Measures how much of the raw effect is the
+    limit-up lottery tail. Grid: lookback {10,20,40} -> 3 combos (cap and streak fixed, not tuned).
+    """
+    name = "xs_tail_momentum_guard"
+    default_grid = {"lookback": [10, 20, 40], "ret5_cap": [0.25], "streak": [2]}
+    LIMIT_UP = 0.095
+    WINDOW = 5
+
+    def valid(self, params: dict) -> bool:
+        return (params.get("lookback", 0) >= 5 and params.get("ret5_cap", 0) > 0 and int(params.get("streak", 0)) >= 1)
+
+    def tail_mask(self, ctx: DailyContext, params: dict) -> pd.DataFrame:
+        """True where the name is in the tail at the close of t (uses rows <= t only)."""
+        w = self.WINDOW
+        c = ctx.close
+        ret5 = c / c.shift(w) - 1.0
+        lu = (_rets(ctx) >= self.LIMIT_UP).astype(float)
+        k = int(params["streak"])
+        run = lu.rolling(k, min_periods=k).min()  # 1 where the last k sessions were all limit-up
+        streak = run.rolling(w - k + 1, min_periods=1).max() >= 1.0  # ... at any point within the last w sessions
+        return (ret5 >= float(params["ret5_cap"])) | streak
+
+    def score(self, ctx: DailyContext, params: dict) -> pd.DataFrame:
+        if not self.valid(params):
+            raise ValueError("need lookback >= 5, ret5_cap > 0, streak >= 1")
+        lb = int(params["lookback"])
+        s = _clean(ctx.close / ctx.close.shift(lb) - 1.0)
+        return s.where(~self.tail_mask(ctx, params))
+
+
 for _fam in (XSMomentum121(), XSMomentum16(), XSReversal(), XSLowVol(), XSLowBeta(), XSQualityProxy(),
-             XSVolumeShock()):
+             XSVolumeShock(), XSRet20Raw(), XSTailMomentumGuard()):
     register_family(_fam, overwrite=True)

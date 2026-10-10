@@ -27,8 +27,15 @@ import pandas as pd
 from bist_signal_bot.edge_validation.xsection import DailyContext
 
 NO_ORDER = "No real order sent."
+# Bump whenever FEATURE_COLUMNS / feature definitions change; it is part of ML trial ids so ledger rows computed on a
+# different feature set are never conflated. v2: market-residual clusters with size limits (v1 was degenerate: one
+# cluster) and rs_xu_20/60 (identical to ret_20/60 after per-date rank-normalisation) replaced by res_xu_20/60.
+FEATURES_VERSION = 2
 CLUSTER_WINDOW = 250
 CLUSTER_REFRESH = 60
+CLUSTER_MIN_SIZE = 5
+CLUSTER_MAX_FRAC = 0.4   # no cluster may hold more than max(2*min_size, ceil(frac*m)) symbols
+CLUSTER_K_MAX = 10
 WINSOR = (0.01, 0.99)
 Z_CLIP = 3.0
 MIN_FINITE_FRAC = 0.75  # a (date, symbol) row is usable when >= this share of features is finite
@@ -40,7 +47,7 @@ CS_FEATURES: List[str] = [
     "vol_20", "vol_60", "vol_120",
     "beta_120", "idio_vol_60", "drawdown_250", "dist_high_252",
     "volume_shock_5", "volume_shock_1",
-    "rs_xu_20", "rs_xu_60", "rs_cluster_20", "rs_cluster_60",
+    "res_xu_20", "res_xu_60", "rs_cluster_20", "rs_cluster_60",
     "usdtry_beta_120",
 ]
 # market-level features (same value for every symbol on a date)
@@ -99,22 +106,69 @@ def _expanding_pct(s: pd.Series, min_periods: int = 60) -> pd.Series:
     return s.expanding(min_periods=min_periods).rank(pct=True)
 
 
-def _corr_clusters(R: np.ndarray, k_max: int = 10) -> np.ndarray:
-    """Cluster labels (m,) from the correlation of the (T, m) return window (NaN -> 0 corr). Deterministic."""
+def _market_residual(R: np.ndarray) -> np.ndarray:
+    """Remove the (equal-weight cross-sectional mean) market factor from a (T, m) return window: R - beta_i * mkt,
+    beta_i = cov(R_i, mkt)/var(mkt) over the window. Without this every stock is highly correlated with the market
+    and average-linkage clustering collapses into one cluster. Window-local => causal when the window ends at t."""
+    with np.errstate(all="ignore"), warnings.catch_warnings():
+        warnings.simplefilter("ignore", RuntimeWarning)
+        mkt = np.nanmean(R, axis=1)
+    mkt = np.nan_to_num(mkt, nan=0.0)
+    var = float(np.var(mkt))
+    if var <= 0:
+        return R
+    Rc = np.where(np.isfinite(R), R, np.nan)
+    with np.errstate(all="ignore"), warnings.catch_warnings():
+        warnings.simplefilter("ignore", RuntimeWarning)
+        mu = np.nanmean(Rc, axis=0)
+        beta = np.nansum((Rc - mu) * (mkt - mkt.mean())[:, None], axis=0) / (len(mkt) * var)
+    return Rc - np.nan_to_num(beta, nan=1.0)[None, :] * mkt[:, None]
+
+
+def _bisect(idx: np.ndarray, D: np.ndarray, min_size: int) -> List[np.ndarray]:
+    """Split a cluster in two: average-linkage 2-cut; if that is degenerate (a side < min_size, i.e. chaining) fall
+    back to a balanced split along the first principal axis of the member similarity matrix."""
     from scipy.cluster.hierarchy import fcluster, linkage
     from scipy.spatial.distance import squareform
+    sub = D[np.ix_(idx, idx)]
+    lab = fcluster(linkage(squareform(sub, checks=False), method="average"), t=2, criterion="maxclust")
+    a, b = idx[lab == 1], idx[lab != 1]
+    if len(a) < min_size or len(b) < min_size:
+        w, v = np.linalg.eigh(1.0 - sub)
+        order = np.argsort(v[:, -1], kind="stable")
+        half = len(idx) // 2
+        a, b = idx[order[:half]], idx[order[half:]]
+    return [a, b]
+
+
+def _corr_clusters(R: np.ndarray, k_max: int = CLUSTER_K_MAX, min_size: int = CLUSTER_MIN_SIZE,
+                   max_frac: float = CLUSTER_MAX_FRAC) -> np.ndarray:
+    """Cluster labels (m,) from the correlation of MARKET-RESIDUAL returns in the (T, m) window (NaN -> 0 corr).
+    Deterministic. Recursive bisection of the largest cluster until every cluster has <= max_size symbols
+    (max_size = max(2*min_size, ceil(max_frac*m))) or ``k_max`` clusters exist; every produced cluster has
+    >= min_size symbols (a bisection is only accepted if both sides do). Universes with m < 2*min_size symbols stay
+    a single cluster (a cluster peer-relative feature is meaningless there)."""
     m = R.shape[1]
     if m < 4:
         return np.zeros(m, dtype=int)
-    C = pd.DataFrame(R).corr(min_periods=30).to_numpy(float)
+    C = pd.DataFrame(_market_residual(R)).corr(min_periods=30).to_numpy(float)
     C = np.nan_to_num(C, nan=0.0)
     np.fill_diagonal(C, 1.0)
     D = np.clip(1.0 - C, 0.0, 2.0)
     D = (D + D.T) / 2.0
     np.fill_diagonal(D, 0.0)
-    Zl = linkage(squareform(D, checks=False), method="average")
-    k = int(max(2, min(k_max, m // 6)))
-    return fcluster(Zl, t=k, criterion="maxclust") - 1
+    max_size = max(2 * min_size, int(np.ceil(max_frac * m)))
+    clusters: List[np.ndarray] = [np.arange(m)]
+    while len(clusters) < k_max:
+        bi = max(range(len(clusters)), key=lambda i: len(clusters[i]))
+        big = clusters[bi]
+        if len(big) <= max_size or len(big) < 2 * min_size:
+            break
+        clusters = clusters[:bi] + clusters[bi + 1:] + _bisect(big, D, min_size)
+    lab = np.zeros(m, dtype=int)
+    for cid, members in enumerate(sorted(clusters, key=lambda a: int(a.min()))):
+        lab[members] = cid
+    return lab
 
 
 def cluster_labels(ctx: DailyContext, window: int = CLUSTER_WINDOW, refresh: int = CLUSTER_REFRESH) -> np.ndarray:
@@ -181,11 +235,12 @@ def raw_features(ctx: DailyContext) -> Dict[str, np.ndarray]:
         resid = (r60.var() - beta60.mul(cov60)).clip(lower=0.0)
         out["idio_vol_60"] = np.sqrt(resid).to_numpy(float)
         bm = ctx.benchmark
-        for w in (20, 60):
-            out[f"rs_xu_{w}"] = (ret(w).sub(bm / bm.shift(w) - 1.0, axis=0)).to_numpy(float)
+        for w in (20, 60):  # beta-adjusted residual vs XU100 (a plain ret - xu100 is rank-identical to ret per date)
+            res = ret(w).sub(beta.mul(bm / bm.shift(w) - 1.0, axis=0))
+            out[f"res_xu_{w}"] = res.replace([np.inf, -np.inf], np.nan).to_numpy(float)
         out["mkt_ret_20_raw"] = (bm / bm.shift(20) - 1.0).to_numpy(float)
     else:
-        for k in ("beta_120", "idio_vol_60", "rs_xu_20", "rs_xu_60"):
+        for k in ("beta_120", "idio_vol_60", "res_xu_20", "res_xu_60"):
             out[k] = nan.copy()
         out["mkt_ret_20_raw"] = np.full(len(idx), np.nan)
 
@@ -253,6 +308,20 @@ def build_feature_panel(ctx: DailyContext) -> FeaturePanel:
     valid = mask & (frac >= MIN_FINITE_FRAC)
     Z = np.nan_to_num(X, nan=0.0).astype(np.float32)
     return FeaturePanel(X, Z, valid, ctx.index, list(ctx.symbols), list(FEATURE_COLUMNS))
+
+
+def cluster_diagnostics(ctx: DailyContext, window: int = CLUSTER_WINDOW) -> dict:
+    """Real-data check: cluster the LAST ``window`` sessions and report sizes (must be > 1 cluster, sizes within the
+    configured limits). Returns {n_clusters, sizes, ok, reason}. Use on the real archive context."""
+    n, m = len(ctx.index), len(ctx.symbols)
+    if n < 60 or m < 2 * CLUSTER_MIN_SIZE:
+        return {"n_clusters": 1, "sizes": [m], "ok": False, "reason": "too few sessions/symbols"}
+    lab = _corr_clusters(_rets(ctx).to_numpy(float)[max(0, n - window):])
+    sizes = np.bincount(lab).tolist()
+    max_size = max(2 * CLUSTER_MIN_SIZE, int(np.ceil(CLUSTER_MAX_FRAC * m)))
+    ok = len(sizes) > 1 and min(sizes) >= CLUSTER_MIN_SIZE and max(sizes) <= max_size
+    return {"n_clusters": len(sizes), "sizes": sizes, "ok": bool(ok), "max_size_allowed": max_size,
+            "reason": "" if ok else "degenerate or size limits violated", "features_version": FEATURES_VERSION}
 
 
 def get_feature_panel(ctx: DailyContext) -> FeaturePanel:

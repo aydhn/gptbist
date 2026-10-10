@@ -133,9 +133,12 @@ class CandidateGate:
         if ev is None or len(ev) == 0:
             return pd.DataFrame(columns=["t0", "t1", "symbol", "gross_ret", "net_ret"])
         ev = ev.copy().reset_index(drop=True)
+        kw = {}  # daily events may carry price_limit_flag (entry unfillable at a price limit) -> cost NaN -> excluded
+        if "price_limit_flag" in ev.columns and getattr(self.cost_model, "supports_price_limit_flags", False):
+            kw["price_limit_flags"] = ev["price_limit_flag"].to_numpy(bool)
         ev["net_ret"] = self.cost_model.apply_costs(
             ev["gross_ret"].to_numpy(float), ev["price"].to_numpy(float),
-            ev["order_value"].to_numpy(float), ev["bar_value_try"].to_numpy(float))
+            ev["order_value"].to_numpy(float), ev["bar_value_try"].to_numpy(float), **kw)
         return ev
 
     def _cpcv(self, pool: pd.DataFrame, trial_ids: Sequence[str], grid: pd.DatetimeIndex, rep: GateReport):

@@ -33,7 +33,15 @@ HALF_DAY_CLOSE = time(12, 30)
 HALF_DAY_CLOSING_AUCTION = (time(12, 30), time(12, 40))
 MIDDAY_SINGLE_PRICE = (time(13, 0), time(14, 0))  # unverified; opt-in only
 
-PRICE_LIMIT_PCT = Decimal("0.10")
+PRICE_LIMIT_PCT = Decimal("0.10")  # CURRENT limit (used when no date is given)
+
+# Date-dependent limit schedule: ((first_session_date, limit_pct), ...) ascending.
+# UNVERIFIED, confirm with Borsa Istanbul: a forensic audit of the daily framework reports a +-20% band before
+# March 2020 and +-10% afterwards. The exact transition date (assumed 2020-03-01 here) and the pre-2020 band are NOT
+# confirmed from an official source; override with settings key PRICE_LIMIT_SCHEDULE
+# ("1900-01-01:0.20,2020-03-01:0.10") or use ``DAILY_LEGACY_SEMANTICS`` to reproduce the old flat 10% behaviour.
+PRICE_LIMIT_TRANSITION_DATE = date(2020, 3, 1)  # UNVERIFIED
+PRICE_LIMIT_SCHEDULE = ((date(1900, 1, 1), Decimal("0.20")), (PRICE_LIMIT_TRANSITION_DATE, Decimal("0.10")))
 
 # (upper bound exclusive, tick)
 _TICK_TABLE = (
@@ -216,17 +224,68 @@ def round_to_tick(price: float) -> float:
     return float((p / tick).quantize(Decimal("1"), rounding=ROUND_HALF_UP) * tick)
 
 
-def daily_price_limits(prev_close: float, tick_table: bool = True) -> tuple[float, float]:
-    """(floor, ceiling) = prev_close -/+ 10%; ceiling rounded down, floor rounded up to a valid tick."""
+def parse_price_limit_schedule(text) -> tuple:
+    """"YYYY-MM-DD:pct,YYYY-MM-DD:pct" -> ascending ((date, Decimal), ...). Empty/None -> default schedule."""
+    if not text:
+        return PRICE_LIMIT_SCHEDULE
+    out = []
+    for part in str(text).split(","):
+        d, _, p = part.strip().partition(":")
+        out.append((date.fromisoformat(d.strip()), Decimal(p.strip())))
+    return tuple(sorted(out))
+
+
+def price_limit_pct(on_date=None, schedule=None) -> Decimal:
+    """Daily limit fraction in force on ``on_date`` (None -> the current/latest entry). UNVERIFIED history."""
+    sched = schedule or PRICE_LIMIT_SCHEDULE
+    if on_date is None:
+        return sched[-1][1]
+    d = _as_date(on_date.to_pydatetime() if hasattr(on_date, "to_pydatetime") else on_date)
+    pct = sched[0][1]
+    for start, p in sched:
+        if d >= start:
+            pct = p
+    return pct
+
+
+def daily_price_limits(prev_close: float, date=None, tick_table: bool = True,  # noqa: A002
+                       schedule=None) -> tuple[float, float]:
+    """(floor, ceiling) = prev_close -/+ limit; ceiling rounded down, floor rounded up to a valid tick.
+
+    ``date`` selects the (unverified) date-dependent limit pct; None keeps the historical behaviour (current 10%).
+    A bool in the ``date`` slot is accepted as the legacy positional ``tick_table`` argument.
+    """
+    if isinstance(date, bool):
+        tick_table, date = date, None
+    pct = price_limit_pct(date, schedule)
     pc = Decimal(str(prev_close))
-    raw_hi = pc * (1 + PRICE_LIMIT_PCT)
-    raw_lo = pc * (1 - PRICE_LIMIT_PCT)
+    raw_hi = pc * (1 + pct)
+    raw_lo = pc * (1 - pct)
     if not tick_table:
         return float(raw_lo.quantize(Decimal("0.01"))), float(raw_hi.quantize(Decimal("0.01")))
     hi_t, lo_t = _tick_for(raw_hi), _tick_for(raw_lo)
     hi = (raw_hi / hi_t).to_integral_value(rounding=ROUND_FLOOR) * hi_t
     lo = (raw_lo / lo_t).to_integral_value(rounding=ROUND_CEILING) * lo_t
     return float(lo), float(hi)
+
+
+def _tick_array(p):
+    import numpy as np
+    p = np.asarray(p, dtype=float)
+    return np.where(p < 20.0, 0.01, np.where(p < 50.0, 0.02, np.where(p < 100.0, 0.05, 0.10)))
+
+
+def daily_price_limits_array(prev_close, pct):
+    """Vectorised (floor, ceiling) for arrays (same tick rules as ``daily_price_limits``; float epsilon-safe).
+    ``pct`` is a scalar or an array broadcastable to ``prev_close``."""
+    import numpy as np
+    pc = np.asarray(prev_close, dtype=float)
+    pc, pct = np.broadcast_arrays(pc, np.asarray(pct, dtype=float))
+    raw_hi, raw_lo = pc * (1.0 + pct), pc * (1.0 - pct)
+    th, tl = _tick_array(raw_hi), _tick_array(raw_lo)
+    hi = np.floor(raw_hi / th + 1e-9) * th
+    lo = np.ceil(raw_lo / tl - 1e-9) * tl
+    return np.round(lo, 6), np.round(hi, 6)
 
 
 def halt_stub(*_args, **_kwargs) -> None:

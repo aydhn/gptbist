@@ -107,7 +107,7 @@ def test_run_all_daily_end_to_end_temp_ledger(ctx, tmp_path):
     bad = [r for r in rows if r["family"] == "no_such_family"]
     assert all(r["error"] is None and set(r["verdicts"]) == {"placeholder_commission", "zero_commission"} for r in ok)
     assert all(r["error"] for r in bad)  # recorded, batch continued
-    assert led.n_trials("xs_momentum_12_1_daily_xs_ew__placebo") >= 1
+    assert led.n_trials("xs_momentum_12_1_daily_xs_ew2__placebo") >= 1
 
 
 def test_cli_run_daily_all_writes_reports(ctx, tmp_path, monkeypatch, capsys):

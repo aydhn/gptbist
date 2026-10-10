@@ -57,3 +57,16 @@ def test_executor_command_injection_newline_blocked(executor):
     code, stdout, stderr = executor.execute_command(["python", "-m", "bist_signal_bot", "healthcheck", "arg\nmalicious"], 5, {})
     assert code == 1
     assert "Security Error" in stderr
+
+
+@pytest.mark.parametrize("out,err", [("partial", "warn"), (b"partial", b"warn"), (None, None)])
+def test_executor_timeout_handles_str_and_bytes(executor, monkeypatch, out, err):
+    import subprocess
+
+    def boom(*a, **k):
+        raise subprocess.TimeoutExpired(cmd="x", timeout=1, output=out, stderr=err)
+
+    monkeypatch.setattr(subprocess, "run", boom)
+    code, stdout, stderr = executor.execute_command(["python", "-m", "bist_signal_bot", "healthcheck"], 1, {})
+    assert code == 124
+    assert isinstance(stdout, str) and isinstance(stderr, str)

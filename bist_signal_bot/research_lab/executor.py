@@ -115,7 +115,10 @@ class ResearchJobExecutor:
             )
             return proc.returncode, proc.stdout, proc.stderr
         except subprocess.TimeoutExpired as e:
-            return 124, e.stdout.decode() if e.stdout else "", e.stderr.decode() if e.stderr else ""
+            def _txt(v):
+                # text=True makes TimeoutExpired carry str; bytes only on some platforms/versions
+                return v.decode(errors="replace") if isinstance(v, bytes) else (v or "")
+            return 124, _txt(e.stdout), _txt(e.stderr)
         except Exception as e:
             return 1, "", str(e)
 

@@ -755,6 +755,16 @@ DEFAULTS: dict[str, Any] = {
     "DAILY_ADV_WINDOW": 20,
     "DAILY_MIN_HISTORY_DAYS": 60,  # min bars of history before a symbol is eligible
     "DAILY_MIN_PRICE_TRY": 1.0,
+    "DAILY_LEGACY_SEMANTICS": False,  # True = reproduce pre-audit daily results (flat 10% limit, no fill/lock/health rules, spread proxy 0)
+    "DAILY_ENTRY_FILL_POLICY": "cash",  # unfillable entry (open>=limit-up, H==L lock, zero volume): cash | next_ranked | flag | off
+    "DAILY_EXIT_LOCK_DEFER": True,  # exit on a locked limit-down close is deferred to the first unlocked session
+    "DAILY_NAN_EXIT_CARRY": True,  # exit close NaN (halt) -> carry to the next available close instead of dropping the name
+    "DAILY_BAR_HEALTH": True,  # causal bar health mask (bad bars removed from universe_mask)
+    "DAILY_BAR_HEALTH_TOL": 0.005,  # tolerance added to the price limit when checking close-to-close / gap moves
+    "DAILY_BAR_SPIKE_PCT": 0.08,  # spike-and-revert detector threshold (|move| and opposite move next session)
+    "PRICE_LIMIT_SCHEDULE": "",  # "YYYY-MM-DD:pct,..." override; empty = sessions.PRICE_LIMIT_SCHEDULE (UNVERIFIED history, confirm with Borsa Istanbul)
+    "DAILY_COST_SPREAD_PROXY_BPS_BASE": 1.0,  # half-spread proxy = base + k/sqrt(ADV/1e6 TRY) bps (placeholder, unverified); floored by the tick spread
+    "DAILY_COST_SPREAD_PROXY_K_BPS": 3.0,  # k in the ADV-dependent half-spread proxy; 0 and base 0 = legacy
     "DAILY_OVERLAY_MAX_DD": 0.2,  # psychological max drawdown (fraction); overlay is fully in cash at this DD. NOTE: DailyLossGuard uses RISK_MAX_DRAWDOWN_PCT (percent, intraday paper guard, 8.0) - set it >= 100*this for the multi-day book
     "DAILY_OVERLAY_DERISK_START_FRAC": 0.5,  # start de-risking at this fraction of max DD
     "DAILY_OVERLAY_FLOOR_FRAC": 0.75,  # exposure = DAILY_OVERLAY_FLOOR_EXPOSURE at this fraction of max DD
@@ -772,6 +782,17 @@ DEFAULTS: dict[str, Any] = {
     "REAL_REPORT_TARGET_REAL_CAGR": 0.75,  # user target: real (CPI-adjusted) CAGR
     "REAL_REPORT_DEPOSIT_WITHHOLDING": 0.15,  # stopaj on deposit interest for the cash comparator in real reports (unverified placeholder)
     "REAL_REPORT_CPI_LAG_MONTHS": 1,  # CPI publication lag (months) used in causal mode
+    # Robustness layer (v2 candidacy; stacked ON TOP of the gate, tightening only). Fixed a priori, NOT tuned to results.
+    "EDGE_ROBUST_TRIM_EVENT_FRAC": 0.05,  # (a) drop the best 5% of events by net excess return: mean must stay > 0
+    "EDGE_ROBUST_DROP_TOP_SYMBOLS": 10,  # (b) drop the 10 top-contributing symbols ...
+    "EDGE_ROBUST_MIN_REMAINING_SHARPE_FRAC": 0.30,  # ... remaining excess Sharpe must be > 0 and >= 30% of original
+    "EDGE_ROBUST_YEAR_MIN_LIVE_DAYS": 60,  # (c) a calendar year counts only with >= 60 live days
+    "EDGE_ROBUST_YEAR_MIN_POSITIVE_FRAC": 0.60,  # (c) >= 60% of counted years with positive excess
+    "EDGE_ROBUST_YEAR_MAX_SHARE": 0.60,  # (c) no single year > 60% of total excess
+    "EDGE_ROBUST_COST_STRESS_MULT": 2.0,  # (d) excess Sharpe must stay > 0 with trading costs multiplied by this
+    "EDGE_ROBUST_EVENT_CAP": 0.20,  # (e) winsorise event net excess at +20%: mean must stay > 0
+    "EDGE_ROBUST_BREADTH_TOP_K": 20,  # (f) informational breadth check (top-20 basket), non-gating
+    "EDGE_ROBUST_GLOBAL_MAD_K": 3.5,  # (g) MAD trimming constant for the global-DSR Sharpe-dispersion pool
     "EDGE_GATE_MIN_EVENTS": 300,
     "EDGE_GATE_MIN_ACTIVE_DAYS": 60,
     "EDGE_GATE_DSR_MIN": 0.95,

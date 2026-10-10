@@ -71,3 +71,10 @@ def resample_hourly_to_daily(bars_1h: pd.DataFrame) -> pd.DataFrame:
     out = pd.DataFrame({"open": g["open"].first(), "high": g["high"].max(), "low": g["low"].min(),
                         "close": g["close"].last(), "volume": g["volume"].sum()})
     return out[COLS]
+
+
+def field_matrix(panel: dict[str, pd.DataFrame], col: str) -> pd.DataFrame:
+    """date x symbol matrix of one OHLCV column (e.g. 'high'/'low' for the bar-health and lock checks)."""
+    if not panel:
+        return pd.DataFrame()
+    return pd.DataFrame({s: d[col] for s, d in panel.items()}).sort_index()
