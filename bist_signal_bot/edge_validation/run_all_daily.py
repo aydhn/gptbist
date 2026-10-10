@@ -55,13 +55,15 @@ def _row(item: dict, res, secs: float) -> dict:
             "robust_mode": r.get("robust_mode"), "robust": prim.get("robust"),
             "robust_failed": ((prim.get("robustness") or {}).get("failed")),
             "robust_criteria": {k: v.get("pass") for k, v in ((prim.get("robustness") or {}).get("criteria") or {}).items()},
-            "ledger_family": r.get("family"), "selected_trial_id": r.get("selected_trial_id")}
+            "ledger_family": r.get("family"), "selected_trial_id": r.get("selected_trial_id"),
+            "min_adv": r.get("min_adv"), "entry_delay": r.get("entry_delay"),
+            "robust_detail": (prim.get("robustness") or {}).get("criteria")}
 
 
 def run_all_daily(ctx, families: Sequence[str], horizons: Sequence[int], top_n: int, ledger, *, scenarios=None,
                   regime_scale=None, settings=None, report_dir=None, seed: int = 0, param_grids: Optional[Dict] = None,
                   progress=None, benchmark: str = "ew_universe", survivor_check: bool = False,
-                  robust: bool = True, meta: Optional[dict] = None) -> List[dict]:
+                  robust: bool = True, meta: Optional[dict] = None, min_adv: Optional[float] = None) -> List[dict]:
     """Batch driver. With the robust (v2) layer the global-multiplicity criterion is DEFERRED during the run (every
     family's trials are recorded first) and re-evaluated for every CANDIDATE against ONE final ledger snapshot
     (``relabel_with_snapshot``), so verdicts do not depend on family order. ``meta`` (optional dict) receives the
@@ -76,7 +78,7 @@ def run_all_daily(ctx, families: Sequence[str], horizons: Sequence[int], top_n: 
                                    top_n, ledger, scenarios=scenarios, placebo=item["placebo"], seed=seed,
                                    settings=settings, regime_scale=regime_scale, report_dir=report_dir,
                                    benchmark=benchmark, survivor_check=survivor_check, robust=robust,
-                                   global_gate="deferred" if robust else "live")
+                                   global_gate="deferred" if robust else "live", min_adv=min_adv)
             row = _row(item, res, time.perf_counter() - t0)
         except Exception as exc:  # recorded, batch continues
             row = {**item, "error": f"{type(exc).__name__}: {exc}", "seconds": round(time.perf_counter() - t0, 2),

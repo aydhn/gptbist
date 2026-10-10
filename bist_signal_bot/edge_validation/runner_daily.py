@@ -129,8 +129,20 @@ def run_family_daily(family, ctx: DailyContext, horizons: Sequence[int], param_g
                      report_dir=None, cost_models: Optional[Dict[str, DailyCostModel]] = None,
                      benchmark: str = "ew_universe", survivor_check: bool = False,
                      robust: bool = True, robust_config=None, global_gate: str = "live",
-                     snapshot_rowid: Optional[int] = None) -> DailyRunResult:
+                     snapshot_rowid: Optional[int] = None, min_adv: Optional[float] = None) -> DailyRunResult:
+    """``min_adv`` (TRY, None = ctx default/unchanged behaviour) sets the point-in-time eligibility ADV threshold
+    (liquid-universe trials). It is encoded in the ledger family (``<fam>_adv5e+07_daily_xs_ew2``: still ends with the
+    v2 suffix so the trials count toward the global pool N), the trial ids and the ``universe`` string."""
     fam = DAILY_FAMILIES[family] if isinstance(family, str) else family
+    adv_tag = ""
+    if min_adv is not None:
+        min_adv = float(min_adv)
+        adv_tag = f"adv{min_adv:.0e}"
+        if float(ctx.min_adv) != min_adv:  # shallow copy: shares price matrices, own (lazily rebuilt) eligibility mask
+            import copy
+            ctx = copy.copy(ctx)
+            ctx.min_adv = min_adv
+            ctx._mask = None
     if isinstance(family, str) and family not in DAILY_FAMILIES:
         raise ValueError(f"unknown daily family {family!r}; choose from {sorted(DAILY_FAMILIES)}")
     check_benchmark_mode(benchmark)
@@ -151,7 +163,8 @@ def run_family_daily(family, ctx: DailyContext, horizons: Sequence[int], param_g
         raise ValueError("global_gate must be 'live' or 'deferred'")
     min_univ = int(_setting(settings, "GLOBAL_POOL_MIN_UNIVERSE", 100) or 0)
     robust_on = bool(robust) and benchmark == "ew_universe"  # robustness is defined for the excess-vs-EW statistic
-    lfam = (fam.name + (LEDGER_SUFFIX_V2 if robust_on else "_daily" + LEDGER_SUFFIX[benchmark])
+    lfam = (fam.name + (f"_{adv_tag}" if adv_tag else "")
+            + (LEDGER_SUFFIX_V2 if robust_on else "_daily" + LEDGER_SUFFIX[benchmark])
             + ("__placebo" if placebo else ""))
     fv_tag = ""
     if getattr(fam, "needs_horizon", False):  # ML families depend on the feature set: keep ledger rows apart
@@ -162,7 +175,7 @@ def run_family_daily(family, ctx: DailyContext, horizons: Sequence[int], param_g
                    if fam.valid(p)]
 
     n_sym = len(ctx.symbols)
-    univ_tag = f"daily_panel[{n_sym}]"
+    univ_tag = f"daily_panel[{n_sym}]" + (f"|{adv_tag}" if adv_tag else "")
     if n_sym < min_univ and not getattr(ledger, "smoke", False):
         univ_tag += "|SMALL_UNIVERSE"  # excluded from the global pool; marked so it can be audited
         logger.warning("writing %d-symbol trials (< GLOBAL_POOL_MIN_UNIVERSE=%d) to the non-smoke ledger %s; "
@@ -175,7 +188,8 @@ def run_family_daily(family, ctx: DailyContext, horizons: Sequence[int], param_g
     for pi, p in enumerate(grid_params):
         for h in horizons:
             tid = (f"{lfam}|{INTERVAL_LABEL}|u{len(ctx.symbols)}|h{int(h)}|top{int(top_n)}|{rs_tag}|"
-                   f"{json.dumps(p, sort_keys=True)}|s{seed if placebo else 0}{fv_tag}")
+                   f"{json.dumps(p, sort_keys=True)}|s{seed if placebo else 0}{fv_tag}"
+                   f"{'|' + adv_tag if adv_tag else ''}")
             info = {"trial_id": tid, "params": p, "horizon": int(h), "events": None, "n_events": 0, "error": None,
                     "skey": None}
             try:
@@ -408,6 +422,14 @@ def run_family_daily(family, ctx: DailyContext, horizons: Sequence[int], param_g
     except Exception as exc:
         report["survivorship"] = {"statement": _sv.HONESTY_STATEMENT if "_sv" in dir() else None,
                                   "error": f"{type(exc).__name__}: {exc}"}
+    report["min_adv"] = min_adv
+    report["effective_min_adv"] = float(ctx.min_adv)
+    try:  # informational: entry at close of t0+1 instead of the model's open
+        from bist_signal_bot.edge_validation.entry_delay import delayed_entry_report
+        report["entry_delay"] = (delayed_entry_report(ctx, sel["events"], 1, cms[primary])
+                                 if sel is not None and sel["n_events"] else None)
+    except Exception as exc:
+        report["entry_delay"] = {"error": f"{type(exc).__name__}: {exc}"}
     report = _clean(report)
     path = None
     if save_report:

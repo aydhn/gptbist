@@ -44,6 +44,8 @@ def build_parser() -> argparse.ArgumentParser:
     d.add_argument("--smoke", action="store_true",
                    help="dev/smoke run: use trials_smoke.sqlite (never the real ledger); also EDGE_SMOKE=1")
     d.add_argument("--report-dir", default=None, help="report output dir (default data/edge_validation/reports)")
+    d.add_argument("--min-adv", type=float, default=None,
+                   help="liquid universe: min 20d ADV in TRY (e.g. 5e7); encoded in ledger ids (new trials, counted in N)")
     d.add_argument("--grid-json", default=None,
                    help="override grid as JSON object of lists (creates NEW ledger trials!)")
     a = sub.add_parser("run-daily-all", help="Every registered daily family x horizons (placebo once per family)")
@@ -63,6 +65,8 @@ def build_parser() -> argparse.ArgumentParser:
     a.add_argument("--smoke", action="store_true",
                    help="dev/smoke run: use trials_smoke.sqlite (never the real ledger); also EDGE_SMOKE=1")
     a.add_argument("--report-dir", default=None)
+    a.add_argument("--min-adv", type=float, default=None,
+                   help="liquid universe: min 20d ADV in TRY (e.g. 5e7); encoded in ledger ids (new trials, counted in N)")
     from bist_signal_bot.cli import real_report_cli  # edge real-report
     real_report_cli.add_parser(sub)
     sub.add_parser("list-daily-families", help="Registered daily cross-sectional families")
@@ -168,7 +172,7 @@ def _run_daily_all(args, settings) -> int:
         rows = run_all_daily(ctx, fams, horizons, top_n, ledger, scenarios=_scen(args), regime_scale=rs,
                              settings=settings, report_dir=rdir, seed=args.seed, progress=_progress,
                              benchmark=args.benchmark, survivor_check=args.survivor_check,
-                             robust=args.robust, meta=run_meta)
+                             robust=args.robust, meta=run_meta, min_adv=args.min_adv)
         n_sym = len(ctx.symbols)
     finally:
         archive.close()
@@ -178,7 +182,7 @@ def _run_daily_all(args, settings) -> int:
     meta = {"generated": ts, "n_symbols": n_sym, "horizons": horizons, "top_n": top_n,
             "regime_scale": bool(args.regime_scale), "benchmark": args.benchmark, "robust": bool(args.robust),
             "ledger_suffix": (_ledger_suffix_v2() if args.robust else "legacy"), "ledger_path": str(ledger.path), "no_order": NO_ORDER,
-            "smoke": bool(ledger.smoke), "snapshot_rowid": run_meta.get("snapshot_rowid"),
+            "min_adv": args.min_adv, "smoke": bool(ledger.smoke), "snapshot_rowid": run_meta.get("snapshot_rowid"),
             "global_pool_min_universe": int(getattr(settings, "GLOBAL_POOL_MIN_UNIVERSE", 100) or 0)}
     jp = rdir / f"daily_all_{ts}.json"
     jp.write_text(json.dumps({"meta": meta, "rows": rows}, ensure_ascii=False, indent=2, default=str),
@@ -219,7 +223,7 @@ def _run_daily(args, settings) -> int:
                                TrialLedger(path=args.ledger_path, settings=settings, smoke=_smoke(args)),
                                scenarios=scen, placebo=args.placebo, seed=args.seed, settings=settings,
                                regime_scale=rs, report_dir=args.report_dir, benchmark=args.benchmark,
-                               survivor_check=args.survivor_check, robust=args.robust)
+                               survivor_check=args.survivor_check, robust=args.robust, min_adv=args.min_adv)
     finally:
         archive.close()
     r = res.report
