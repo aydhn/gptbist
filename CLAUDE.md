@@ -141,6 +141,8 @@ The learning pieces that make it "self-improving":
   (`secr...6789`), but `SecretRedactor.redact_dict` does full `***REDACTED***` (stronger). The code
   is the safer behavior; treat the test as the stale side, not the code.
 
+- **Session 2026-10-10 (blocks H-L)**: suite 3301 passed / 0 failed. No robust edge found (see `docs/claude-context/06-block-i-results.md`, `08-closing-report.md`); forward shadow awaits first live run (Yahoo same-day closes can be NaN -> STALE fail-closed is correct). Open: daily lifecycle cannot reach CANDIDATE (single-config PBO grid), exit rules/gap risk not wired into paper engine, VBTS/halt data missing.
+
 ## Code style
 
 Match surrounding code. Stdlib `logging` via `core/logging_setup.get_logger` (no loguru).
