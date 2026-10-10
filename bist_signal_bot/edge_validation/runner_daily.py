@@ -129,7 +129,8 @@ def run_family_daily(family, ctx: DailyContext, horizons: Sequence[int], param_g
                      report_dir=None, cost_models: Optional[Dict[str, DailyCostModel]] = None,
                      benchmark: str = "ew_universe", survivor_check: bool = False,
                      robust: bool = True, robust_config=None, global_gate: str = "live",
-                     snapshot_rowid: Optional[int] = None, min_adv: Optional[float] = None) -> DailyRunResult:
+                     snapshot_rowid: Optional[int] = None, min_adv: Optional[float] = None,
+                     fixed_primary: Optional[dict] = None, grid_tag: Optional[str] = None) -> DailyRunResult:
     """``min_adv`` (TRY, None = ctx default/unchanged behaviour) sets the point-in-time eligibility ADV threshold
     (liquid-universe trials). It is encoded in the ledger family (``<fam>_adv5e+07_daily_xs_ew2``: still ends with the
     v2 suffix so the trials count toward the global pool N), the trial ids and the ``universe`` string."""
@@ -245,12 +246,18 @@ def run_family_daily(family, ctx: DailyContext, horizons: Sequence[int], param_g
         too_few = t["n_events"] < cfg.min_events
         ok = daily is not None and not too_few and t["error"] is None
         t["status"] = "ok" if ok else "failed"
-        ledger.record_trial(t["trial_id"], fam.name, t["params"], INTERVAL_LABEL,
+        rec_params = {**t["params"], "grid_tag": grid_tag} if grid_tag else t["params"]  # metadata only (trial_id unchanged)
+        ledger.record_trial(t["trial_id"], fam.name, rec_params, INTERVAL_LABEL,
                             f"{univ_tag}|h{t['horizon']}|top{top_n}|{rs_tag}",
                             daily if ok else None, lfam, t["status"])
         if ok and t.get("net_sharpe_period") is not None and t["net_sharpe_period"] > best_sr:
             best, best_sr = t["trial_id"], t["net_sharpe_period"]
     selected = best if best is not None else most
+    if fixed_primary is not None:  # pre-declared primary (e.g. grid centre): neighbours only feed PBO, never the selection
+        fx = next((t for t in trials if t["params"] == fixed_primary), None)
+        if fx is None:
+            raise ValueError("fixed_primary is not part of the parameter grid")
+        selected = fx["trial_id"]
 
     # 4) gate under every scenario (same selected trial, same ledger count)
     reports = {s: gates[s].evaluate(lfam, selected, events_by_trial, ledger, INTERVAL_LABEL, trading_days=win)

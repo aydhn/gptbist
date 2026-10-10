@@ -282,3 +282,39 @@ def test_cli_parser_daily_train():
     from bist_signal_bot.cli.model_loop_cli import build_parser
     a = build_parser().parse_args(["daily-train", "--kind", "hgb", "--horizon", "10", "--ledger-path", "x.sqlite"])
     assert a.kind == "hgb" and a.horizon == 10 and a.ledger_path == "x.sqlite"
+
+
+# ------------------------------------------------------------------ neighbour grid (PBO needs >=2 trial columns)
+def _train_nb(ctx, tmp_path, kind="logit", params=None):
+    led = TrialLedger(tmp_path / "nb.sqlite")
+    tr = DailyModelTrainer(ctx, led, kind, 10, None, None, params or {"C": 0.1, "retrain_every": 60},
+                           knobs=dict(SMALL), gate=CandidateGate(GateConfig(), save=False))
+    return led, tr, tr.train(ctx.index[-1])
+
+
+def test_neighbor_grid_shape_and_centre_first():
+    from bist_signal_bot.model_loop.daily_lifecycle import neighbor_grid
+    for kind, c in (("logit", {"C": 0.1}), ("hgb", {"max_depth": 2}), ("meta", {"K": 30})):
+        g = neighbor_grid(kind, c)
+        assert g[0] == c and 2 <= len(g) <= 5 and len({str(x) for x in g}) == len(g)
+    assert min(x["max_depth"] for x in neighbor_grid("hgb", {"max_depth": 2})) >= 2
+
+
+@pytest.fixture(scope="module")
+def ctx_long():
+    return _ctx(seed=5, n_sym=30, days=1600)  # PBO/gate need enough active days
+
+
+def test_neighbor_grid_pbo_defined_ledger_n_and_tag(ctx_long, tmp_path):
+    led, tr, info = _train_nb(ctx_long, tmp_path)
+    om = info.oos_metrics
+    assert om["n_grid_trials"] == 3 and om["n_trials_ledger"] == 3 and om["grid_tag"] == "neighbor_grid"
+    assert om["pbo"] is not None and np.isfinite(om["pbo"])
+    assert om["primary_params"]["C"] == 0.1  # smoke only; the real selection test is test_runner_daily_fixed_primary.py
+    rows = led._query("SELECT params_json FROM trials")
+    assert len(rows) == 3 and all("neighbor_grid" in r[0] for r in rows)
+
+
+def test_neighbor_grid_noise_never_candidate(ctx_long, tmp_path):
+    _, _, info = _train_nb(ctx_long, tmp_path)
+    assert info.gate_verdict != "CANDIDATE"

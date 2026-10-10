@@ -319,6 +319,8 @@ class ModelLifecycle:
         reasons: list[str] = []
         if prev is None:
             reasons.append("no previous champion to roll back to")
+        if self._kill_switch_active():
+            reasons.append("kill switch active")
         ok, why = self._preflight_ok("model-loop rollback")
         if not ok:
             reasons.append(why)

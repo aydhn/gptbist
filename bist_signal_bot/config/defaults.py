@@ -743,6 +743,8 @@ DEFAULTS: dict[str, Any] = {
     "INTRADAY_EXCHANGE_FEE_BPS": 0.29,
     "INTRADAY_SLIPPAGE_IMPACT_COEF": 0.1,
     "INTRADAY_MAX_PARTICIPATION": 0.05,
+    "DAILY_DRIFT_LEGACY": False,  # True = eski satir-duzeyi drift testi (hisse x gun orneklemi); varsayilan: tarih basina 1 gozlem + BH duzeltmesi
+    "DAILY_DRIFT_BH_ALPHA": 0.05,  # Benjamini-Hochberg alpha for daily feature drift
     "DAILY_MEASURE_RULE_ENABLED": False,  # tedbirli hisse (brut takas/tek fiyat/emir paketi) kurali: giris dolmaz, cikis ertelenir; data/measures/measures.csv gerekir
     "REGIME_USE_GLOBAL_MACRO": False,  # add causal FRED global-macro columns (VIX/DGS10/USD/HY) to regime features; local cache only
     "CASH_BENCHMARK_ANNUAL_RATE": 0.37,  # policy rate proxy (TCMB 37%, 2026-09); separate from PAPER_CASH_INTEREST_ANNUAL deposit placeholder

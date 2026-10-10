@@ -62,6 +62,29 @@ def due_for_retrain(registry, today, every_days: int = DEFAULT_RETRAIN_DAYS) -> 
     return False, f"last daily training {last.date()} is {age.days}d old (< {every_days}d)"
 
 
+def neighbor_grid(kind: str, centre: dict) -> list:
+    """Deterministic small neighbourhood around the PRE-DECLARED centre (centre first, 3 trials). Neighbours exist only
+    so PBO (CSCV) has >=2 trial columns; the centre stays the champion candidate (no selection among neighbours)."""
+    c = dict(centre)
+    out = [c]
+    if kind == "hgb":
+        d = int(c.get("max_depth", 2))
+        alts = [{"max_depth": max(d - 1, 2)}, {"max_depth": d + 1}]
+    elif kind == "logit":
+        C = float(c.get("C", 0.1))
+        alts = [{"C": C * 0.5}, {"C": C * 2.0}]
+    else:  # meta
+        K = int(c.get("K", 30))
+        alts = [{"K": max(int(round(K * 2 / 3)), 5)}, {"K": int(round(K * 1.5))}]
+    for a in alts:
+        n = {**c, **a}
+        if n not in out:
+            out.append(n)
+    if len(out) < 2:  # e.g. clamped hgb depth: guarantee a distinct neighbour
+        out.append({**c, "max_depth": int(c.get("max_depth", 2)) + 1} if kind == "hgb" else {**c})
+    return out
+
+
 class DailyModelTrainer:
     """Implements ``interface.TrainerProtocol`` for the daily ML path."""
 
@@ -98,10 +121,11 @@ class DailyModelTrainer:
             cfg = wf.config
             prim = fam.primary_scores(ctx, p) if self.kind == "meta" else None
             metrics["cpcv"] = cpcv_report(ctx, cfg, primary=prim, top_k=int(p.get("K", 30)))
-        grid = {k: [v] for k, v in {**self.params, **self.knobs}.items()}
+        centre = {**self.params, **self.knobs}
+        grid = neighbor_grid(self.kind, centre)  # centre FIRST + deterministic neighbours (PBO needs >=2 trials)
         res = run_family_daily(fam, ctx, [self.horizon], grid, self.top_n, self.ledger, gate=self.gate,
                                scenarios=self.scenarios, settings=self.settings, benchmark="ew_universe", save_report=self.save_report,
-                               report_dir=self.report_dir)
+                               report_dir=self.report_dir, fixed_primary=centre, grid_tag="neighbor_grid")
         verdict = res.verdict
         rep = res.report
         prim_s = rep["scenarios"][rep["candidacy_scenario"]]
@@ -111,7 +135,8 @@ class DailyModelTrainer:
               "auc": oof.get("auc"), "brier": oof.get("brier"), "log_loss": oof.get("log_loss"),
               "calibration_error": oof.get("calibration_error"), "ic_mean": oof.get("ic_mean"),
               "ic_ir": oof.get("ic_ir"), "gate_failed_criteria": list(prim_s.get("failed_criteria") or []),
-              "n_trials_ledger": rep.get("n_trials_ledger")}
+              "n_trials_ledger": rep.get("n_trials_ledger"), "n_grid_trials": len(grid),
+              "pbo": prim_s.get("pbo"), "primary_params": dict(centre), "grid_tag": "neighbor_grid"}
         trained_through = str(ctx.index[-1].date())
         fp8 = hashlib.sha256(f"{self.kind}|{self.horizon}|{len(ctx.symbols)}|{trained_through}|{wf.config.as_json()}"
                              .encode()).hexdigest()[:8]
@@ -181,6 +206,7 @@ def daily_drift_inputs(ctx: DailyContext, artifact: dict, ref_days: int = 250, c
         ii, jj = np.nonzero(fp.valid[a:b])
         X = fp.Z[a + ii, jj, :]
         df = pd.DataFrame(X[:, [FEATURE_COLUMNS.index(c) for c in base]], columns=base)
+        df["_date"] = np.asarray(ctx.index)[a + ii]  # lets the monitor test one observation per day
         if len(df):
             Xm = X if len(names) == len(FEATURE_COLUMNS) else np.concatenate([X, np.zeros((len(X), 1), np.float32)], axis=1)
             p = mdl.predict_p(Xm)
@@ -196,14 +222,14 @@ class DailyDriftMonitor(DriftMonitor):
     """PSI/KS on rank-normalised features (as the base monitor) PLUS the score distribution: a score alert
     (PSI >= alert) on its own triggers retrain, because rank-normalised features rarely drift in marginal shape."""
 
+    def __init__(self, settings=None):
+        super().__init__(settings)
+        self.daily = True
+
     def check_features(self, ref_df, cur_df) -> DriftDecision:
-        feat_cols = [c for c in ref_df.columns if c != "score"]
-        base = super().check_features(ref_df[feat_cols], cur_df[[c for c in cur_df.columns if c != "score"]])
-        if "score" in ref_df.columns and "score" in cur_df.columns:
-            sc = super().check_features(ref_df[["score"]], cur_df[["score"]])
-            sc.reasons = [r.replace("feature_drift", "score_drift") for r in sc.reasons]
-            return DriftMonitor.combine(base, sc)
-        return base
+        # N2: per-date effective sample + BH across features; alert = significant feature fraction OR score shift.
+        # DAILY_DRIFT_LEGACY=True restores the row-level behaviour (handled inside DriftMonitor._check).
+        return self._check(ref_df, cur_df, "score")
 
 
 def make_data_provider(ctx: DailyContext, artifact_getter: Callable[[], Optional[dict]], **kw):

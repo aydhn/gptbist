@@ -33,6 +33,18 @@ def build_parser() -> argparse.ArgumentParser:
     d.add_argument("--cpcv", action="store_true", help="also report CPCV (purged) AUC/Brier/IC")
     d.add_argument("--only-if-due", action="store_true", help="skip unless the weekly retrain schedule is due")
     d.add_argument("--retrain-days", type=int, default=7)
+    c = sub.add_parser("daily-cycle", help="Manual daily cycle: due? -> challenger -> drift -> report; promote ONLY "
+                                           "with --confirm (and only if the lifecycle rules allow). No scheduler.")
+    c.add_argument("--only-if-due", action="store_true", help="no-op unless the weekly retrain schedule is due")
+    c.add_argument("--retrain-days", type=int, default=7)
+    c.add_argument("--dry-run", action="store_true", help="change no state (nothing trained/registered/promoted)")
+    c.add_argument("--confirm", action="store_true", help="allow promotion (still gated by CANDIDATE/better/kill-switch/preflight)")
+    c.add_argument("--kind", choices=["logit", "hgb", "meta"], default="logit")
+    c.add_argument("--horizon", type=int, default=10)
+    c.add_argument("--symbols", nargs="+")
+    c.add_argument("--max-symbols", type=int, default=None)
+    c.add_argument("--as-of", default=None, help="YYYY-MM-DD; default = last archived session")
+    c.add_argument("--ledger-path", default=None)
     from bist_signal_bot.cli.model_loop_lifecycle_cli import build_lifecycle_parser
     build_lifecycle_parser(sub)  # evaluate | promote | rollback | status (champion + model list)
     return p
@@ -49,6 +61,8 @@ def main(argv: list[str]) -> int:
     registry = make_registry(settings)
     if args.model_loop_command == "daily-train":
         return _daily_train(args, settings, registry)
+    if args.model_loop_command == "daily-cycle":
+        return _daily_cycle(args, settings, registry)
     if args.model_loop_command in ("evaluate", "promote", "rollback", "status"):
         from bist_signal_bot.cli.model_loop_lifecycle_cli import handle_lifecycle
         rc = handle_lifecycle(args)
@@ -142,4 +156,61 @@ def _daily_train(args, settings, registry) -> int:
     for w in info.warnings:
         print(f"WARNING: {w}")
     print(NO_ORDER)
+    return 0
+
+
+def _load_daily_ctx(args, settings):
+    from bist_signal_bot.edge_validation.xsection import DailyContext
+    archive = BarArchive(settings=settings)
+    try:
+        ctx = DailyContext.from_archive(archive, args.symbols, settings)
+        if args.max_symbols and args.max_symbols < len(ctx.symbols):
+            keep = ctx.value.tail(250).mean().nlargest(args.max_symbols).index.tolist()
+            ctx = DailyContext.from_archive(archive, sorted(keep), settings)
+    finally:
+        archive.close()
+    return ctx
+
+
+def _cycle_as_of(args, ctx_loader):
+    """(as_of, ctx_or_None). ONE as_of for the due check and the training: --as-of, else the last archived session."""
+    if args.as_of:
+        return args.as_of, None
+    ctx = ctx_loader()
+    return ctx.index[-1], ctx
+
+
+def _daily_cycle(args, settings, registry) -> int:
+    from bist_signal_bot.model_loop.daily_cycle import NO_ORDER as _NO, run_daily_cycle
+    from bist_signal_bot.model_loop.daily_lifecycle import due_for_retrain
+    load = lambda: _load_daily_ctx(args, settings)  # noqa: E731
+    as_of, ctx = _cycle_as_of(args, load)
+    due, _ = due_for_retrain(registry, as_of, args.retrain_days)
+    if (args.only_if_due and not due) or args.dry_run:  # no data load needed (when --as-of given)
+        run_daily_cycle(registry, None, as_of, args.only_if_due, args.retrain_days, args.dry_run, args.confirm, out=print)
+        return 0
+    from bist_signal_bot.cli.model_loop_lifecycle_cli import build_lifecycle
+    from bist_signal_bot.edge_validation.ledger import TrialLedger
+    from bist_signal_bot.model_loop.daily_lifecycle import (DEFAULT_PARAMS, DailyDriftMonitor, DailyModelTrainer,
+                                                            make_data_provider)
+    from bist_signal_bot.model_loop.training import models_dir
+    ctx = ctx or load()
+    trainer = DailyModelTrainer(ctx, TrialLedger(path=args.ledger_path, settings=settings), args.kind, args.horizon,
+                                settings, registry, dict(DEFAULT_PARAMS[args.kind]), models_dir=models_dir(settings))
+    lc = build_lifecycle(settings)
+    lc.trainer, lc.drift_monitor = trainer, DailyDriftMonitor(settings)
+
+    def champion_artifact():
+        import joblib
+        champ = lc.champion()
+        path = (champ.metadata or {}).get("artifact_path") if champ else None
+        return joblib.load(path) if path else None
+
+    lc.data_provider = make_data_provider(ctx, champion_artifact)
+    try:
+        run_daily_cycle(registry, lc, as_of, args.only_if_due, args.retrain_days,
+                        args.dry_run, args.confirm, out=print)
+    except ValueError as exc:
+        print(f"daily-cycle failed: {exc} {_NO}")
+        return 1
     return 0

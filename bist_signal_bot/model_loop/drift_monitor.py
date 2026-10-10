@@ -136,6 +136,37 @@ class FeatureDriftFinding:
     ks_stat: float
     ks_pvalue: float
     severity: str  # none | warn | alert
+    p_adj: float = float("nan")  # Benjamini-Hochberg adjusted KS p (nan in the legacy path)
+
+
+DATE_COL = "_date"  # optional session-date column: enables effective-sample (per-day) testing
+
+
+def bh_adjust(pvals: Iterable[float]) -> np.ndarray:
+    """Benjamini-Hochberg adjusted p-values (q-values); NaN p -> 1.0."""
+    p = np.asarray(list(pvals), dtype=float)
+    p = np.where(np.isfinite(p), p, 1.0)
+    m = p.size
+    if m == 0:
+        return p
+    order = np.argsort(p)
+    ranked = p[order] * m / (np.arange(m) + 1.0)
+    adj = np.minimum.accumulate(ranked[::-1])[::-1]
+    out = np.empty(m)
+    out[order] = np.clip(adj, 0.0, 1.0)
+    return out
+
+
+def aggregate_by_date(df, date_col: str = DATE_COL):
+    """One observation per date: market-level columns (a single value per date) -> that value, others -> the
+    daily cross-sectional mean. The number of rows afterwards (days) is the effective sample size."""
+    g = df.groupby(date_col, sort=True)
+    mean = g.mean(numeric_only=True)
+    out = mean.copy()
+    for col in mean.columns:
+        if (g[col].nunique(dropna=True) <= 1).all():
+            out[col] = g[col].first()
+    return out.reset_index(drop=True)
 
 
 @dataclass
@@ -165,8 +196,87 @@ class DriftMonitor:
         self.adwin_delta = float(_get(settings, "MODEL_LOOP_ADWIN_DELTA", 0.002))
         self.alert_frac = float(_get(settings, "MODEL_LOOP_FEATURE_ALERT_FRAC", 0.2))
         self.min_samples = 30
+        self.min_days = 15  # minimum effective sample (days) per window in the per-date path
+        self.bh_alpha = float(_get(settings, "DAILY_DRIFT_BH_ALPHA", 0.05))
+        self.legacy = bool(_get(settings, "DAILY_DRIFT_LEGACY", False))
+        self.daily = False  # per-date/BH path is opt-in (DailyDriftMonitor); the bare monitor keeps row-level behaviour
 
     def check_features(self, ref_df, cur_df) -> DriftDecision:
+        return self._check(ref_df, cur_df, None)
+
+    def _check(self, ref_df, cur_df, score_col) -> DriftDecision:
+        """Legacy: row-level PSI/KS (inflated sample). Default: per-date effective sample when ``_date`` is present,
+        KS p-values BH-corrected across features; retrain on the BH-significant feature fraction or on a score shift."""
+        if self.legacy or not self.daily:
+            return self._check_legacy(ref_df, cur_df, score_col)
+        if DATE_COL in ref_df.columns and DATE_COL in cur_df.columns:
+            ref_df, cur_df, min_n = aggregate_by_date(ref_df), aggregate_by_date(cur_df), self.min_days
+        else:
+            min_n = self.min_samples
+        cols = [c for c in ref_df.columns if c in cur_df.columns and c != DATE_COL]
+        rows = []
+        for col in cols:
+            try:
+                r, c = _clean(ref_df[col].to_numpy(dtype=float)), _clean(cur_df[col].to_numpy(dtype=float))
+            except (TypeError, ValueError):
+                continue
+            if r.size < min_n or c.size < min_n:
+                continue
+            if np.ptp(r) == 0 and np.ptp(c) == 0:
+                continue  # constant in both windows: not testable, excluded from the denominator
+            bins = int(max(3, min(10, min(r.size, c.size) // 10)))
+            d, pv = ks_statistic_pvalue(r, c)
+            rows.append((str(col), psi(r, c, bins=bins), d, pv))
+        feat = [x for x in rows if x[0] != score_col]
+        padj = bh_adjust([x[3] for x in feat])
+        findings: list[FeatureDriftFinding] = []
+        n_sig = n_alert = n_warn = 0
+        for (name, p, d, pv), pa in zip(feat, padj):
+            sig = pa < self.bh_alpha and p >= self.psi_warn
+            sev = "none"
+            if sig:
+                n_sig += 1
+                sev = "alert" if p >= self.psi_alert else "warn"
+            n_alert += sev == "alert"
+            n_warn += sev == "warn"
+            findings.append(FeatureDriftFinding(name, p, d, pv, sev, float(pa)))
+        reasons: list[str] = []
+        retrain = False
+        n = len(feat)
+        if n and n_sig >= 2 and n_sig / n >= self.alert_frac:
+            retrain = True
+            reasons.append(f"feature_drift: {n_sig}/{n} features significant after BH (alpha={self.bh_alpha}) with PSI>={self.psi_warn}")
+        elif n_sig:
+            reasons.append(f"feature_drift_minor: {n_sig}/{n} features significant (below retrain fraction)")
+        score_alert = False
+        for name, p, d, pv in rows:
+            if name != score_col:
+                continue
+            score_alert = pv < self.bh_alpha and p >= self.psi_alert
+            sev = "alert" if score_alert else "none"
+            findings.append(FeatureDriftFinding(name, p, d, pv, sev, float(pv)))
+            if score_alert:
+                retrain = True
+                reasons.append(f"score_drift: score shift KS p={pv:.3g}, PSI={p:.3f}>={self.psi_alert}")
+        # an isolated feature alert is only a warning; it never forces a retrain
+        severity = "alert" if retrain else ("warn" if (n_alert or n_warn) else "none")
+        return DriftDecision(retrain, reasons, severity, findings,
+                             {"n_features": n, "n_alert": n_alert, "n_warn": n_warn, "n_significant_bh": n_sig,
+                              "score_alert": score_alert, "legacy": False})
+
+    def _check_legacy(self, ref_df, cur_df, score_col) -> DriftDecision:
+        if DATE_COL in ref_df.columns:
+            ref_df = ref_df.drop(columns=[DATE_COL])
+        if DATE_COL in cur_df.columns:
+            cur_df = cur_df.drop(columns=[DATE_COL])
+        if score_col and score_col in ref_df.columns and score_col in cur_df.columns:
+            base = self._legacy_features(ref_df.drop(columns=[score_col]), cur_df.drop(columns=[score_col]))
+            sc = self._legacy_features(ref_df[[score_col]], cur_df[[score_col]])
+            sc.reasons = [r.replace("feature_drift", "score_drift") for r in sc.reasons]
+            return DriftMonitor.combine(base, sc)
+        return self._legacy_features(ref_df, cur_df)
+
+    def _legacy_features(self, ref_df, cur_df) -> DriftDecision:
         findings: list[FeatureDriftFinding] = []
         cols = [c for c in ref_df.columns if c in cur_df.columns]
         for col in cols:
